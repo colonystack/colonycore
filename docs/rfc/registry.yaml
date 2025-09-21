@@ -1,0 +1,95 @@
+documents:
+  - id: RFC-0001
+    type: RFC
+    title: ColonyCore Base Module
+    status: Draft
+    created: 2025-09-21
+    authors:
+      - Tobias Harnickell
+    stakeholders:
+      - Tobias Harnickell
+    reviewers:
+      - Tobias Harnickell
+    quorum: 1
+    target_release: v0.1.0
+    path: docs/rfc/0001-colonycore-base-module.md
+    linked_annexes:
+      - Annex-0001
+    linked_adrs:
+      - ADR-0001
+      - ADR-0002
+      - ADR-0003
+      - ADR-0004
+      - ADR-0005
+      - ADR-0006
+  - id: Annex-0001
+    type: Annex
+    title: Operational Risk & Compliance
+    status: Draft
+    owners:
+      - Tobias Harnickell
+    last_updated: 2025-09-21
+    linked_rfcs:
+      - RFC-0001
+    path: docs/annex/0001-operational-risk-and-compliance.md
+  - id: ADR-0001
+    type: ADR
+    title: Migration, Backfill & Rollback Strategy
+    status: Draft
+    deciders:
+      - Tobias Harnickell
+    date: 2025-09-21
+    linked_rfcs:
+      - RFC-0001
+    path: docs/adr/0001-migration-and-rollback.md
+  - id: ADR-0002
+    type: ADR
+    title: Versioning & Deprecation Policy
+    status: Draft
+    deciders:
+      - Tobias Harnickell
+    date: 2025-09-21
+    linked_rfcs:
+      - RFC-0001
+    path: docs/adr/0002-versioning-and-deprecation.md
+  - id: ADR-0003
+    type: ADR
+    title: Core Domain Schema Normalization
+    status: Planned
+    deciders:
+      - Tobias Harnickell
+      - SDK Maintainers
+    date: 2025-09-21
+    linked_rfcs:
+      - RFC-0001
+    path: docs/adr/0003-core-domain-schema.md
+  - id: ADR-0004
+    type: ADR
+    title: Rules Engine Evaluation Model
+    status: Planned
+    deciders:
+      - Tobias Harnickell
+    date: 2025-09-21
+    linked_rfcs:
+      - RFC-0001
+    path: docs/adr/0004-rules-engine-evaluation.md
+  - id: ADR-0005
+    type: ADR
+    title: Plugin Packaging & Distribution
+    status: Planned
+    deciders:
+      - Tobias Harnickell
+    date: 2025-09-21
+    linked_rfcs:
+      - RFC-0001
+    path: docs/adr/0005-plugin-packaging-and-distribution.md
+  - id: ADR-0006
+    type: ADR
+    title: Observability Stack Architecture
+    status: Planned
+    deciders:
+      - Tobias Harnickell
+    date: 2025-09-21
+    linked_rfcs:
+      - RFC-0001
+    path: docs/adr/0006-observability-architecture.md
