@@ -10,7 +10,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     env:
-      GOLANGCI_VERSION: v1.60.3
+      GOLANGCI_VERSION: v2.4.0
     steps:
       - name: Check out
         uses: actions/checkout@v4
