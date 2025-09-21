@@ -1,0 +1,22 @@
+# Place at /.github/CODEOWNERS, /CODEOWNERS, or /docs/CODEOWNERS (order matters; last match wins)
+
+# Default owners for everything
+*                       @TobyTheHutt
+
+# Directories
+/.github/               @TobyTheHutt
+/cmd/                   @TobyTheHutt
+/docs/                  @TobyTheHutt
+/internal/              @TobyTheHutt
+
+
+# File types / globs
+src/**/*.go             @TobyTheHutt
+
+# Specific files
+/Makefile               @TobyTheHutt
+/README.md              @TobyTheHutt
+
+# Overrides for a subpath
+# /src/experimental/      @org/research
+# /src/experimental/*.go  @carol
