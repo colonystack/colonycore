@@ -22,7 +22,7 @@ lint: fmt-check vet registry-lint golangci
 fmt-check:
 	@files="$$(find . -path './.git' -prune -o -path './.cache' -prune -o -name '*.go' -print)"; \
 	if [ -n "$$files" ]; then \
-		out="$$(gofmt -l $$files)"; \
+		out="$$(gofmt -l -s $$files)"; \
 		if [ -n "$$out" ]; then \
 			echo 'gofmt required for:'; \
 			echo "$$out"; \
