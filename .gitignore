@@ -11,6 +11,10 @@
 # Test binary, built with `go test -c`
 *.test
 
+# Ignore `registry-check` binary but not `cmd/registry-check/` directory
+registry-check
+!cmd/registry-check/
+
 # Code coverage profiles and other test artifacts
 *.out
 coverage.*
@@ -30,3 +34,6 @@ go.work.sum
 # Editor/IDE
 # .idea/
 # .vscode/
+.cache
+coverage.summary
+coverage.summary
