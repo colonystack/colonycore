@@ -2,7 +2,9 @@ package frog
 
 import (
 	"context"
+	"fmt"
 	"strings"
+	"time"
 
 	"colonycore/internal/core"
 )
@@ -45,6 +47,75 @@ func (Plugin) Register(registry *core.PluginRegistry) error {
 	})
 
 	registry.RegisterRule(frogHabitatRule{})
+
+	if err := registry.RegisterDatasetTemplate(core.DatasetTemplate{
+		Key:         "frog_population_snapshot",
+		Version:     "0.1.0",
+		Title:       "Frog Population Snapshot",
+		Description: "Lists frog organisms with lifecycle, housing, and project context scoped to the caller's RBAC filters.",
+		Dialect:     core.DatasetDialectDSL,
+		Query: `REPORT frog_population_snapshot
+SELECT organism_id, organism_name, species, lifecycle_stage, project_id, protocol_id, housing_id, updated_at
+FROM organisms
+WHERE species ILIKE 'frog%'`,
+		Parameters: []core.DatasetParameter{
+			{
+				Name:        "stage",
+				Type:        "string",
+				Description: "Optional lifecycle stage filter using canonical stage identifiers.",
+				Enum: []string{
+					string(core.StagePlanned),
+					string(core.StageLarva),
+					string(core.StageJuvenile),
+					string(core.StageAdult),
+					string(core.StageRetired),
+					string(core.StageDeceased),
+				},
+			},
+			{
+				Name:        "as_of",
+				Type:        "timestamp",
+				Description: "Only include organisms updated on or before the provided RFC3339 timestamp.",
+				Unit:        "iso8601",
+			},
+			{
+				Name:        "include_retired",
+				Type:        "boolean",
+				Description: "Include retired frogs when no explicit stage filter is provided.",
+				Default:     false,
+			},
+		},
+		Columns: []core.DatasetColumn{
+			{Name: "organism_id", Type: "string", Description: "Primary identifier for the organism."},
+			{Name: "organism_name", Type: "string", Description: "Common name or accession for the organism."},
+			{Name: "species", Type: "string", Description: "Recorded species name."},
+			{Name: "lifecycle_stage", Type: "string", Description: "Canonical lifecycle stage."},
+			{Name: "project_id", Type: "string", Description: "Owning project identifier."},
+			{Name: "protocol_id", Type: "string", Description: "Linked protocol identifier."},
+			{Name: "housing_id", Type: "string", Description: "Housing assignment identifier."},
+			{Name: "updated_at", Type: "timestamp", Unit: "iso8601", Description: "Timestamp of last organism update."},
+		},
+		Metadata: core.DatasetTemplateMetadata{
+			Source:          "core.organisms",
+			Documentation:   "docs/rfc/0001-colonycore-base-module.md#63-uiapi-composition",
+			RefreshInterval: "PT15M",
+			Tags:            []string{"frog", "population", "lifecycle"},
+			Annotations: map[string]string{
+				"unit_of_count":  "organism",
+				"classification": "operational",
+			},
+		},
+		OutputFormats: []core.DatasetFormat{
+			core.FormatJSON,
+			core.FormatCSV,
+			core.FormatParquet,
+			core.FormatHTML,
+			core.FormatPNG,
+		},
+		Binder: frogPopulationBinder,
+	}); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -79,4 +150,105 @@ func (frogHabitatRule) Evaluate(ctx context.Context, view core.TransactionView, 
 		})
 	}
 	return result, nil
+}
+
+func frogPopulationBinder(env core.DatasetEnvironment) (core.DatasetRunner, error) {
+	if env.Store == nil {
+		return nil, fmt.Errorf("dataset environment missing store")
+	}
+	now := env.Now
+	if now == nil {
+		now = func() time.Time { return time.Now().UTC() }
+	}
+	return func(ctx context.Context, req core.DatasetRunRequest) (core.DatasetRunResult, error) {
+		var rows []map[string]any
+		stageFilter, _ := req.Parameters["stage"].(string)
+		includeRetired, _ := req.Parameters["include_retired"].(bool)
+		var asOfTime *time.Time
+		if ts, ok := req.Parameters["as_of"].(time.Time); ok {
+			t := ts
+			asOfTime = &t
+		}
+		err := env.Store.View(ctx, func(view core.TransactionView) error {
+			for _, organism := range view.ListOrganisms() {
+				species := strings.ToLower(organism.Species)
+				if !strings.Contains(species, "frog") {
+					continue
+				}
+				if stageFilter != "" && string(organism.Stage) != stageFilter {
+					continue
+				}
+				if stageFilter == "" && !includeRetired && organism.Stage == core.StageRetired {
+					continue
+				}
+				if asOfTime != nil && organism.UpdatedAt.After(*asOfTime) {
+					continue
+				}
+				if len(req.Scope.ProjectIDs) > 0 {
+					if organism.ProjectID == nil || !contains(req.Scope.ProjectIDs, *organism.ProjectID) {
+						continue
+					}
+				}
+				if len(req.Scope.ProtocolIDs) > 0 {
+					if organism.ProtocolID == nil || !contains(req.Scope.ProtocolIDs, *organism.ProtocolID) {
+						continue
+					}
+				}
+				row := map[string]any{
+					"organism_id":     organism.ID,
+					"organism_name":   organism.Name,
+					"species":         organism.Species,
+					"lifecycle_stage": string(organism.Stage),
+					"project_id":      valueOrNil(organism.ProjectID),
+					"protocol_id":     valueOrNil(organism.ProtocolID),
+					"housing_id":      valueOrNil(organism.HousingID),
+					"updated_at":      organism.UpdatedAt.UTC(),
+				}
+				rows = append(rows, row)
+			}
+			return nil
+		})
+		if err != nil {
+			return core.DatasetRunResult{}, err
+		}
+		metadata := map[string]any{
+			"row_count": len(rows),
+			"source":    "core.organisms",
+		}
+		if stageFilter != "" {
+			metadata["stage_filter"] = stageFilter
+		}
+		if len(req.Scope.ProjectIDs) > 0 {
+			metadata["project_scope"] = req.Scope.ProjectIDs
+		}
+		if len(req.Scope.ProtocolIDs) > 0 {
+			metadata["protocol_scope"] = req.Scope.ProtocolIDs
+		}
+		if asOfTime != nil {
+			metadata["as_of"] = asOfTime.UTC()
+		}
+		return core.DatasetRunResult{
+			Schema:      req.Template.Columns,
+			Rows:        rows,
+			Metadata:    metadata,
+			GeneratedAt: now(),
+			Format:      core.FormatJSON,
+		}, nil
+	}, nil
+}
+
+func contains(list []string, target string) bool {
+	for _, item := range list {
+		if item == target {
+			return true
+		}
+	}
+	return false
+}
+
+func valueOrNil(ptr *string) any {
+	if ptr == nil {
+		return nil
+	}
+	return *ptr
 }

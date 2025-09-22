@@ -34,5 +34,6 @@ go.work.sum
 # .idea/
 # .vscode/
 .cache
+.gocache
 coverage.summary
 coverage.summary

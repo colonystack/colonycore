@@ -20,6 +20,17 @@ ColonyCore is an extensible base module for laboratory colony management. It cou
 - Validate the governance registry using `make registry-lint` or by running `go run ./cmd/registry-check --registry docs/rfc/registry.yaml`.
 - Refer to `CONTRIBUTING.md` for coding standards, workflow expectations, and pull request guidance.
 
+## Dataset analytics
+- The dataset REST surface is documented in `docs/schema/dataset-service.openapi.yaml` and exposes
+  template enumeration, parameter validation, streaming results (JSON/CSV), and asynchronous exports.
+- Species plugins register versioned dataset templates through the core plugin registry; see
+  `internal/core/dataset.go` and the frog reference module (`plugins/frog`) for a working example aligned
+  with RFC 0001's reporting guidance.
+- A background export worker (package `internal/dataset`) applies RBAC scope filters, emits audit entries,
+  stores signed artifacts in the managed object store, and serves export status via `/api/v1/datasets/exports`.
+- Sample analyst clients are provided in `clients/python/dataset_client.py` (requests-based) and
+  `clients/R/dataset_client.R` (httr-based) to illustrate reproducing exports from external runtimes.
+
 ## Testing
 - `make test` runs the race-enabled Go test suite and enforces the configured coverage threshold.
 - `make lint` chains formatting checks, vetting, registry validation, and `golangci-lint` (install instructions are in the Makefile). Use `SKIP_GOLANGCI=1 make lint` to bypass the aggregated linter when necessary.

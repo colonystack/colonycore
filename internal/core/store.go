@@ -207,6 +207,16 @@ func (s *MemoryStore) RunInTransaction(ctx context.Context, fn func(tx *Transact
 	return result, nil
 }
 
+// View executes fn against a read-only snapshot of the store state.
+func (s *MemoryStore) View(ctx context.Context, fn func(TransactionView) error) error {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	snapshot := s.state.clone()
+	view := newTransactionView(&snapshot)
+	return fn(view)
+}
+
 // helper to record and append change entries.
 func (tx *Transaction) recordChange(change Change) {
 	tx.changes = append(tx.changes, change)

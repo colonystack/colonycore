@@ -1,0 +1,484 @@
+openapi: 3.1.0
+info:
+  title: ColonyCore Dataset Service
+  version: 0.1.0
+  description: >-
+    Species-agnostic analytics API exposing registered, versioned dataset templates as
+    described in RFC 0001 (sections 6.3 and 7).
+servers:
+  - url: https://api.colonycore.local
+    description: Example deployment host
+paths:
+  /api/v1/datasets/templates:
+    get:
+      summary: List dataset templates
+      description: Enumerates all registered dataset templates including schema, metadata, and supported formats.
+      tags: [datasets]
+      responses:
+        '200':
+          description: Templates enumerated successfully.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  templates:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/DatasetTemplateDescriptor'
+                required: [templates]
+  /api/v1/datasets/templates/{plugin}/{key}/{version}:
+    parameters:
+      - in: path
+        name: plugin
+        schema:
+          type: string
+        required: true
+        description: Plugin identifier registering the template.
+      - in: path
+        name: key
+        schema:
+          type: string
+        required: true
+        description: Dataset template key within the plugin namespace.
+      - in: path
+        name: version
+        schema:
+          type: string
+        required: true
+        description: Semantic version of the dataset template.
+    get:
+      summary: Fetch dataset template
+      tags: [datasets]
+      responses:
+        '200':
+          description: Template metadata returned.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  template:
+                    $ref: '#/components/schemas/DatasetTemplateDescriptor'
+                required: [template]
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /api/v1/datasets/templates/{plugin}/{key}/{version}/validate:
+    post:
+      summary: Validate dataset parameters
+      tags: [datasets]
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                parameters:
+                  type: object
+                  additionalProperties: {}
+      responses:
+        '200':
+          description: Validation outcome.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  template:
+                    $ref: '#/components/schemas/DatasetTemplateDescriptor'
+                  valid:
+                    type: boolean
+                  parameters:
+                    type: object
+                    additionalProperties: {}
+                  errors:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/DatasetParameterError'
+                required: [template, valid, parameters]
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /api/v1/datasets/templates/{plugin}/{key}/{version}/run:
+    post:
+      summary: Execute dataset template
+      description: >-
+        Streams dataset rows using JSON (default) or CSV transport while applying RBAC scope filters.
+        CSV responses adhere to RFC 4180; JSON payloads include schema, metadata with units, and generation timestamp.
+      tags: [datasets]
+      parameters:
+        - in: query
+          name: format
+          schema:
+            type: string
+            enum: [json, csv]
+          description: Preferred response format. Defaults to JSON unless the Accept header contains text/csv.
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                parameters:
+                  type: object
+                  additionalProperties: {}
+                scope:
+                  $ref: '#/components/schemas/DatasetScope'
+      responses:
+        '200':
+          description: Dataset rendered successfully.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  template:
+                    $ref: '#/components/schemas/DatasetTemplateDescriptor'
+                  scope:
+                    $ref: '#/components/schemas/DatasetScope'
+                  parameters:
+                    type: object
+                    additionalProperties: {}
+                  result:
+                    $ref: '#/components/schemas/DatasetRunResult'
+                required: [template, scope, parameters, result]
+            text/csv:
+              schema:
+                type: string
+                format: binary
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '406':
+          description: Requested format not supported by the dataset template.
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /api/v1/datasets/exports:
+    post:
+      summary: Queue dataset export
+      description: >-
+        Enqueues an asynchronous export job that renders the requested dataset template across one or more
+        formats. Export artifacts are stored in the managed object store and linked to the caller.
+      tags: [datasets]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExportCreateRequest'
+      responses:
+        '202':
+          description: Export queued successfully.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  export:
+                    $ref: '#/components/schemas/ExportRecord'
+                required: [export]
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /api/v1/datasets/exports/{exportId}:
+    parameters:
+      - in: path
+        name: exportId
+        schema:
+          type: string
+        required: true
+        description: Identifier of the export job.
+    get:
+      summary: Fetch export status
+      tags: [datasets]
+      responses:
+        '200':
+          description: Export status returned.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  export:
+                    $ref: '#/components/schemas/ExportRecord'
+                required: [export]
+        '404':
+          $ref: '#/components/responses/NotFound'
+components:
+  responses:
+    NotFound:
+      description: Resource not found.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    BadRequest:
+      description: Malformed request payload or parameter violation.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    InternalError:
+      description: Unexpected server error.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+  schemas:
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+      required: [error]
+    DatasetTemplateDescriptor:
+      type: object
+      properties:
+        plugin:
+          type: string
+        key:
+          type: string
+        version:
+          type: string
+        title:
+          type: string
+        description:
+          type: string
+        dialect:
+          type: string
+          enum: [sql, dsl]
+        query:
+          type: string
+        parameters:
+          type: array
+          items:
+            $ref: '#/components/schemas/DatasetParameter'
+        columns:
+          type: array
+          items:
+            $ref: '#/components/schemas/DatasetColumn'
+        metadata:
+          $ref: '#/components/schemas/DatasetMetadata'
+        output_formats:
+          type: array
+          items:
+            type: string
+            enum: [json, csv, parquet, png, html]
+        slug:
+          type: string
+      required: [plugin, key, version, title, description, dialect, query, columns, output_formats, slug]
+    DatasetParameter:
+      type: object
+      properties:
+        name:
+          type: string
+        type:
+          type: string
+          enum: [string, integer, number, boolean, timestamp]
+        required:
+          type: boolean
+          default: false
+        description:
+          type: string
+        unit:
+          type: string
+        enum:
+          type: array
+          items:
+            type: string
+        example:
+          nullable: true
+        default:
+          nullable: true
+      required: [name, type]
+    DatasetColumn:
+      type: object
+      properties:
+        name:
+          type: string
+        type:
+          type: string
+        unit:
+          type: string
+          description: Canonical unit (SI / ISO 80000 where applicable).
+        description:
+          type: string
+        format:
+          type: string
+      required: [name, type]
+    DatasetMetadata:
+      type: object
+      properties:
+        source:
+          type: string
+        documentation:
+          type: string
+          format: uri-reference
+        refresh_interval:
+          type: string
+          description: ISO-8601 duration for recommended refresh cadence.
+        tags:
+          type: array
+          items:
+            type: string
+        annotations:
+          type: object
+          additionalProperties:
+            type: string
+    DatasetScope:
+      type: object
+      properties:
+        requestor:
+          type: string
+        roles:
+          type: array
+          items:
+            type: string
+        project_ids:
+          type: array
+          items:
+            type: string
+        protocol_ids:
+          type: array
+          items:
+            type: string
+      description: RBAC-derived filters applied to dataset execution.
+    DatasetRunResult:
+      type: object
+      properties:
+        schema:
+          type: array
+          items:
+            $ref: '#/components/schemas/DatasetColumn'
+        rows:
+          type: array
+          items:
+            type: object
+            additionalProperties: {}
+        metadata:
+          type: object
+          additionalProperties: {}
+        generated_at:
+          type: string
+          format: date-time
+        format:
+          type: string
+          enum: [json, csv, parquet, png, html]
+      required: [rows, generated_at, format]
+    DatasetParameterError:
+      type: object
+      properties:
+        name:
+          type: string
+        message:
+          type: string
+      required: [name, message]
+    ExportCreateRequest:
+      type: object
+      properties:
+        template:
+          type: object
+          properties:
+            slug:
+              type: string
+            plugin:
+              type: string
+            key:
+              type: string
+            version:
+              type: string
+          description: Template selector; either slug or plugin/key/version must be provided.
+        parameters:
+          type: object
+          additionalProperties: {}
+        formats:
+          type: array
+          items:
+            type: string
+            enum: [json, csv, parquet, png, html]
+        scope:
+          $ref: '#/components/schemas/DatasetScope'
+        requested_by:
+          type: string
+        reason:
+          type: string
+        project_id:
+          type: string
+        protocol_id:
+          type: string
+      required: [template]
+    ExportRecord:
+      type: object
+      properties:
+        id:
+          type: string
+        template:
+          $ref: '#/components/schemas/DatasetTemplateDescriptor'
+        scope:
+          $ref: '#/components/schemas/DatasetScope'
+        parameters:
+          type: object
+          additionalProperties: {}
+        formats:
+          type: array
+          items:
+            type: string
+            enum: [json, csv, parquet, png, html]
+        status:
+          $ref: '#/components/schemas/ExportStatus'
+        error:
+          type: string
+        artifacts:
+          type: array
+          items:
+            $ref: '#/components/schemas/ExportArtifact'
+        requested_by:
+          type: string
+        reason:
+          type: string
+        project_id:
+          type: string
+        protocol_id:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        completed_at:
+          type: string
+          format: date-time
+          nullable: true
+      required: [id, template, scope, formats, status, requested_by, created_at, updated_at]
+    ExportArtifact:
+      type: object
+      properties:
+        id:
+          type: string
+        format:
+          type: string
+          enum: [json, csv, parquet, png, html]
+        content_type:
+          type: string
+        size_bytes:
+          type: integer
+          format: int64
+        url:
+          type: string
+          format: uri
+        metadata:
+          type: object
+          additionalProperties: {}
+        created_at:
+          type: string
+          format: date-time
+      required: [id, format, content_type, size_bytes, url, created_at]
+    ExportStatus:
+      type: string
+      enum: [queued, running, succeeded, failed]
