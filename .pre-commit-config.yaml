@@ -16,14 +16,6 @@ repos:
         exclude: .*(\.md|\.MD)$
       - id: check-yaml
 
-  - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.13.1
-    hooks:
-      - id: ruff
-        name: ruff (lint)
-        files: ^clients/python/.*\\.py$
-        always_run: true
-
   - repo: https://github.com/gitleaks/gitleaks
     rev: v8.28.0
     hooks:
@@ -59,17 +51,15 @@ repos:
         additional_dependencies:
           - openapi-spec-validator==0.7.1
         files: ^docs/schema/dataset-service.openapi.yaml$
-      - id: go-lint-via-make
-        name: go-lint via make lint
+      - id: lint-via-make
+        name: lint via make lint
         entry: make lint
         language: system
         pass_filenames: false
-        always_run: true
-        files: \\.go$
+        files: '(^clients/python/.*\.py$|\.go$)'
       - id: go-test-via-make
         name: go test via make test
         entry: make test
         language: system
         pass_filenames: false
-        always_run: true
-        files: \\.go$
+        files: '\.go$'
