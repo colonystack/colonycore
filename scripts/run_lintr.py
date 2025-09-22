@@ -7,6 +7,7 @@ import os
 import shutil
 import subprocess
 import sys
+from pathlib import Path
 
 
 def _normalize_bool(value: str | None) -> bool:
@@ -17,6 +18,9 @@ def _normalize_bool(value: str | None) -> bool:
 
 def _escape_for_r(value: str) -> str:
     return value.replace("\\", "\\\\").replace('"', '\\"')
+
+
+REPO_ROOT = Path(__file__).resolve().parent.parent
 
 
 def main() -> int:
@@ -95,7 +99,11 @@ def main() -> int:
 
     command = [rscript, "--vanilla", "-e", "\n".join(r_lines)]
 
-    result = subprocess.run(command, check=False)
+    env = os.environ.copy()
+    env.setdefault("R_LIBS_USER", str(REPO_ROOT / ".cache" / "R-lintr"))
+    Path(env["R_LIBS_USER"]).expanduser().mkdir(parents=True, exist_ok=True)
+
+    result = subprocess.run(command, env=env, check=False)
     return result.returncode
 
 
