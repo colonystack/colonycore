@@ -1,0 +1,3 @@
+# Ruff is used for linting the Python dataset client.
+# Update the version here and in clients/python/LINTING.md when bumping the linter.
+ruff==0.5.7

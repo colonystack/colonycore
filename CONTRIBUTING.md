@@ -47,6 +47,19 @@ Use the issue forms:
   - Build: `make build` or language-native build
   - Test: `make test`
   - Lint/format: `make lint` (runs gofmt/vet/registry/golangci plus Ruff and the R lintr)
+
+## Client Linting
+- `make lint` (or `pre-commit run --all-files`) exercises the Go, Python, and R linters exactly as CI does; run it before pushing if you touch `clients/python` or `clients/R`.
+- Quick setup:
+  1. Install Ruff with `python -m pip install --require-virtualenv -r clients/python/requirements-lint.txt` to match the pinned `0.5.7` version.
+  2. Install R ≥ 4.0 (`sudo apt install r-base` on Debian/Ubuntu). `scripts/run_lintr.py` pins `lintr==3.1.2` and `xml2==1.3.6` into `.cache/R-lintr` automatically unless `LINTR_SKIP_AUTO_INSTALL=1` is set.
+- Troubleshooting:
+  - Ruff missing/mismatched → reinstall using the requirements file; if you manage multiple environments, keep one aligned with 0.5.7 for this repo.
+  - R package install errors → install `libcurl4-openssl-dev libxml2-dev libxslt1-dev` and retry, or pre-install the pinned packages with `Rscript -e "remotes::install_version('lintr', version = '3.1.2')"`.
+- Auto-fix shortcuts:
+  - Python: `python -m ruff check --fix clients/python`; rerun `make python-lint` afterwards.
+  - R: `Rscript -e "styler::style_dir('clients/R')"` handles formatting; rerun `make r-lint` afterwards.
+- Full details live in `clients/python/LINTING.md` and `clients/R/LINTING.md`; keep those docs in sync when changing lint rules or pinned tool versions.
 - Keep platform-specific instructions minimal and script repeatable steps.
 
 ## Pre-commit Hooks
@@ -54,7 +67,7 @@ Use the issue forms:
 - **Install hooks**: `pipx install pre-commit` (or `python -m pip install --user pre-commit`) once, then run `pre-commit install --install-hooks`. Re-run the install command after pulling updates to `.pre-commit-config.yaml`.
 - **What runs**: `pre-commit run --all-files` matches CI and ensures gofmt/go vet/golangci-lint, Ruff for Python, Prettier 3.3.3 (via `pnpm dlx`) for JS/TS/YAML/Markdown, a local `go mod tidy` guard, R `lintr`, gitleaks secret scanning, the RFC registry check, and OpenAPI validation for `docs/schema/dataset-service.openapi.yaml` using `openapi-spec-validator`.
 - **Troubleshooting**: wipe environments with `pre-commit clean`, ensure `golangci-lint`/`Rscript` stay on `PATH`, and let the R hook auto-install `lintr`/`xml2` into `.cache/R-lintr` (`LINTR_SKIP_AUTO_INSTALL=1` if you prefer manual installs). If the install step fails, install the system dependencies (`libcurl4-openssl-dev`, `libxml2-dev`, `libxslt1-dev` on Debian/Ubuntu) or pre-install the R packages yourself. Allow `pnpm` to fetch Prettier the first time it runs, and for OpenAPI lint failures inspect the YAML under `docs/schema/`. Override `PRE_COMMIT_HOME` if you need to share caches across clones.
-- **CI**: GitHub Actions provisions Node/pnpm plus R with the required system libraries so the workflow runs the same hook set (`pre-commit run --all-files`).
+- **CI**: GitHub Actions runs `make lint` before `pre-commit run --all-files` (skipping the duplicate lint hook) after provisioning Node/pnpm and R, so you get the same checks server-side.
 - **Emergency bypass**: prefer `SKIP=<hook id> pre-commit run --all-files` (for example `SKIP=check-jsonschema-openapi`); use `git commit --no-verify` only when absolutely necessary and follow up with a fix before merging.
 ## Style and Tooling
 - Follow existing code style and run formatters/linters where available.

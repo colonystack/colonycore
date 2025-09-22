@@ -21,6 +21,10 @@ def _escape_for_r(value: str) -> str:
 
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
+REQUIRED_R_PACKAGES: dict[str, str] = {
+    "lintr": "3.1.2",
+    "xml2": "1.3.6",
+}
 
 
 def main() -> int:
@@ -31,77 +35,87 @@ def main() -> int:
         )
         return 1
 
+    env = os.environ.copy()
+    env.setdefault("R_LIBS_USER", str(REPO_ROOT / ".cache" / "R-lintr"))
+    env.setdefault("R_INSTALL_STAGED", "false")
+
+    user_lib = Path(env["R_LIBS_USER"]).expanduser()
+    user_lib.mkdir(parents=True, exist_ok=True)
+    for lock_dir in user_lib.glob("00LOCK*"):
+        shutil.rmtree(lock_dir, ignore_errors=True)
+
     repo_hint = os.environ.get("LINTR_REPO", "https://cloud.r-project.org")
     skip_install = _normalize_bool(os.environ.get("LINTR_SKIP_AUTO_INSTALL"))
 
     repo_r = _escape_for_r(repo_hint)
-    required_pkgs = ["lintr", "xml2"]
-    pkgs_r = ", ".join(f'"{_escape_for_r(pkg)}"' for pkg in required_pkgs)
+    skip_literal = "TRUE" if skip_install else "FALSE"
+    required_assignments = ", ".join(
+        f"{pkg} = \"{_escape_for_r(version)}\"" for pkg, version in REQUIRED_R_PACKAGES.items()
+    )
 
     r_lines = [
         f'repos <- Sys.getenv("LINTR_REPO", unset="{repo_r}")',
         f'if (!nzchar(repos)) repos <- "{repo_r}"',
-        f'pkgs <- c({pkgs_r})',
-        'missing <- pkgs[!vapply(pkgs, requireNamespace, logical(1), quietly = TRUE)]',
+        f'skip_install <- {skip_literal}',
+        f'required <- c({required_assignments})',
+        'check_required <- function(required) {',
+        '  vapply(names(required), function(pkg) {',
+        '    if (!requireNamespace(pkg, quietly = TRUE)) {',
+        '      return("missing")',
+        '    }',
+        '    installed <- as.character(utils::packageVersion(pkg))',
+        '    if (installed != required[[pkg]]) {',
+        '      return(installed)',
+        '    }',
+        '    ""',
+        '  }, character(1), USE.NAMES = TRUE)',
+        '}',
+        'report_status <- function(pkgs, status, required) {',
+        '  vapply(pkgs, function(pkg) {',
+        '    if (status[[pkg]] == "missing") {',
+        '      sprintf("%s: missing (expected %s)", pkg, required[[pkg]])',
+        '    } else {',
+        '      sprintf("%s: %s (expected %s)", pkg, status[[pkg]], required[[pkg]])',
+        '    }',
+        '  }, character(1))',
+        '}',
+        'status <- check_required(required)',
+        'needs_install <- status != ""',
+        'if (any(needs_install)) {',
+        '  details <- report_status(names(required)[needs_install], status, required)',
+        '  if (skip_install) {',
+        '    stop(paste0("Missing or mismatched R packages -> ", paste(details, collapse = ", "), ". ",',
+        '      "Install them manually (remotes::install_version) or unset LINTR_SKIP_AUTO_INSTALL."))',
+        '  }',
+        '  if (!requireNamespace("remotes", quietly = TRUE)) {',
+        '    install.packages("remotes", repos = repos, dependencies = TRUE)',
+        '  }',
+        '  lib_dir <- Sys.getenv("R_LIBS_USER")',
+        '  for (pkg in names(required)[needs_install]) {',
+        '    target_version <- required[[pkg]]',
+        '    pkg_path <- file.path(lib_dir, pkg)',
+        '    if (dir.exists(pkg_path)) {',
+        '      unlink(pkg_path, recursive = TRUE, force = TRUE)',
+        '    }',
+        '    message(sprintf("Installing %s (version %s)", pkg, target_version))',
+        '    remotes::install_version(pkg, version = target_version, repos = repos, dependencies = TRUE, upgrade = FALSE)',
+        '  }',
+        '  status <- check_required(required)',
+        '  needs_install <- status != ""',
+        '  if (any(needs_install)) {',
+        '    details <- report_status(names(required)[needs_install], status, required)',
+        '    stop(paste0("Unable to install required R packages -> ", paste(details, collapse = ", ")))',
+        '  }',
+        '}',
+        'invisible(lapply(names(required), function(pkg) requireNamespace(pkg, quietly = TRUE)))',
+        'results <- lintr::lint_dir("clients/R", relative_path = TRUE, show_progress = FALSE)',
+        'if (length(results)) {',
+        '  lintr::print.lints(results)',
+        '  quit(save = "no", status = 1)',
+        '}',
     ]
-    if skip_install:
-        r_lines.extend(
-            [
-                'if (length(missing)) {',
-                '  stop(sprintf(paste0(',
-                '    "Missing R packages: %s. Install them with install.packages() after ensuring ",',
-                '    "system libraries (libcurl, libxml2) exist, or unset LINTR_SKIP_AUTO_INSTALL."),',
-                '    paste(missing, collapse = ", ")))',
-                '}',
-            ]
-        )
-    else:
-        r_lines.extend(
-            [
-                'if (length(missing)) {',
-                '  message("Installing required R packages: ", paste(missing, collapse = ", "))',
-                '  install_ok <- tryCatch({',
-                '    install.packages(missing, repos = repos, dependencies = TRUE)',
-                '    TRUE',
-                '  }, error = function(e) {',
-                '    message("install.packages error: ", conditionMessage(e))',
-                '    FALSE',
-                '  })',
-                '  if (!install_ok) {',
-                '    message("Auto-install could not complete; falling back to manual resolution.")',
-                '  }',
-                '  missing <- pkgs[!vapply(pkgs, requireNamespace, logical(1), quietly = TRUE)]',
-                '  if (length(missing)) {',
-                '    stop(sprintf(paste0(',
-                '      "Missing R packages even after install attempt: %s. ",',
-                '      "Install system dependencies (e.g. libcurl4-openssl-dev libxml2-dev libxslt1-dev) ",',
-                '      "and retry, or pre-install the R packages and export LINTR_SKIP_AUTO_INSTALL=1."),',
-                '      paste(missing, collapse = ", ")))',
-                '  }',
-                '}',
-            ]
-        )
-
-    r_lines.append(
-        'invisible(lapply(pkgs, function(pkg) requireNamespace(pkg, quietly = TRUE)))'
-    )
-    r_lines.append(
-        'results <- lintr::lint_dir("clients/R", relative_path = TRUE, show_progress = FALSE)'
-    )
-    r_lines.extend(
-        [
-            'if (length(results)) {',
-            '  lintr::print.lints(results)',
-            '  quit(save = "no", status = 1)',
-            '}',
-        ]
-    )
 
     command = [rscript, "--vanilla", "-e", "\n".join(r_lines)]
-
-    env = os.environ.copy()
-    env.setdefault("R_LIBS_USER", str(REPO_ROOT / ".cache" / "R-lintr"))
-    Path(env["R_LIBS_USER"]).expanduser().mkdir(parents=True, exist_ok=True)
 
     result = subprocess.run(command, env=env, check=False)
     return result.returncode
