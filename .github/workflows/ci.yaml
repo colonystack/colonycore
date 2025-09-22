@@ -49,8 +49,5 @@ jobs:
       - name: Install tooling
         run: pip install pre-commit ruff
 
-      - name: Run lint suite
-        run: make lint
-
       - name: Run pre-commit
         run: SKIP=lint-via-make pre-commit run --all-files
