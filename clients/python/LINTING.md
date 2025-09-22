@@ -23,4 +23,4 @@ The dataset client under `clients/python` is linted with [Ruff](https://docs.ast
 - Unexpected rules: inspect `clients/python/ruff.toml`; override locally only in throwaway branches and send a PR if a rule change benefits everyone.
 
 ## Auto-fix guidance
-Ruff can fix many rule classes automatically. Run `python -m ruff check --config clients/python/ruff.toml --fix clients/python` (or append `--select <code>` for specific fixes). Always rerun `make python-lint` afterwards to confirm the working tree is clean.
+Ruff can fix many rule classes automatically. Run `python -m ruff check --fix clients/python` (or append `--select <code>` for specific fixes). Always rerun `make python-lint` afterwards to confirm the working tree is clean.

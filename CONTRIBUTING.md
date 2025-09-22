@@ -57,7 +57,7 @@ Use the issue forms:
   - Ruff missing/mismatched → reinstall using the requirements file; if you manage multiple environments, keep one aligned with 0.5.7 for this repo.
   - R package install errors → install `libcurl4-openssl-dev libxml2-dev libxslt1-dev` and retry, or pre-install the pinned packages with `Rscript -e "remotes::install_version('lintr', version = '3.1.2')"`.
 - Auto-fix shortcuts:
-  - Python: `python -m ruff check --config clients/python/ruff.toml --fix clients/python`; rerun `make python-lint` afterwards.
+  - Python: `python -m ruff check --fix clients/python`; rerun `make python-lint` afterwards.
   - R: `Rscript -e "styler::style_dir('clients/R')"` handles formatting; rerun `make r-lint` afterwards.
 - Full details live in `clients/python/LINTING.md` and `clients/R/LINTING.md`; keep those docs in sync when changing lint rules or pinned tool versions.
 - Keep platform-specific instructions minimal and script repeatable steps.

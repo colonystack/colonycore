@@ -1,5 +1,4 @@
-# lintr configuration for the R dataset client.
 linters: lintr::linters_with_defaults(
   line_length_linter = lintr::line_length_linter(120)
-)
+  )
 encoding: "UTF-8"

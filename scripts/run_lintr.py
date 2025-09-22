@@ -35,6 +35,15 @@ def main() -> int:
         )
         return 1
 
+    env = os.environ.copy()
+    env.setdefault("R_LIBS_USER", str(REPO_ROOT / ".cache" / "R-lintr"))
+    env.setdefault("R_INSTALL_STAGED", "false")
+
+    user_lib = Path(env["R_LIBS_USER"]).expanduser()
+    user_lib.mkdir(parents=True, exist_ok=True)
+    for lock_dir in user_lib.glob("00LOCK*"):
+        shutil.rmtree(lock_dir, ignore_errors=True)
+
     repo_hint = os.environ.get("LINTR_REPO", "https://cloud.r-project.org")
     skip_install = _normalize_bool(os.environ.get("LINTR_SKIP_AUTO_INSTALL"))
 
@@ -81,8 +90,13 @@ def main() -> int:
         '  if (!requireNamespace("remotes", quietly = TRUE)) {',
         '    install.packages("remotes", repos = repos, dependencies = TRUE)',
         '  }',
+        '  lib_dir <- Sys.getenv("R_LIBS_USER")',
         '  for (pkg in names(required)[needs_install]) {',
         '    target_version <- required[[pkg]]',
+        '    pkg_path <- file.path(lib_dir, pkg)',
+        '    if (dir.exists(pkg_path)) {',
+        '      unlink(pkg_path, recursive = TRUE, force = TRUE)',
+        '    }',
         '    message(sprintf("Installing %s (version %s)", pkg, target_version))',
         '    remotes::install_version(pkg, version = target_version, repos = repos, dependencies = TRUE, upgrade = FALSE)',
         '  }',
@@ -102,10 +116,6 @@ def main() -> int:
     ]
 
     command = [rscript, "--vanilla", "-e", "\n".join(r_lines)]
-
-    env = os.environ.copy()
-    env.setdefault("R_LIBS_USER", str(REPO_ROOT / ".cache" / "R-lintr"))
-    Path(env["R_LIBS_USER"]).expanduser().mkdir(parents=True, exist_ok=True)
 
     result = subprocess.run(command, env=env, check=False)
     return result.returncode

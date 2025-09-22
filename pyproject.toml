@@ -1,2 +1,3 @@
 [tool.ruff]
 extend = "clients/python/ruff.toml"
+cache-dir = ".cache/ruff"
