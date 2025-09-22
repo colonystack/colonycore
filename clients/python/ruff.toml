@@ -1,0 +1,8 @@
+# Ruff configuration for the Python dataset client.
+# Keep this in sync with the pinned tool versions documented in LINTING.md.
+line-length = 120
+target-version = "py311"
+
+[lint]
+select = ["E", "F"]
+ignore = ["E501"]

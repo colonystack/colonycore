@@ -70,7 +70,7 @@ golangci-install:
 
 python-lint:
 	@echo "==> Python lint"
-	@python -m ruff check clients/python --quiet || ( \
+	@python -m ruff check --config clients/python/ruff.toml --quiet clients/python || ( \
 		echo "ruff is required. Install it via 'pip install ruff' or rerun pre-commit to bootstrap it." >&2; \
 		exit 1 )
 	@echo "Python lint: OK"
