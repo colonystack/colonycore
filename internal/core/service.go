@@ -3,19 +3,24 @@ package core
 import (
 	"context"
 	"fmt"
+	"sort"
+	"sync"
 )
 
 // Service exposes higher-level transactional CRUD operations for the core schema.
 type Service struct {
-	store   *MemoryStore
-	plugins map[string]PluginMetadata
+	store    *MemoryStore
+	plugins  map[string]PluginMetadata
+	datasets map[string]DatasetTemplate
+	mu       sync.RWMutex
 }
 
 // NewService constructs a service backed by the supplied store.
 func NewService(store *MemoryStore) *Service {
 	return &Service{
-		store:   store,
-		plugins: make(map[string]PluginMetadata),
+		store:    store,
+		plugins:  make(map[string]PluginMetadata),
+		datasets: make(map[string]DatasetTemplate),
 	}
 }
 
@@ -23,8 +28,9 @@ func NewService(store *MemoryStore) *Service {
 func NewInMemoryService(engine *RulesEngine) *Service {
 	store := NewMemoryStore(engine)
 	return &Service{
-		store:   store,
-		plugins: make(map[string]PluginMetadata),
+		store:    store,
+		plugins:  make(map[string]PluginMetadata),
+		datasets: make(map[string]DatasetTemplate),
 	}
 }
 
@@ -197,6 +203,10 @@ func (s *Service) InstallPlugin(plugin Plugin) (PluginMetadata, error) {
 	if plugin == nil {
 		return PluginMetadata{}, fmt.Errorf("plugin cannot be nil")
 	}
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
 	if s.plugins == nil {
 		s.plugins = make(map[string]PluginMetadata)
 	}
@@ -218,15 +228,78 @@ func (s *Service) InstallPlugin(plugin Plugin) (PluginMetadata, error) {
 		Version: plugin.Version(),
 		Schemas: registry.Schemas(),
 	}
+
+	env := DatasetEnvironment{
+		Store: s.store,
+		Now:   s.store.nowFn,
+	}
+
+	for _, dataset := range registry.DatasetTemplates() {
+		dataset.Plugin = plugin.Name()
+		if err := dataset.bind(env); err != nil {
+			return PluginMetadata{}, fmt.Errorf("bind dataset %s: %w", dataset.Key, err)
+		}
+		slug := dataset.slug()
+		if s.datasets == nil {
+			s.datasets = make(map[string]DatasetTemplate)
+		}
+		if _, exists := s.datasets[slug]; exists {
+			return PluginMetadata{}, fmt.Errorf("dataset template %s already installed", slug)
+		}
+		s.datasets[slug] = dataset
+		meta.Datasets = append(meta.Datasets, dataset.Descriptor())
+	}
+
+	if len(meta.Datasets) > 0 {
+		sort.Sort(DatasetTemplateCollection(meta.Datasets))
+	}
+
 	s.plugins[plugin.Name()] = meta
 	return meta, nil
 }
 
 // RegisteredPlugins returns metadata describing installed plugins.
 func (s *Service) RegisteredPlugins() []PluginMetadata {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
 	out := make([]PluginMetadata, 0, len(s.plugins))
 	for _, meta := range s.plugins {
-		out = append(out, meta)
+		copyMeta := meta
+		if len(meta.Datasets) > 0 {
+			copyMeta.Datasets = append([]DatasetTemplateDescriptor(nil), meta.Datasets...)
+		}
+		if len(meta.Schemas) > 0 {
+			schemaCopy := make(map[string]map[string]any, len(meta.Schemas))
+			for k, v := range meta.Schemas {
+				inner := make(map[string]any, len(v))
+				for key, val := range v {
+					inner[key] = val
+				}
+				schemaCopy[k] = inner
+			}
+			copyMeta.Schemas = schemaCopy
+		}
+		out = append(out, copyMeta)
 	}
 	return out
+}
+
+// DatasetTemplates returns all installed dataset template descriptors.
+func (s *Service) DatasetTemplates() []DatasetTemplateDescriptor {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	out := make([]DatasetTemplateDescriptor, 0, len(s.datasets))
+	for _, template := range s.datasets {
+		out = append(out, template.Descriptor())
+	}
+	sort.Sort(DatasetTemplateCollection(out))
+	return out
+}
+
+// ResolveDatasetTemplate fetches a dataset template by slug.
+func (s *Service) ResolveDatasetTemplate(slug string) (DatasetTemplate, bool) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	template, ok := s.datasets[slug]
+	return template, ok
 }

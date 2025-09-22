@@ -285,6 +285,56 @@ func TestMemoryStoreCRUDAndQueries(t *testing.T) {
 	}
 }
 
+func TestMemoryStoreViewReadOnly(t *testing.T) {
+	store := NewMemoryStore(nil)
+	ctx := context.Background()
+	var housing HousingUnit
+	if _, err := store.RunInTransaction(ctx, func(tx *Transaction) error {
+		var err error
+		housing, err = tx.CreateHousingUnit(HousingUnit{Name: "Tank", Facility: "Lab", Capacity: 1})
+		return err
+	}); err != nil {
+		t.Fatalf("create housing: %v", err)
+	}
+
+	if err := store.View(ctx, func(view TransactionView) error {
+		units := view.ListHousingUnits()
+		if len(units) != 1 {
+			t.Fatalf("expected single housing unit, got %d", len(units))
+		}
+		if _, ok := view.FindHousingUnit(housing.ID); !ok {
+			t.Fatalf("expected to find housing unit %s", housing.ID)
+		}
+		return nil
+	}); err != nil {
+		t.Fatalf("view snapshot: %v", err)
+	}
+}
+
+func TestUpdateHousingUnitValidation(t *testing.T) {
+	store := NewMemoryStore(nil)
+	ctx := context.Background()
+	var housing HousingUnit
+	if _, err := store.RunInTransaction(ctx, func(tx *Transaction) error {
+		var err error
+		housing, err = tx.CreateHousingUnit(HousingUnit{Name: "Validated", Facility: "Lab", Capacity: 2})
+		return err
+	}); err != nil {
+		t.Fatalf("create housing: %v", err)
+	}
+
+	_, err := store.RunInTransaction(ctx, func(tx *Transaction) error {
+		_, err := tx.UpdateHousingUnit(housing.ID, func(h *HousingUnit) error {
+			h.Capacity = 0
+			return nil
+		})
+		return err
+	})
+	if err == nil {
+		t.Fatalf("expected capacity validation error on update")
+	}
+}
+
 func TestResultMergeAndBlocking(t *testing.T) {
 	res := Result{}
 	res.Merge(Result{Violations: []Violation{{Rule: "warn", Severity: SeverityWarn}}})

@@ -120,6 +120,19 @@ func TestFrogPluginRegistersSchemasAndRules(t *testing.T) {
 	if _, ok := meta.Schemas["organism"]; !ok {
 		t.Fatalf("expected frog plugin to register organism schema")
 	}
+	if len(meta.Datasets) != 1 {
+		t.Fatalf("expected frog plugin to register dataset template")
+	}
+	templates := svc.DatasetTemplates()
+	if len(templates) != 1 {
+		t.Fatalf("expected dataset templates from service")
+	}
+	if templates[0].Slug != meta.Datasets[0].Slug {
+		t.Fatalf("expected descriptors to align")
+	}
+	if _, ok := svc.ResolveDatasetTemplate(meta.Datasets[0].Slug); !ok {
+		t.Fatalf("expected dataset template to resolve")
+	}
 
 	ctx := context.Background()
 	housing, _, err := svc.CreateHousingUnit(ctx, core.HousingUnit{Name: "Dry Terrarium", Facility: "Lab", Capacity: 2, Environment: "arid"})

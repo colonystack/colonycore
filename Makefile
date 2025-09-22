@@ -63,4 +63,3 @@ go-test:
 	@echo "Coverage check passed (>= $(COVER_THRESHOLD)% )"
 
 test: go-test
-
