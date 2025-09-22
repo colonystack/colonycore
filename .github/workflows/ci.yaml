@@ -33,6 +33,14 @@ jobs:
           corepack enable
           pnpm --version
 
+      - name: Cache tooling artifacts
+        uses: actions/cache@v4
+        with:
+          path: .cache
+          key: cache-dotcache-${{ runner.os }}-${{ hashFiles('.pre-commit-config.yaml', 'pyproject.toml', 'Makefile', 'scripts/run_lintr.py') }}
+          restore-keys: |
+            cache-dotcache-${{ runner.os }}-
+
       - name: Install system dependencies
         run: |
           sudo apt-get update
@@ -43,12 +51,3 @@ jobs:
 
       - name: Run pre-commit
         run: pre-commit run --all-files
-
-      - name: Lint
-        run: make lint
-
-      - name: Run go-test with coverage guard
-        run: |
-          make go-test
-          cat coverage.summary
-          rm -f coverage.summary

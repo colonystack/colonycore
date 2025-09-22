@@ -67,8 +67,8 @@ repos:
         always_run: true
         files: \\.go$
       - id: go-test-via-make
-        name: go test via make go-test
-        entry: make go-test
+        name: go test via make test
+        entry: make test
         language: system
         pass_filenames: false
         always_run: true
