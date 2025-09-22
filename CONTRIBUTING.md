@@ -46,9 +46,16 @@ Use the issue forms:
 - Use the `README` or `Makefile` for build/test commands. Typical flow:
   - Build: `make build` or language-native build
   - Test: `make test`
-  - Lint/format: `make lint`
+  - Lint/format: `make lint` (runs gofmt/vet/registry/golangci plus Ruff and the R lintr)
 - Keep platform-specific instructions minimal and script repeatable steps.
 
+## Pre-commit Hooks
+- **Prereqs**: install Python 3.11+, GNU make, Go, pnpm (via `corepack enable pnpm`), and R (the hook bootstraps the `lintr` and `xml2` packages automatically when needed).
+- **Install hooks**: `pipx install pre-commit` (or `python -m pip install --user pre-commit`) once, then run `pre-commit install --install-hooks`. Re-run the install command after pulling updates to `.pre-commit-config.yaml`.
+- **What runs**: `pre-commit run --all-files` matches CI and ensures gofmt/go vet/golangci-lint, Ruff for Python, Prettier 3.3.3 (via `pnpm dlx`) for JS/TS/YAML/Markdown, a local `go mod tidy` guard, R `lintr`, gitleaks secret scanning, the RFC registry check, and OpenAPI validation for `docs/schema/dataset-service.openapi.yaml` using `openapi-spec-validator`.
+- **Troubleshooting**: wipe environments with `pre-commit clean`, ensure `golangci-lint`/`Rscript` stay on `PATH`, and let the R hook auto-install `lintr`/`xml2` into `.cache/R-lintr` (`LINTR_SKIP_AUTO_INSTALL=1` if you prefer manual installs). If the install step fails, install the system dependencies (`libcurl4-openssl-dev`, `libxml2-dev`, `libxslt1-dev` on Debian/Ubuntu) or pre-install the R packages yourself. Allow `pnpm` to fetch Prettier the first time it runs, and for OpenAPI lint failures inspect the YAML under `docs/schema/`. Override `PRE_COMMIT_HOME` if you need to share caches across clones.
+- **CI**: GitHub Actions provisions Node/pnpm plus R with the required system libraries so the workflow runs the same hook set (`pre-commit run --all-files`).
+- **Emergency bypass**: prefer `SKIP=<hook id> pre-commit run --all-files` (for example `SKIP=check-jsonschema-openapi`); use `git commit --no-verify` only when absolutely necessary and follow up with a fix before merging.
 ## Style and Tooling
 - Follow existing code style and run formatters/linters where available.
 - Keep dependencies minimal and explain new ones in the PR.

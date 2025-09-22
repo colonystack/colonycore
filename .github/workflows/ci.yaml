@@ -18,11 +18,36 @@ jobs:
         with:
           go-version: '1.25'
 
-      - name: Lint
-        run: make lint
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
 
-      - name: Run go-test with coverage guard
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Enable pnpm
         run: |
-          make go-test
-          cat coverage.summary
-          rm -f coverage.summary
+          corepack enable
+          pnpm --version
+
+      - name: Cache tooling artifacts
+        uses: actions/cache@v4
+        with:
+          path: .cache
+          key: cache-dotcache-${{ runner.os }}-${{ hashFiles('.pre-commit-config.yaml', 'pyproject.toml', 'Makefile', 'scripts/run_lintr.py') }}
+          restore-keys: |
+            cache-dotcache-${{ runner.os }}-
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y r-base libcurl4-openssl-dev libxml2-dev libxslt1-dev pkg-config
+
+      - name: Install tooling
+        run: pip install pre-commit ruff
+
+      - name: Run pre-commit
+        run: pre-commit run --all-files

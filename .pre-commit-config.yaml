@@ -1,0 +1,75 @@
+minimum_pre_commit_version: "3.7.0"
+default_stages:
+  - pre-commit
+  - pre-push
+  - manual
+
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: check-merge-conflict
+      - id: check-added-large-files
+      - id: end-of-file-fixer
+        exclude: .*(\.md|\.MD)$
+      - id: trailing-whitespace
+        exclude: .*(\.md|\.MD)$
+      - id: check-yaml
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.13.1
+    hooks:
+      - id: ruff
+        name: ruff (lint)
+        files: ^clients/python/.*\\.py$
+        always_run: true
+
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.28.0
+    hooks:
+      - id: gitleaks
+
+  - repo: local
+    hooks:
+      - id: prettier
+        name: prettier (js/ts/json/yaml/md)
+        language: system
+        entry: pnpm
+        args:
+          - dlx
+          - prettier@3.3.3
+          - --ignore-unknown
+        types_or:
+          - javascript
+          - ts
+          - json
+          - yaml
+          - markdown
+      - id: go-mod-tidy
+        name: go mod tidy
+        language: system
+        entry: scripts/check-go-mod-tidy.sh
+        pass_filenames: false
+      - id: openapi-validate
+        name: dataset openapi lint
+        language: python
+        entry: python
+        args:
+          - scripts/check_openapi.py
+        additional_dependencies:
+          - openapi-spec-validator==0.7.1
+        files: ^docs/schema/dataset-service.openapi.yaml$
+      - id: go-lint-via-make
+        name: go-lint via make lint
+        entry: make lint
+        language: system
+        pass_filenames: false
+        always_run: true
+        files: \\.go$
+      - id: go-test-via-make
+        name: go test via make test
+        entry: make test
+        language: system
+        pass_filenames: false
+        always_run: true
+        files: \\.go$
