@@ -29,24 +29,9 @@ paths:
                 required: [templates]
   /api/v1/datasets/templates/{plugin}/{key}/{version}:
     parameters:
-      - in: path
-        name: plugin
-        schema:
-          type: string
-        required: true
-        description: Plugin identifier registering the template.
-      - in: path
-        name: key
-        schema:
-          type: string
-        required: true
-        description: Dataset template key within the plugin namespace.
-      - in: path
-        name: version
-        schema:
-          type: string
-        required: true
-        description: Semantic version of the dataset template.
+      - $ref: '#/components/parameters/Plugin'
+      - $ref: '#/components/parameters/TemplateKey'
+      - $ref: '#/components/parameters/TemplateVersion'
     get:
       summary: Fetch dataset template
       tags: [datasets]
@@ -64,6 +49,10 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
   /api/v1/datasets/templates/{plugin}/{key}/{version}/validate:
+    parameters:
+      - $ref: '#/components/parameters/Plugin'
+      - $ref: '#/components/parameters/TemplateKey'
+      - $ref: '#/components/parameters/TemplateVersion'
     post:
       summary: Validate dataset parameters
       tags: [datasets]
@@ -102,19 +91,22 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
   /api/v1/datasets/templates/{plugin}/{key}/{version}/run:
+    parameters:
+      - $ref: '#/components/parameters/Plugin'
+      - $ref: '#/components/parameters/TemplateKey'
+      - $ref: '#/components/parameters/TemplateVersion'
+      - in: query
+        name: format
+        schema:
+          type: string
+          enum: [json, csv]
+        description: Preferred response format. Defaults to JSON unless the Accept header contains text/csv.
     post:
       summary: Execute dataset template
       description: >-
         Streams dataset rows using JSON (default) or CSV transport while applying RBAC scope filters.
         CSV responses adhere to RFC 4180; JSON payloads include schema, metadata with units, and generation timestamp.
       tags: [datasets]
-      parameters:
-        - in: query
-          name: format
-          schema:
-            type: string
-            enum: [json, csv]
-          description: Preferred response format. Defaults to JSON unless the Accept header contains text/csv.
       requestBody:
         required: false
         content:
@@ -210,6 +202,28 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
 components:
+  parameters:
+    Plugin:
+      name: plugin
+      in: path
+      required: true
+      schema:
+        type: string
+      description: Plugin identifier registering the template.
+    TemplateKey:
+      name: key
+      in: path
+      required: true
+      schema:
+        type: string
+      description: Dataset template key within the plugin namespace.
+    TemplateVersion:
+      name: version
+      in: path
+      required: true
+      schema:
+        type: string
+      description: Semantic version of the dataset template.
   responses:
     NotFound:
       description: Resource not found.

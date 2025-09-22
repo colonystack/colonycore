@@ -7,7 +7,7 @@ BIN_DIR ?= $(CURDIR)/bin
 GOLANGCI_CACHE ?= $(CURDIR)/.cache/golangci-lint
 COVER_THRESHOLD ?= 90.0
 
-.PHONY: all build lint go-test test registry-check fmt-check vet registry-lint golangci golangci-install
+.PHONY: all build lint go-test test registry-check fmt-check vet registry-lint golangci golangci-install python-lint r-lint go-lint
 
 all: build
 
@@ -17,7 +17,19 @@ build:
 registry-check:
 	GOCACHE=$(GOCACHE) go build -o cmd/registry-check/registry-check ./cmd/registry-check
 
-lint: fmt-check vet registry-lint golangci
+lint:
+	@$(MAKE) --no-print-directory go-lint
+	@$(MAKE) --no-print-directory python-lint
+	@$(MAKE) --no-print-directory r-lint
+	@echo "Lint suite finished successfully"
+
+go-lint:
+	@echo "==> Go lint"
+	@$(MAKE) --no-print-directory fmt-check
+	@$(MAKE) --no-print-directory vet
+	@$(MAKE) --no-print-directory registry-lint
+	@$(MAKE) --no-print-directory golangci
+	@echo "Go lint: OK"
 
 fmt-check:
 	@files="$$(find . -path './.git' -prune -o -path './.cache' -prune -o -name '*.go' -print)"; \
@@ -55,6 +67,18 @@ golangci:
 golangci-install:
 	@mkdir -p $(BIN_DIR)
 	GOBIN=$(BIN_DIR) go install $(GOLANGCI_PKG)
+
+python-lint:
+	@echo "==> Python lint"
+	@python -m ruff check clients/python --quiet || ( \
+		echo "ruff is required. Install it via 'pip install ruff' or rerun pre-commit to bootstrap it." >&2; \
+		exit 1 )
+	@echo "Python lint: OK"
+
+r-lint:
+	@echo "==> R lint"
+	@python scripts/run_lintr.py
+	@echo "R lint: OK"
 
 go-test:
 	GOCACHE=$(GOCACHE) go test -race -covermode=$(COVERMODE) -coverprofile=$(COVERFILE) ./...
