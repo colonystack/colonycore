@@ -50,4 +50,4 @@ jobs:
         run: pip install pre-commit ruff
 
       - name: Run pre-commit
-        run: SKIP=lint-via-make pre-commit run --all-files
+        run: pre-commit run --all-files
