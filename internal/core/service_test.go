@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"colonycore/internal/core"
-	"colonycore/internal/plugins/frog"
+	"colonycore/plugins/frog"
 )
 
 func TestHousingCapacityRuleBlocksOverCapacity(t *testing.T) {

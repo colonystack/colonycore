@@ -15,7 +15,7 @@ build:
 	GOCACHE=$(GOCACHE) go build ./...
 
 registry-check:
-	GOCACHE=$(GOCACHE) go build ./cmd/registry-check
+	GOCACHE=$(GOCACHE) go build -o cmd/registry-check/registry-check ./cmd/registry-check
 
 lint: fmt-check vet registry-lint golangci
 
@@ -34,7 +34,7 @@ vet:
 	GOCACHE=$(GOCACHE) go vet ./...
 
 registry-lint: registry-check
-	GOCACHE=$(GOCACHE) ./registry-check -registry docs/rfc/registry.yaml
+	GOCACHE=$(GOCACHE) ./cmd/registry-check/registry-check -registry docs/rfc/registry.yaml
 
 golangci:
 	@set -e; \
@@ -63,3 +63,4 @@ go-test:
 	@echo "Coverage check passed (>= $(COVER_THRESHOLD)% )"
 
 test: go-test
+

@@ -11,9 +11,8 @@
 # Test binary, built with `go test -c`
 *.test
 
-# Ignore `registry-check` binary but not `cmd/registry-check/` directory
-registry-check
-!cmd/registry-check/
+# Ignore built registry-check binaries
+cmd/registry-check/registry-check
 
 # Code coverage profiles and other test artifacts
 *.out
