@@ -1,0 +1,94 @@
+name: Feature Proposal
+description: Propose a new capability or change to existing behavior.
+title: "[Feature]: "
+labels:
+  - enhancement
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this form to propose product or platform enhancements. Required fields ensure alignment with ColonyCore governance.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem statement
+      description: Explain the pain point or opportunity that motivates this proposal.
+      placeholder: Describe the user or system problem to solve.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed change
+      description: Describe the solution at a high level, including affected flows, data, or interfaces.
+      placeholder: Outline the design or approach you are proposing.
+    validations:
+      required: true
+  - type: dropdown
+    id: crud_scope
+    attributes:
+      label: CRUD scope
+      description: Identify every lifecycle operation touched by this proposal.
+      multiple: true
+      options:
+        - Create
+        - Read
+        - Update
+        - Delete
+        - No CRUD impact
+    validations:
+      required: true
+  - type: input
+    id: rfc_id
+    attributes:
+      label: Governing RFC or ADR
+      description: Reference the canonical RFC/ADR that frames this proposal. Use "N/A" if requesting a new RFC.
+      placeholder: RFC-042, ADR-007, or N/A (new RFC required)
+    validations:
+      required: true
+  - type: checkboxes
+    id: impact_area
+    attributes:
+      label: Impacted areas
+      description: Select all domains that will be affected if this proposal is accepted.
+      options:
+        - label: Core lifecycle & state machines
+        - label: API & client contracts
+        - label: Data storage & persistence
+        - label: Operator tooling / CLI
+        - label: Documentation & RFCs
+        - label: Plugins & integrations
+        - label: Observability & telemetry
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: Define measurable outcomes or behaviors that confirm the feature is complete.
+      placeholder: |
+        - [ ] Given ..., when ..., then ...
+        - [ ] ...
+    validations:
+      required: true
+  - type: textarea
+    id: risk
+    attributes:
+      label: Risks & dependencies
+      description: Note any open questions, migrations, external dependencies, or follow-up RFCs.
+  - type: checkboxes
+    id: compliance
+    attributes:
+      label: Compliance affirmations
+      description: Confirm governance alignment before submitting.
+      options:
+        - label: This proposal does not contradict any accepted RFCs or ADRs.
+          required: true
+        - label: The proposal aligns with the core lifecycle and state machine contracts.
+          required: true
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context
+      description: Link supporting materials such as diagrams, prototypes, metrics, or related issues.
+      placeholder: Supporting links, diagrams, metrics, or notes.

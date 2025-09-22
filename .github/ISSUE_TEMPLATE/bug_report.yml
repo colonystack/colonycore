@@ -1,0 +1,105 @@
+name: Bug Report
+description: Report regressions or incorrect runtime behavior.
+title: "[Bug]: "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting an issue. Please provide the details below so the team can triage quickly.
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: Provide a concise description of the bug and the affected behavior.
+      placeholder: Briefly describe the problem.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to reproduce
+      description: List the exact steps that expose the bug.
+      placeholder: |
+        1. ...
+        2. ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected result
+      description: Describe the behavior you anticipated.
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual result
+      description: Describe what actually happened, including errors and logs when possible.
+    validations:
+      required: true
+  - type: dropdown
+    id: crud_scope
+    attributes:
+      label: CRUD scope
+      description: Identify the lifecycle operations impacted by this bug.
+      multiple: true
+      options:
+        - Create
+        - Read
+        - Update
+        - Delete
+        - No CRUD impact
+    validations:
+      required: true
+  - type: input
+    id: rfc_id
+    attributes:
+      label: Related RFC or ADR ID
+      description: Reference the governing RFC/ADR (e.g. RFC-042). Use "N/A" only if none applies.
+      placeholder: RFC-042 or N/A
+    validations:
+      required: true
+  - type: checkboxes
+    id: impact_area
+    attributes:
+      label: Impacted areas
+      description: Select all major areas touched by the bug or its fix.
+      options:
+        - label: Core lifecycle & state machines
+        - label: API & client contracts
+        - label: Data storage & persistence
+        - label: Operator tooling / CLI
+        - label: Documentation & RFCs
+        - label: Plugins & integrations
+        - label: Observability & telemetry
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: Define the verifiable checks that confirm the bug is resolved.
+      placeholder: |
+        - [ ] Given ..., when ..., then ...
+        - [ ] ...
+    validations:
+      required: true
+  - type: checkboxes
+    id: compliance
+    attributes:
+      label: Compliance affirmations
+      description: Confirm the proposed fix aligns with repository governance.
+      options:
+        - label: This report and proposed resolution do not contradict accepted RFCs or ADRs.
+          required: true
+        - label: The fix maintains alignment with the core lifecycle and state machine contracts.
+          required: true
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context
+      description: Add environment details, logs, or links that aid in reproducing or verifying the bug.
+      placeholder: Environment, logs, screenshots, or related issues.
