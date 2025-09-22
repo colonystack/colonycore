@@ -3,7 +3,7 @@ COVERFILE ?= coverage.out
 COVERMODE ?= atomic
 GOLANGCI_VERSION ?= v2.5.0
 GOLANGCI_PKG := github.com/golangci/golangci-lint/v2/cmd/golangci-lint@$(GOLANGCI_VERSION)
-BIN_DIR ?= $(CURDIR)/bin
+BIN_DIR ?= $(CURDIR)/.cache/bin
 GOLANGCI_CACHE ?= $(CURDIR)/.cache/golangci-lint
 COVER_THRESHOLD ?= 90.0
 
