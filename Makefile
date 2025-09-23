@@ -2,10 +2,12 @@ GOCACHE ?= $(CURDIR)/.cache/go-build
 COVERFILE ?= coverage.out
 COVERMODE ?= atomic
 GOLANGCI_VERSION ?= v2.5.0
-GOLANGCI_PKG := github.com/golangci/golangci-lint/v2/cmd/golangci-lint@$(GOLANGCI_VERSION)
 BIN_DIR ?= $(CURDIR)/.cache/bin
 GOLANGCI_CACHE ?= $(CURDIR)/.cache/golangci-lint
 COVER_THRESHOLD ?= 90.0
+GOPATH_BIN := $(shell go env GOPATH)/bin
+GOLANGCI_BIN := $(GOPATH_BIN)/golangci-lint
+GOLANGCI_VERSION_PLAIN := $(patsubst v%,%,$(GOLANGCI_VERSION))
 
 .PHONY: all build lint go-test test registry-check fmt-check vet registry-lint golangci golangci-install python-lint r-lint go-lint
 
@@ -53,20 +55,42 @@ golangci:
 	if [ -n "$(SKIP_GOLANGCI)" ]; then \
 		echo "Skipping golangci-lint because SKIP_GOLANGCI is set"; \
 	else \
-		if ! command -v golangci-lint >/dev/null 2>&1; then \
-			echo "golangci-lint not found. Installing $(GOLANGCI_PKG) into $(BIN_DIR)"; \
+		need_install=0; \
+		if [ ! -x "$(GOLANGCI_BIN)" ]; then \
+			need_install=1; \
+		else \
+			installed_version=$$($(GOLANGCI_BIN) version 2>/dev/null | sed -n 's/.*version \([0-9][0-9.]*\).*/\1/p'); \
+			if [ -z "$$installed_version" ]; then \
+				echo "Could not determine golangci-lint version. Reinstalling"; \
+				need_install=1; \
+			elif [ "$$installed_version" != "$(GOLANGCI_VERSION_PLAIN)" ]; then \
+				echo "golangci-lint version $$installed_version (want $(GOLANGCI_VERSION_PLAIN)). Reinstalling"; \
+				need_install=1; \
+			fi; \
+		fi; \
+		if [ $$need_install -eq 1 ]; then \
 			$(MAKE) golangci-install; \
 		fi; \
 		mkdir -p $(GOLANGCI_CACHE); \
-		PATH="$(BIN_DIR):$$PATH" \
-		GOCACHE="$(GOCACHE)" \
-		GOLANGCI_LINT_CACHE="$(GOLANGCI_CACHE)" \
-		golangci-lint run --timeout=30m --fix ./...; \
+		tmpfile=$$(mktemp); \
+		if ! GOCACHE="$(GOCACHE)" GOLANGCI_LINT_CACHE="$(GOLANGCI_CACHE)" $(GOLANGCI_BIN) run --timeout=30m --fix ./... >$$tmpfile 2>&1; then \
+			cat $$tmpfile; \
+			rm -f $$tmpfile; \
+			exit 1; \
+		else \
+			echo "golangci-lint: OK"; \
+			rm -f $$tmpfile; \
+		fi; \
 	fi
 
 golangci-install:
-	@mkdir -p $(BIN_DIR)
-	GOBIN=$(BIN_DIR) go install $(GOLANGCI_PKG)
+	@echo "Installing golangci-lint $(GOLANGCI_VERSION) to $(GOPATH_BIN) using official script"
+	@# Suppress all output from the install script but fail loudly if it errors
+	@if ! curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/HEAD/install.sh \
+		| sh -s -- -b $(GOPATH_BIN) $(GOLANGCI_VERSION) >/dev/null 2>&1; then \
+		echo "golangci-lint install failed" >&2; \
+		exit 1; \
+	fi
 
 python-lint:
 	@echo "==> Python lint"
