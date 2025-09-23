@@ -42,7 +42,7 @@ jobs:
             cache-dotcache-${{ runner.os }}-
 
       - name: Install APT packages
-        uses: awalsh128/cache-apt-pkgs-action@latest
+        uses: awalsh128/cache-apt-pkgs-action@v1
         with:
           packages: r-base libcurl4-openssl-dev libxml2-dev libxslt1-dev pkg-config
           version: 1
