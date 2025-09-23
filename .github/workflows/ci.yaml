@@ -50,4 +50,7 @@ jobs:
         run: pip install pre-commit ruff
 
       - name: Run pre-commit
-        run: pre-commit run --all-files
+        run: |
+          PRE_COMMIT_HOME=$PWD/.cache/pre-commit \
+          XDG_CACHE_HOME=$PWD/.cache \
+          pre-commit run --all-files
