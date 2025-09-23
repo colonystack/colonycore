@@ -41,10 +41,11 @@ jobs:
           restore-keys: |
             cache-dotcache-${{ runner.os }}-
 
-      - name: Install system dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y r-base libcurl4-openssl-dev libxml2-dev libxslt1-dev pkg-config
+      - name: Install APT packages
+        uses: awalsh128/cache-apt-pkgs-action@v1
+        with:
+          packages: r-base libcurl4-openssl-dev libxml2-dev libxslt1-dev pkg-config
+          version: 1
 
       - name: Install tooling
         run: pip install pre-commit ruff
