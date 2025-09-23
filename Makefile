@@ -101,8 +101,7 @@ python-lint:
 
 r-lint:
 	@echo "==> R lint"
-	@python scripts/run_lintr.py
-	@echo "R lint: OK"
+	@python scripts/run_lintr.py && echo "R lint: OK" || (status=$$?; if [ $$status -eq 0 ]; then echo "R lint: OK"; else exit $$status; fi)
 
 go-test:
 	GOCACHE=$(GOCACHE) go test -race -covermode=$(COVERMODE) -coverprofile=$(COVERFILE) ./...
