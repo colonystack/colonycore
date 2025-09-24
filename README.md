@@ -20,6 +20,60 @@ ColonyCore is an extensible base module for laboratory colony management. It cou
 - Validate the governance registry using `make registry-lint` or by running `go run ./cmd/registry-check --registry docs/rfc/registry.yaml`.
 - Refer to `CONTRIBUTING.md` for coding standards, workflow expectations, and pull request guidance.
 
+### Storage
+
+Local development defaults to an embedded SQLite database file (`colonycore.db`) created in the current working directory, providing durable state across restarts. Unit tests continue to use the in-memory store directly. Set `COLONYCORE_STORAGE_DRIVER` to `memory`, `sqlite`, or `postgres` (placeholder) to select a driver. The blob/object store also works out of the box: if unset, `COLONYCORE_BLOB_DRIVER=fs` with its root at `./blobdata` (created automatically). See `docs/storage.md` and ADR-0007 (`docs/adr/0007-storage-baseline.md`) for detailed configuration, rationale, and roadmap (including blob driver options and S3 configuration variables).
+
+**At a glance:** You can switch between all supported persistence and blob drivers purely by setting environment variables—no code changes or recompilation are required, and safe local defaults are used when variables are unset.
+
+Cheat sheet:
+
+Persistent store:
+* (default) unset: SQLite file `./colonycore.db` (override path with `COLONYCORE_SQLITE_PATH`)
+* `COLONYCORE_STORAGE_DRIVER=memory`: ephemeral, non-durable
+* `COLONYCORE_STORAGE_DRIVER=sqlite`: explicit sqlite (optionally set `COLONYCORE_SQLITE_PATH`)
+* `COLONYCORE_STORAGE_DRIVER=postgres`: requires `COLONYCORE_POSTGRES_DSN`
+
+Blob / object store:
+* (default) unset or `COLONYCORE_BLOB_DRIVER=fs`: filesystem at `./blobdata` (override root with `COLONYCORE_BLOB_FS_ROOT`)
+* `COLONYCORE_BLOB_DRIVER=s3`: S3 or S3-compatible (requires `COLONYCORE_BLOB_S3_BUCKET`; optional `COLONYCORE_BLOB_S3_REGION`, `COLONYCORE_BLOB_S3_ENDPOINT` & `COLONYCORE_BLOB_S3_PATH_STYLE=true` for MinIO)
+* `COLONYCORE_BLOB_DRIVER=memory`: ephemeral, non-durable (tests)
+
+Combined example (Postgres + MinIO):
+
+```bash
+export COLONYCORE_STORAGE_DRIVER=postgres
+export COLONYCORE_POSTGRES_DSN='postgres://colonycore:colonycore@localhost:5432/colonycore?sslmode=disable'
+
+export COLONYCORE_BLOB_DRIVER=s3
+export COLONYCORE_BLOB_S3_BUCKET=colonycore-dev
+export COLONYCORE_BLOB_S3_REGION=us-east-1
+export COLONYCORE_BLOB_S3_ENDPOINT=http://localhost:9000
+export COLONYCORE_BLOB_S3_PATH_STYLE=true
+```
+
+### Optional Postgres (Experimental)
+
+You do **not** need any external services (containers, databases, object stores) for normal local development—the default embedded SQLite + filesystem blob store work out of the box. A `docker-compose.yml` is included only to spin up a Postgres 16 instance for experimenting with the future high-concurrency driver. The Postgres driver is still a placeholder; behavior and schema are subject to change.
+
+To try Postgres locally (purely optional):
+
+```bash
+docker compose up -d            # start the postgres container
+export COLONYCORE_STORAGE_DRIVER=postgres
+export COLONYCORE_POSTGRES_DSN='postgres://colonycore:colonycore@localhost:5432/colonycore?sslmode=disable'
+
+# Run tests or your binary as usual; the placeholder driver may not yet implement all features.
+```
+
+Tear down when finished:
+
+```bash
+docker compose down -v
+```
+
+If the environment variable `COLONYCORE_STORAGE_DRIVER` is unset, the code will ignore the running Postgres container and continue using the embedded SQLite store.
+
 ## Dataset analytics
 - The dataset REST surface is documented in `docs/schema/dataset-service.openapi.yaml` and exposes
   template enumeration, parameter validation, streaming results (JSON/CSV), and asynchronous exports.
@@ -35,6 +89,20 @@ ColonyCore is an extensible base module for laboratory colony management. It cou
 - `make test` runs the race-enabled Go test suite and enforces the configured coverage threshold.
 - `make lint` chains formatting checks, vetting, registry validation, and `golangci-lint` (install instructions are in the Makefile). Use `SKIP_GOLANGCI=1 make lint` to bypass the aggregated linter when necessary.
 - Additional manual validation steps are described in relevant documents under `docs/`.
+
+### Integration smoke test
+The repository includes a deliberately tiny end-to-end integration smoke test at `internal/integration/smoke_test.go`. Its purpose is fast CI health coverage across all in-process adapters without introducing a large maintenance surface.
+
+What it exercises per adapter:
+* Persistent store variants (memory + sqlite): creates one housing unit and one organism, assigns the organism to the housing unit (thereby touching validation + assignment logic), and verifies the data is persisted via list/get calls.
+* Blob store variants (memory, filesystem, mock S3): writes a single blob (text payload), reads it back to verify content, and deletes it.
+
+This is intentionally more than a single-record round trip for the core store so that assignment logic and rule evaluation are covered, but it stays minimal (two records + one relation) to keep runtime negligible.
+
+Run just the smoke test:
+```bash
+go test -run TestIntegrationSmoke ./internal/integration -count=1
+```
 
 ## Documentation and support
 - Review `CODE_OF_CONDUCT.md` and `CONTRIBUTING.md` before opening issues or pull requests.

@@ -144,6 +144,14 @@ func (f failingStore) Put(context.Context, string, []byte, string, map[string]an
 	return ExportArtifact{}, fmt.Errorf("store offline")
 }
 
+func (f failingStore) Get(context.Context, string) (ExportArtifact, []byte, error) {
+	return ExportArtifact{}, nil, fmt.Errorf("store offline")
+}
+
+func (f failingStore) Delete(context.Context, string) (bool, error) { return false, nil }
+
+func (f failingStore) List(context.Context, string) ([]ExportArtifact, error) { return nil, nil }
+
 type testDatasetPlugin struct {
 	dataset core.DatasetTemplate
 }
@@ -519,6 +527,14 @@ type zeroStore struct{}
 func (zeroStore) Put(context.Context, string, []byte, string, map[string]any) (ExportArtifact, error) {
 	return ExportArtifact{ID: newID()}, nil
 }
+
+func (zeroStore) Get(context.Context, string) (ExportArtifact, []byte, error) {
+	return ExportArtifact{}, nil, fmt.Errorf("not found")
+}
+
+func (zeroStore) Delete(context.Context, string) (bool, error) { return false, nil }
+
+func (zeroStore) List(context.Context, string) ([]ExportArtifact, error) { return nil, nil }
 
 func TestWorkerProcessStoreNormalization(t *testing.T) {
 	templateDef := core.DatasetTemplate{
