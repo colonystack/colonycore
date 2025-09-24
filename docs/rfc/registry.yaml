@@ -93,3 +93,13 @@ documents:
     linked_rfcs:
       - RFC-0001
     path: docs/adr/0006-observability-architecture.md
+  - id: ADR-0007
+    type: ADR
+    title: Storage Baseline (SQLite Snapshot)
+    status: Accepted
+    deciders:
+      - Tobias Harnickell
+    date: 2025-09-23
+    linked_rfcs:
+      - RFC-0001
+    path: docs/adr/0007-storage-baseline.md
