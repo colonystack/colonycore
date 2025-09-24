@@ -1,6 +1,6 @@
 # RFC: ColonyCore Base Module
 
-- Status: Draft
+- Status: Draft (updated to reference ADR-0007 storage baseline)
 - Created: 2025-09-21
 - Authors: Tobias Harnickell
 - Stakeholders: Tobias Harnickell
@@ -115,7 +115,8 @@ States: `scheduled → in-progress → completed` with optional `cancelled`.
 - Conflict detection framework flags overlapping policies and surfaces to operators for resolution.
 
 ## 7. Data & Integration Standards
-- Core schema uses relational tables with foreign keys and temporal tables for history, and species fields are stored in JSONB with schema references.
+- Storage Baseline: See ADR-0007. For v0.1.0 an embedded SQLite snapshot store provides durability; a Postgres backend will be introduced for higher concurrency.
+- Core schema (future normalized target) will use relational tables with foreign keys and temporal history; interim snapshot persistence uses JSON buckets in SQLite (ADR-0007). Species fields are stored in JSON-like structures with schema references.
 - Identifiers: UUID primary keys, optional local accessions, barcode/RFID/QR attachments with immutable binding history.
 - External references: NCBI Taxonomy IDs, OBO phenotypic/assay terms, ISO 8601 timestamps, SI units with metadata.
 - Integrations include hardware ingestion (barcode/RFID scanners, scales, environmental sensors) via driver abstraction or MQTT/HTTP bridges.
