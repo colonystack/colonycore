@@ -5,18 +5,19 @@ import (
 	"fmt"
 	"sort"
 	"sync"
+	"time"
 )
 
 // Service exposes higher-level transactional CRUD operations for the core schema.
 type Service struct {
-	store    *MemoryStore
+	store    PersistentStore
 	plugins  map[string]PluginMetadata
 	datasets map[string]DatasetTemplate
 	mu       sync.RWMutex
 }
 
 // NewService constructs a service backed by the supplied store.
-func NewService(store *MemoryStore) *Service {
+func NewService(store PersistentStore) *Service {
 	return &Service{
 		store:    store,
 		plugins:  make(map[string]PluginMetadata),
@@ -27,15 +28,11 @@ func NewService(store *MemoryStore) *Service {
 // NewInMemoryService creates a service and in-memory store with the given rules engine.
 func NewInMemoryService(engine *RulesEngine) *Service {
 	store := NewMemoryStore(engine)
-	return &Service{
-		store:    store,
-		plugins:  make(map[string]PluginMetadata),
-		datasets: make(map[string]DatasetTemplate),
-	}
+	return NewService(store)
 }
 
 // Store returns the underlying storage implementation.
-func (s *Service) Store() *MemoryStore {
+func (s *Service) Store() PersistentStore {
 	return s.store
 }
 
@@ -219,8 +216,11 @@ func (s *Service) InstallPlugin(plugin Plugin) (PluginMetadata, error) {
 		return PluginMetadata{}, err
 	}
 
-	for _, rule := range registry.Rules() {
-		s.store.engine.Register(rule)
+	// Rules engine only available for memory-backed stores today.
+	if ms, ok := s.store.(*MemoryStore); ok {
+		for _, rule := range registry.Rules() {
+			ms.engine.Register(rule)
+		}
 	}
 
 	meta := PluginMetadata{
@@ -229,9 +229,12 @@ func (s *Service) InstallPlugin(plugin Plugin) (PluginMetadata, error) {
 		Schemas: registry.Schemas(),
 	}
 
-	env := DatasetEnvironment{
-		Store: s.store,
-		Now:   s.store.nowFn,
+	// Provide dataset environment (time source only if memory store for now).
+	env := DatasetEnvironment{Store: s.store}
+	if ms, ok := s.store.(*MemoryStore); ok {
+		env.Now = ms.nowFn
+	} else {
+		env.Now = func() time.Time { return time.Now().UTC() }
 	}
 
 	for _, dataset := range registry.DatasetTemplates() {

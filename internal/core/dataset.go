@@ -77,7 +77,7 @@ type DatasetRunner func(context.Context, DatasetRunRequest) (DatasetRunResult, e
 
 // DatasetEnvironment provides runtime dependencies to binders.
 type DatasetEnvironment struct {
-	Store *MemoryStore
+	Store PersistentStore
 	Now   func() time.Time
 }
 

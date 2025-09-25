@@ -78,7 +78,14 @@ type ExportScheduler interface {
 
 // ObjectStore persists export artifacts.
 type ObjectStore interface {
+	// Put stores a new immutable object. Implementations SHOULD fail if key exists.
 	Put(ctx context.Context, key string, payload []byte, contentType string, metadata map[string]any) (ExportArtifact, error)
+	// Get returns the artifact metadata and full payload bytes.
+	Get(ctx context.Context, key string) (ExportArtifact, []byte, error)
+	// Delete removes the object; returns true if it existed. Idempotent.
+	Delete(ctx context.Context, key string) (bool, error)
+	// List returns artifacts whose IDs start with the provided prefix. Empty prefix lists all.
+	List(ctx context.Context, prefix string) ([]ExportArtifact, error)
 }
 
 // AuditLogger records export audit entries.
@@ -654,17 +661,27 @@ func newID() string {
 // MemoryObjectStore is an in-memory implementation of ObjectStore for tests.
 type MemoryObjectStore struct {
 	mu      sync.RWMutex
-	objects map[string]ExportArtifact
+	objects map[string]storedObject
+}
+
+type storedObject struct {
+	artifact ExportArtifact
+	payload  []byte
 }
 
 // NewMemoryObjectStore constructs an in-memory object store.
 func NewMemoryObjectStore() *MemoryObjectStore {
-	return &MemoryObjectStore{objects: make(map[string]ExportArtifact)}
+	return &MemoryObjectStore{objects: make(map[string]storedObject)}
 }
 
 // Put stores payload metadata and returns a signed URL for retrieval.
 func (s *MemoryObjectStore) Put(ctx context.Context, key string, payload []byte, contentType string, metadata map[string]any) (ExportArtifact, error) {
 	now := time.Now().UTC()
+	s.mu.Lock()
+	if _, exists := s.objects[key]; exists {
+		s.mu.Unlock()
+		return ExportArtifact{}, fmt.Errorf("object %s already exists", key)
+	}
 	artifact := ExportArtifact{
 		ID:          key,
 		ContentType: contentType,
@@ -673,19 +690,67 @@ func (s *MemoryObjectStore) Put(ctx context.Context, key string, payload []byte,
 		CreatedAt:   now,
 		URL:         fmt.Sprintf("https://object-store.local/%s?token=stub", key),
 	}
-	s.mu.Lock()
-	s.objects[key] = artifact
+	// store defensive copy of payload
+	cp := make([]byte, len(payload))
+	copy(cp, payload)
+	s.objects[key] = storedObject{artifact: artifact, payload: cp}
 	s.mu.Unlock()
 	return artifact, nil
 }
 
-// Objects returns stored artifacts for inspection in tests.
-func (s *MemoryObjectStore) Objects() []ExportArtifact {
+func (s *MemoryObjectStore) Get(ctx context.Context, key string) (ExportArtifact, []byte, error) {
+	s.mu.RLock()
+	obj, ok := s.objects[key]
+	s.mu.RUnlock()
+	if !ok {
+		return ExportArtifact{}, nil, fmt.Errorf("object %s not found", key)
+	}
+	payloadCopy := make([]byte, len(obj.payload))
+	copy(payloadCopy, obj.payload)
+	artCopy := obj.artifact
+	if artCopy.Metadata != nil {
+		artCopy.Metadata = cloneMap(artCopy.Metadata)
+	}
+	return artCopy, payloadCopy, nil
+}
+
+func (s *MemoryObjectStore) Delete(ctx context.Context, key string) (bool, error) {
+	s.mu.Lock()
+	_, existed := s.objects[key]
+	if existed {
+		delete(s.objects, key)
+	}
+	s.mu.Unlock()
+	return existed, nil
+}
+
+func (s *MemoryObjectStore) List(ctx context.Context, prefix string) ([]ExportArtifact, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	out := make([]ExportArtifact, 0, len(s.objects))
-	for _, artifact := range s.objects {
-		out = append(out, artifact)
+	for key, obj := range s.objects {
+		if prefix == "" || strings.HasPrefix(key, prefix) {
+			artCopy := obj.artifact
+			if artCopy.Metadata != nil {
+				artCopy.Metadata = cloneMap(artCopy.Metadata)
+			}
+			out = append(out, artCopy)
+		}
+	}
+	return out, nil
+}
+
+// Objects returns stored artifacts for inspection in tests.
+func (s *MemoryObjectStore) Objects() []ExportArtifact { // legacy test helper
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	out := make([]ExportArtifact, 0, len(s.objects))
+	for _, obj := range s.objects {
+		artCopy := obj.artifact
+		if artCopy.Metadata != nil {
+			artCopy.Metadata = cloneMap(artCopy.Metadata)
+		}
+		out = append(out, artCopy)
 	}
 	return out
 }
