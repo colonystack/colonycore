@@ -89,12 +89,20 @@ func TestPluginRegistryGuardsAndCopies(t *testing.T) {
 	}
 }
 
+type emptyView struct{}
+
+func (emptyView) ListOrganisms() []Organism                  { return nil }
+func (emptyView) ListHousingUnits() []HousingUnit            { return nil }
+func (emptyView) FindOrganism(string) (Organism, bool)       { return Organism{}, false }
+func (emptyView) FindHousingUnit(string) (HousingUnit, bool) { return HousingUnit{}, false }
+func (emptyView) ListProtocols() []Protocol                  { return nil }
+
 func TestRulesEngineEvaluateDirect(t *testing.T) {
 	engine := NewRulesEngine()
 	engine.Register(staticRule{"first", SeverityWarn})
 	engine.Register(staticRule{"second", SeverityLog})
 
-	view := TransactionView{state: &memoryState{organisms: map[string]Organism{}}}
+	view := emptyView{}
 	result, err := engine.Evaluate(context.Background(), view, nil)
 	if err != nil {
 		t.Fatalf("unexpected evaluate error: %v", err)

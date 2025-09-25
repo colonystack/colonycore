@@ -37,9 +37,10 @@ func (s *Service) Store() PersistentStore {
 }
 
 // CreateProject persists a new project.
+
 func (s *Service) CreateProject(ctx context.Context, project Project) (Project, Result, error) {
 	var created Project
-	res, err := s.store.RunInTransaction(ctx, func(tx *Transaction) error {
+	res, err := s.store.RunInTransaction(ctx, func(tx Transaction) error {
 		var err error
 		created, err = tx.CreateProject(project)
 		return err
@@ -50,7 +51,7 @@ func (s *Service) CreateProject(ctx context.Context, project Project) (Project, 
 // CreateProtocol persists a new protocol.
 func (s *Service) CreateProtocol(ctx context.Context, protocol Protocol) (Protocol, Result, error) {
 	var created Protocol
-	res, err := s.store.RunInTransaction(ctx, func(tx *Transaction) error {
+	res, err := s.store.RunInTransaction(ctx, func(tx Transaction) error {
 		var err error
 		created, err = tx.CreateProtocol(protocol)
 		return err
@@ -61,7 +62,7 @@ func (s *Service) CreateProtocol(ctx context.Context, protocol Protocol) (Protoc
 // CreateHousingUnit persists housing metadata.
 func (s *Service) CreateHousingUnit(ctx context.Context, housing HousingUnit) (HousingUnit, Result, error) {
 	var created HousingUnit
-	res, err := s.store.RunInTransaction(ctx, func(tx *Transaction) error {
+	res, err := s.store.RunInTransaction(ctx, func(tx Transaction) error {
 		var err error
 		created, err = tx.CreateHousingUnit(housing)
 		return err
@@ -72,7 +73,7 @@ func (s *Service) CreateHousingUnit(ctx context.Context, housing HousingUnit) (H
 // CreateCohort persists a new cohort.
 func (s *Service) CreateCohort(ctx context.Context, cohort Cohort) (Cohort, Result, error) {
 	var created Cohort
-	res, err := s.store.RunInTransaction(ctx, func(tx *Transaction) error {
+	res, err := s.store.RunInTransaction(ctx, func(tx Transaction) error {
 		var err error
 		created, err = tx.CreateCohort(cohort)
 		return err
@@ -83,7 +84,7 @@ func (s *Service) CreateCohort(ctx context.Context, cohort Cohort) (Cohort, Resu
 // CreateOrganism persists a new organism.
 func (s *Service) CreateOrganism(ctx context.Context, organism Organism) (Organism, Result, error) {
 	var created Organism
-	res, err := s.store.RunInTransaction(ctx, func(tx *Transaction) error {
+	res, err := s.store.RunInTransaction(ctx, func(tx Transaction) error {
 		var err error
 		created, err = tx.CreateOrganism(organism)
 		return err
@@ -94,7 +95,7 @@ func (s *Service) CreateOrganism(ctx context.Context, organism Organism) (Organi
 // UpdateOrganism mutates an organism using the provided mutator.
 func (s *Service) UpdateOrganism(ctx context.Context, id string, mutator func(*Organism) error) (Organism, Result, error) {
 	var updated Organism
-	res, err := s.store.RunInTransaction(ctx, func(tx *Transaction) error {
+	res, err := s.store.RunInTransaction(ctx, func(tx Transaction) error {
 		var err error
 		updated, err = tx.UpdateOrganism(id, mutator)
 		return err
@@ -104,7 +105,7 @@ func (s *Service) UpdateOrganism(ctx context.Context, id string, mutator func(*O
 
 // DeleteOrganism removes an organism record.
 func (s *Service) DeleteOrganism(ctx context.Context, id string) (Result, error) {
-	res, err := s.store.RunInTransaction(ctx, func(tx *Transaction) error {
+	res, err := s.store.RunInTransaction(ctx, func(tx Transaction) error {
 		return tx.DeleteOrganism(id)
 	})
 	return res, err
@@ -113,8 +114,8 @@ func (s *Service) DeleteOrganism(ctx context.Context, id string) (Result, error)
 // AssignOrganismHousing updates an organism's housing reference within a transaction that validates dependencies.
 func (s *Service) AssignOrganismHousing(ctx context.Context, organismID, housingID string) (Organism, Result, error) {
 	var updated Organism
-	res, err := s.store.RunInTransaction(ctx, func(tx *Transaction) error {
-		if _, ok := tx.state.housing[housingID]; !ok {
+	res, err := s.store.RunInTransaction(ctx, func(tx Transaction) error {
+		if _, ok := tx.FindHousingUnit(housingID); !ok {
 			return ErrNotFound{Entity: EntityHousingUnit, ID: housingID}
 		}
 		var err error
@@ -130,8 +131,8 @@ func (s *Service) AssignOrganismHousing(ctx context.Context, organismID, housing
 // AssignOrganismProtocol links an organism to a protocol within the same transactional scope.
 func (s *Service) AssignOrganismProtocol(ctx context.Context, organismID, protocolID string) (Organism, Result, error) {
 	var updated Organism
-	res, err := s.store.RunInTransaction(ctx, func(tx *Transaction) error {
-		if _, ok := tx.state.protocols[protocolID]; !ok {
+	res, err := s.store.RunInTransaction(ctx, func(tx Transaction) error {
+		if _, ok := tx.FindProtocol(protocolID); !ok {
 			return ErrNotFound{Entity: EntityProtocol, ID: protocolID}
 		}
 		var err error
@@ -147,7 +148,7 @@ func (s *Service) AssignOrganismProtocol(ctx context.Context, organismID, protoc
 // CreateBreedingUnit persists a breeding configuration.
 func (s *Service) CreateBreedingUnit(ctx context.Context, unit BreedingUnit) (BreedingUnit, Result, error) {
 	var created BreedingUnit
-	res, err := s.store.RunInTransaction(ctx, func(tx *Transaction) error {
+	res, err := s.store.RunInTransaction(ctx, func(tx Transaction) error {
 		var err error
 		created, err = tx.CreateBreedingUnit(unit)
 		return err
@@ -158,7 +159,7 @@ func (s *Service) CreateBreedingUnit(ctx context.Context, unit BreedingUnit) (Br
 // CreateProcedure persists a procedure record.
 func (s *Service) CreateProcedure(ctx context.Context, procedure Procedure) (Procedure, Result, error) {
 	var created Procedure
-	res, err := s.store.RunInTransaction(ctx, func(tx *Transaction) error {
+	res, err := s.store.RunInTransaction(ctx, func(tx Transaction) error {
 		var err error
 		created, err = tx.CreateProcedure(procedure)
 		return err
@@ -169,7 +170,7 @@ func (s *Service) CreateProcedure(ctx context.Context, procedure Procedure) (Pro
 // UpdateProcedure mutates a procedure.
 func (s *Service) UpdateProcedure(ctx context.Context, id string, mutator func(*Procedure) error) (Procedure, Result, error) {
 	var updated Procedure
-	res, err := s.store.RunInTransaction(ctx, func(tx *Transaction) error {
+	res, err := s.store.RunInTransaction(ctx, func(tx Transaction) error {
 		var err error
 		updated, err = tx.UpdateProcedure(id, mutator)
 		return err
@@ -179,7 +180,7 @@ func (s *Service) UpdateProcedure(ctx context.Context, id string, mutator func(*
 
 // DeleteProcedure removes a procedure record.
 func (s *Service) DeleteProcedure(ctx context.Context, id string) (Result, error) {
-	res, err := s.store.RunInTransaction(ctx, func(tx *Transaction) error {
+	res, err := s.store.RunInTransaction(ctx, func(tx Transaction) error {
 		return tx.DeleteProcedure(id)
 	})
 	return res, err
@@ -219,7 +220,7 @@ func (s *Service) InstallPlugin(plugin Plugin) (PluginMetadata, error) {
 	// Rules engine only available for memory-backed stores today.
 	if ms, ok := s.store.(*MemoryStore); ok {
 		for _, rule := range registry.Rules() {
-			ms.engine.Register(rule)
+			ms.RulesEngine().Register(rule)
 		}
 	}
 
@@ -232,7 +233,7 @@ func (s *Service) InstallPlugin(plugin Plugin) (PluginMetadata, error) {
 	// Provide dataset environment (time source only if memory store for now).
 	env := DatasetEnvironment{Store: s.store}
 	if ms, ok := s.store.(*MemoryStore); ok {
-		env.Now = ms.nowFn
+		env.Now = ms.NowFunc()
 	} else {
 		env.Now = func() time.Time { return time.Now().UTC() }
 	}

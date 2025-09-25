@@ -9,7 +9,7 @@ import (
 func TestStore_UpdateHousingUnit_InvalidCapacity(t *testing.T) {
 	eng := NewDefaultRulesEngine()
 	store := NewMemoryStore(eng)
-	_, err := store.RunInTransaction(context.Background(), func(tx *Transaction) error {
+	_, err := store.RunInTransaction(context.Background(), func(tx Transaction) error {
 		h, err := tx.CreateHousingUnit(HousingUnit{Capacity: 1, Name: "A"})
 		if err != nil {
 			return err
@@ -29,7 +29,7 @@ func TestStore_UpdateHousingUnit_InvalidCapacity(t *testing.T) {
 func TestStore_UpdateBreedingUnit_NotFound(t *testing.T) {
 	eng := NewDefaultRulesEngine()
 	store := NewMemoryStore(eng)
-	_, err := store.RunInTransaction(context.Background(), func(tx *Transaction) error {
+	_, err := store.RunInTransaction(context.Background(), func(tx Transaction) error {
 		if _, bErr := tx.UpdateBreedingUnit("missing", func(b *BreedingUnit) error { return nil }); bErr == nil {
 			t.Fatalf("expected not found error")
 		}

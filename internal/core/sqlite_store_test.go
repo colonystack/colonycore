@@ -16,7 +16,7 @@ func TestSQLiteStoreSnapshot(t *testing.T) {
 		t.Fatalf("new sqlite store: %v", err)
 	}
 	ctx := context.Background()
-	if _, err := store.RunInTransaction(ctx, func(tx *core.Transaction) error {
+	if _, err := store.RunInTransaction(ctx, func(tx core.Transaction) error {
 		_, e := tx.CreateOrganism(core.Organism{Name: "Alpha", Species: "Frog"})
 		return e
 	}); err != nil {
