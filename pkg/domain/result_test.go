@@ -1,69 +1,75 @@
 package domain
 
-import "testing"
+import (
+	"context"
+	"fmt"
+	"testing"
+)
 
-func TestResultMerge(t *testing.T) {
-	r := Result{Violations: []Violation{{Rule: "a"}}}
-	other := Result{Violations: []Violation{{Rule: "b"}}}
-
-	r.Merge(other)
-
-	if len(r.Violations) != 2 {
-		t.Fatalf("expected 2 violations, got %d", len(r.Violations))
+func TestResultMergeAndBlocking(t *testing.T) {
+	var result Result
+	result.Merge(Result{Violations: []Violation{{Rule: "warn", Severity: SeverityWarn}}})
+	if result.HasBlocking() {
+		t.Fatalf("expected no blocking violations")
 	}
-	if r.Violations[1].Rule != "b" {
-		t.Fatalf("expected violation appended")
+	result.Merge(Result{Violations: []Violation{{Rule: "block", Severity: SeverityBlock}}})
+	if !result.HasBlocking() {
+		t.Fatalf("expected blocking violation")
 	}
-}
-
-func TestResultMergeNoopEmpty(t *testing.T) {
-	r := Result{Violations: []Violation{{Rule: "existing"}}}
-	empty := Result{}
-
-	r.Merge(empty)
-
-	if len(r.Violations) != 1 {
-		t.Fatalf("expected existing violations unchanged")
-	}
-}
-
-func TestResultHasBlocking(t *testing.T) {
-	cases := []struct {
-		name   string
-		input  Result
-		expect bool
-	}{
-		{
-			name:   "no violations",
-			input:  Result{},
-			expect: false,
-		},
-		{
-			name:   "warn only",
-			input:  Result{Violations: []Violation{{Severity: SeverityWarn}}},
-			expect: false,
-		},
-		{
-			name:   "contains block",
-			input:  Result{Violations: []Violation{{Severity: SeverityBlock}}},
-			expect: true,
-		},
-	}
-
-	for _, tc := range cases {
-		tc := tc
-		t.Run(tc.name, func(t *testing.T) {
-			t.Helper()
-			if got := tc.input.HasBlocking(); got != tc.expect {
-				t.Fatalf("HasBlocking=%v want %v", got, tc.expect)
-			}
-		})
-	}
-}
-
-func TestRuleViolationError(t *testing.T) {
-	err := RuleViolationError{Result: Result{Violations: []Violation{{Rule: "rule"}}}}
+	err := RuleViolationError{Result: result}
 	if err.Error() == "" {
 		t.Fatalf("expected error string")
 	}
+}
+
+func TestResultMergeEmptyInput(t *testing.T) {
+	original := Result{Violations: []Violation{{Rule: "existing", Severity: SeverityWarn}}}
+	original.Merge(Result{})
+	if len(original.Violations) != 1 || original.Violations[0].Rule != "existing" {
+		t.Fatalf("expected original violations to remain, got %+v", original.Violations)
+	}
+}
+
+func TestRulesEngineEvaluate(t *testing.T) {
+	engine := NewRulesEngine()
+	engine.Register(staticRule{"warn"})
+	res, err := engine.Evaluate(context.Background(), emptyView{}, nil)
+	if err != nil {
+		t.Fatalf("evaluate: %v", err)
+	}
+	if len(res.Violations) != 1 {
+		t.Fatalf("expected violation")
+	}
+}
+
+type staticRule struct{ name string }
+
+func (r staticRule) Name() string { return r.name }
+
+func (r staticRule) Evaluate(ctx context.Context, view RuleView, changes []Change) (Result, error) {
+	return Result{Violations: []Violation{{Rule: r.name, Severity: SeverityWarn}}}, nil
+}
+
+type emptyView struct{}
+
+func (emptyView) ListOrganisms() []Organism                  { return nil }
+func (emptyView) ListHousingUnits() []HousingUnit            { return nil }
+func (emptyView) ListProtocols() []Protocol                  { return nil }
+func (emptyView) FindOrganism(string) (Organism, bool)       { return Organism{}, false }
+func (emptyView) FindHousingUnit(string) (HousingUnit, bool) { return HousingUnit{}, false }
+
+func TestRulesEngineEvaluateError(t *testing.T) {
+	engine := NewRulesEngine()
+	engine.Register(errorRule{})
+	if _, err := engine.Evaluate(context.Background(), emptyView{}, nil); err == nil {
+		t.Fatalf("expected evaluation error")
+	}
+}
+
+type errorRule struct{}
+
+func (errorRule) Name() string { return "error" }
+
+func (errorRule) Evaluate(ctx context.Context, view RuleView, changes []Change) (Result, error) {
+	return Result{}, fmt.Errorf("boom")
 }

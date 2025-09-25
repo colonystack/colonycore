@@ -13,10 +13,9 @@ func TestSQLiteStore_PersistError(t *testing.T) {
 		// if sqlite unavailable, skip
 		t.Skipf("sqlite not available: %v", err)
 	}
-	s := store
 	// Close underlying DB to induce error on persist
-	_ = s.db.Close()
-	_, err = s.RunInTransaction(context.Background(), func(tx *Transaction) error { return nil })
+	_ = store.DB().Close()
+	_, err = store.RunInTransaction(context.Background(), func(tx Transaction) error { return nil })
 	if err == nil {
 		// expect error because persist should fail with closed db
 		// This covers the branch where persist returns error.

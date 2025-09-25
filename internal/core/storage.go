@@ -1,9 +1,12 @@
 package core
 
 import (
-	"context"
 	"fmt"
 	"os"
+
+	"colonycore/internal/infra/persistence/memory"
+	"colonycore/internal/persistence/sqlite"
+	"colonycore/pkg/domain"
 )
 
 // StorageDriver identifies a concrete persistent storage implementation.
@@ -15,21 +18,11 @@ const (
 	StoragePostgres StorageDriver = "postgres" // PostgreSQL server
 )
 
-// PersistentStore is a minimal abstraction over durable backends. It mirrors
-// the subset of MemoryStore used directly by higher layers.
-type PersistentStore interface {
-	RunInTransaction(ctx context.Context, fn func(tx *Transaction) error) (Result, error)
-	View(ctx context.Context, fn func(TransactionView) error) error
-	GetOrganism(id string) (Organism, bool)
-	ListOrganisms() []Organism
-	GetHousingUnit(id string) (HousingUnit, bool)
-	ListHousingUnits() []HousingUnit
-	ListCohorts() []Cohort
-	ListProtocols() []Protocol
-	ListProjects() []Project
-	ListBreedingUnits() []BreedingUnit
-	ListProcedures() []Procedure
-}
+type (
+	Transaction     = domain.Transaction
+	TransactionView = domain.TransactionView
+	PersistentStore = domain.PersistentStore
+)
 
 // OpenPersistentStore selects a backend using environment variables.
 // Defaults to sqlite when unset.
@@ -44,10 +37,10 @@ func OpenPersistentStore(engine *RulesEngine) (PersistentStore, error) {
 	}
 	switch StorageDriver(driver) {
 	case StorageMemory:
-		return NewMemoryStore(engine), nil
+		return memory.NewStore(engine), nil
 	case StorageSQLite:
 		path := os.Getenv("COLONYCORE_SQLITE_PATH")
-		return NewSQLiteStore(path, engine)
+		return sqlite.NewSQLiteStore(path, engine)
 	case StoragePostgres:
 		dsn := os.Getenv("COLONYCORE_POSTGRES_DSN")
 		ps, err := NewPostgresStore(dsn, engine)

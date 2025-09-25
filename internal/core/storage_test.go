@@ -1,6 +1,7 @@
 package core
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"testing"
@@ -35,13 +36,11 @@ func TestOpenPersistentStore_DefaultSQLite(t *testing.T) {
 			t.Fatal("expected store")
 		}
 		// should be *SQLiteStore internally; rely on persist side-effects by creating something
-		memStore, ok := store.(*SQLiteStore)
+		sqliteStore, ok := store.(*SQLiteStore)
 		if !ok {
 			t.Fatalf("expected *SQLiteStore, got %T", store)
 		}
-		if memStore.path == "" {
-			_ = memStore.persist() // coverage only; ignore error
-		}
+		_, _ = sqliteStore.RunInTransaction(context.Background(), func(tx Transaction) error { return nil })
 	})
 }
 
@@ -79,9 +78,9 @@ func TestOpenPersistentStore_CustomSQLitePath(t *testing.T) {
 				// if backend changes this still increases coverage
 				t.Skipf("expected *SQLiteStore, got %T", store)
 			}
-			if s.path != path {
+			if s.Path() != path {
 				// ensure path passed through
-				t.Fatalf("expected path %s, got %s", path, s.path)
+				t.Fatalf("expected path %s, got %s", path, s.Path())
 			}
 		})
 	})

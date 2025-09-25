@@ -22,7 +22,7 @@ func TestMemoryStoreCRUDAndQueries(t *testing.T) {
 		organismBID string
 	)
 
-	if _, err := store.RunInTransaction(ctx, func(tx *Transaction) error {
+	if _, err := store.RunInTransaction(ctx, func(tx Transaction) error {
 		if _, err := tx.CreateHousingUnit(HousingUnit{Name: "Invalid", Facility: "Lab", Capacity: 0}); err == nil {
 			return fmt.Errorf("expected capacity validation error")
 		}
@@ -115,7 +115,7 @@ func TestMemoryStoreCRUDAndQueries(t *testing.T) {
 		}
 		procedureID = procedure.ID
 
-		view := newTransactionView(&tx.state)
+		view := tx.Snapshot()
 		if got := len(view.ListOrganisms()); got != 2 {
 			return fmt.Errorf("expected 2 organisms in view, got %d", got)
 		}
@@ -168,7 +168,7 @@ func TestMemoryStoreCRUDAndQueries(t *testing.T) {
 		t.Fatalf("expected environment to remain arid, got %s", stored.Environment)
 	}
 
-	if _, err := store.RunInTransaction(ctx, func(tx *Transaction) error {
+	if _, err := store.RunInTransaction(ctx, func(tx Transaction) error {
 		if _, err := tx.UpdateOrganism("missing", func(*Organism) error { return nil }); err == nil {
 			return fmt.Errorf("expected update error for missing organism")
 		}
@@ -229,7 +229,7 @@ func TestMemoryStoreCRUDAndQueries(t *testing.T) {
 		t.Fatalf("expected stage to be retired, got %s", updated.Stage)
 	}
 
-	if _, err := store.RunInTransaction(ctx, func(tx *Transaction) error {
+	if _, err := store.RunInTransaction(ctx, func(tx Transaction) error {
 		if err := tx.DeleteProcedure(procedureID); err != nil {
 			return err
 		}
@@ -289,7 +289,7 @@ func TestMemoryStoreViewReadOnly(t *testing.T) {
 	store := NewMemoryStore(nil)
 	ctx := context.Background()
 	var housing HousingUnit
-	if _, err := store.RunInTransaction(ctx, func(tx *Transaction) error {
+	if _, err := store.RunInTransaction(ctx, func(tx Transaction) error {
 		var err error
 		housing, err = tx.CreateHousingUnit(HousingUnit{Name: "Tank", Facility: "Lab", Capacity: 1})
 		return err
@@ -315,7 +315,7 @@ func TestUpdateHousingUnitValidation(t *testing.T) {
 	store := NewMemoryStore(nil)
 	ctx := context.Background()
 	var housing HousingUnit
-	if _, err := store.RunInTransaction(ctx, func(tx *Transaction) error {
+	if _, err := store.RunInTransaction(ctx, func(tx Transaction) error {
 		var err error
 		housing, err = tx.CreateHousingUnit(HousingUnit{Name: "Validated", Facility: "Lab", Capacity: 2})
 		return err
@@ -323,7 +323,7 @@ func TestUpdateHousingUnitValidation(t *testing.T) {
 		t.Fatalf("create housing: %v", err)
 	}
 
-	_, err := store.RunInTransaction(ctx, func(tx *Transaction) error {
+	_, err := store.RunInTransaction(ctx, func(tx Transaction) error {
 		_, err := tx.UpdateHousingUnit(housing.ID, func(h *HousingUnit) error {
 			h.Capacity = 0
 			return nil
@@ -359,7 +359,7 @@ func TestRulesEngineAggregates(t *testing.T) {
 	store := NewMemoryStore(engine)
 	ctx := context.Background()
 
-	res, err := store.RunInTransaction(ctx, func(tx *Transaction) error {
+	res, err := store.RunInTransaction(ctx, func(tx Transaction) error {
 		_, err := tx.CreateProject(Project{Code: "P", Title: "Project"})
 		return err
 	})
