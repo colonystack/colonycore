@@ -13,6 +13,7 @@ import (
 
 	"colonycore/internal/core"
 	"colonycore/internal/dataset"
+	domain "colonycore/pkg/domain"
 	"colonycore/plugins/frog"
 )
 
@@ -117,12 +118,12 @@ func TestHandlerRunJSON(t *testing.T) {
 	svc, handler, descriptor := setupHandler(t)
 
 	ctx := context.Background()
-	project, _, err := svc.CreateProject(ctx, core.Project{Code: "PRJ-HTTP", Title: "Dataset"})
+	project, _, err := svc.CreateProject(ctx, domain.Project{Code: "PRJ-HTTP", Title: "Dataset"})
 	if err != nil {
 		t.Fatalf("create project: %v", err)
 	}
 	projectID := project.ID
-	if _, _, err := svc.CreateOrganism(ctx, core.Organism{Name: "Frog", Species: "Tree Frog", Stage: core.StageAdult, ProjectID: &projectID}); err != nil {
+	if _, _, err := svc.CreateOrganism(ctx, domain.Organism{Name: "Frog", Species: "Tree Frog", Stage: domain.StageAdult, ProjectID: &projectID}); err != nil {
 		t.Fatalf("create organism: %v", err)
 	}
 
@@ -149,12 +150,12 @@ func TestHandlerRunCSV(t *testing.T) {
 	svc, handler, descriptor := setupHandler(t)
 
 	ctx := context.Background()
-	project, _, err := svc.CreateProject(ctx, core.Project{Code: "PRJ-CSV", Title: "Dataset"})
+	project, _, err := svc.CreateProject(ctx, domain.Project{Code: "PRJ-CSV", Title: "Dataset"})
 	if err != nil {
 		t.Fatalf("create project: %v", err)
 	}
 	projectID := project.ID
-	if _, _, err := svc.CreateOrganism(ctx, core.Organism{Name: "Frog", Species: "Tree Frog", Stage: core.StageAdult, ProjectID: &projectID}); err != nil {
+	if _, _, err := svc.CreateOrganism(ctx, domain.Organism{Name: "Frog", Species: "Tree Frog", Stage: domain.StageAdult, ProjectID: &projectID}); err != nil {
 		t.Fatalf("create organism: %v", err)
 	}
 
@@ -192,12 +193,12 @@ func TestHandlerExportLifecycle(t *testing.T) {
 	})
 
 	ctx := context.Background()
-	project, _, err := svc.CreateProject(ctx, core.Project{Code: "PRJ-EXP", Title: "Export"})
+	project, _, err := svc.CreateProject(ctx, domain.Project{Code: "PRJ-EXP", Title: "Export"})
 	if err != nil {
 		t.Fatalf("create project: %v", err)
 	}
 	projectID := project.ID
-	if _, _, err := svc.CreateOrganism(ctx, core.Organism{Name: "Frog", Species: "Tree Frog", Stage: core.StageAdult, ProjectID: &projectID}); err != nil {
+	if _, _, err := svc.CreateOrganism(ctx, domain.Organism{Name: "Frog", Species: "Tree Frog", Stage: domain.StageAdult, ProjectID: &projectID}); err != nil {
 		t.Fatalf("create organism: %v", err)
 	}
 

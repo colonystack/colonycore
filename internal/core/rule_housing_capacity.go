@@ -14,7 +14,7 @@ type housingCapacityRule struct{}
 
 func (housingCapacityRule) Name() string { return "housing_capacity" }
 
-func (housingCapacityRule) Evaluate(ctx context.Context, view TransactionView, changes []Change) (Result, error) {
+func (housingCapacityRule) Evaluate(ctx context.Context, view RuleView, changes []Change) (Result, error) {
 	occupancy := make(map[string]int)
 	for _, organism := range view.ListOrganisms() {
 		if organism.HousingID == nil {

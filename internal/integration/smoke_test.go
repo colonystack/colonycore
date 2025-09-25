@@ -9,6 +9,7 @@ import (
 
 	"colonycore/internal/blob"
 	core "colonycore/internal/core"
+	domain "colonycore/pkg/domain"
 )
 
 // TestIntegrationSmoke exercises a minimal end-to-end write/read cycle for
@@ -74,14 +75,14 @@ func TestIntegrationSmoke(t *testing.T) {
 			store := cv.open(t)
 			svc := core.NewService(store)
 			// Write one housing unit and one organism referencing it.
-			created, res, err := svc.CreateHousingUnit(ctx, core.HousingUnit{Name: "Tank", Facility: "Lab", Capacity: 1})
+			created, res, err := svc.CreateHousingUnit(ctx, domain.HousingUnit{Name: "Tank", Facility: "Lab", Capacity: 1})
 			if err != nil {
 				t.Fatalf("create housing: %v", err)
 			}
 			if res.HasBlocking() {
 				t.Fatalf("unexpected blocking violations: %+v", res.Violations)
 			}
-			org, res, err := svc.CreateOrganism(ctx, core.Organism{Name: "Specimen", Species: "Testus"})
+			org, res, err := svc.CreateOrganism(ctx, domain.Organism{Name: "Specimen", Species: "Testus"})
 			if err != nil {
 				t.Fatalf("create organism: %v", err)
 			}

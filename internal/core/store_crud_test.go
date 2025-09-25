@@ -378,6 +378,6 @@ type staticRule struct {
 
 func (r staticRule) Name() string { return r.name }
 
-func (r staticRule) Evaluate(ctx context.Context, view TransactionView, changes []Change) (Result, error) {
+func (r staticRule) Evaluate(ctx context.Context, view RuleView, changes []Change) (Result, error) {
 	return Result{Violations: []Violation{{Rule: r.name, Severity: r.severity}}}, nil
 }

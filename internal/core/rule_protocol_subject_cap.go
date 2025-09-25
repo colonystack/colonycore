@@ -14,7 +14,7 @@ type protocolSubjectCapRule struct{}
 
 func (protocolSubjectCapRule) Name() string { return "protocol_subject_cap" }
 
-func (protocolSubjectCapRule) Evaluate(ctx context.Context, view TransactionView, changes []Change) (Result, error) {
+func (protocolSubjectCapRule) Evaluate(ctx context.Context, view RuleView, changes []Change) (Result, error) {
 	counts := make(map[string]int)
 	for _, organism := range view.ListOrganisms() {
 		if organism.ProtocolID == nil {
