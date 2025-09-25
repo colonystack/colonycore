@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"colonycore/internal/core"
+	domain "colonycore/pkg/domain"
 )
 
 func TestPluginRegistration(t *testing.T) {
@@ -48,24 +49,24 @@ func TestFrogHabitatRuleOutcomes(t *testing.T) {
 	}
 	ctx := context.Background()
 
-	humid, _, err := svc.CreateHousingUnit(ctx, core.HousingUnit{Name: "Humid", Facility: "Lab", Capacity: 2, Environment: "humid"})
+	humid, _, err := svc.CreateHousingUnit(ctx, domain.HousingUnit{Name: "Humid", Facility: "Lab", Capacity: 2, Environment: "humid"})
 	if err != nil {
 		t.Fatalf("create humid housing: %v", err)
 	}
-	dry, _, err := svc.CreateHousingUnit(ctx, core.HousingUnit{Name: "Dry", Facility: "Lab", Capacity: 2, Environment: "dry"})
+	dry, _, err := svc.CreateHousingUnit(ctx, domain.HousingUnit{Name: "Dry", Facility: "Lab", Capacity: 2, Environment: "dry"})
 	if err != nil {
 		t.Fatalf("create dry housing: %v", err)
 	}
 
-	frogA, _, err := svc.CreateOrganism(ctx, core.Organism{Name: "Water", Species: "Tree Frog"})
+	frogA, _, err := svc.CreateOrganism(ctx, domain.Organism{Name: "Water", Species: "Tree Frog"})
 	if err != nil {
 		t.Fatalf("create frogA: %v", err)
 	}
-	frogB, _, err := svc.CreateOrganism(ctx, core.Organism{Name: "Desert", Species: "Poison Frog"})
+	frogB, _, err := svc.CreateOrganism(ctx, domain.Organism{Name: "Desert", Species: "Poison Frog"})
 	if err != nil {
 		t.Fatalf("create frogB: %v", err)
 	}
-	other, _, err := svc.CreateOrganism(ctx, core.Organism{Name: "Lizard", Species: "Gecko"})
+	other, _, err := svc.CreateOrganism(ctx, domain.Organism{Name: "Lizard", Species: "Gecko"})
 	if err != nil {
 		t.Fatalf("create non-frog organism: %v", err)
 	}
@@ -85,7 +86,7 @@ func TestFrogHabitatRuleOutcomes(t *testing.T) {
 		if res.Violations[0].Rule != "frog_habitat_warning" {
 			t.Fatalf("unexpected rule: %+v", res.Violations[0])
 		}
-		if res.Violations[0].Severity != core.SeverityWarn {
+		if res.Violations[0].Severity != domain.SeverityWarn {
 			t.Fatalf("expected warning severity")
 		}
 	}
@@ -117,21 +118,21 @@ func TestFrogPopulationDataset(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	project, _, err := svc.CreateProject(ctx, core.Project{Code: "PRJ-FROG", Title: "Frog Ops"})
+	project, _, err := svc.CreateProject(ctx, domain.Project{Code: "PRJ-FROG", Title: "Frog Ops"})
 	if err != nil {
 		t.Fatalf("create project: %v", err)
 	}
 
-	organism, _, err := svc.CreateOrganism(ctx, core.Organism{
+	organism, _, err := svc.CreateOrganism(ctx, domain.Organism{
 		Name:      "Maple",
 		Species:   "Tree Frog",
-		Stage:     core.StageAdult,
+		Stage:     domain.StageAdult,
 		ProjectID: &project.ID,
 	})
 	if err != nil {
 		t.Fatalf("create frog organism: %v", err)
 	}
-	if _, _, err := svc.CreateOrganism(ctx, core.Organism{Name: "Gecko", Species: "Gecko", Stage: core.StageAdult}); err != nil {
+	if _, _, err := svc.CreateOrganism(ctx, domain.Organism{Name: "Gecko", Species: "Gecko", Stage: domain.StageAdult}); err != nil {
 		t.Fatalf("create non frog organism: %v", err)
 	}
 
@@ -153,7 +154,7 @@ func TestFrogPopulationDataset(t *testing.T) {
 		t.Fatalf("expected project scope metadata")
 	}
 
-	filtered, _, err := template.Run(ctx, map[string]any{"stage": string(core.StageLarva)}, core.DatasetScope{}, core.FormatJSON)
+	filtered, _, err := template.Run(ctx, map[string]any{"stage": string(domain.StageLarva)}, core.DatasetScope{}, core.FormatJSON)
 	if err != nil {
 		t.Fatalf("run dataset with stage filter: %v", err)
 	}
@@ -175,19 +176,19 @@ func TestFrogPopulationBinderFilters(t *testing.T) {
 	}
 	ctx := context.Background()
 
-	projectA, _, err := svc.CreateProject(ctx, core.Project{Code: "PRJ-A", Title: "Project A"})
+	projectA, _, err := svc.CreateProject(ctx, domain.Project{Code: "PRJ-A", Title: "Project A"})
 	if err != nil {
 		t.Fatalf("create project A: %v", err)
 	}
-	projectB, _, err := svc.CreateProject(ctx, core.Project{Code: "PRJ-B", Title: "Project B"})
+	projectB, _, err := svc.CreateProject(ctx, domain.Project{Code: "PRJ-B", Title: "Project B"})
 	if err != nil {
 		t.Fatalf("create project B: %v", err)
 	}
-	protocol, _, err := svc.CreateProtocol(ctx, core.Protocol{Code: "PROTO", Title: "Protocol", MaxSubjects: 10})
+	protocol, _, err := svc.CreateProtocol(ctx, domain.Protocol{Code: "PROTO", Title: "Protocol", MaxSubjects: 10})
 	if err != nil {
 		t.Fatalf("create protocol: %v", err)
 	}
-	housing, _, err := svc.CreateHousingUnit(ctx, core.HousingUnit{Name: "Wet", Facility: "Lab", Capacity: 4, Environment: "humid"})
+	housing, _, err := svc.CreateHousingUnit(ctx, domain.HousingUnit{Name: "Wet", Facility: "Lab", Capacity: 4, Environment: "humid"})
 	if err != nil {
 		t.Fatalf("create housing: %v", err)
 	}
@@ -197,10 +198,10 @@ func TestFrogPopulationBinderFilters(t *testing.T) {
 	projectAID := projectA.ID
 	projectBID := projectB.ID
 
-	frogA, _, err := svc.CreateOrganism(ctx, core.Organism{
+	frogA, _, err := svc.CreateOrganism(ctx, domain.Organism{
 		Name:       "Alpha",
 		Species:    "Tree Frog",
-		Stage:      core.StageAdult,
+		Stage:      domain.StageAdult,
 		ProjectID:  &projectAID,
 		ProtocolID: &protocolID,
 		HousingID:  &housingID,
@@ -210,10 +211,10 @@ func TestFrogPopulationBinderFilters(t *testing.T) {
 	}
 	frogATime := frogA.UpdatedAt
 	time.Sleep(5 * time.Millisecond)
-	if _, _, err := svc.CreateOrganism(ctx, core.Organism{
+	if _, _, err := svc.CreateOrganism(ctx, domain.Organism{
 		Name:       "Bravo",
 		Species:    "Tree Frog",
-		Stage:      core.StageAdult,
+		Stage:      domain.StageAdult,
 		ProjectID:  &projectBID,
 		ProtocolID: &protocolID,
 		HousingID:  &housingID,
@@ -221,10 +222,10 @@ func TestFrogPopulationBinderFilters(t *testing.T) {
 		t.Fatalf("create frog B: %v", err)
 	}
 	time.Sleep(5 * time.Millisecond)
-	if _, _, err := svc.CreateOrganism(ctx, core.Organism{
+	if _, _, err := svc.CreateOrganism(ctx, domain.Organism{
 		Name:       "Charlie",
 		Species:    "Tree Frog",
-		Stage:      core.StageRetired,
+		Stage:      domain.StageRetired,
 		ProjectID:  &projectAID,
 		ProtocolID: &protocolID,
 	}); err != nil {

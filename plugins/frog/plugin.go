@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"colonycore/internal/core"
+	domain "colonycore/pkg/domain"
 )
 
 // Plugin implements the frog reference module described in the RFC (stubbed for the PoC).
@@ -64,12 +65,12 @@ WHERE species ILIKE 'frog%'`,
 				Type:        "string",
 				Description: "Optional lifecycle stage filter using canonical stage identifiers.",
 				Enum: []string{
-					string(core.StagePlanned),
-					string(core.StageLarva),
-					string(core.StageJuvenile),
-					string(core.StageAdult),
-					string(core.StageRetired),
-					string(core.StageDeceased),
+					string(domain.StagePlanned),
+					string(domain.StageLarva),
+					string(domain.StageJuvenile),
+					string(domain.StageAdult),
+					string(domain.StageRetired),
+					string(domain.StageDeceased),
 				},
 			},
 			{
@@ -123,8 +124,8 @@ type frogHabitatRule struct{}
 
 func (frogHabitatRule) Name() string { return "frog_habitat_warning" }
 
-func (frogHabitatRule) Evaluate(ctx context.Context, view core.TransactionView, changes []core.Change) (core.Result, error) {
-	var result core.Result
+func (frogHabitatRule) Evaluate(ctx context.Context, view domain.RuleView, changes []domain.Change) (domain.Result, error) {
+	var result domain.Result
 	for _, organism := range view.ListOrganisms() {
 		specie := strings.ToLower(organism.Species)
 		if !strings.Contains(specie, "frog") {
@@ -141,11 +142,11 @@ func (frogHabitatRule) Evaluate(ctx context.Context, view core.TransactionView, 
 		if strings.Contains(env, "aquatic") || strings.Contains(env, "humid") {
 			continue
 		}
-		result.Violations = append(result.Violations, core.Violation{
+		result.Violations = append(result.Violations, domain.Violation{
 			Rule:     "frog_habitat_warning",
-			Severity: core.SeverityWarn,
+			Severity: domain.SeverityWarn,
 			Message:  "frog assigned to non-aquatic/non-humid housing",
-			Entity:   core.EntityOrganism,
+			Entity:   domain.EntityOrganism,
 			EntityID: organism.ID,
 		})
 	}
@@ -178,7 +179,7 @@ func frogPopulationBinder(env core.DatasetEnvironment) (core.DatasetRunner, erro
 				if stageFilter != "" && string(organism.Stage) != stageFilter {
 					continue
 				}
-				if stageFilter == "" && !includeRetired && organism.Stage == core.StageRetired {
+				if stageFilter == "" && !includeRetired && organism.Stage == domain.StageRetired {
 					continue
 				}
 				if asOfTime != nil && organism.UpdatedAt.After(*asOfTime) {
