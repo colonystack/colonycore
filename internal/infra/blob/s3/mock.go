@@ -1,10 +1,4 @@
-package blob
-
-// This file provides a lightweight exported helper to construct an in-memory
-// mocked S3 implementation for cross-package tests (e.g. integration smoke
-// tests) without copying the mock logic repeatedly. It intentionally lives in
-// non-test code so other test packages can import it, but should not be used
-// in production paths.
+package s3
 
 import (
 	"bytes"
@@ -22,10 +16,9 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 )
 
-// NewMockS3ForTests returns an *S3 backed by an in-memory fake HTTP transport.
-// Only a subset of S3 operations required by the BlobStore interface are
-// implemented.
-func NewMockS3ForTests() *S3 { // nolint: revive
+// NewMockForTests returns an *Store backed by an in-memory fake HTTP transport.
+// Only a subset of S3 operations required by the blob.Store interface are implemented.
+func NewMockForTests() *Store { //nolint:revive
 	rt := &mockRoundTripperLite{state: make(map[string]mockObj)}
 	cfg, _ := config.LoadDefaultConfig(context.Background(),
 		config.WithRegion("us-east-1"),
@@ -37,12 +30,12 @@ func NewMockS3ForTests() *S3 { // nolint: revive
 		o.BaseEndpoint = aws.String("https://mock.s3.local")
 	})
 	ps := s3.NewPresignClient(client)
-	return &S3{client: client, bucket: "mock-bucket", presign: ps}
+	return &Store{client: client, bucket: "mock-bucket", presign: ps}
 }
 
-// mockRoundTripperLite is a trimmed version of the more exhaustive mock in
-// s3_mock_test.go; it handles Head/Get/Put/Delete/ListObjectsV2.
+// mockRoundTripperLite is a trimmed version of the more exhaustive mock in tests; it handles Head/Get/Put/Delete/ListObjectsV2.
 type mockRoundTripperLite struct{ state map[string]mockObj }
+
 type mockObj struct {
 	body        []byte
 	contentType string

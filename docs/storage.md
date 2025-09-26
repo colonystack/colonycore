@@ -96,6 +96,7 @@ S3 driver specifics:
 ### Semantics & Notes
 
 * `Put` fails if the key already exists (no overwrite). Implement overwrite explicitly by deleting first if desired.
+* The Go API exposes all drivers through the `blob.Store` interface, keeping higher layers decoupled from concrete backends (e.g. `blob.NewFilesystem`, `blob.NewMockS3ForTests`).
 * Keys are treated as opaque strings with conventional prefix semantics for `List(prefix)`.
 * Filesystem adapter returns opaque `http://local.blob/<key>` style URLs for local development; these are not protected and are only hints (no server is started by the library).
 * `PresignURL` is currently implemented for `fs` (dummy local URL) and real presigned GET for `s3`.

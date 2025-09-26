@@ -47,15 +47,15 @@ func TestIntegrationSmoke(t *testing.T) {
 	// (similar to unit test) so the smoke test covers all adapters in one place.
 	blobVariants := []struct {
 		name string
-		open func(t *testing.T) blob.BlobStore
+		open func(t *testing.T) blob.Store
 	}{
 		{
 			name: "memory-blob",
-			open: func(t *testing.T) blob.BlobStore { return blob.NewMemory() },
+			open: func(t *testing.T) blob.Store { return blob.NewMemory() },
 		},
 		{
 			name: "filesystem-blob",
-			open: func(t *testing.T) blob.BlobStore {
+			open: func(t *testing.T) blob.Store {
 				dir := t.TempDir()
 				fs, err := blob.NewFilesystem(dir)
 				if err != nil {
@@ -66,7 +66,7 @@ func TestIntegrationSmoke(t *testing.T) {
 		},
 		{
 			name: "mock-s3-blob",
-			open: func(t *testing.T) blob.BlobStore { return blob.NewMockS3ForTests() },
+			open: func(t *testing.T) blob.Store { return blob.NewMockS3ForTests() },
 		},
 	}
 

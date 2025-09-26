@@ -1,4 +1,4 @@
-package blob
+package fs
 
 import (
 	"context"
@@ -15,28 +15,30 @@ import (
 	"sort"
 	"strings"
 	"time"
+
+	"colonycore/internal/blob/core"
 )
 
-// Filesystem implements BlobStore on a local directory.
+// Store implements core.Store using the local filesystem.
 // Keys are mapped to relative file paths under the root. A simple metadata
 // sidecar (filename + `.meta`) stores content type & user metadata.
 // This is intentionally simple and not concurrent-writer safe beyond per-file creation.
-type Filesystem struct {
+type Store struct {
 	root string
 }
 
-// NewFilesystem returns a filesystem blob store rooted at path, creating it if needed.
-func NewFilesystem(root string) (*Filesystem, error) {
+// New returns a filesystem-backed blob store rooted at path, creating it if needed.
+func New(root string) (*Store, error) {
 	if root == "" {
 		root = "./blobdata"
 	}
 	if err := os.MkdirAll(root, 0o755); err != nil {
 		return nil, err
 	}
-	return &Filesystem{root: root}, nil
+	return &Store{root: root}, nil
 }
 
-func (f *Filesystem) Driver() Driver { return DriverFilesystem }
+func (s *Store) Driver() core.Driver { return core.DriverFilesystem }
 
 // sanitizeKey ensures key doesn't escape root and forbids path traversal and absolute paths.
 func sanitizeKey(key string) (string, error) {
@@ -57,12 +59,12 @@ func sanitizeKey(key string) (string, error) {
 	return clean, nil
 }
 
-func (f *Filesystem) pathFor(key string) (dataPath, metaPath string, err error) {
+func (s *Store) pathFor(key string) (dataPath, metaPath string, err error) {
 	k, err := sanitizeKey(key)
 	if err != nil {
 		return "", "", err
 	}
-	dataPath = filepath.Join(f.root, k)
+	dataPath = filepath.Join(s.root, k)
 	metaPath = dataPath + ".meta"
 	return
 }
@@ -76,89 +78,89 @@ type metaFile struct {
 	UpdatedAt   time.Time         `json:"updated_at"`
 }
 
-func (f *Filesystem) Put(ctx context.Context, key string, r io.Reader, opts PutOptions) (Info, error) {
-	dataPath, metaPath, err := f.pathFor(key)
+func (s *Store) Put(ctx context.Context, key string, r io.Reader, opts core.PutOptions) (core.Info, error) {
+	dataPath, metaPath, err := s.pathFor(key)
 	if err != nil {
-		return Info{}, err
+		return core.Info{}, err
 	}
 	// Fail if exists
 	if _, err := os.Stat(dataPath); err == nil {
-		return Info{}, fmt.Errorf("blob %s already exists", key)
+		return core.Info{}, fmt.Errorf("blob %s already exists", key)
 	}
 	if err := os.MkdirAll(filepath.Dir(dataPath), 0o755); err != nil {
-		return Info{}, err
+		return core.Info{}, err
 	}
 	// stream to temp file to compute sha and size
 	tmp, err := os.CreateTemp(filepath.Dir(dataPath), ".tmp-*")
 	if err != nil {
-		return Info{}, err
+		return core.Info{}, err
 	}
 	defer func() { _ = os.Remove(tmp.Name()) }()
 	h := sha256.New()
 	size, copyErr := io.Copy(io.MultiWriter(tmp, h), r)
 	if copyErr != nil {
 		_ = tmp.Close()
-		return Info{}, copyErr
+		return core.Info{}, copyErr
 	}
 	if err := tmp.Sync(); err != nil {
 		_ = tmp.Close()
-		return Info{}, err
+		return core.Info{}, err
 	}
 	if _, err := tmp.Seek(0, 0); err != nil {
 		_ = tmp.Close()
-		return Info{}, err
+		return core.Info{}, err
 	}
 	etag := hex.EncodeToString(h.Sum(nil))
 	// atomically move into place
 	if err := os.Rename(tmp.Name(), dataPath); err != nil {
 		_ = tmp.Close()
-		return Info{}, err
+		return core.Info{}, err
 	}
 	now := time.Now().UTC()
-	mf := metaFile{ContentType: opts.ContentType, Metadata: cloneMD(opts.Metadata), ETag: etag, Size: size, CreatedAt: now, UpdatedAt: now}
+	mf := metaFile{ContentType: opts.ContentType, Metadata: cloneMetadata(opts.Metadata), ETag: etag, Size: size, CreatedAt: now, UpdatedAt: now}
 	if err := writeJSON(metaPath, mf); err != nil {
-		return Info{}, err
+		return core.Info{}, err
 	}
-	info := Info{Key: key, Size: size, ContentType: opts.ContentType, ETag: etag, Metadata: cloneMD(opts.Metadata), LastModified: now, URL: f.localURL(key)}
+	info := core.Info{Key: key, Size: size, ContentType: opts.ContentType, ETag: etag, Metadata: cloneMetadata(opts.Metadata), LastModified: now, URL: s.localURL(key)}
 	return info, nil
 }
 
-func (f *Filesystem) Get(ctx context.Context, key string) (Info, io.ReadCloser, error) {
-	dataPath, metaPath, err := f.pathFor(key)
+func (s *Store) Get(ctx context.Context, key string) (core.Info, io.ReadCloser, error) {
+	dataPath, metaPath, err := s.pathFor(key)
 	if err != nil {
-		return Info{}, nil, err
+		return core.Info{}, nil, err
 	}
 	file, err := os.Open(dataPath)
 	if errors.Is(err, fs.ErrNotExist) {
-		return Info{}, nil, err
+		return core.Info{}, nil, err
 	}
 	if err != nil {
-		return Info{}, nil, err
+		return core.Info{}, nil, err
 	}
 	mf, err := readMeta(metaPath)
 	if err != nil {
 		_ = file.Close()
-		return Info{}, nil, err
+		return core.Info{}, nil, err
 	}
-	info := Info{Key: key, Size: mf.Size, ContentType: mf.ContentType, ETag: mf.ETag, Metadata: cloneMD(mf.Metadata), LastModified: mf.UpdatedAt, URL: f.localURL(key)}
+	info := core.Info{Key: key, Size: mf.Size, ContentType: mf.ContentType, ETag: mf.ETag, Metadata: cloneMetadata(mf.Metadata), LastModified: mf.UpdatedAt, URL: s.localURL(key)}
 	return info, file, nil
 }
 
-func (f *Filesystem) Head(ctx context.Context, key string) (Info, error) {
-	_, metaPath, err := f.pathFor(key)
+func (s *Store) Head(ctx context.Context, key string) (core.Info, error) {
+	_, metaPath, err := s.pathFor(key)
 	if err != nil {
-		return Info{}, err
+		return core.Info{}, err
 	}
 	mf, err := readMeta(metaPath)
 	if err != nil {
-		return Info{}, err
+		return core.Info{}, err
 	}
-	info := Info{Key: key, Size: mf.Size, ContentType: mf.ContentType, ETag: mf.ETag, Metadata: cloneMD(mf.Metadata), LastModified: mf.UpdatedAt, URL: f.localURL(key)}
+	info := core.Info{Key: key, Size: mf.Size, ContentType: mf.ContentType, ETag: mf.ETag, Metadata: cloneMetadata(mf.Metadata), LastModified: mf.UpdatedAt, URL: s.localURL(key)}
 	return info, nil
 }
 
-func (f *Filesystem) Delete(ctx context.Context, key string) (bool, error) {
-	dataPath, metaPath, err := f.pathFor(key)
+func (s *Store) Delete(ctx context.Context, key string) (bool, error) {
+	dataPath, metaPath, err := s.pathFor(key)
 	if err != nil {
 		return false, err
 	}
@@ -173,10 +175,10 @@ func (f *Filesystem) Delete(ctx context.Context, key string) (bool, error) {
 	return true, nil
 }
 
-func (f *Filesystem) List(ctx context.Context, prefix string) ([]Info, error) {
+func (s *Store) List(ctx context.Context, prefix string) ([]core.Info, error) {
 	// Walk root collecting .meta files and filter prefix.
-	var infos []Info
-	err := filepath.WalkDir(f.root, func(path string, d fs.DirEntry, err error) error {
+	var infos []core.Info
+	err := filepath.WalkDir(s.root, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
@@ -190,13 +192,13 @@ func (f *Filesystem) List(ctx context.Context, prefix string) ([]Info, error) {
 			}
 			// derive key
 			dataPath := strings.TrimSuffix(path, ".meta")
-			rel, err := filepath.Rel(f.root, dataPath)
+			rel, err := filepath.Rel(s.root, dataPath)
 			if err != nil {
 				return err
 			}
 			key := filepath.ToSlash(rel)
 			if prefix == "" || strings.HasPrefix(key, prefix) {
-				infos = append(infos, Info{Key: key, Size: mf.Size, ContentType: mf.ContentType, ETag: mf.ETag, Metadata: cloneMD(mf.Metadata), LastModified: mf.UpdatedAt, URL: f.localURL(key)})
+				infos = append(infos, core.Info{Key: key, Size: mf.Size, ContentType: mf.ContentType, ETag: mf.ETag, Metadata: cloneMetadata(mf.Metadata), LastModified: mf.UpdatedAt, URL: s.localURL(key)})
 			}
 		}
 		return nil
@@ -208,22 +210,22 @@ func (f *Filesystem) List(ctx context.Context, prefix string) ([]Info, error) {
 	return infos, nil
 }
 
-func (f *Filesystem) PresignURL(ctx context.Context, key string, opts SignedURLOptions) (string, error) {
+func (s *Store) PresignURL(ctx context.Context, key string, opts core.SignedURLOptions) (string, error) {
 	// Local development convenience: we just return a pseudo URL; no auth.
 	if opts.Method != "" && strings.ToUpper(opts.Method) != "GET" {
-		return "", ErrUnsupported
+		return "", core.ErrUnsupported
 	}
-	return f.localURL(key), nil
+	return s.localURL(key), nil
 }
 
-func (f *Filesystem) localURL(key string) string {
+func (s *Store) localURL(key string) string {
 	// Provide a stable opaque URL. Clients can detect dev by scheme host.
 	return (&url.URL{Scheme: "http", Host: "local.blob", Path: "/" + key}).String()
 }
 
 // --- helpers ---
 
-func cloneMD(in map[string]string) map[string]string {
+func cloneMetadata(in map[string]string) map[string]string {
 	if in == nil {
 		return nil
 	}
