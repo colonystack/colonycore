@@ -306,9 +306,6 @@ func (s *Service) InstallPlugin(plugin Plugin) (PluginMetadata, error) {
 	}
 
 	env := DatasetEnvironment{Store: s.store, Now: s.now}
-	if env.Now == nil {
-		env.Now = func() time.Time { return time.Now().UTC() }
-	}
 
 	for _, dataset := range registry.DatasetTemplates() {
 		dataset.Plugin = plugin.Name()
