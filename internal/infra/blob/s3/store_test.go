@@ -1,4 +1,4 @@
-package blob
+package s3
 
 import (
 	"bytes"
@@ -16,11 +16,12 @@ import (
 	aws "github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials"
-	"github.com/aws/aws-sdk-go-v2/service/s3"
+	awsS3 "github.com/aws/aws-sdk-go-v2/service/s3"
+
+	"colonycore/internal/blob/core"
 )
 
-// mockRoundTripper provides a tiny fake S3 subset sufficient to exercise our S3 adapter
-// without network access. It stores objects in-memory keyed by object key.
+// mockRoundTripper provides a tiny fake S3 subset sufficient to exercise the adapter without network access.
 type mockRoundTripper struct{ state map[string]stored }
 
 type stored struct {
@@ -29,17 +30,14 @@ type stored struct {
 }
 
 func (m *mockRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) { //nolint:cyclop
-	// Expect path-style: /bucket/key
 	parts := strings.SplitN(strings.TrimPrefix(req.URL.Path, "/"), "/", 2)
 	key := ""
 	if len(parts) == 2 {
 		key = parts[1]
 	}
-	// Handle ListObjectsV2 (list-type=2)
 	if req.Method == http.MethodGet && strings.Contains(req.URL.RawQuery, "list-type=2") {
 		prefix := req.URL.Query().Get("prefix")
 		cont := req.URL.Query().Get("continuation-token")
-		// Collect & sort keys for deterministic pagination.
 		var keys []string
 		for k := range m.state {
 			if prefix == "" || strings.HasPrefix(k, prefix) {
@@ -50,7 +48,6 @@ func (m *mockRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) 
 		var b strings.Builder
 		b.WriteString("<?xml version=\"1.0\"?><ListBucketResult>")
 		if cont == "" && len(keys) > 1 {
-			// First page: return first key only, truncated
 			k := keys[0]
 			st := m.state[k]
 			b.WriteString("<IsTruncated>true</IsTruncated><NextContinuationToken>tok123</NextContinuationToken>")
@@ -61,7 +58,6 @@ func (m *mockRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) 
 			b.WriteString("</Size><LastModified>2024-01-01T00:00:00Z</LastModified></Contents>")
 		} else {
 			b.WriteString("<IsTruncated>false</IsTruncated>")
-			// Second (or single) page: if continuation token provided skip first key
 			start := 0
 			if cont != "" && len(keys) > 1 {
 				start = 1
@@ -80,7 +76,7 @@ func (m *mockRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) 
 	}
 	switch req.Method {
 	case http.MethodHead:
-		if st, ok := m.state[key]; ok { //nolint:revive // test helper
+		if st, ok := m.state[key]; ok {
 			return &http.Response{StatusCode: 200, Body: io.NopCloser(bytes.NewReader(nil)), Header: http.Header{
 				"Content-Length": {fmt.Sprintf("%d", len(st.body))},
 				"Content-Type":   {st.contentType},
@@ -91,9 +87,9 @@ func (m *mockRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) 
 		return &http.Response{StatusCode: 404, Body: io.NopCloser(bytes.NewReader(nil)), Header: http.Header{}}, nil
 	case http.MethodPut:
 		body, _ := io.ReadAll(req.Body)
-		if _, exists := m.state[key]; !exists { // emulate create-only semantics
+		if _, exists := m.state[key]; !exists {
 			ct := req.Header.Get("Content-Type")
-			if dec, ok := decodeChunked(body); ok { // handle aws-chunked encoding
+			if dec, ok := decodeChunked(body); ok {
 				body = dec
 			}
 			m.state[key] = stored{body: body, contentType: ct}
@@ -120,7 +116,7 @@ func (m *mockRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) 
 	return &http.Response{StatusCode: 501, Body: io.NopCloser(bytes.NewReader(nil)), Header: http.Header{}}, nil
 }
 
-func newMockS3(t *testing.T) *S3 {
+func newMockStore(t *testing.T) *Store {
 	t.Helper()
 	rt := &mockRoundTripper{state: make(map[string]stored)}
 	cfg, err := config.LoadDefaultConfig(context.Background(),
@@ -130,34 +126,32 @@ func newMockS3(t *testing.T) *S3 {
 	if err != nil {
 		t.Fatalf("cfg: %v", err)
 	}
-	httpClient := &http.Client{Transport: rt}
-	client := s3.NewFromConfig(cfg, func(o *s3.Options) {
+	client := awsS3.NewFromConfig(cfg, func(o *awsS3.Options) {
 		o.BaseEndpoint = aws.String("https://mock.s3.local")
-		o.HTTPClient = httpClient
+		o.HTTPClient = &http.Client{Transport: rt}
 		o.UsePathStyle = true
 	})
-	ps := s3.NewPresignClient(client)
-	return &S3{client: client, bucket: "test-bucket", presign: ps}
+	ps := awsS3.NewPresignClient(client)
+	return &Store{client: client, bucket: "test-bucket", presign: ps}
 }
 
-func TestS3_MockedBasicFlow(t *testing.T) {
-	s3store := newMockS3(t)
+func TestStore_MockedBasicFlow(t *testing.T) {
+	store := newMockStore(t)
 	ctx := context.Background()
-	info, err := s3store.Put(ctx, "folder/file.txt", bytes.NewReader([]byte("hello")), PutOptions{ContentType: "text/plain"})
+	info, err := store.Put(ctx, "folder/file.txt", bytes.NewReader([]byte("hello")), core.PutOptions{ContentType: "text/plain"})
 	if err != nil {
 		t.Fatalf("put: %v", err)
 	}
 	if info.Key != "folder/file.txt" || info.ContentType != "text/plain" || info.Size < 5 {
 		t.Fatalf("unexpected info %#v", info)
 	}
-	// Duplicate put should fail (coverage of exists branch)
-	if _, err := s3store.Put(ctx, "folder/file.txt", bytes.NewReader([]byte("ignored")), PutOptions{}); err == nil {
+	if _, err := store.Put(ctx, "folder/file.txt", bytes.NewReader([]byte("ignored")), core.PutOptions{}); err == nil {
 		t.Fatalf("expected duplicate put error")
 	}
-	if _, err := s3store.Head(ctx, "folder/file.txt"); err != nil {
+	if _, err := store.Head(ctx, "folder/file.txt"); err != nil {
 		t.Fatalf("head: %v", err)
 	}
-	_, rc, err := s3store.Get(ctx, "folder/file.txt")
+	_, rc, err := store.Get(ctx, "folder/file.txt")
 	if err != nil {
 		t.Fatalf("get: %v", err)
 	}
@@ -166,36 +160,35 @@ func TestS3_MockedBasicFlow(t *testing.T) {
 	if string(data) != "hello" {
 		t.Fatalf("get mismatch: %q", string(data))
 	}
-	list, err := s3store.List(ctx, "folder/")
+	list, err := store.List(ctx, "folder/")
 	if err != nil || len(list) != 1 {
 		t.Fatalf("list: %v %+v", err, list)
 	}
-	if url, err := s3store.PresignURL(ctx, "folder/file.txt", SignedURLOptions{}); err != nil || url == "" {
+	if url, err := store.PresignURL(ctx, "folder/file.txt", core.SignedURLOptions{}); err != nil || url == "" {
 		t.Fatalf("presign: %v %s", err, url)
 	}
-	if ok, err := s3store.Delete(ctx, "folder/file.txt"); err != nil || !ok {
+	if ok, err := store.Delete(ctx, "folder/file.txt"); err != nil || !ok {
 		t.Fatalf("delete: %v %v", ok, err)
 	}
 }
 
-func TestS3_NewS3(t *testing.T) {
-	// Provide dummy creds so default chain resolves immediately.
+func TestStore_New(t *testing.T) {
 	_ = os.Setenv("AWS_ACCESS_KEY_ID", "AKIA")
 	_ = os.Setenv("AWS_SECRET_ACCESS_KEY", "SECRET")
 	defer func() {
 		_ = os.Unsetenv("AWS_ACCESS_KEY_ID")
 		_ = os.Unsetenv("AWS_SECRET_ACCESS_KEY")
 	}()
-	s, err := NewS3(context.Background(), S3Config{Bucket: "bkt", Region: "us-east-1", Endpoint: "https://mock.s3.local", PathStyle: true})
+	s, err := New(context.Background(), Config{Bucket: "bkt", Region: "us-east-1", Endpoint: "https://mock.s3.local", PathStyle: true})
 	if err != nil {
-		t.Fatalf("NewS3: %v", err)
+		t.Fatalf("New: %v", err)
 	}
-	if s.Driver() != DriverS3 {
+	if s.Driver() != core.DriverS3 {
 		t.Fatalf("expected DriverS3")
 	}
 }
 
-func TestS3_OpenFromEnv_Minimal(t *testing.T) {
+func TestStore_OpenFromEnv_Minimal(t *testing.T) {
 	oldB := os.Getenv("COLONYCORE_BLOB_S3_BUCKET")
 	oldR := os.Getenv("COLONYCORE_BLOB_S3_REGION")
 	_ = os.Setenv("COLONYCORE_BLOB_S3_BUCKET", "env-bucket")
@@ -204,58 +197,107 @@ func TestS3_OpenFromEnv_Minimal(t *testing.T) {
 		_ = os.Setenv("COLONYCORE_BLOB_S3_BUCKET", oldB)
 		_ = os.Setenv("COLONYCORE_BLOB_S3_REGION", oldR)
 	}()
-	// Ensure call returns error only if bucket missing (we provided it) — we ignore returned *S3 for coverage.
 	if _, err := OpenFromEnv(context.Background()); err != nil {
 		t.Fatalf("OpenFromEnv: %v", err)
 	}
 }
 
-func TestS3_ErrorPaths(t *testing.T) {
-	s3store := newMockS3(t)
+func TestStore_ErrorPaths(t *testing.T) {
+	store := newMockStore(t)
 	ctx := context.Background()
-	// Head missing
-	if _, err := s3store.Head(ctx, "nope"); err == nil {
+	if _, err := store.Head(ctx, "nope"); err == nil {
 		t.Fatalf("expected head error for missing key")
 	}
-	if _, _, err := s3store.Get(ctx, "nope"); err == nil {
+	if _, _, err := store.Get(ctx, "nope"); err == nil {
 		t.Fatalf("expected get error for missing key")
 	}
-	// Unsupported method presign
-	if _, err := s3store.PresignURL(ctx, "k", SignedURLOptions{Method: "PUT"}); err == nil {
+	if _, err := store.PresignURL(ctx, "k", core.SignedURLOptions{Method: "PUT"}); err == nil {
 		t.Fatalf("expected presign unsupported error")
 	}
 }
 
-func TestFactoryAndMemoryPaths(t *testing.T) {
+func TestStore_PresignCustomExpiryAndEmptyList(t *testing.T) {
+	store := newMockStore(t)
 	ctx := context.Background()
-	// Default (fs) path uses temp dir override
-	_ = os.Setenv("COLONYCORE_BLOB_DRIVER", "memory")
-	m, err := Open(ctx)
-	if err != nil || m.Driver() != DriverMemory {
-		t.Fatalf("expected memory driver: %v %v", m, err)
+	if _, err := store.Put(ctx, "k.txt", bytes.NewReader([]byte("body")), core.PutOptions{}); err != nil {
+		t.Fatalf("put: %v", err)
 	}
-	if _, err := m.PresignURL(ctx, "k", SignedURLOptions{}); err == nil { // memory unsupported
-		t.Fatalf("expected presign unsupported for memory")
+	if url, err := store.PresignURL(ctx, "k.txt", core.SignedURLOptions{Expiry: 30 * time.Second}); err != nil || url == "" {
+		t.Fatalf("presign custom: %v %s", err, url)
 	}
-	if list, err := m.List(ctx, ""); err != nil || len(list) != 0 { // empty list path
-		t.Fatalf("expected empty list")
+	if list, err := store.List(ctx, "no-such-prefix/"); err != nil || len(list) != 0 {
+		t.Fatalf("expected empty list: %v %+v", err, list)
 	}
-	if ok, err := m.Delete(ctx, "missing"); err != nil || ok { // delete missing path
-		t.Fatalf("expected delete false on missing")
+	if _, err := store.Put(ctx, "k2.txt", bytes.NewReader([]byte("body2")), core.PutOptions{}); err != nil {
+		t.Fatalf("put2: %v", err)
 	}
-	// Unknown driver path
-	_ = os.Setenv("COLONYCORE_BLOB_DRIVER", "unknown-driver")
-	if _, err := Open(ctx); err == nil {
-		t.Fatalf("expected error for unknown driver")
+	if list, err := store.List(ctx, "k"); err != nil || len(list) != 2 {
+		t.Fatalf("expected two items via pagination: %v %+v", err, list)
 	}
-	_ = os.Unsetenv("COLONYCORE_BLOB_DRIVER")
 }
 
-// decodeChunked attempts to parse a simple hex-size CRLF body CRLF 0 CRLF trailer pattern.
-// Returns decoded body and true on success; otherwise (nil,false).
-func decodeChunked(b []byte) ([]byte, bool) { // minimal implementation for test use only
+func TestStore_FromHeadNilBranchesAndErrors(t *testing.T) {
+	store := newMockStore(t)
+	info := store.fromHead("k", 10, nil, aws.String("\"etagval\""), map[string]string{"x": "y"}, nil)
+	if info.ETag != "etagval" || info.ContentType != "" || info.Key != "k" || info.Size != 10 {
+		t.Fatalf("unexpected info: %+v", info)
+	}
+	if _, err := New(context.Background(), Config{}); err == nil {
+		t.Fatalf("expected error for missing bucket")
+	}
+}
+
+func TestNewMockForTestsBasic(t *testing.T) {
+	store := NewMockForTests()
+	if store.Driver() != core.DriverS3 {
+		t.Fatalf("expected DriverS3")
+	}
+	if _, err := store.Put(context.Background(), "a.txt", bytes.NewReader([]byte("hello")), core.PutOptions{ContentType: "text/plain"}); err != nil {
+		t.Fatalf("put: %v", err)
+	}
+	if _, rc, err := store.Get(context.Background(), "a.txt"); err != nil {
+		t.Fatalf("get: %v", err)
+	} else {
+		_, _ = io.ReadAll(rc)
+		_ = rc.Close()
+	}
+	if _, err := store.Head(context.Background(), "a.txt"); err != nil {
+		t.Fatalf("head: %v", err)
+	}
+	if list, err := store.List(context.Background(), ""); err != nil || len(list) != 1 {
+		t.Fatalf("list: %v %d", err, len(list))
+	}
+	if _, err := store.PresignURL(context.Background(), "a.txt", core.SignedURLOptions{}); err != nil {
+		t.Fatalf("presign: %v", err)
+	}
+	if ok, err := store.Delete(context.Background(), "a.txt"); err != nil || !ok {
+		t.Fatalf("delete: %v %v", ok, err)
+	}
+}
+
+func TestDecodeChunkedHelper(t *testing.T) {
+	if _, ok := decodeChunked([]byte("not-chunked")); ok {
+		t.Fatalf("expected fail 1")
+	}
+	if _, ok := decodeChunked([]byte("5\r\nabc\r\n0\r\n")); ok {
+		t.Fatalf("size mismatch should fail")
+	}
+	if b, ok := decodeChunked([]byte("5\r\nhello\r\n0\r\n")); !ok || string(b) != "hello" {
+		t.Fatalf("expected decode hello")
+	}
+}
+
+func TestMockRoundTripperLiteUnsupported(t *testing.T) {
+	rt := &mockRoundTripperLite{state: make(map[string]mockObj)}
+	req, _ := http.NewRequest(http.MethodPatch, "https://mock.s3.local/bucket/key", nil)
+	resp, _ := rt.RoundTrip(req)
+	if resp.StatusCode != 501 {
+		t.Fatalf("expected 501, got %d", resp.StatusCode)
+	}
+}
+
+func decodeChunked(b []byte) ([]byte, bool) {
 	s := string(b)
-	// Expect format: <hex>\r\n<payload>\r\n0\r\n...
 	parts := strings.Split(s, "\r\n")
 	if len(parts) < 3 {
 		return nil, false
@@ -265,10 +307,10 @@ func decodeChunked(b []byte) ([]byte, bool) { // minimal implementation for test
 	if err != nil || n <= 0 {
 		return nil, false
 	}
-	if int64(len(parts[1])) != n { // payload size mismatch
+	if int64(len(parts[1])) != n {
 		return nil, false
 	}
-	if parts[2] != "0" { // must terminate
+	if parts[2] != "0" {
 		return nil, false
 	}
 	return []byte(parts[1]), true

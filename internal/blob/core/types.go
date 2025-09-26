@@ -1,4 +1,4 @@
-package blob
+package core
 
 import (
 	"context"
@@ -20,7 +20,6 @@ const (
 type PutOptions struct {
 	ContentType string            // MIME type, optional
 	Metadata    map[string]string // User metadata (small, flat key-value)
-	// TODO: future: server-side encryption, tagging, ACL
 }
 
 // SignedURLOptions holds options for generating a pre-signed URL.
@@ -38,27 +37,17 @@ type Info struct {
 	ETag         string            `json:"etag,omitempty"`
 	Metadata     map[string]string `json:"metadata,omitempty"`
 	LastModified time.Time         `json:"last_modified"`
-	URL          string            `json:"url,omitempty"` // optional presigned URL
+	URL          string            `json:"url,omitempty"`
 }
 
-// BlobStore provides a thin S3-like abstraction used by higher layers.
-// Semantics intentionally mirror a minimal subset of S3 so that an S3 / MinIO
-// adapter can be nearly 1:1 while a filesystem adapter can emulate them.
-type BlobStore interface {
-	// Put stores a new blob at key. MUST fail if the key already exists.
+// Store provides a thin S3-like abstraction used by higher layers.
+type Store interface {
 	Put(ctx context.Context, key string, r io.Reader, opts PutOptions) (Info, error)
-	// Get retrieves the blob contents and metadata. Returns os.ErrNotExist style error if missing.
 	Get(ctx context.Context, key string) (Info, io.ReadCloser, error)
-	// Head returns metadata only.
 	Head(ctx context.Context, key string) (Info, error)
-	// Delete removes a blob. Returns (false, nil) if not found.
 	Delete(ctx context.Context, key string) (bool, error)
-	// List returns blobs whose key has the provided prefix. Stable ordering by key ascending.
 	List(ctx context.Context, prefix string) ([]Info, error)
-	// PresignURL returns a time-limited URL for the given key (GET). Implementations may
-	// return ErrUnsupported if not available.
 	PresignURL(ctx context.Context, key string, opts SignedURLOptions) (string, error)
-	// Driver returns the configured backend driver string.
 	Driver() Driver
 }
 

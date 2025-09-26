@@ -79,3 +79,20 @@ func TestS3_OpenFromEnvRequiresBucket(t *testing.T) {
 		t.Fatalf("expected error without bucket")
 	}
 }
+
+func TestFactory_InvalidDriver(t *testing.T) {
+	t.Setenv("COLONYCORE_BLOB_DRIVER", "invalid")
+	if _, err := Open(context.Background()); err == nil {
+		t.Fatalf("expected error for invalid driver")
+	}
+}
+
+func TestS3_BridgingConstructors(t *testing.T) {
+	if _, err := NewS3(context.Background(), S3Config{}); err == nil {
+		t.Fatalf("expected error for missing bucket")
+	}
+	s := NewMockS3ForTests()
+	if s.Driver() != DriverS3 {
+		t.Fatalf("expected s3 driver")
+	}
+}
