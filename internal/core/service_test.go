@@ -7,6 +7,8 @@ import (
 	"time"
 
 	"colonycore/internal/core"
+	"colonycore/pkg/datasetapi"
+	"colonycore/pkg/pluginapi"
 	"colonycore/plugins/frog"
 )
 
@@ -405,28 +407,28 @@ type testClockPlugin struct{}
 func (testClockPlugin) Name() string    { return "clock" }
 func (testClockPlugin) Version() string { return "v1" }
 
-func (testClockPlugin) Register(registry *core.PluginRegistry) error {
-	return registry.RegisterDatasetTemplate(core.DatasetTemplate{
+func (testClockPlugin) Register(registry pluginapi.Registry) error {
+	return registry.RegisterDatasetTemplate(datasetapi.Template{
 		Key:           "now",
 		Version:       "v1",
 		Title:         "Now",
 		Description:   "returns the current time",
-		Dialect:       core.DatasetDialectSQL,
+		Dialect:       datasetapi.DialectSQL,
 		Query:         "SELECT now()",
-		OutputFormats: []core.DatasetFormat{core.FormatJSON},
-		Columns:       []core.DatasetColumn{{Name: "now", Type: "timestamp"}},
-		Binder: func(env core.DatasetEnvironment) (core.DatasetRunner, error) {
-			return func(ctx context.Context, req core.DatasetRunRequest) (core.DatasetRunResult, error) {
+		OutputFormats: []datasetapi.Format{datasetapi.FormatJSON},
+		Columns:       []datasetapi.Column{{Name: "now", Type: "timestamp"}},
+		Binder: func(env datasetapi.Environment) (datasetapi.Runner, error) {
+			return func(ctx context.Context, req datasetapi.RunRequest) (datasetapi.RunResult, error) {
 				now := env.Now
 				if now == nil {
 					now = func() time.Time { return time.Now().UTC() }
 				}
 				timestamp := now().UTC()
-				return core.DatasetRunResult{
+				return datasetapi.RunResult{
 					Schema:      req.Template.Columns,
 					Rows:        []map[string]any{{"now": timestamp}},
 					GeneratedAt: timestamp,
-					Format:      core.FormatJSON,
+					Format:      datasetapi.FormatJSON,
 				}, nil
 			}, nil
 		},

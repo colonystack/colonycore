@@ -3,14 +3,13 @@ package core
 import (
 	"fmt"
 	"sort"
+
+	"colonycore/pkg/datasetapi"
+	"colonycore/pkg/pluginapi"
 )
 
 // Plugin describes a species module or extension that contributes rules and schema.
-type Plugin interface {
-	Name() string
-	Version() string
-	Register(registry *PluginRegistry) error
-}
+type Plugin = pluginapi.Plugin
 
 // PluginRegistry accumulates plugin contributions during registration.
 type PluginRegistry struct {
@@ -18,6 +17,8 @@ type PluginRegistry struct {
 	schemas  map[string]map[string]any
 	datasets map[string]DatasetTemplate
 }
+
+var _ pluginapi.Registry = (*PluginRegistry)(nil)
 
 // NewPluginRegistry constructs a plugin registry.
 func NewPluginRegistry() *PluginRegistry {
@@ -48,15 +49,16 @@ func (r *PluginRegistry) RegisterSchema(entity string, schema map[string]any) {
 }
 
 // RegisterDatasetTemplate stores a dataset template manifest contributed by the plugin.
-func (r *PluginRegistry) RegisterDatasetTemplate(template DatasetTemplate) error {
-	if err := template.validate(); err != nil {
+func (r *PluginRegistry) RegisterDatasetTemplate(template datasetapi.Template) error {
+	converted, err := newDatasetTemplateFromAPI(template)
+	if err != nil {
 		return err
 	}
-	key := fmt.Sprintf("%s@%s", template.Key, template.Version)
+	key := fmt.Sprintf("%s@%s", converted.Key, converted.Version)
 	if _, exists := r.datasets[key]; exists {
 		return fmt.Errorf("dataset template %s already registered", key)
 	}
-	r.datasets[key] = template
+	r.datasets[key] = converted
 	return nil
 }
 

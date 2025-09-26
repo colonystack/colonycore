@@ -3,13 +3,15 @@ package core
 import (
 	"context"
 	"testing"
+
+	"colonycore/pkg/datasetapi"
 )
 
 func TestPluginRegistryRegisterDatasetTemplateDuplicate(t *testing.T) {
 	r := NewPluginRegistry()
-	tmpl := DatasetTemplate{Key: "k", Version: "1", Title: "T", Dialect: DatasetDialectSQL, Query: "SELECT 1", Columns: []DatasetColumn{{Name: "c", Type: "string"}}, OutputFormats: []DatasetFormat{FormatJSON}, Binder: func(DatasetEnvironment) (DatasetRunner, error) {
-		return func(ctx context.Context, req DatasetRunRequest) (DatasetRunResult, error) {
-			return DatasetRunResult{}, nil
+	tmpl := datasetapi.Template{Key: "k", Version: "1", Title: "T", Dialect: datasetapi.DialectSQL, Query: "SELECT 1", Columns: []datasetapi.Column{{Name: "c", Type: "string"}}, OutputFormats: []datasetapi.Format{datasetapi.FormatJSON}, Binder: func(datasetapi.Environment) (datasetapi.Runner, error) {
+		return func(ctx context.Context, req datasetapi.RunRequest) (datasetapi.RunResult, error) {
+			return datasetapi.RunResult{}, nil
 		}, nil
 	}}
 	if err := r.RegisterDatasetTemplate(tmpl); err != nil {

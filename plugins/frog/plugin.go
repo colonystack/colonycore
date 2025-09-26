@@ -6,8 +6,9 @@ import (
 	"strings"
 	"time"
 
-	"colonycore/internal/core"
+	"colonycore/pkg/datasetapi"
 	domain "colonycore/pkg/domain"
+	"colonycore/pkg/pluginapi"
 )
 
 // Plugin implements the frog reference module described in the RFC (stubbed for the PoC).
@@ -25,7 +26,7 @@ func (Plugin) Name() string { return "frog" }
 func (Plugin) Version() string { return "0.1.0" }
 
 // Register wires species-specific schema extensions and rules.
-func (Plugin) Register(registry *core.PluginRegistry) error {
+func (Plugin) Register(registry pluginapi.Registry) error {
 	registry.RegisterSchema("organism", map[string]any{
 		"$id":  "colonycore:frog:organism",
 		"type": "object",
@@ -49,17 +50,17 @@ func (Plugin) Register(registry *core.PluginRegistry) error {
 
 	registry.RegisterRule(frogHabitatRule{})
 
-	if err := registry.RegisterDatasetTemplate(core.DatasetTemplate{
+	if err := registry.RegisterDatasetTemplate(datasetapi.Template{
 		Key:         "frog_population_snapshot",
 		Version:     "0.1.0",
 		Title:       "Frog Population Snapshot",
 		Description: "Lists frog organisms with lifecycle, housing, and project context scoped to the caller's RBAC filters.",
-		Dialect:     core.DatasetDialectDSL,
+		Dialect:     datasetapi.DialectDSL,
 		Query: `REPORT frog_population_snapshot
 SELECT organism_id, organism_name, species, lifecycle_stage, project_id, protocol_id, housing_id, updated_at
 FROM organisms
 WHERE species ILIKE 'frog%'`,
-		Parameters: []core.DatasetParameter{
+		Parameters: []datasetapi.Parameter{
 			{
 				Name:        "stage",
 				Type:        "string",
@@ -86,7 +87,7 @@ WHERE species ILIKE 'frog%'`,
 				Default:     false,
 			},
 		},
-		Columns: []core.DatasetColumn{
+		Columns: []datasetapi.Column{
 			{Name: "organism_id", Type: "string", Description: "Primary identifier for the organism."},
 			{Name: "organism_name", Type: "string", Description: "Common name or accession for the organism."},
 			{Name: "species", Type: "string", Description: "Recorded species name."},
@@ -96,7 +97,7 @@ WHERE species ILIKE 'frog%'`,
 			{Name: "housing_id", Type: "string", Description: "Housing assignment identifier."},
 			{Name: "updated_at", Type: "timestamp", Unit: "iso8601", Description: "Timestamp of last organism update."},
 		},
-		Metadata: core.DatasetTemplateMetadata{
+		Metadata: datasetapi.Metadata{
 			Source:          "core.organisms",
 			Documentation:   "docs/rfc/0001-colonycore-base-module.md#63-uiapi-composition",
 			RefreshInterval: "PT15M",
@@ -106,12 +107,12 @@ WHERE species ILIKE 'frog%'`,
 				"classification": "operational",
 			},
 		},
-		OutputFormats: []core.DatasetFormat{
-			core.FormatJSON,
-			core.FormatCSV,
-			core.FormatParquet,
-			core.FormatHTML,
-			core.FormatPNG,
+		OutputFormats: []datasetapi.Format{
+			datasetapi.FormatJSON,
+			datasetapi.FormatCSV,
+			datasetapi.FormatParquet,
+			datasetapi.FormatHTML,
+			datasetapi.FormatPNG,
 		},
 		Binder: frogPopulationBinder,
 	}); err != nil {
@@ -153,7 +154,7 @@ func (frogHabitatRule) Evaluate(ctx context.Context, view domain.RuleView, chang
 	return result, nil
 }
 
-func frogPopulationBinder(env core.DatasetEnvironment) (core.DatasetRunner, error) {
+func frogPopulationBinder(env datasetapi.Environment) (datasetapi.Runner, error) {
 	if env.Store == nil {
 		return nil, fmt.Errorf("dataset environment missing store")
 	}
@@ -161,7 +162,7 @@ func frogPopulationBinder(env core.DatasetEnvironment) (core.DatasetRunner, erro
 	if now == nil {
 		now = func() time.Time { return time.Now().UTC() }
 	}
-	return func(ctx context.Context, req core.DatasetRunRequest) (core.DatasetRunResult, error) {
+	return func(ctx context.Context, req datasetapi.RunRequest) (datasetapi.RunResult, error) {
 		var rows []map[string]any
 		stageFilter, _ := req.Parameters["stage"].(string)
 		includeRetired, _ := req.Parameters["include_retired"].(bool)
@@ -170,7 +171,7 @@ func frogPopulationBinder(env core.DatasetEnvironment) (core.DatasetRunner, erro
 			t := ts
 			asOfTime = &t
 		}
-		err := env.Store.View(ctx, func(view core.TransactionView) error {
+		err := env.Store.View(ctx, func(view domain.TransactionView) error {
 			for _, organism := range view.ListOrganisms() {
 				species := strings.ToLower(organism.Species)
 				if !strings.Contains(species, "frog") {
@@ -210,7 +211,7 @@ func frogPopulationBinder(env core.DatasetEnvironment) (core.DatasetRunner, erro
 			return nil
 		})
 		if err != nil {
-			return core.DatasetRunResult{}, err
+			return datasetapi.RunResult{}, err
 		}
 		metadata := map[string]any{
 			"row_count": len(rows),
@@ -228,12 +229,12 @@ func frogPopulationBinder(env core.DatasetEnvironment) (core.DatasetRunner, erro
 		if asOfTime != nil {
 			metadata["as_of"] = asOfTime.UTC()
 		}
-		return core.DatasetRunResult{
+		return datasetapi.RunResult{
 			Schema:      req.Template.Columns,
 			Rows:        rows,
 			Metadata:    metadata,
 			GeneratedAt: now(),
-			Format:      core.FormatJSON,
+			Format:      datasetapi.FormatJSON,
 		}, nil
 	}, nil
 }

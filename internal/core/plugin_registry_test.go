@@ -4,6 +4,8 @@ import (
 	"context"
 	"testing"
 	"time"
+
+	"colonycore/pkg/datasetapi"
 )
 
 func TestPluginRegistryGuardsAndCopies(t *testing.T) {
@@ -41,24 +43,24 @@ func TestPluginRegistryGuardsAndCopies(t *testing.T) {
 		t.Fatalf("expected registry to return defensive copies")
 	}
 
-	template := DatasetTemplate{
+	template := datasetapi.Template{
 		Key:         "demo",
 		Version:     "1.0.0",
 		Title:       "Demo",
 		Description: "Demo dataset",
-		Dialect:     DatasetDialectSQL,
+		Dialect:     datasetapi.DialectSQL,
 		Query:       "SELECT 1",
-		Parameters: []DatasetParameter{{
+		Parameters: []datasetapi.Parameter{{
 			Name: "stage",
 			Type: "string",
 			Enum: []string{"adult"},
 		}},
-		Columns:       []DatasetColumn{{Name: "value", Type: "number", Unit: "count"}},
-		Metadata:      DatasetTemplateMetadata{Tags: []string{"demo"}, Annotations: map[string]string{"k": "v"}},
-		OutputFormats: []DatasetFormat{FormatJSON},
-		Binder: func(DatasetEnvironment) (DatasetRunner, error) {
-			return func(context.Context, DatasetRunRequest) (DatasetRunResult, error) {
-				return DatasetRunResult{Rows: []map[string]any{{"value": 1}}, GeneratedAt: time.Now().UTC()}, nil
+		Columns:       []datasetapi.Column{{Name: "value", Type: "number", Unit: "count"}},
+		Metadata:      datasetapi.Metadata{Tags: []string{"demo"}, Annotations: map[string]string{"k": "v"}},
+		OutputFormats: []datasetapi.Format{datasetapi.FormatJSON},
+		Binder: func(datasetapi.Environment) (datasetapi.Runner, error) {
+			return func(context.Context, datasetapi.RunRequest) (datasetapi.RunResult, error) {
+				return datasetapi.RunResult{Rows: []map[string]any{{"value": 1}}, GeneratedAt: time.Now().UTC(), Format: datasetapi.FormatJSON}, nil
 			}, nil
 		},
 	}

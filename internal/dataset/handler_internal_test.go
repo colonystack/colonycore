@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"colonycore/internal/core"
+	"colonycore/pkg/datasetapi"
 )
 
 func TestHandleTemplateMissingSegments(t *testing.T) {
@@ -23,19 +24,18 @@ func TestHandleTemplateMissingSegments(t *testing.T) {
 }
 
 func TestHandleTemplateMethodNotAllowedInternal(t *testing.T) {
-	template := core.DatasetTemplate{
-		Plugin:        "frog",
+	template := datasetapi.Template{
 		Key:           "demo",
 		Version:       "1.0.0",
 		Title:         "Demo",
 		Description:   "demo",
-		Dialect:       core.DatasetDialectSQL,
+		Dialect:       datasetapi.DialectSQL,
 		Query:         "SELECT 1",
-		Columns:       []core.DatasetColumn{{Name: "value", Type: "string"}},
-		OutputFormats: []core.DatasetFormat{core.FormatJSON},
-		Binder: func(core.DatasetEnvironment) (core.DatasetRunner, error) {
-			return func(context.Context, core.DatasetRunRequest) (core.DatasetRunResult, error) {
-				return core.DatasetRunResult{Rows: []map[string]any{{"value": "ok"}}}, nil
+		Columns:       []datasetapi.Column{{Name: "value", Type: "string"}},
+		OutputFormats: []datasetapi.Format{datasetapi.FormatJSON},
+		Binder: func(datasetapi.Environment) (datasetapi.Runner, error) {
+			return func(context.Context, datasetapi.RunRequest) (datasetapi.RunResult, error) {
+				return datasetapi.RunResult{Rows: []map[string]any{{"value": "ok"}}}, nil
 			}, nil
 		},
 	}
@@ -75,19 +75,18 @@ func TestHandleExportsInvalidPath(t *testing.T) {
 }
 
 func TestHandleRunRunnerError(t *testing.T) {
-	template := core.DatasetTemplate{
-		Plugin:        "frog",
+	template := datasetapi.Template{
 		Key:           "error",
 		Version:       "1.0.0",
 		Title:         "Error",
 		Description:   "demo",
-		Dialect:       core.DatasetDialectSQL,
+		Dialect:       datasetapi.DialectSQL,
 		Query:         "SELECT 1",
-		Columns:       []core.DatasetColumn{{Name: "value", Type: "string"}},
-		OutputFormats: []core.DatasetFormat{core.FormatJSON},
-		Binder: func(core.DatasetEnvironment) (core.DatasetRunner, error) {
-			return func(context.Context, core.DatasetRunRequest) (core.DatasetRunResult, error) {
-				return core.DatasetRunResult{}, fmt.Errorf("failure")
+		Columns:       []datasetapi.Column{{Name: "value", Type: "string"}},
+		OutputFormats: []datasetapi.Format{datasetapi.FormatJSON},
+		Binder: func(datasetapi.Environment) (datasetapi.Runner, error) {
+			return func(context.Context, datasetapi.RunRequest) (datasetapi.RunResult, error) {
+				return datasetapi.RunResult{}, fmt.Errorf("failure")
 			}, nil
 		},
 	}
@@ -110,19 +109,18 @@ func TestHandleRunRunnerError(t *testing.T) {
 }
 
 func TestHandleExportCreateWithPluginFields(t *testing.T) {
-	template := core.DatasetTemplate{
-		Plugin:        "frog",
+	template := datasetapi.Template{
 		Key:           "create",
 		Version:       "1.0.0",
 		Title:         "Create",
 		Description:   "demo",
-		Dialect:       core.DatasetDialectSQL,
+		Dialect:       datasetapi.DialectSQL,
 		Query:         "SELECT 1",
-		Columns:       []core.DatasetColumn{{Name: "value", Type: "string"}},
-		OutputFormats: []core.DatasetFormat{core.FormatJSON},
-		Binder: func(core.DatasetEnvironment) (core.DatasetRunner, error) {
-			return func(context.Context, core.DatasetRunRequest) (core.DatasetRunResult, error) {
-				return core.DatasetRunResult{Rows: []map[string]any{{"value": "ok"}}}, nil
+		Columns:       []datasetapi.Column{{Name: "value", Type: "string"}},
+		OutputFormats: []datasetapi.Format{datasetapi.FormatJSON},
+		Binder: func(datasetapi.Environment) (datasetapi.Runner, error) {
+			return func(context.Context, datasetapi.RunRequest) (datasetapi.RunResult, error) {
+				return datasetapi.RunResult{Rows: []map[string]any{{"value": "ok"}}}, nil
 			}, nil
 		},
 	}

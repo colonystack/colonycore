@@ -10,6 +10,8 @@ import (
 	"time"
 
 	"colonycore/internal/core"
+	"colonycore/pkg/datasetapi"
+	"colonycore/pkg/pluginapi"
 )
 
 type stringer struct{}
@@ -153,36 +155,35 @@ func (f failingStore) Delete(context.Context, string) (bool, error) { return fal
 func (f failingStore) List(context.Context, string) ([]ExportArtifact, error) { return nil, nil }
 
 type testDatasetPlugin struct {
-	dataset core.DatasetTemplate
+	dataset datasetapi.Template
 }
 
 func (p testDatasetPlugin) Name() string { return "test-dataset" }
 
 func (p testDatasetPlugin) Version() string { return "0.0.1" }
 
-func (p testDatasetPlugin) Register(registry *core.PluginRegistry) error {
+func (p testDatasetPlugin) Register(registry pluginapi.Registry) error {
 	return registry.RegisterDatasetTemplate(p.dataset)
 }
 
 func TestWorkerProcessParameterFailure(t *testing.T) {
-	template := core.DatasetTemplate{
-		Plugin:      "frog",
+	template := datasetapi.Template{
 		Key:         "fail",
 		Version:     "1.0.0",
 		Title:       "Fail",
 		Description: "missing params",
-		Dialect:     core.DatasetDialectSQL,
+		Dialect:     datasetapi.DialectSQL,
 		Query:       "SELECT 1",
-		Parameters: []core.DatasetParameter{{
+		Parameters: []datasetapi.Parameter{{
 			Name:     "required",
 			Type:     "string",
 			Required: true,
 		}},
-		Columns:       []core.DatasetColumn{{Name: "value", Type: "string"}},
-		OutputFormats: []core.DatasetFormat{core.FormatJSON},
-		Binder: func(core.DatasetEnvironment) (core.DatasetRunner, error) {
-			return func(context.Context, core.DatasetRunRequest) (core.DatasetRunResult, error) {
-				return core.DatasetRunResult{}, nil
+		Columns:       []datasetapi.Column{{Name: "value", Type: "string"}},
+		OutputFormats: []datasetapi.Format{datasetapi.FormatJSON},
+		Binder: func(datasetapi.Environment) (datasetapi.Runner, error) {
+			return func(context.Context, datasetapi.RunRequest) (datasetapi.RunResult, error) {
+				return datasetapi.RunResult{}, nil
 			}, nil
 		},
 	}
@@ -219,19 +220,18 @@ func TestWorkerProcessParameterFailure(t *testing.T) {
 }
 
 func TestWorkerProcessStoreFailure(t *testing.T) {
-	template := core.DatasetTemplate{
-		Plugin:        "frog",
+	template := datasetapi.Template{
 		Key:           "store",
 		Version:       "1.0.0",
 		Title:         "Store",
 		Description:   "store failure",
-		Dialect:       core.DatasetDialectSQL,
+		Dialect:       datasetapi.DialectSQL,
 		Query:         "SELECT 1",
-		Columns:       []core.DatasetColumn{{Name: "value", Type: "string"}},
-		OutputFormats: []core.DatasetFormat{core.FormatJSON, core.FormatCSV},
-		Binder: func(core.DatasetEnvironment) (core.DatasetRunner, error) {
-			return func(context.Context, core.DatasetRunRequest) (core.DatasetRunResult, error) {
-				return core.DatasetRunResult{
+		Columns:       []datasetapi.Column{{Name: "value", Type: "string"}},
+		OutputFormats: []datasetapi.Format{datasetapi.FormatJSON, datasetapi.FormatCSV},
+		Binder: func(datasetapi.Environment) (datasetapi.Runner, error) {
+			return func(context.Context, datasetapi.RunRequest) (datasetapi.RunResult, error) {
+				return datasetapi.RunResult{
 					Rows: []map[string]any{{"value": "ok"}},
 				}, nil
 			}, nil
@@ -271,19 +271,18 @@ func TestWorkerProcessStoreFailure(t *testing.T) {
 }
 
 func TestWorkerProcessSuccessMultipleFormats(t *testing.T) {
-	template := core.DatasetTemplate{
-		Plugin:        "frog",
+	template := datasetapi.Template{
 		Key:           "success",
 		Version:       "1.0.0",
 		Title:         "Success",
 		Description:   "multi format",
-		Dialect:       core.DatasetDialectSQL,
+		Dialect:       datasetapi.DialectSQL,
 		Query:         "SELECT 1",
-		Columns:       []core.DatasetColumn{{Name: "value", Type: "string"}},
-		OutputFormats: []core.DatasetFormat{core.FormatJSON, core.FormatCSV, core.FormatHTML},
-		Binder: func(core.DatasetEnvironment) (core.DatasetRunner, error) {
-			return func(context.Context, core.DatasetRunRequest) (core.DatasetRunResult, error) {
-				return core.DatasetRunResult{
+		Columns:       []datasetapi.Column{{Name: "value", Type: "string"}},
+		OutputFormats: []datasetapi.Format{datasetapi.FormatJSON, datasetapi.FormatCSV, datasetapi.FormatHTML},
+		Binder: func(datasetapi.Environment) (datasetapi.Runner, error) {
+			return func(context.Context, datasetapi.RunRequest) (datasetapi.RunResult, error) {
+				return datasetapi.RunResult{
 					Rows: []map[string]any{{"value": "ok"}},
 				}, nil
 			}, nil
@@ -434,19 +433,18 @@ func (s staticCatalog) ResolveDatasetTemplate(slug string) (core.DatasetTemplate
 }
 
 func TestWorkerEnqueueQueueFull(t *testing.T) {
-	templateDef := core.DatasetTemplate{
-		Plugin:        "frog",
+	templateDef := datasetapi.Template{
 		Key:           "queue",
 		Version:       "1.0.0",
 		Title:         "Queue",
 		Description:   "queue fill",
-		Dialect:       core.DatasetDialectSQL,
+		Dialect:       datasetapi.DialectSQL,
 		Query:         "SELECT 1",
-		Columns:       []core.DatasetColumn{{Name: "value", Type: "string"}},
-		OutputFormats: []core.DatasetFormat{core.FormatJSON, core.FormatCSV},
-		Binder: func(core.DatasetEnvironment) (core.DatasetRunner, error) {
-			return func(context.Context, core.DatasetRunRequest) (core.DatasetRunResult, error) {
-				return core.DatasetRunResult{Rows: []map[string]any{{"value": "ok"}}}, nil
+		Columns:       []datasetapi.Column{{Name: "value", Type: "string"}},
+		OutputFormats: []datasetapi.Format{datasetapi.FormatJSON, datasetapi.FormatCSV},
+		Binder: func(datasetapi.Environment) (datasetapi.Runner, error) {
+			return func(context.Context, datasetapi.RunRequest) (datasetapi.RunResult, error) {
+				return datasetapi.RunResult{Rows: []map[string]any{{"value": "ok"}}}, nil
 			}, nil
 		},
 	}
@@ -472,19 +470,18 @@ func TestWorkerEnqueueQueueFull(t *testing.T) {
 }
 
 func TestWorkerProcessSuccessWithoutStore(t *testing.T) {
-	templateDef := core.DatasetTemplate{
-		Plugin:        "frog",
+	templateDef := datasetapi.Template{
 		Key:           "nostore",
 		Version:       "1.0.0",
 		Title:         "No Store",
 		Description:   "no object store",
-		Dialect:       core.DatasetDialectSQL,
+		Dialect:       datasetapi.DialectSQL,
 		Query:         "SELECT 1",
-		Columns:       []core.DatasetColumn{{Name: "value", Type: "string"}},
-		OutputFormats: []core.DatasetFormat{core.FormatJSON},
-		Binder: func(core.DatasetEnvironment) (core.DatasetRunner, error) {
-			return func(context.Context, core.DatasetRunRequest) (core.DatasetRunResult, error) {
-				return core.DatasetRunResult{Rows: []map[string]any{{"value": "ok"}}}, nil
+		Columns:       []datasetapi.Column{{Name: "value", Type: "string"}},
+		OutputFormats: []datasetapi.Format{datasetapi.FormatJSON},
+		Binder: func(datasetapi.Environment) (datasetapi.Runner, error) {
+			return func(context.Context, datasetapi.RunRequest) (datasetapi.RunResult, error) {
+				return datasetapi.RunResult{Rows: []map[string]any{{"value": "ok"}}}, nil
 			}, nil
 		},
 	}
@@ -537,19 +534,18 @@ func (zeroStore) Delete(context.Context, string) (bool, error) { return false, n
 func (zeroStore) List(context.Context, string) ([]ExportArtifact, error) { return nil, nil }
 
 func TestWorkerProcessStoreNormalization(t *testing.T) {
-	templateDef := core.DatasetTemplate{
-		Plugin:        "frog",
+	templateDef := datasetapi.Template{
 		Key:           "normalize",
 		Version:       "1.0.0",
 		Title:         "Normalize",
 		Description:   "normalize stored artifacts",
-		Dialect:       core.DatasetDialectSQL,
+		Dialect:       datasetapi.DialectSQL,
 		Query:         "SELECT 1",
-		Columns:       []core.DatasetColumn{{Name: "value", Type: "string"}},
-		OutputFormats: []core.DatasetFormat{core.FormatJSON},
-		Binder: func(core.DatasetEnvironment) (core.DatasetRunner, error) {
-			return func(context.Context, core.DatasetRunRequest) (core.DatasetRunResult, error) {
-				return core.DatasetRunResult{Rows: []map[string]any{{"value": "ok"}}}, nil
+		Columns:       []datasetapi.Column{{Name: "value", Type: "string"}},
+		OutputFormats: []datasetapi.Format{datasetapi.FormatJSON},
+		Binder: func(datasetapi.Environment) (datasetapi.Runner, error) {
+			return func(context.Context, datasetapi.RunRequest) (datasetapi.RunResult, error) {
+				return datasetapi.RunResult{Rows: []map[string]any{{"value": "ok"}}}, nil
 			}, nil
 		},
 	}
@@ -605,19 +601,18 @@ func TestWorkerEnqueueCatalogNil(t *testing.T) {
 }
 
 func TestWorkerEnqueueDeduplicatesFormats(t *testing.T) {
-	templateDef := core.DatasetTemplate{
-		Plugin:        "frog",
+	templateDef := datasetapi.Template{
 		Key:           "dedupe",
 		Version:       "1.0.0",
 		Title:         "Dedupe",
 		Description:   "dedupe formats",
-		Dialect:       core.DatasetDialectSQL,
+		Dialect:       datasetapi.DialectSQL,
 		Query:         "SELECT 1",
-		Columns:       []core.DatasetColumn{{Name: "value", Type: "string"}},
-		OutputFormats: []core.DatasetFormat{core.FormatJSON, core.FormatCSV},
-		Binder: func(core.DatasetEnvironment) (core.DatasetRunner, error) {
-			return func(context.Context, core.DatasetRunRequest) (core.DatasetRunResult, error) {
-				return core.DatasetRunResult{Rows: []map[string]any{{"value": "ok"}}}, nil
+		Columns:       []datasetapi.Column{{Name: "value", Type: "string"}},
+		OutputFormats: []datasetapi.Format{datasetapi.FormatJSON, datasetapi.FormatCSV},
+		Binder: func(datasetapi.Environment) (datasetapi.Runner, error) {
+			return func(context.Context, datasetapi.RunRequest) (datasetapi.RunResult, error) {
+				return datasetapi.RunResult{Rows: []map[string]any{{"value": "ok"}}}, nil
 			}, nil
 		},
 	}
@@ -644,21 +639,20 @@ func TestWorkerEnqueueDeduplicatesFormats(t *testing.T) {
 func TestWorkerStopContextDeadline(t *testing.T) {
 	block := make(chan struct{})
 	started := make(chan struct{})
-	template := core.DatasetTemplate{
-		Plugin:        "frog",
+	template := datasetapi.Template{
 		Key:           "stop",
 		Version:       "1.0.0",
 		Title:         "Stop",
 		Description:   "blocking runner",
-		Dialect:       core.DatasetDialectSQL,
+		Dialect:       datasetapi.DialectSQL,
 		Query:         "SELECT 1",
-		Columns:       []core.DatasetColumn{{Name: "value", Type: "string"}},
-		OutputFormats: []core.DatasetFormat{core.FormatJSON},
-		Binder: func(core.DatasetEnvironment) (core.DatasetRunner, error) {
-			return func(context.Context, core.DatasetRunRequest) (core.DatasetRunResult, error) {
+		Columns:       []datasetapi.Column{{Name: "value", Type: "string"}},
+		OutputFormats: []datasetapi.Format{datasetapi.FormatJSON},
+		Binder: func(datasetapi.Environment) (datasetapi.Runner, error) {
+			return func(context.Context, datasetapi.RunRequest) (datasetapi.RunResult, error) {
 				close(started)
 				<-block
-				return core.DatasetRunResult{Rows: []map[string]any{{"value": "ok"}}}, nil
+				return datasetapi.RunResult{Rows: []map[string]any{{"value": "ok"}}}, nil
 			}, nil
 		},
 	}
