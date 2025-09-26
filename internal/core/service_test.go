@@ -305,3 +305,130 @@ func TestServiceAssignInvalidReferences(t *testing.T) {
 		t.Fatalf("unexpected protocol error: %v", err)
 	}
 }
+
+func TestServiceClockAndLoggerOptions(t *testing.T) {
+	engine := core.NewRulesEngine()
+	store := clocklessStore{inner: core.NewMemoryStore(engine)}
+	freeze := time.Date(2024, 4, 20, 12, 34, 56, 0, time.UTC)
+	logger := &recordingLogger{}
+	svc := core.NewService(store, core.WithClock(core.ClockFunc(func() time.Time { return freeze })), core.WithLogger(logger))
+
+	if _, err := svc.InstallPlugin(testClockPlugin{}); err != nil {
+		t.Fatalf("install test plugin: %v", err)
+	}
+	templates := svc.DatasetTemplates()
+	if len(templates) != 1 {
+		t.Fatalf("expected one dataset template, got %d", len(templates))
+	}
+	template, ok := svc.ResolveDatasetTemplate(templates[0].Slug)
+	if !ok {
+		t.Fatalf("resolve dataset template: %v", templates[0])
+	}
+	result, errs, err := template.Run(context.Background(), nil, core.DatasetScope{}, core.FormatJSON)
+	if err != nil {
+		t.Fatalf("run dataset: %v", err)
+	}
+	if len(errs) != 0 {
+		t.Fatalf("unexpected validation errors: %+v", errs)
+	}
+	if !result.GeneratedAt.Equal(freeze) {
+		t.Fatalf("expected generated at %v, got %v", freeze, result.GeneratedAt)
+	}
+	if !logger.infoCalled {
+		t.Fatalf("expected logger info to be called")
+	}
+}
+
+type recordingLogger struct {
+	infoCalled bool
+}
+
+func (l *recordingLogger) Debug(string, ...any) {}
+func (l *recordingLogger) Info(string, ...any)  { l.infoCalled = true }
+func (l *recordingLogger) Warn(string, ...any)  {}
+func (l *recordingLogger) Error(string, ...any) {}
+
+type clocklessStore struct {
+	inner *core.MemoryStore
+}
+
+func (s clocklessStore) RunInTransaction(ctx context.Context, fn func(core.Transaction) error) (core.Result, error) {
+	return s.inner.RunInTransaction(ctx, fn)
+}
+
+func (s clocklessStore) View(ctx context.Context, fn func(core.TransactionView) error) error {
+	return s.inner.View(ctx, fn)
+}
+
+func (s clocklessStore) GetOrganism(id string) (core.Organism, bool) {
+	return s.inner.GetOrganism(id)
+}
+
+func (s clocklessStore) ListOrganisms() []core.Organism {
+	return s.inner.ListOrganisms()
+}
+
+func (s clocklessStore) GetHousingUnit(id string) (core.HousingUnit, bool) {
+	return s.inner.GetHousingUnit(id)
+}
+
+func (s clocklessStore) ListHousingUnits() []core.HousingUnit {
+	return s.inner.ListHousingUnits()
+}
+
+func (s clocklessStore) ListCohorts() []core.Cohort {
+	return s.inner.ListCohorts()
+}
+
+func (s clocklessStore) ListProtocols() []core.Protocol {
+	return s.inner.ListProtocols()
+}
+
+func (s clocklessStore) ListProjects() []core.Project {
+	return s.inner.ListProjects()
+}
+
+func (s clocklessStore) ListBreedingUnits() []core.BreedingUnit {
+	return s.inner.ListBreedingUnits()
+}
+
+func (s clocklessStore) ListProcedures() []core.Procedure {
+	return s.inner.ListProcedures()
+}
+
+func (s clocklessStore) RulesEngine() *core.RulesEngine {
+	return s.inner.RulesEngine()
+}
+
+type testClockPlugin struct{}
+
+func (testClockPlugin) Name() string    { return "clock" }
+func (testClockPlugin) Version() string { return "v1" }
+
+func (testClockPlugin) Register(registry *core.PluginRegistry) error {
+	return registry.RegisterDatasetTemplate(core.DatasetTemplate{
+		Key:           "now",
+		Version:       "v1",
+		Title:         "Now",
+		Description:   "returns the current time",
+		Dialect:       core.DatasetDialectSQL,
+		Query:         "SELECT now()",
+		OutputFormats: []core.DatasetFormat{core.FormatJSON},
+		Columns:       []core.DatasetColumn{{Name: "now", Type: "timestamp"}},
+		Binder: func(env core.DatasetEnvironment) (core.DatasetRunner, error) {
+			return func(ctx context.Context, req core.DatasetRunRequest) (core.DatasetRunResult, error) {
+				now := env.Now
+				if now == nil {
+					now = func() time.Time { return time.Now().UTC() }
+				}
+				timestamp := now().UTC()
+				return core.DatasetRunResult{
+					Schema:      req.Template.Columns,
+					Rows:        []map[string]any{{"now": timestamp}},
+					GeneratedAt: timestamp,
+					Format:      core.FormatJSON,
+				}, nil
+			}, nil
+		},
+	})
+}
