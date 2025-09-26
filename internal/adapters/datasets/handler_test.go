@@ -1,4 +1,4 @@
-package dataset_test
+package datasets_test
 
 import (
 	"bytes"
@@ -11,8 +11,8 @@ import (
 	"testing"
 	"time"
 
+	"colonycore/internal/adapters/datasets"
 	"colonycore/internal/core"
-	"colonycore/internal/dataset"
 	domain "colonycore/pkg/domain"
 	"colonycore/plugins/frog"
 )
@@ -36,14 +36,14 @@ type runResponse struct {
 	} `json:"result"`
 }
 
-func setupHandler(t *testing.T) (*core.Service, *dataset.Handler, core.DatasetTemplateDescriptor) {
+func setupHandler(t *testing.T) (*core.Service, *datasets.Handler, core.DatasetTemplateDescriptor) {
 	t.Helper()
 	svc := core.NewInMemoryService(core.NewDefaultRulesEngine())
 	meta, err := svc.InstallPlugin(frog.New())
 	if err != nil {
 		t.Fatalf("install plugin: %v", err)
 	}
-	handler := dataset.NewHandler(svc)
+	handler := datasets.NewHandler(svc)
 	return svc, handler, meta.Datasets[0]
 }
 
@@ -183,9 +183,9 @@ func TestHandlerRunCSV(t *testing.T) {
 
 func TestHandlerExportLifecycle(t *testing.T) {
 	svc, handler, descriptor := setupHandler(t)
-	store := dataset.NewMemoryObjectStore()
-	audit := &dataset.MemoryAuditLog{}
-	worker := dataset.NewWorker(svc, store, audit)
+	store := datasets.NewMemoryObjectStore()
+	audit := &datasets.MemoryAuditLog{}
+	worker := datasets.NewWorker(svc, store, audit)
 	handler.Exports = worker
 	worker.Start()
 	t.Cleanup(func() {
@@ -212,7 +212,7 @@ func TestHandlerExportLifecycle(t *testing.T) {
 	}
 
 	var created struct {
-		Export dataset.ExportRecord `json:"export"`
+		Export datasets.ExportRecord `json:"export"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&created); err != nil {
 		t.Fatalf("decode export create: %v", err)
@@ -224,10 +224,10 @@ func TestHandlerExportLifecycle(t *testing.T) {
 	deadline := time.Now().Add(2 * time.Second)
 	for {
 		record, _ := handler.Exports.GetExport(created.Export.ID)
-		if record.Status == dataset.ExportStatusSucceeded {
+		if record.Status == datasets.ExportStatusSucceeded {
 			break
 		}
-		if record.Status == dataset.ExportStatusFailed {
+		if record.Status == datasets.ExportStatusFailed {
 			t.Fatalf("export failed: %s", record.Error)
 		}
 		if time.Now().After(deadline) {
@@ -283,7 +283,7 @@ func TestHandlerValidateInvalidJSON(t *testing.T) {
 
 func TestHandlerExportCreateMissingTemplate(t *testing.T) {
 	_, handler, _ := setupHandler(t)
-	handler.Exports = dataset.NewWorker(nil, nil, nil)
+	handler.Exports = datasets.NewWorker(nil, nil, nil)
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/datasets/exports", bytes.NewBufferString(`{}`))
 	resp := httptest.NewRecorder()
 	handler.ServeHTTP(resp, req)
@@ -294,7 +294,7 @@ func TestHandlerExportCreateMissingTemplate(t *testing.T) {
 
 func TestHandlerExportGetNotFound(t *testing.T) {
 	_, handler, _ := setupHandler(t)
-	handler.Exports = dataset.NewWorker(nil, nil, nil)
+	handler.Exports = datasets.NewWorker(nil, nil, nil)
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/datasets/exports/missing", nil)
 	resp := httptest.NewRecorder()
 	handler.ServeHTTP(resp, req)
@@ -316,7 +316,7 @@ func TestHandlerTemplateMethodNotAllowed(t *testing.T) {
 
 func TestHandlerExportsMethodNotAllowed(t *testing.T) {
 	_, handler, _ := setupHandler(t)
-	handler.Exports = dataset.NewWorker(nil, nil, nil)
+	handler.Exports = datasets.NewWorker(nil, nil, nil)
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/datasets/exports", nil)
 	resp := httptest.NewRecorder()
 	handler.ServeHTTP(resp, req)
@@ -338,7 +338,7 @@ func TestHandlerRunParameterErrors(t *testing.T) {
 
 func TestHandlerExportCreateUnsupportedFormat(t *testing.T) {
 	_, handler, descriptor := setupHandler(t)
-	handler.Exports = dataset.NewWorker(nil, nil, nil)
+	handler.Exports = datasets.NewWorker(nil, nil, nil)
 	payload := fmt.Sprintf(`{"template":{"plugin":"%s","key":"%s","version":"%s"},"formats":["xml"]}`, descriptor.Plugin, descriptor.Key, descriptor.Version)
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/datasets/exports", bytes.NewBufferString(payload))
 	resp := httptest.NewRecorder()
@@ -360,7 +360,7 @@ func TestHandlerServeHTTPUnknownPath(t *testing.T) {
 
 func TestHandlerExportsPathMethodNotAllowed(t *testing.T) {
 	_, handler, _ := setupHandler(t)
-	handler.Exports = dataset.NewWorker(nil, nil, nil)
+	handler.Exports = datasets.NewWorker(nil, nil, nil)
 	req := httptest.NewRequest(http.MethodPut, "/api/v1/datasets/exports/identifier", bytes.NewBufferString(`{}`))
 	resp := httptest.NewRecorder()
 	handler.ServeHTTP(resp, req)
