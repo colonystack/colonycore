@@ -1,12 +1,12 @@
-package dataset_test
+package datasets_test
 
 import (
 	"context"
 	"testing"
 	"time"
 
+	"colonycore/internal/adapters/datasets"
 	"colonycore/internal/core"
-	"colonycore/internal/dataset"
 	domain "colonycore/pkg/domain"
 	"colonycore/plugins/frog"
 )
@@ -19,9 +19,9 @@ func TestWorkerProcessesExport(t *testing.T) {
 	}
 	descriptor := meta.Datasets[0]
 
-	store := dataset.NewMemoryObjectStore()
-	audit := &dataset.MemoryAuditLog{}
-	worker := dataset.NewWorker(svc, store, audit)
+	store := datasets.NewMemoryObjectStore()
+	audit := &datasets.MemoryAuditLog{}
+	worker := datasets.NewWorker(svc, store, audit)
 	worker.Start()
 	t.Cleanup(func() {
 		_ = worker.Stop(context.Background())
@@ -37,7 +37,7 @@ func TestWorkerProcessesExport(t *testing.T) {
 		t.Fatalf("create organism: %v", err)
 	}
 
-	record, err := worker.EnqueueExport(ctx, dataset.ExportInput{
+	record, err := worker.EnqueueExport(ctx, datasets.ExportInput{
 		TemplateSlug: descriptor.Slug,
 		Parameters:   map[string]any{"include_retired": true},
 		Formats:      []core.DatasetFormat{core.FormatJSON},
@@ -47,20 +47,20 @@ func TestWorkerProcessesExport(t *testing.T) {
 	if err != nil {
 		t.Fatalf("enqueue export: %v", err)
 	}
-	if record.Status != dataset.ExportStatusQueued {
+	if record.Status != datasets.ExportStatusQueued {
 		t.Fatalf("expected queued status, got %s", record.Status)
 	}
 
 	deadline := time.Now().Add(2 * time.Second)
 	for {
 		current, _ := worker.GetExport(record.ID)
-		if current.Status == dataset.ExportStatusSucceeded {
+		if current.Status == datasets.ExportStatusSucceeded {
 			if len(current.Artifacts) == 0 {
 				t.Fatalf("expected artifacts on completion")
 			}
 			break
 		}
-		if current.Status == dataset.ExportStatusFailed {
+		if current.Status == datasets.ExportStatusFailed {
 			t.Fatalf("export failed: %s", current.Error)
 		}
 		if time.Now().After(deadline) {
@@ -85,10 +85,10 @@ func TestWorkerRejectsUnsupportedFormat(t *testing.T) {
 	}
 	descriptor := meta.Datasets[0]
 
-	worker := dataset.NewWorker(svc, dataset.NewMemoryObjectStore(), &dataset.MemoryAuditLog{})
+	worker := datasets.NewWorker(svc, datasets.NewMemoryObjectStore(), &datasets.MemoryAuditLog{})
 	ctx := context.Background()
 
-	_, err = worker.EnqueueExport(ctx, dataset.ExportInput{
+	_, err = worker.EnqueueExport(ctx, datasets.ExportInput{
 		TemplateSlug: descriptor.Slug,
 		Formats:      []core.DatasetFormat{core.DatasetFormat("xml")},
 	})

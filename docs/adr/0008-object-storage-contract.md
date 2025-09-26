@@ -4,7 +4,7 @@
 Accepted (proposed in v0.1 timeframe to unblock dataset export lifecycle and future plugin artifacts)
 
 ## Context
-Dataset exports (see `internal/dataset/exporter.go`) currently define an `ObjectStore` interface with only a `Put` method. This limits testability, observability, and future integration with real object storage backends (e.g., S3, GCS, MinIO) or on-prem content-addressable stores. Additionally, downstream needs have emerged:
+Dataset exports (see `internal/adapters/datasets/exporter.go`) currently define an `ObjectStore` interface with only a `Put` method. This limits testability, observability, and future integration with real object storage backends (e.g., S3, GCS, MinIO) or on-prem content-addressable stores. Additionally, downstream needs have emerged:
 
 - Retrieve artifact payloads or signed URLs after creation (UI & API consumption)
 - Enumerate artifacts for a given export, template, scope, or retention policy sweep
@@ -57,7 +57,7 @@ Key properties:
 3. Add a generic `Do(operation string, args ...any)` extension point. Rejected: opaque, weakly typed.
 
 ## Implications
-- `internal/dataset/exporter.go` will be updated to consume only `Put` for now, but downstream services can start using `Get`/`List` for additional API endpoints (future story: expose artifact download endpoint).
+- `internal/adapters/datasets/exporter.go` will be updated to consume only `Put` for now, but downstream services can start using `Get`/`List` for additional API endpoints (future story: expose artifact download endpoint).
 - `MemoryObjectStore` must store payload bytes internally to support `Get`.
 - A follow-up ADR will be needed for retention & lifecycle policies (time-to-live, size quotas, encryption, region replication).
 
@@ -81,5 +81,5 @@ Key properties:
 
 ## References
 - Existing snapshot persistence ADR: `0007-storage-baseline.md`
-- Dataset export worker: `internal/dataset/exporter.go`
+- Dataset export worker: `internal/adapters/datasets/exporter.go`
 - Inspired by simplified subsets of AWS S3, GCS, MinIO client patterns.
