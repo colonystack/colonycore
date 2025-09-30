@@ -1,6 +1,7 @@
 package fs
 
 import (
+	"colonycore/internal/blob/core"
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
@@ -15,8 +16,6 @@ import (
 	"sort"
 	"strings"
 	"time"
-
-	"colonycore/internal/blob/core"
 )
 
 // Store implements core.Store using the local filesystem.
@@ -66,7 +65,7 @@ func (s *Store) pathFor(key string) (dataPath, metaPath string, err error) {
 	}
 	dataPath = filepath.Join(s.root, k)
 	metaPath = dataPath + ".meta"
-	return
+	return dataPath, metaPath, err
 }
 
 type metaFile struct {

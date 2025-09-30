@@ -1,10 +1,9 @@
 package datasetapi
 
 import (
+	"colonycore/pkg/domain"
 	"context"
 	"time"
-
-	"colonycore/pkg/domain"
 )
 
 type Dialect string

@@ -1,6 +1,7 @@
 package s3
 
 import (
+	"colonycore/internal/blob/core"
 	"context"
 	"fmt"
 	"io"
@@ -13,8 +14,6 @@ import (
 	aws "github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
-
-	"colonycore/internal/blob/core"
 )
 
 // Store implements core.Store using an S3-compatible backend (AWS S3 or MinIO).

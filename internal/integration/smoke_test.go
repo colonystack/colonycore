@@ -2,12 +2,12 @@ package integration
 
 import (
 	"bytes"
+	"colonycore/internal/blob"
 	"context"
 	"os"
 	"path/filepath"
 	"testing"
 
-	"colonycore/internal/blob"
 	core "colonycore/internal/core"
 	domain "colonycore/pkg/domain"
 )

@@ -1,14 +1,14 @@
 package frog
 
 import (
+	"colonycore/pkg/datasetapi"
+	"colonycore/pkg/pluginapi"
 	"context"
 	"fmt"
 	"strings"
 	"time"
 
-	"colonycore/pkg/datasetapi"
 	domain "colonycore/pkg/domain"
-	"colonycore/pkg/pluginapi"
 )
 
 // Plugin implements the frog reference module described in the RFC (stubbed for the PoC).

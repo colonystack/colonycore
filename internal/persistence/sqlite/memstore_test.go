@@ -1,12 +1,11 @@
 package sqlite
 
 import (
+	"colonycore/pkg/domain"
 	"context"
 	"fmt"
 	"testing"
 	"time"
-
-	"colonycore/pkg/domain"
 )
 
 func TestMemStoreRunInTransactionAndSnapshots(t *testing.T) {

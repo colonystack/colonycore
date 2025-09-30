@@ -2,11 +2,10 @@ package memory
 
 import (
 	"bytes"
+	"colonycore/internal/blob/core"
 	"context"
 	"fmt"
 	"testing"
-
-	"colonycore/internal/blob/core"
 )
 
 func TestStore_MissingHeadGet(t *testing.T) {

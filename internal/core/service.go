@@ -1,6 +1,7 @@
 package core
 
 import (
+	"colonycore/pkg/pluginapi"
 	"context"
 	"fmt"
 	"sort"
@@ -276,7 +277,7 @@ func (e ErrNotFound) Error() string {
 }
 
 // InstallPlugin registers a plugin, wiring its rules into the active engine.
-func (s *Service) InstallPlugin(plugin Plugin) (PluginMetadata, error) {
+func (s *Service) InstallPlugin(plugin pluginapi.Plugin) (PluginMetadata, error) {
 	if plugin == nil {
 		return PluginMetadata{}, fmt.Errorf("plugin cannot be nil")
 	}

@@ -1,13 +1,12 @@
 package memory_test
 
 import (
+	"colonycore/internal/infra/persistence/memory"
+	"colonycore/pkg/domain"
 	"context"
 	"fmt"
 	"testing"
 	"time"
-
-	"colonycore/internal/infra/persistence/memory"
-	"colonycore/pkg/domain"
 )
 
 func TestMemoryStoreCRUDAndQueries(t *testing.T) {

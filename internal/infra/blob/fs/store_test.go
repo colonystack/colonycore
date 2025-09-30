@@ -2,6 +2,7 @@ package fs
 
 import (
 	"bytes"
+	"colonycore/internal/blob/core"
 	"context"
 	"errors"
 	"io"
@@ -9,8 +10,6 @@ import (
 	"path/filepath"
 	"strconv"
 	"testing"
-
-	"colonycore/internal/blob/core"
 )
 
 func newTempStore(t *testing.T) *Store {
