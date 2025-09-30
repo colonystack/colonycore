@@ -18,7 +18,7 @@ import (
 
 // NewMockForTests returns an *Store backed by an in-memory fake HTTP transport.
 // Only a subset of S3 operations required by the blob.Store interface are implemented.
-func NewMockForTests() *Store { //nolint:revive
+func NewMockForTests() *Store {
 	rt := &mockRoundTripperLite{state: make(map[string]mockObj)}
 	cfg, _ := config.LoadDefaultConfig(context.Background(),
 		config.WithRegion("us-east-1"),
@@ -67,19 +67,19 @@ func (m *mockRoundTripperLite) RoundTrip(req *http.Request) (*http.Response, err
 			b.WriteString("</Size><LastModified>2024-01-01T00:00:00Z</LastModified></Contents>")
 		}
 		b.WriteString("</ListBucketResult>")
-		return &http.Response{StatusCode: 200, Body: io.NopCloser(strings.NewReader(b.String())), Header: http.Header{"Content-Type": {"application/xml"}}}, nil
+		return &http.Response{StatusCode: http.StatusOK, Body: io.NopCloser(strings.NewReader(b.String())), Header: http.Header{"Content-Type": {"application/xml"}}}, nil
 	}
 	switch req.Method {
 	case http.MethodHead:
 		if st, ok := m.state[key]; ok {
-			return &http.Response{StatusCode: 200, Body: io.NopCloser(bytes.NewReader(nil)), Header: http.Header{
+			return &http.Response{StatusCode: http.StatusOK, Body: io.NopCloser(bytes.NewReader(nil)), Header: http.Header{
 				"Content-Length": {fmt.Sprintf("%d", len(st.body))},
 				"Content-Type":   {st.contentType},
 				"ETag":           {"\"etag123\""},
 				"Last-Modified":  {time.Now().UTC().Format(http.TimeFormat)},
 			}}, nil
 		}
-		return &http.Response{StatusCode: 404, Body: io.NopCloser(bytes.NewReader(nil)), Header: http.Header{}}, nil
+		return &http.Response{StatusCode: http.StatusNotFound, Body: io.NopCloser(bytes.NewReader(nil)), Header: http.Header{}}, nil
 	case http.MethodPut:
 		body, _ := io.ReadAll(req.Body)
 		if dec, ok := decodeChunkedLite(body); ok { // handle aws-chunked encoding
@@ -88,22 +88,22 @@ func (m *mockRoundTripperLite) RoundTrip(req *http.Request) (*http.Response, err
 		if _, exists := m.state[key]; !exists {
 			m.state[key] = mockObj{body: body, contentType: req.Header.Get("Content-Type")}
 		}
-		return &http.Response{StatusCode: 200, Body: io.NopCloser(bytes.NewReader(nil)), Header: http.Header{"ETag": {"\"etag\""}}}, nil
+		return &http.Response{StatusCode: http.StatusOK, Body: io.NopCloser(bytes.NewReader(nil)), Header: http.Header{"ETag": {"\"etag\""}}}, nil
 	case http.MethodGet:
 		if st, ok := m.state[key]; ok {
-			return &http.Response{StatusCode: 200, Body: io.NopCloser(bytes.NewReader(st.body)), Header: http.Header{
+			return &http.Response{StatusCode: http.StatusOK, Body: io.NopCloser(bytes.NewReader(st.body)), Header: http.Header{
 				"Content-Length": {fmt.Sprintf("%d", len(st.body))},
 				"Content-Type":   {st.contentType},
 				"Last-Modified":  {time.Now().UTC().Format(http.TimeFormat)},
 				"ETag":           {"\"etag\""},
 			}}, nil
 		}
-		return &http.Response{StatusCode: 404, Body: io.NopCloser(bytes.NewReader(nil)), Header: http.Header{}}, nil
+		return &http.Response{StatusCode: http.StatusNotFound, Body: io.NopCloser(bytes.NewReader(nil)), Header: http.Header{}}, nil
 	case http.MethodDelete:
 		delete(m.state, key)
-		return &http.Response{StatusCode: 204, Body: io.NopCloser(bytes.NewReader(nil)), Header: http.Header{}}, nil
+		return &http.Response{StatusCode: http.StatusNoContent, Body: io.NopCloser(bytes.NewReader(nil)), Header: http.Header{}}, nil
 	}
-	return &http.Response{StatusCode: 501, Body: io.NopCloser(bytes.NewReader(nil)), Header: http.Header{}}, nil
+	return &http.Response{StatusCode: http.StatusNotImplemented, Body: io.NopCloser(bytes.NewReader(nil)), Header: http.Header{}}, nil
 }
 
 // decodeChunkedLite decodes a minimal single-chunk aws-chunked style payload: <hex>\r\n<body>\r\n0\r\n...

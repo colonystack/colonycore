@@ -2,6 +2,7 @@ package s3
 
 import (
 	"bytes"
+	"colonycore/internal/blob/core"
 	"context"
 	"fmt"
 	"io"
@@ -17,8 +18,6 @@ import (
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	awsS3 "github.com/aws/aws-sdk-go-v2/service/s3"
-
-	"colonycore/internal/blob/core"
 )
 
 // mockRoundTripper provides a tiny fake S3 subset sufficient to exercise the adapter without network access.
@@ -72,19 +71,19 @@ func (m *mockRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) 
 			}
 		}
 		b.WriteString("</ListBucketResult>")
-		return &http.Response{StatusCode: 200, Body: io.NopCloser(strings.NewReader(b.String())), Header: http.Header{"Content-Type": {"application/xml"}}}, nil
+		return &http.Response{StatusCode: http.StatusOK, Body: io.NopCloser(strings.NewReader(b.String())), Header: http.Header{"Content-Type": {"application/xml"}}}, nil
 	}
 	switch req.Method {
 	case http.MethodHead:
 		if st, ok := m.state[key]; ok {
-			return &http.Response{StatusCode: 200, Body: io.NopCloser(bytes.NewReader(nil)), Header: http.Header{
+			return &http.Response{StatusCode: http.StatusOK, Body: io.NopCloser(bytes.NewReader(nil)), Header: http.Header{
 				"Content-Length": {fmt.Sprintf("%d", len(st.body))},
 				"Content-Type":   {st.contentType},
 				"ETag":           {"\"etag123\""},
 				"Last-Modified":  {time.Now().UTC().Format(http.TimeFormat)},
 			}}, nil
 		}
-		return &http.Response{StatusCode: 404, Body: io.NopCloser(bytes.NewReader(nil)), Header: http.Header{}}, nil
+		return &http.Response{StatusCode: http.StatusNotFound, Body: io.NopCloser(bytes.NewReader(nil)), Header: http.Header{}}, nil
 	case http.MethodPut:
 		body, _ := io.ReadAll(req.Body)
 		if _, exists := m.state[key]; !exists {
@@ -94,26 +93,26 @@ func (m *mockRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) 
 			}
 			m.state[key] = stored{body: body, contentType: ct}
 		}
-		return &http.Response{StatusCode: 200, Body: io.NopCloser(bytes.NewReader(nil)), Header: http.Header{"ETag": {"\"etag\""}}}, nil
+		return &http.Response{StatusCode: http.StatusOK, Body: io.NopCloser(bytes.NewReader(nil)), Header: http.Header{"ETag": {"\"etag\""}}}, nil
 	case http.MethodGet:
 		if st, ok := m.state[key]; ok {
 			body := st.body
 			if dec, ok := decodeChunked(body); ok {
 				body = dec
 			}
-			return &http.Response{StatusCode: 200, Body: io.NopCloser(bytes.NewReader(body)), Header: http.Header{
+			return &http.Response{StatusCode: http.StatusOK, Body: io.NopCloser(bytes.NewReader(body)), Header: http.Header{
 				"Content-Length": {fmt.Sprintf("%d", len(body))},
 				"Content-Type":   {st.contentType},
 				"Last-Modified":  {time.Now().UTC().Format(http.TimeFormat)},
 				"ETag":           {"\"etag\""},
 			}}, nil
 		}
-		return &http.Response{StatusCode: 404, Body: io.NopCloser(bytes.NewReader(nil)), Header: http.Header{}}, nil
+		return &http.Response{StatusCode: http.StatusNotFound, Body: io.NopCloser(bytes.NewReader(nil)), Header: http.Header{}}, nil
 	case http.MethodDelete:
 		delete(m.state, key)
-		return &http.Response{StatusCode: 204, Body: io.NopCloser(bytes.NewReader(nil)), Header: http.Header{}}, nil
+		return &http.Response{StatusCode: http.StatusNoContent, Body: io.NopCloser(bytes.NewReader(nil)), Header: http.Header{}}, nil
 	}
-	return &http.Response{StatusCode: 501, Body: io.NopCloser(bytes.NewReader(nil)), Header: http.Header{}}, nil
+	return &http.Response{StatusCode: http.StatusNotImplemented, Body: io.NopCloser(bytes.NewReader(nil)), Header: http.Header{}}, nil
 }
 
 func newMockStore(t *testing.T) *Store {
@@ -291,7 +290,7 @@ func TestMockRoundTripperLiteUnsupported(t *testing.T) {
 	rt := &mockRoundTripperLite{state: make(map[string]mockObj)}
 	req, _ := http.NewRequest(http.MethodPatch, "https://mock.s3.local/bucket/key", nil)
 	resp, _ := rt.RoundTrip(req)
-	if resp.StatusCode != 501 {
+	if resp.StatusCode != http.StatusNotImplemented {
 		t.Fatalf("expected 501, got %d", resp.StatusCode)
 	}
 }

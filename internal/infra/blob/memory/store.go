@@ -2,14 +2,13 @@ package memory
 
 import (
 	"bytes"
+	"colonycore/internal/blob/core"
 	"context"
 	"fmt"
 	"io"
 	"sort"
 	"sync"
 	"time"
-
-	"colonycore/internal/blob/core"
 )
 
 type blobEntry struct {

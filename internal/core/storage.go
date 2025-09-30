@@ -1,12 +1,11 @@
 package core
 
 import (
-	"fmt"
-	"os"
-
 	"colonycore/internal/infra/persistence/memory"
 	"colonycore/internal/persistence/sqlite"
 	"colonycore/pkg/domain"
+	"fmt"
+	"os"
 )
 
 // StorageDriver identifies a concrete persistent storage implementation.

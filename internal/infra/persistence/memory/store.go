@@ -1,6 +1,7 @@
 package memory
 
 import (
+	"colonycore/pkg/domain"
 	"context"
 	"crypto/rand"
 	"encoding/hex"
@@ -8,8 +9,6 @@ import (
 	"fmt"
 	"sync"
 	"time"
-
-	"colonycore/pkg/domain"
 )
 
 type (
@@ -182,6 +181,7 @@ func cloneBreeding(b BreedingUnit) BreedingUnit {
 	cp.MaleIDs = append([]string(nil), b.MaleIDs...)
 	return cp
 }
+
 func cloneProcedure(p Procedure) Procedure {
 	cp := p
 	cp.OrganismIDs = append([]string(nil), p.OrganismIDs...)

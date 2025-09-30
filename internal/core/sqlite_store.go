@@ -2,8 +2,6 @@ package core
 
 import "colonycore/internal/persistence/sqlite"
 
-type SQLiteStore = sqlite.SQLiteStore
-
-func NewSQLiteStore(path string, engine *RulesEngine) (*SQLiteStore, error) {
+func NewSQLiteStore(path string, engine *RulesEngine) (*sqlite.SQLiteStore, error) {
 	return sqlite.NewSQLiteStore(path, engine)
 }

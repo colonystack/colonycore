@@ -1,10 +1,13 @@
 package core
 
 import (
+	"colonycore/internal/persistence/sqlite"
 	"context"
 	"os"
 	"path/filepath"
 	"testing"
+
+	memory "colonycore/internal/infra/persistence/memory"
 )
 
 // helper to unset and restore env vars
@@ -35,10 +38,10 @@ func TestOpenPersistentStore_DefaultSQLite(t *testing.T) {
 		if store == nil {
 			t.Fatal("expected store")
 		}
-		// should be *SQLiteStore internally; rely on persist side-effects by creating something
-		sqliteStore, ok := store.(*SQLiteStore)
+		// should be *sqlite.SQLiteStore internally; rely on persist side-effects by creating something
+		sqliteStore, ok := store.(*sqlite.SQLiteStore)
 		if !ok {
-			t.Fatalf("expected *SQLiteStore, got %T", store)
+			t.Fatalf("expected *sqlite.SQLiteStore, got %T", store)
 		}
 		_, _ = sqliteStore.RunInTransaction(context.Background(), func(tx Transaction) error { return nil })
 	})
@@ -51,12 +54,12 @@ func TestOpenPersistentStore_Memory(t *testing.T) {
 		if err != nil {
 			t.Fatalf("expected no error, got %v", err)
 		}
-		if _, ok := store.(*MemoryStore); !ok {
-			// memory path actually returns *MemoryStore
-			if _, isSQLite := store.(*SQLiteStore); isSQLite {
+		if _, ok := store.(*memory.Store); !ok {
+			// memory path actually returns *memory.Store
+			if _, isSQLite := store.(*sqlite.SQLiteStore); isSQLite {
 				// acceptable if implementation changed; still counts for coverage
 			} else {
-				t.Fatalf("expected *MemoryStore or *SQLiteStore, got %T", store)
+				t.Fatalf("expected *memory.Store or *sqlite.SQLiteStore, got %T", store)
 			}
 		}
 	})
@@ -73,10 +76,10 @@ func TestOpenPersistentStore_CustomSQLitePath(t *testing.T) {
 			if err != nil {
 				t.Fatalf("expected no error, got %v", err)
 			}
-			s, ok := store.(*SQLiteStore)
+			s, ok := store.(*sqlite.SQLiteStore)
 			if !ok {
 				// if backend changes this still increases coverage
-				t.Skipf("expected *SQLiteStore, got %T", store)
+				t.Skipf("expected *sqlite.SQLiteStore, got %T", store)
 			}
 			if s.Path() != path {
 				// ensure path passed through
@@ -116,8 +119,8 @@ func TestNewPostgresStore(t *testing.T) {
 		// placeholder should return error until implemented
 		t.Fatalf("expected error from placeholder NewPostgresStore")
 	}
-	if store == nil || store.MemoryStore == nil {
-		// still expect the embedded MemoryStore be initialized for forward compatibility
-		t.Fatalf("expected non-nil store with MemoryStore, got %#v", store)
+	if store == nil || store.Store == nil {
+		// still expect the embedded store to be initialized for forward compatibility
+		t.Fatalf("expected non-nil store with embedded memory store, got %#v", store)
 	}
 }

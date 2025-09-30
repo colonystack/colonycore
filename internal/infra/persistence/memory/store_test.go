@@ -1,11 +1,10 @@
 package memory
 
 import (
+	"colonycore/pkg/domain"
 	"context"
 	"fmt"
 	"testing"
-
-	"colonycore/pkg/domain"
 )
 
 func TestStoreRunInTransactionAndSnapshots(t *testing.T) {

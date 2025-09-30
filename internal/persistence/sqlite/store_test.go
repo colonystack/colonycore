@@ -1,14 +1,13 @@
 package sqlite
 
 import (
+	"colonycore/pkg/domain"
 	"context"
 	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
 	"time"
-
-	"colonycore/pkg/domain"
 )
 
 func TestSQLiteStorePersistAndReload(t *testing.T) {

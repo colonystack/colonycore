@@ -1,11 +1,11 @@
 package frog
 
 import (
+	"colonycore/internal/core"
 	"context"
 	"testing"
 	"time"
 
-	"colonycore/internal/core"
 	domain "colonycore/pkg/domain"
 )
 

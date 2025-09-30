@@ -6,10 +6,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	_ "modernc.org/sqlite" // pure go sqlite driver
 	"os"
 	"path/filepath"
 	"sync"
+
+	_ "modernc.org/sqlite" // pure go sqlite driver
 )
 
 // SQLiteStore persists the in-memory state to a single SQLite table as JSON blobs.

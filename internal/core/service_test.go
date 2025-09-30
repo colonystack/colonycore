@@ -1,15 +1,17 @@
 package core_test
 
 import (
-	"context"
-	"strings"
-	"testing"
-	"time"
-
 	"colonycore/internal/core"
 	"colonycore/pkg/datasetapi"
 	"colonycore/pkg/pluginapi"
 	"colonycore/plugins/frog"
+	"context"
+	"errors"
+	"strings"
+	"testing"
+	"time"
+
+	memory "colonycore/internal/infra/persistence/memory"
 )
 
 func TestHousingCapacityRuleBlocksOverCapacity(t *testing.T) {
@@ -162,6 +164,7 @@ func TestFrogPluginRegistersSchemasAndRules(t *testing.T) {
 		t.Fatalf("expected one registered plugin")
 	}
 }
+
 func TestServiceExtendedCRUD(t *testing.T) {
 	svc := core.NewInMemoryService(core.NewDefaultRulesEngine())
 	ctx := context.Background()
@@ -268,7 +271,8 @@ func AsRuleViolation(err error, target *core.RuleViolationError) bool {
 	if err == nil {
 		return false
 	}
-	if rv, ok := err.(core.RuleViolationError); ok {
+	var rv core.RuleViolationError
+	if errors.As(err, &rv) {
 		*target = rv
 		return true
 	}
@@ -277,7 +281,7 @@ func AsRuleViolation(err error, target *core.RuleViolationError) bool {
 
 func TestInstallPluginValidations(t *testing.T) {
 	svc := core.NewInMemoryService(core.NewDefaultRulesEngine())
-	var nilPlugin core.Plugin
+	var nilPlugin pluginapi.Plugin
 	if _, err := svc.InstallPlugin(nilPlugin); err == nil {
 		t.Fatalf("expected error when plugin is nil")
 	}
@@ -351,7 +355,7 @@ func (l *recordingLogger) Warn(string, ...any)  {}
 func (l *recordingLogger) Error(string, ...any) {}
 
 type clocklessStore struct {
-	inner *core.MemoryStore
+	inner *memory.Store
 }
 
 func (s clocklessStore) RunInTransaction(ctx context.Context, fn func(core.Transaction) error) (core.Result, error) {
