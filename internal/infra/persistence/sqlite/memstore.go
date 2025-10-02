@@ -1,5 +1,6 @@
-// Package sqlite provides an in-memory reference implementation of a SQLite-backed
-// store used chiefly in tests. (Name retained for interface symmetry.)
+// Package sqlite provides an in-memory transactional store plus supporting
+// helpers that the SQLite persistent store builds upon. It lives under infra
+// to keep domain dependencies one-way (domain -> nothing).
 package sqlite
 
 import (
@@ -13,36 +14,38 @@ import (
 	"time"
 )
 
+// Exported aliases to keep method signatures concise while still exposing
+// domain types from this infra package.
 type (
-	// Organism aliases domain.Organism for SQLite snapshot operations.
+	// Organism is a colony organism (alias of domain.Organism).
 	Organism = domain.Organism
-	// Cohort aliases domain.Cohort.
+	// Cohort is an alias of domain.Cohort.
 	Cohort = domain.Cohort
-	// HousingUnit aliases domain.HousingUnit.
+	// HousingUnit is an alias of domain.HousingUnit.
 	HousingUnit = domain.HousingUnit
-	// BreedingUnit aliases domain.BreedingUnit.
+	// BreedingUnit is an alias of domain.BreedingUnit.
 	BreedingUnit = domain.BreedingUnit
-	// Procedure aliases domain.Procedure.
+	// Procedure is an alias of domain.Procedure.
 	Procedure = domain.Procedure
-	// Protocol aliases domain.Protocol.
+	// Protocol is an alias of domain.Protocol.
 	Protocol = domain.Protocol
-	// Project aliases domain.Project.
+	// Project is an alias of domain.Project.
 	Project = domain.Project
-	// Change aliases domain.Change included in rule evaluation.
+	// Change is an alias of domain.Change.
 	Change = domain.Change
-	// Result aliases domain.Result summarizing rule outcomes.
+	// Result is an alias of domain.Result.
 	Result = domain.Result
-	// RulesEngine aliases domain.RulesEngine orchestrating rule evaluation.
+	// RulesEngine is an alias of domain.RulesEngine.
 	RulesEngine = domain.RulesEngine
-	// Transaction aliases domain.Transaction unit of work.
+	// Transaction is an alias of domain.Transaction.
 	Transaction = domain.Transaction
-	// TransactionView aliases domain.TransactionView read view.
+	// TransactionView is an alias of domain.TransactionView.
 	TransactionView = domain.TransactionView
-	// PersistentStore aliases domain.PersistentStore abstraction.
+	// PersistentStore is an alias of domain.PersistentStore.
 	PersistentStore = domain.PersistentStore
 )
 
-// Entity identifiers (buckets) for snapshot persistence.
+// Entity constants forwarded from domain for change records.
 const (
 	EntityOrganism    = domain.EntityOrganism
 	EntityCohort      = domain.EntityCohort
@@ -53,7 +56,7 @@ const (
 	EntityProject     = domain.EntityProject
 )
 
-// Action identifiers persisted with changes.
+// Action constants forwarded from domain for change records.
 const (
 	ActionCreate = domain.ActionCreate
 	ActionUpdate = domain.ActionUpdate
@@ -70,7 +73,7 @@ type memoryState struct {
 	projects   map[string]Project
 }
 
-// Snapshot captures a point-in-time clone of the store state.
+// Snapshot is the serialisable representation of the in-memory state.
 type Snapshot struct {
 	Organisms  map[string]Organism     `json:"organisms"`
 	Cohorts    map[string]Cohort       `json:"cohorts"`
@@ -83,13 +86,13 @@ type Snapshot struct {
 
 func newMemoryState() memoryState {
 	return memoryState{
-		organisms:  make(map[string]Organism),
-		cohorts:    make(map[string]Cohort),
-		housing:    make(map[string]HousingUnit),
-		breeding:   make(map[string]BreedingUnit),
-		procedures: make(map[string]Procedure),
-		protocols:  make(map[string]Protocol),
-		projects:   make(map[string]Project),
+		organisms:  map[string]Organism{},
+		cohorts:    map[string]Cohort{},
+		housing:    map[string]HousingUnit{},
+		breeding:   map[string]BreedingUnit{},
+		procedures: map[string]Procedure{},
+		protocols:  map[string]Protocol{},
+		projects:   map[string]Project{},
 	}
 }
 
@@ -128,56 +131,32 @@ func snapshotFromMemoryState(state memoryState) Snapshot {
 }
 
 func memoryStateFromSnapshot(s Snapshot) memoryState {
-	state := newMemoryState()
+	st := newMemoryState()
 	for k, v := range s.Organisms {
-		state.organisms[k] = cloneOrganism(v)
+		st.organisms[k] = cloneOrganism(v)
 	}
 	for k, v := range s.Cohorts {
-		state.cohorts[k] = cloneCohort(v)
+		st.cohorts[k] = cloneCohort(v)
 	}
 	for k, v := range s.Housing {
-		state.housing[k] = cloneHousing(v)
+		st.housing[k] = cloneHousing(v)
 	}
 	for k, v := range s.Breeding {
-		state.breeding[k] = cloneBreeding(v)
+		st.breeding[k] = cloneBreeding(v)
 	}
 	for k, v := range s.Procedures {
-		state.procedures[k] = cloneProcedure(v)
+		st.procedures[k] = cloneProcedure(v)
 	}
 	for k, v := range s.Protocols {
-		state.protocols[k] = cloneProtocol(v)
+		st.protocols[k] = cloneProtocol(v)
 	}
 	for k, v := range s.Projects {
-		state.projects[k] = cloneProject(v)
+		st.projects[k] = cloneProject(v)
 	}
-	return state
+	return st
 }
 
-func (s memoryState) clone() memoryState {
-	cloned := newMemoryState()
-	for k, v := range s.organisms {
-		cloned.organisms[k] = cloneOrganism(v)
-	}
-	for k, v := range s.cohorts {
-		cloned.cohorts[k] = cloneCohort(v)
-	}
-	for k, v := range s.housing {
-		cloned.housing[k] = cloneHousing(v)
-	}
-	for k, v := range s.breeding {
-		cloned.breeding[k] = cloneBreeding(v)
-	}
-	for k, v := range s.procedures {
-		cloned.procedures[k] = cloneProcedure(v)
-	}
-	for k, v := range s.protocols {
-		cloned.protocols[k] = cloneProtocol(v)
-	}
-	for k, v := range s.projects {
-		cloned.projects[k] = cloneProject(v)
-	}
-	return cloned
-}
+func (s memoryState) clone() memoryState { return memoryStateFromSnapshot(snapshotFromMemoryState(s)) }
 
 func cloneOrganism(o Organism) Organism {
 	cp := o
@@ -189,7 +168,6 @@ func cloneOrganism(o Organism) Organism {
 	}
 	return cp
 }
-
 func cloneCohort(c Cohort) Cohort            { return c }
 func cloneHousing(h HousingUnit) HousingUnit { return h }
 func cloneBreeding(b BreedingUnit) BreedingUnit {
@@ -198,7 +176,6 @@ func cloneBreeding(b BreedingUnit) BreedingUnit {
 	cp.MaleIDs = append([]string(nil), b.MaleIDs...)
 	return cp
 }
-
 func cloneProcedure(p Procedure) Procedure {
 	cp := p
 	cp.OrganismIDs = append([]string(nil), p.OrganismIDs...)
@@ -207,7 +184,6 @@ func cloneProcedure(p Procedure) Procedure {
 func cloneProtocol(p Protocol) Protocol { return p }
 func cloneProject(p Project) Project    { return p }
 
-// Store provides an in-memory transactional store for the core domain.
 type memStore struct {
 	mu     sync.RWMutex
 	state  memoryState
@@ -215,18 +191,12 @@ type memStore struct {
 	nowFn  func() time.Time
 }
 
-// NewStore constructs an in-memory store backed by the provided rules engine.
 func newMemStore(engine *RulesEngine) *memStore {
 	if engine == nil {
 		engine = domain.NewRulesEngine()
 	}
-	return &memStore{
-		state:  newMemoryState(),
-		engine: engine,
-		nowFn:  func() time.Time { return time.Now().UTC() },
-	}
+	return &memStore{state: newMemoryState(), engine: engine, nowFn: func() time.Time { return time.Now().UTC() }}
 }
-
 func (s *memStore) newID() string {
 	var b [16]byte
 	if _, err := rand.Read(b[:]); err != nil {
@@ -234,53 +204,28 @@ func (s *memStore) newID() string {
 	}
 	return hex.EncodeToString(b[:])
 }
-
-// ExportState clones the current store state for external persistence.
 func (s *memStore) ExportState() Snapshot {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	return snapshotFromMemoryState(s.state)
 }
-
-// ImportState replaces the store state with the provided snapshot.
 func (s *memStore) ImportState(snapshot Snapshot) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.state = memoryStateFromSnapshot(snapshot)
 }
+func (s *memStore) RulesEngine() *RulesEngine { s.mu.RLock(); defer s.mu.RUnlock(); return s.engine }
+func (s *memStore) NowFunc() func() time.Time { s.mu.RLock(); defer s.mu.RUnlock(); return s.nowFn }
 
-// RulesEngine exposes the currently configured engine for integration points like plugins.
-func (s *memStore) RulesEngine() *RulesEngine {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-	return s.engine
-}
-
-// NowFunc returns the time provider used by the in-memory store.
-func (s *memStore) NowFunc() func() time.Time {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-	return s.nowFn
-}
-
-// Transaction represents a mutation set applied to the store state.
 type transaction struct {
 	store   *memStore
 	state   memoryState
 	changes []Change
 	now     time.Time
 }
+type transactionView struct{ state *memoryState }
 
-// TransactionView exposes a read-only snapshot of the transactional state to rules.
-type transactionView struct {
-	state *memoryState
-}
-
-func newTransactionView(state *memoryState) TransactionView {
-	return transactionView{state: state}
-}
-
-// ListOrganisms returns all organisms within the transaction snapshot.
+func newTransactionView(state *memoryState) TransactionView { return transactionView{state: state} }
 func (v transactionView) ListOrganisms() []Organism {
 	out := make([]Organism, 0, len(v.state.organisms))
 	for _, o := range v.state.organisms {
@@ -288,8 +233,6 @@ func (v transactionView) ListOrganisms() []Organism {
 	}
 	return out
 }
-
-// ListHousingUnits returns all housing units.
 func (v transactionView) ListHousingUnits() []HousingUnit {
 	out := make([]HousingUnit, 0, len(v.state.housing))
 	for _, h := range v.state.housing {
@@ -297,8 +240,6 @@ func (v transactionView) ListHousingUnits() []HousingUnit {
 	}
 	return out
 }
-
-// FindOrganism retrieves an organism by ID from the snapshot.
 func (v transactionView) FindOrganism(id string) (Organism, bool) {
 	o, ok := v.state.organisms[id]
 	if !ok {
@@ -306,8 +247,6 @@ func (v transactionView) FindOrganism(id string) (Organism, bool) {
 	}
 	return cloneOrganism(o), true
 }
-
-// FindHousingUnit retrieves a housing unit by ID from the snapshot.
 func (v transactionView) FindHousingUnit(id string) (HousingUnit, bool) {
 	h, ok := v.state.housing[id]
 	if !ok {
@@ -315,8 +254,6 @@ func (v transactionView) FindHousingUnit(id string) (HousingUnit, bool) {
 	}
 	return cloneHousing(h), true
 }
-
-// ListProtocols returns all protocols present in the snapshot.
 func (v transactionView) ListProtocols() []Protocol {
 	out := make([]Protocol, 0, len(v.state.protocols))
 	for _, p := range v.state.protocols {
@@ -325,21 +262,13 @@ func (v transactionView) ListProtocols() []Protocol {
 	return out
 }
 
-// RunInTransaction executes fn within a transactional copy of the store state.
 func (s *memStore) RunInTransaction(ctx context.Context, fn func(tx Transaction) error) (Result, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-
-	tx := &transaction{
-		store: s,
-		state: s.state.clone(),
-		now:   s.nowFn(),
-	}
-
+	tx := &transaction{store: s, state: s.state.clone(), now: s.nowFn()}
 	if err := fn(tx); err != nil {
 		return Result{}, err
 	}
-
 	var result Result
 	if s.engine != nil {
 		view := newTransactionView(&tx.state)
@@ -352,32 +281,19 @@ func (s *memStore) RunInTransaction(ctx context.Context, fn func(tx Transaction)
 			return res, domain.RuleViolationError{Result: res}
 		}
 	}
-
 	s.state = tx.state
 	return result, nil
 }
 
-// View executes fn against a read-only snapshot of the store state.
 func (s *memStore) View(_ context.Context, fn func(TransactionView) error) error {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-
 	snapshot := s.state.clone()
 	view := newTransactionView(&snapshot)
 	return fn(view)
 }
-
-// helper to record and append change entries.
-func (tx *transaction) recordChange(change Change) {
-	tx.changes = append(tx.changes, change)
-}
-
-// Snapshot returns a read-only view over the transactional state.
-func (tx *transaction) Snapshot() TransactionView {
-	return newTransactionView(&tx.state)
-}
-
-// FindHousingUnit exposes housing lookup within the transaction scope.
+func (tx *transaction) recordChange(change Change) { tx.changes = append(tx.changes, change) }
+func (tx *transaction) Snapshot() TransactionView  { return newTransactionView(&tx.state) }
 func (tx *transaction) FindHousingUnit(id string) (HousingUnit, bool) {
 	h, ok := tx.state.housing[id]
 	if !ok {
@@ -385,8 +301,6 @@ func (tx *transaction) FindHousingUnit(id string) (HousingUnit, bool) {
 	}
 	return cloneHousing(h), true
 }
-
-// FindProtocol exposes protocol lookup within the transaction scope.
 func (tx *transaction) FindProtocol(id string) (Protocol, bool) {
 	p, ok := tx.state.protocols[id]
 	if !ok {
@@ -394,8 +308,6 @@ func (tx *transaction) FindProtocol(id string) (Protocol, bool) {
 	}
 	return cloneProtocol(p), true
 }
-
-// CreateOrganism stores a new organism within the transaction.
 func (tx *transaction) CreateOrganism(o Organism) (Organism, error) {
 	if o.ID == "" {
 		o.ID = tx.store.newID()
@@ -412,8 +324,6 @@ func (tx *transaction) CreateOrganism(o Organism) (Organism, error) {
 	tx.recordChange(Change{Entity: EntityOrganism, Action: ActionCreate, After: cloneOrganism(o)})
 	return cloneOrganism(o), nil
 }
-
-// UpdateOrganism mutates an organism using the provided mutator function.
 func (tx *transaction) UpdateOrganism(id string, mutator func(*Organism) error) (Organism, error) {
 	current, ok := tx.state.organisms[id]
 	if !ok {
@@ -429,8 +339,6 @@ func (tx *transaction) UpdateOrganism(id string, mutator func(*Organism) error) 
 	tx.recordChange(Change{Entity: EntityOrganism, Action: ActionUpdate, Before: before, After: cloneOrganism(current)})
 	return cloneOrganism(current), nil
 }
-
-// DeleteOrganism removes an organism from the transaction state.
 func (tx *transaction) DeleteOrganism(id string) error {
 	current, ok := tx.state.organisms[id]
 	if !ok {
@@ -440,8 +348,6 @@ func (tx *transaction) DeleteOrganism(id string) error {
 	tx.recordChange(Change{Entity: EntityOrganism, Action: ActionDelete, Before: cloneOrganism(current)})
 	return nil
 }
-
-// CreateCohort stores a new cohort.
 func (tx *transaction) CreateCohort(c Cohort) (Cohort, error) {
 	if c.ID == "" {
 		c.ID = tx.store.newID()
@@ -455,8 +361,6 @@ func (tx *transaction) CreateCohort(c Cohort) (Cohort, error) {
 	tx.recordChange(Change{Entity: EntityCohort, Action: ActionCreate, After: cloneCohort(c)})
 	return cloneCohort(c), nil
 }
-
-// UpdateCohort mutates an existing cohort.
 func (tx *transaction) UpdateCohort(id string, mutator func(*Cohort) error) (Cohort, error) {
 	current, ok := tx.state.cohorts[id]
 	if !ok {
@@ -472,8 +376,6 @@ func (tx *transaction) UpdateCohort(id string, mutator func(*Cohort) error) (Coh
 	tx.recordChange(Change{Entity: EntityCohort, Action: ActionUpdate, Before: before, After: cloneCohort(current)})
 	return cloneCohort(current), nil
 }
-
-// DeleteCohort removes a cohort from state.
 func (tx *transaction) DeleteCohort(id string) error {
 	current, ok := tx.state.cohorts[id]
 	if !ok {
@@ -483,8 +385,6 @@ func (tx *transaction) DeleteCohort(id string) error {
 	tx.recordChange(Change{Entity: EntityCohort, Action: ActionDelete, Before: cloneCohort(current)})
 	return nil
 }
-
-// CreateHousingUnit stores new housing metadata.
 func (tx *transaction) CreateHousingUnit(h HousingUnit) (HousingUnit, error) {
 	if h.ID == "" {
 		h.ID = tx.store.newID()
@@ -501,8 +401,6 @@ func (tx *transaction) CreateHousingUnit(h HousingUnit) (HousingUnit, error) {
 	tx.recordChange(Change{Entity: EntityHousingUnit, Action: ActionCreate, After: cloneHousing(h)})
 	return cloneHousing(h), nil
 }
-
-// UpdateHousingUnit mutates an existing housing unit.
 func (tx *transaction) UpdateHousingUnit(id string, mutator func(*HousingUnit) error) (HousingUnit, error) {
 	current, ok := tx.state.housing[id]
 	if !ok {
@@ -521,8 +419,6 @@ func (tx *transaction) UpdateHousingUnit(id string, mutator func(*HousingUnit) e
 	tx.recordChange(Change{Entity: EntityHousingUnit, Action: ActionUpdate, Before: before, After: cloneHousing(current)})
 	return cloneHousing(current), nil
 }
-
-// DeleteHousingUnit removes housing metadata.
 func (tx *transaction) DeleteHousingUnit(id string) error {
 	current, ok := tx.state.housing[id]
 	if !ok {
@@ -532,8 +428,6 @@ func (tx *transaction) DeleteHousingUnit(id string) error {
 	tx.recordChange(Change{Entity: EntityHousingUnit, Action: ActionDelete, Before: cloneHousing(current)})
 	return nil
 }
-
-// CreateBreedingUnit stores a new breeding unit definition.
 func (tx *transaction) CreateBreedingUnit(b BreedingUnit) (BreedingUnit, error) {
 	if b.ID == "" {
 		b.ID = tx.store.newID()
@@ -547,8 +441,6 @@ func (tx *transaction) CreateBreedingUnit(b BreedingUnit) (BreedingUnit, error) 
 	tx.recordChange(Change{Entity: EntityBreeding, Action: ActionCreate, After: cloneBreeding(b)})
 	return cloneBreeding(b), nil
 }
-
-// UpdateBreedingUnit mutates an existing breeding unit.
 func (tx *transaction) UpdateBreedingUnit(id string, mutator func(*BreedingUnit) error) (BreedingUnit, error) {
 	current, ok := tx.state.breeding[id]
 	if !ok {
@@ -564,8 +456,6 @@ func (tx *transaction) UpdateBreedingUnit(id string, mutator func(*BreedingUnit)
 	tx.recordChange(Change{Entity: EntityBreeding, Action: ActionUpdate, Before: before, After: cloneBreeding(current)})
 	return cloneBreeding(current), nil
 }
-
-// DeleteBreedingUnit removes a breeding unit.
 func (tx *transaction) DeleteBreedingUnit(id string) error {
 	current, ok := tx.state.breeding[id]
 	if !ok {
@@ -575,8 +465,6 @@ func (tx *transaction) DeleteBreedingUnit(id string) error {
 	tx.recordChange(Change{Entity: EntityBreeding, Action: ActionDelete, Before: cloneBreeding(current)})
 	return nil
 }
-
-// CreateProcedure stores a procedure record.
 func (tx *transaction) CreateProcedure(p Procedure) (Procedure, error) {
 	if p.ID == "" {
 		p.ID = tx.store.newID()
@@ -590,8 +478,6 @@ func (tx *transaction) CreateProcedure(p Procedure) (Procedure, error) {
 	tx.recordChange(Change{Entity: EntityProcedure, Action: ActionCreate, After: cloneProcedure(p)})
 	return cloneProcedure(p), nil
 }
-
-// UpdateProcedure mutates a procedure.
 func (tx *transaction) UpdateProcedure(id string, mutator func(*Procedure) error) (Procedure, error) {
 	current, ok := tx.state.procedures[id]
 	if !ok {
@@ -607,8 +493,6 @@ func (tx *transaction) UpdateProcedure(id string, mutator func(*Procedure) error
 	tx.recordChange(Change{Entity: EntityProcedure, Action: ActionUpdate, Before: before, After: cloneProcedure(current)})
 	return cloneProcedure(current), nil
 }
-
-// DeleteProcedure removes a procedure.
 func (tx *transaction) DeleteProcedure(id string) error {
 	current, ok := tx.state.procedures[id]
 	if !ok {
@@ -618,8 +502,6 @@ func (tx *transaction) DeleteProcedure(id string) error {
 	tx.recordChange(Change{Entity: EntityProcedure, Action: ActionDelete, Before: cloneProcedure(current)})
 	return nil
 }
-
-// CreateProtocol stores a new protocol record.
 func (tx *transaction) CreateProtocol(p Protocol) (Protocol, error) {
 	if p.ID == "" {
 		p.ID = tx.store.newID()
@@ -633,8 +515,6 @@ func (tx *transaction) CreateProtocol(p Protocol) (Protocol, error) {
 	tx.recordChange(Change{Entity: EntityProtocol, Action: ActionCreate, After: cloneProtocol(p)})
 	return cloneProtocol(p), nil
 }
-
-// UpdateProtocol mutates an existing protocol.
 func (tx *transaction) UpdateProtocol(id string, mutator func(*Protocol) error) (Protocol, error) {
 	current, ok := tx.state.protocols[id]
 	if !ok {
@@ -650,8 +530,6 @@ func (tx *transaction) UpdateProtocol(id string, mutator func(*Protocol) error) 
 	tx.recordChange(Change{Entity: EntityProtocol, Action: ActionUpdate, Before: before, After: cloneProtocol(current)})
 	return cloneProtocol(current), nil
 }
-
-// DeleteProtocol removes a protocol from state.
 func (tx *transaction) DeleteProtocol(id string) error {
 	current, ok := tx.state.protocols[id]
 	if !ok {
@@ -661,8 +539,6 @@ func (tx *transaction) DeleteProtocol(id string) error {
 	tx.recordChange(Change{Entity: EntityProtocol, Action: ActionDelete, Before: cloneProtocol(current)})
 	return nil
 }
-
-// CreateProject stores a project record.
 func (tx *transaction) CreateProject(p Project) (Project, error) {
 	if p.ID == "" {
 		p.ID = tx.store.newID()
@@ -676,8 +552,6 @@ func (tx *transaction) CreateProject(p Project) (Project, error) {
 	tx.recordChange(Change{Entity: EntityProject, Action: ActionCreate, After: cloneProject(p)})
 	return cloneProject(p), nil
 }
-
-// UpdateProject mutates an existing project record.
 func (tx *transaction) UpdateProject(id string, mutator func(*Project) error) (Project, error) {
 	current, ok := tx.state.projects[id]
 	if !ok {
@@ -693,8 +567,6 @@ func (tx *transaction) UpdateProject(id string, mutator func(*Project) error) (P
 	tx.recordChange(Change{Entity: EntityProject, Action: ActionUpdate, Before: before, After: cloneProject(current)})
 	return cloneProject(current), nil
 }
-
-// DeleteProject removes a project from state.
 func (tx *transaction) DeleteProject(id string) error {
 	current, ok := tx.state.projects[id]
 	if !ok {
@@ -704,10 +576,6 @@ func (tx *transaction) DeleteProject(id string) error {
 	tx.recordChange(Change{Entity: EntityProject, Action: ActionDelete, Before: cloneProject(current)})
 	return nil
 }
-
-// Read helpers ---------------------------------------------------------------
-
-// GetOrganism retrieves an organism by ID from committed state.
 func (s *memStore) GetOrganism(id string) (Organism, bool) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
@@ -717,8 +585,6 @@ func (s *memStore) GetOrganism(id string) (Organism, bool) {
 	}
 	return cloneOrganism(o), true
 }
-
-// ListOrganisms returns all organisms from committed state.
 func (s *memStore) ListOrganisms() []Organism {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
@@ -728,8 +594,6 @@ func (s *memStore) ListOrganisms() []Organism {
 	}
 	return out
 }
-
-// GetHousingUnit retrieves a housing unit by ID.
 func (s *memStore) GetHousingUnit(id string) (HousingUnit, bool) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
@@ -739,8 +603,6 @@ func (s *memStore) GetHousingUnit(id string) (HousingUnit, bool) {
 	}
 	return cloneHousing(h), true
 }
-
-// ListHousingUnits returns all housing units.
 func (s *memStore) ListHousingUnits() []HousingUnit {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
@@ -750,8 +612,6 @@ func (s *memStore) ListHousingUnits() []HousingUnit {
 	}
 	return out
 }
-
-// ListCohorts returns all cohorts.
 func (s *memStore) ListCohorts() []Cohort {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
@@ -761,8 +621,6 @@ func (s *memStore) ListCohorts() []Cohort {
 	}
 	return out
 }
-
-// ListProtocols returns all protocol records.
 func (s *memStore) ListProtocols() []Protocol {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
@@ -772,8 +630,6 @@ func (s *memStore) ListProtocols() []Protocol {
 	}
 	return out
 }
-
-// ListProjects returns all projects.
 func (s *memStore) ListProjects() []Project {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
@@ -783,8 +639,6 @@ func (s *memStore) ListProjects() []Project {
 	}
 	return out
 }
-
-// ListBreedingUnits returns all breeding units.
 func (s *memStore) ListBreedingUnits() []BreedingUnit {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
@@ -794,8 +648,6 @@ func (s *memStore) ListBreedingUnits() []BreedingUnit {
 	}
 	return out
 }
-
-// ListProcedures returns all procedures.
 func (s *memStore) ListProcedures() []Procedure {
 	s.mu.RLock()
 	defer s.mu.RUnlock()

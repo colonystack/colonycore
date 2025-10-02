@@ -1,7 +1,7 @@
 package core
 
 import (
-	"colonycore/internal/persistence/sqlite"
+	"colonycore/internal/infra/persistence/sqlite"
 	"context"
 	"os"
 	"path/filepath"

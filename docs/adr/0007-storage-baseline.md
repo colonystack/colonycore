@@ -41,9 +41,9 @@ Adopt an embedded SQLite-backed store (internally `sqlite.Store`, exposed throug
 3. **BoltDB / Badger**: SQLite chosen for ubiquity, ecosystem maturity, and SQL inspection/debuggability.
 
 ## Implementation Notes
-- The concrete implementation type is `sqlite.Store` in `internal/persistence/sqlite`; the public helper `core.NewSQLiteStore` returns that type while preserving the historical constructor name for backwards compatibility and readability in calling code.
+- The concrete implementation type is `sqlite.Store` in `internal/infra/persistence/sqlite` (migrated from the deprecated `internal/persistence/sqlite` path); the public helper `core.NewSQLiteStore` returns that type while preserving the historical constructor name for backwards compatibility and readability in calling code.
 - Env vars: `COLONYCORE_STORAGE_DRIVER`, `COLONYCORE_SQLITE_PATH`, `COLONYCORE_POSTGRES_DSN`.
-- Test coverage via `internal/core/sqlite_store_test.go` and `internal/persistence/sqlite/store_test.go` ensures snapshot reload semantics.
+- Test coverage via `internal/core/sqlite_store_test.go` and `internal/infra/persistence/sqlite/store_test.go` ensures snapshot reload semantics.
 
 ## Status & Follow-Up
 Accepted for v0.1.0 baseline. Postgres driver implementation tracked as a follow-up (will supersede placeholder). Metrics & delta persistence targeted post initial adopter feedback.

@@ -3,7 +3,9 @@
 ColonyCore is an extensible base module for laboratory colony management. It couples a rules-driven core domain service with pluggable species modules and tooling to validate the project registry.
 
 ## Project layout
-- `internal/core/` contains the domain model, services, stores, and shared rules engine primitives.
+- `pkg/domain/` contains the pure domain model (entities, value objects, rule contracts) without infrastructure dependencies.
+- `internal/core/` contains application services, orchestration logic, rules engine integration, and use-case level coordination.
+- `internal/infra/persistence/sqlite/` houses the in-memory transactional store and SQLite snapshot-backed persistent implementation (migrated from the legacy `internal/persistence/sqlite/` path now removed).
 - `plugins/` hosts externally consumable plugins (for example `plugins/frog`) that register species-specific schemas and rules.
 - `cmd/registry-check/` provides the CLI used to validate `docs/rfc/registry.yaml` against the expected structure.
 - `docs/` captures design history (`docs/adr/`), planning RFCs (`docs/rfc/`), operational annexes (`docs/annex/`), and machine-readable schemas (`docs/schema/`).

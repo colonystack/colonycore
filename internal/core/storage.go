@@ -2,7 +2,7 @@ package core
 
 import (
 	"colonycore/internal/infra/persistence/memory"
-	"colonycore/internal/persistence/sqlite"
+	"colonycore/internal/infra/persistence/sqlite"
 	"colonycore/pkg/domain"
 	"fmt"
 	"os"

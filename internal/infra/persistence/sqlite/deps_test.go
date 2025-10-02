@@ -1,3 +1,4 @@
+// Package sqlite provides dependency boundary tests for infra persistence (in-memory + sqlite).
 package sqlite
 
 import (

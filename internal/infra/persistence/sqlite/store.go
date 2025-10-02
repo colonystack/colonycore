@@ -35,9 +35,9 @@ func NewStore(path string, engine *RulesEngine) (*Store, error) {
 		return nil, fmt.Errorf("open sqlite: %w", err)
 	}
 	if _, err := db.Exec(`CREATE TABLE IF NOT EXISTS state (
-        bucket TEXT PRIMARY KEY,
-        payload BLOB NOT NULL
-    )`); err != nil {
+		bucket TEXT PRIMARY KEY,
+		payload BLOB NOT NULL
+	)`); err != nil {
 		return nil, fmt.Errorf("create state table: %w", err)
 	}
 	ms := newMemStore(engine)
@@ -48,9 +48,7 @@ func NewStore(path string, engine *RulesEngine) (*Store, error) {
 	return s, nil
 }
 
-var sqliteBuckets = []string{ // one row per bucket
-	"organisms", "cohorts", "housing", "breeding", "procedures", "protocols", "projects",
-}
+var sqliteBuckets = []string{"organisms", "cohorts", "housing", "breeding", "procedures", "protocols", "projects"}
 
 func (s *Store) load() error {
 	rows, err := s.db.Query(`SELECT bucket, payload FROM state`)
@@ -156,8 +154,7 @@ func (s *Store) persist() (retErr error) {
 	return nil
 }
 
-// RunInTransaction applies the provided function within a transaction, then
-// snapshots state to SQLite if successful.
+// RunInTransaction applies the provided function within a transaction, then snapshots state to SQLite if successful.
 func (s *Store) RunInTransaction(ctx context.Context, fn func(tx Transaction) error) (Result, error) {
 	res, err := s.memStore.RunInTransaction(ctx, fn)
 	if err != nil {
@@ -170,11 +167,7 @@ func (s *Store) RunInTransaction(ctx context.Context, fn func(tx Transaction) er
 }
 
 // DB exposes the underlying sql.DB for integration testing hooks.
-func (s *Store) DB() *sql.DB {
-	return s.db
-}
+func (s *Store) DB() *sql.DB { return s.db }
 
-// Path returns the configured database path for observability and tests.
-func (s *Store) Path() string {
-	return s.path
-}
+// Path returns the configured database path.
+func (s *Store) Path() string { return s.path }
