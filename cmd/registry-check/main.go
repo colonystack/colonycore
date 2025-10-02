@@ -1,3 +1,5 @@
+// Command registry-check validates the docs/rfc/registry.yaml file adheres to
+// simple structural and semantic expectations enforced for governance.
 package main
 
 import (
@@ -7,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 )
@@ -67,8 +70,29 @@ func cli(args []string, stdout, stderr io.Writer) int {
 	return 0
 }
 
+// validatePath ensures the registry file path is within the repository tree and
+// not an absolute or path-traversing reference. This mitigates G304 concerns
+// around variable-based file inclusion.
+func validatePath(p string) (string, error) {
+	if strings.TrimSpace(p) == "" {
+		return "", fmt.Errorf("empty path")
+	}
+	if filepath.IsAbs(p) {
+		return "", fmt.Errorf("absolute paths not allowed: %s", p)
+	}
+	clean := filepath.Clean(p)
+	if strings.Contains(clean, "..") { // prevents traversal outside working dir
+		return "", fmt.Errorf("path traversal not allowed: %s", p)
+	}
+	return clean, nil
+}
+
 func run(registryPath string) (err error) {
-	file, err := os.Open(registryPath)
+	safePath, vErr := validatePath(registryPath)
+	if vErr != nil {
+		return vErr
+	}
+	file, err := os.Open(safePath) // #nosec G304: path validated by validatePath
 	if err != nil {
 		return fmt.Errorf("read registry: %w", err)
 	}

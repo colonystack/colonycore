@@ -1,3 +1,4 @@
+// Package memory implements an in-memory blob Store for tests.
 package memory
 
 import (
@@ -25,9 +26,11 @@ type Store struct {
 // New returns an in-memory blob store.
 func New() *Store { return &Store{objs: make(map[string]blobEntry)} }
 
+// Driver returns the blob driver identifier.
 func (s *Store) Driver() core.Driver { return core.DriverMemory }
 
-func (s *Store) Put(ctx context.Context, key string, r io.Reader, opts core.PutOptions) (core.Info, error) {
+// Put stores a new blob; errors if key exists.
+func (s *Store) Put(_ context.Context, key string, r io.Reader, opts core.PutOptions) (core.Info, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if _, exists := s.objs[key]; exists {
@@ -43,7 +46,8 @@ func (s *Store) Put(ctx context.Context, key string, r io.Reader, opts core.PutO
 	return info, nil
 }
 
-func (s *Store) Get(ctx context.Context, key string) (core.Info, io.ReadCloser, error) {
+// Get returns blob metadata and a read closer to its content.
+func (s *Store) Get(_ context.Context, key string) (core.Info, io.ReadCloser, error) {
 	s.mu.RLock()
 	obj, ok := s.objs[key]
 	s.mu.RUnlock()
@@ -57,7 +61,8 @@ func (s *Store) Get(ctx context.Context, key string) (core.Info, io.ReadCloser, 
 	return infoCopy, io.NopCloser(bytes.NewReader(dataCopy)), nil
 }
 
-func (s *Store) Head(ctx context.Context, key string) (core.Info, error) {
+// Head returns blob metadata only.
+func (s *Store) Head(_ context.Context, key string) (core.Info, error) {
 	s.mu.RLock()
 	obj, ok := s.objs[key]
 	s.mu.RUnlock()
@@ -69,7 +74,8 @@ func (s *Store) Head(ctx context.Context, key string) (core.Info, error) {
 	return infoCopy, nil
 }
 
-func (s *Store) Delete(ctx context.Context, key string) (bool, error) {
+// Delete removes the blob returning true if it existed.
+func (s *Store) Delete(_ context.Context, key string) (bool, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	_, ok := s.objs[key]
@@ -79,7 +85,8 @@ func (s *Store) Delete(ctx context.Context, key string) (bool, error) {
 	return ok, nil
 }
 
-func (s *Store) List(ctx context.Context, prefix string) ([]core.Info, error) {
+// List returns all blobs matching prefix.
+func (s *Store) List(_ context.Context, prefix string) ([]core.Info, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	out := make([]core.Info, 0, len(s.objs))
@@ -94,7 +101,8 @@ func (s *Store) List(ctx context.Context, prefix string) ([]core.Info, error) {
 	return out, nil
 }
 
-func (s *Store) PresignURL(ctx context.Context, key string, opts core.SignedURLOptions) (string, error) {
+// PresignURL returns unsupported for memory driver.
+func (s *Store) PresignURL(_ context.Context, _ string, _ core.SignedURLOptions) (string, error) {
 	return "", core.ErrUnsupported
 }
 

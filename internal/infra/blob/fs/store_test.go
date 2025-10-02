@@ -92,7 +92,7 @@ func TestStore_MetadataPersistence(t *testing.T) {
 	if _, err := os.Stat(dataPath); err != nil {
 		t.Fatalf("expected data path: %v", err)
 	}
-	b, err := os.ReadFile(metaPath)
+	b, err := os.ReadFile(metaPath) // #nosec G304: metaPath derived from store.pathFor with sanitized key, not user input
 	if err != nil {
 		t.Fatalf("read meta: %v", err)
 	}
@@ -106,7 +106,7 @@ func TestStore_MetadataPersistence(t *testing.T) {
 
 type errorReader struct{}
 
-func (errorReader) Read(p []byte) (int, error) { return 0, errors.New("boom") }
+func (errorReader) Read(_ []byte) (int, error) { return 0, errors.New("boom") }
 
 func TestStore_PutDuplicateAndErrorBranches(t *testing.T) {
 	store := newTempStore(t)
@@ -210,10 +210,10 @@ func TestListMetaCorrupt(t *testing.T) {
 		t.Fatalf("new store: %v", err)
 	}
 	data := filepath.Join(dir, "bad.txt")
-	if err := os.WriteFile(data, []byte("data"), 0o644); err != nil {
+	if err := os.WriteFile(data, []byte("data"), 0o600); err != nil {
 		t.Fatalf("write data: %v", err)
 	}
-	if err := os.WriteFile(data+".meta", []byte("{"), 0o644); err != nil {
+	if err := os.WriteFile(data+".meta", []byte("{"), 0o600); err != nil {
 		t.Fatalf("write meta: %v", err)
 	}
 	if _, err := store.List(context.Background(), ""); err == nil {
@@ -238,7 +238,7 @@ func TestCloneMetadata(t *testing.T) {
 
 func TestWriteJSONMarshalError(t *testing.T) {
 	old := jsonMarshal
-	jsonMarshal = func(v any) ([]byte, error) { return nil, errors.New("marsh") }
+	jsonMarshal = func(_ any) ([]byte, error) { return nil, errors.New("marsh") }
 	defer func() { jsonMarshal = old }()
 	if err := writeJSON(filepath.Join(t.TempDir(), "x.meta"), struct{}{}); err == nil {
 		t.Fatalf("expected marshal error")
@@ -247,7 +247,7 @@ func TestWriteJSONMarshalError(t *testing.T) {
 
 func TestReadMetaUnmarshalError(t *testing.T) {
 	file := filepath.Join(t.TempDir(), "bad.meta")
-	if err := os.WriteFile(file, []byte("{"), 0o644); err != nil {
+	if err := os.WriteFile(file, []byte("{"), 0o600); err != nil {
 		t.Fatalf("write: %v", err)
 	}
 	if _, err := readMeta(file); err == nil {

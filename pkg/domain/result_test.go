@@ -46,7 +46,7 @@ type staticRule struct{ name string }
 
 func (r staticRule) Name() string { return r.name }
 
-func (r staticRule) Evaluate(ctx context.Context, view RuleView, changes []Change) (Result, error) {
+func (r staticRule) Evaluate(_ context.Context, _ RuleView, _ []Change) (Result, error) { // view not needed for this test
 	return Result{Violations: []Violation{{Rule: r.name, Severity: SeverityWarn}}}, nil
 }
 
@@ -70,6 +70,6 @@ type errorRule struct{}
 
 func (errorRule) Name() string { return "error" }
 
-func (errorRule) Evaluate(ctx context.Context, view RuleView, changes []Change) (Result, error) {
+func (errorRule) Evaluate(_ context.Context, _ RuleView, _ []Change) (Result, error) {
 	return Result{}, fmt.Errorf("boom")
 }

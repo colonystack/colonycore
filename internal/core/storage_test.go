@@ -38,12 +38,12 @@ func TestOpenPersistentStore_DefaultSQLite(t *testing.T) {
 		if store == nil {
 			t.Fatal("expected store")
 		}
-		// should be *sqlite.SQLiteStore internally; rely on persist side-effects by creating something
-		sqliteStore, ok := store.(*sqlite.SQLiteStore)
+		// should be *sqlite.Store internally; rely on persist side-effects by creating something
+		sqliteStore, ok := store.(*sqlite.Store)
 		if !ok {
-			t.Fatalf("expected *sqlite.SQLiteStore, got %T", store)
+			t.Fatalf("expected *sqlite.Store, got %T", store)
 		}
-		_, _ = sqliteStore.RunInTransaction(context.Background(), func(tx Transaction) error { return nil })
+		_, _ = sqliteStore.RunInTransaction(context.Background(), func(_ Transaction) error { return nil })
 	})
 }
 
@@ -56,10 +56,11 @@ func TestOpenPersistentStore_Memory(t *testing.T) {
 		}
 		if _, ok := store.(*memory.Store); !ok {
 			// memory path actually returns *memory.Store
-			if _, isSQLite := store.(*sqlite.SQLiteStore); isSQLite {
+			if _, isSQLite := store.(*sqlite.Store); isSQLite {
 				// acceptable if implementation changed; still counts for coverage
+				t.Log("using sqlite fallback implementation for memory driver")
 			} else {
-				t.Fatalf("expected *memory.Store or *sqlite.SQLiteStore, got %T", store)
+				t.Fatalf("expected *memory.Store or *sqlite.Store, got %T", store)
 			}
 		}
 	})
@@ -76,10 +77,10 @@ func TestOpenPersistentStore_CustomSQLitePath(t *testing.T) {
 			if err != nil {
 				t.Fatalf("expected no error, got %v", err)
 			}
-			s, ok := store.(*sqlite.SQLiteStore)
+			s, ok := store.(*sqlite.Store)
 			if !ok {
 				// if backend changes this still increases coverage
-				t.Skipf("expected *sqlite.SQLiteStore, got %T", store)
+				t.Skipf("expected *sqlite.Store, got %T", store)
 			}
 			if s.Path() != path {
 				// ensure path passed through

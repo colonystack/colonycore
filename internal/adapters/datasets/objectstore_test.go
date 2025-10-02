@@ -8,7 +8,6 @@ import (
 func TestMemoryObjectStorePutGetListDelete(t *testing.T) {
 	ctx := context.Background()
 	store := NewMemoryObjectStore()
-
 	meta := map[string]any{"purpose": "test", "count": 1}
 	a1, err := store.Put(ctx, "exp1/artifactA", []byte("hello"), "text/plain", meta)
 	if err != nil {
@@ -17,8 +16,6 @@ func TestMemoryObjectStorePutGetListDelete(t *testing.T) {
 	if a1.ID != "exp1/artifactA" || a1.SizeBytes != 5 {
 		t.Fatalf("unexpected artifact metadata: %+v", a1)
 	}
-
-	// Ensure metadata map is defensively copied.
 	meta["mutated"] = true
 	gotMeta, payload, err := store.Get(ctx, "exp1/artifactA")
 	if err != nil {
@@ -30,13 +27,9 @@ func TestMemoryObjectStorePutGetListDelete(t *testing.T) {
 	if _, ok := gotMeta.Metadata["mutated"]; ok {
 		t.Fatalf("store metadata mutated via caller map")
 	}
-
-	// Second object
 	if _, err := store.Put(ctx, "exp1/artifactB", []byte("world"), "text/plain", nil); err != nil {
 		t.Fatalf("put a2: %v", err)
 	}
-
-	// List prefix
 	list, err := store.List(ctx, "exp1/")
 	if err != nil {
 		t.Fatalf("list: %v", err)
@@ -44,24 +37,17 @@ func TestMemoryObjectStorePutGetListDelete(t *testing.T) {
 	if len(list) != 2 {
 		t.Fatalf("expected 2 artifacts, got %d", len(list))
 	}
-
-	// Delete one
 	existed, err := store.Delete(ctx, "exp1/artifactA")
 	if err != nil || !existed {
 		t.Fatalf("delete existing: existed=%v err=%v", existed, err)
 	}
-	// Idempotent delete
 	existed, err = store.Delete(ctx, "exp1/artifactA")
 	if err != nil || existed {
-		t.Fatalf("delete idempotent expected false,nil got %v,%v", existed, err)
+		t.Fatalf("idempotent delete expected false,nil got %v,%v", existed, err)
 	}
-
-	// Get after delete should error
 	if _, _, err := store.Get(ctx, "exp1/artifactA"); err == nil {
 		t.Fatalf("expected error on deleted object")
 	}
-
-	// List should now have 1
 	list, err = store.List(ctx, "exp1/")
 	if err != nil {
 		t.Fatalf("list after delete: %v", err)

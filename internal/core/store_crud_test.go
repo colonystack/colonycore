@@ -181,26 +181,27 @@ func TestMemoryStoreCRUDAndQueries(t *testing.T) {
 		if _, err := tx.UpdateHousingUnit("missing", func(*HousingUnit) error { return nil }); err == nil {
 			return fmt.Errorf("expected missing housing update error")
 		}
+		const updatedDesc = "updated"
 		if _, err := tx.UpdateProject(projectID, func(p *Project) error {
-			p.Description = "updated"
+			p.Description = updatedDesc
 			return nil
 		}); err != nil {
 			return err
 		}
 		if _, err := tx.UpdateProtocol(protocolID, func(p *Protocol) error {
-			p.Description = "updated"
+			p.Description = updatedDesc
 			return nil
 		}); err != nil {
 			return err
 		}
 		if _, err := tx.UpdateCohort(cohortID, func(c *Cohort) error {
-			c.Purpose = "updated"
+			c.Purpose = updatedDesc
 			return nil
 		}); err != nil {
 			return err
 		}
 		if _, err := tx.UpdateBreedingUnit(breedingID, func(b *BreedingUnit) error {
-			b.Strategy = "updated"
+			b.Strategy = updatedDesc
 			b.FemaleIDs = append(b.FemaleIDs, organismBID)
 			return nil
 		}); err != nil {
@@ -378,6 +379,6 @@ type staticRule struct {
 
 func (r staticRule) Name() string { return r.name }
 
-func (r staticRule) Evaluate(ctx context.Context, view RuleView, changes []Change) (Result, error) {
+func (r staticRule) Evaluate(_ context.Context, _ RuleView, _ []Change) (Result, error) {
 	return Result{Violations: []Violation{{Rule: r.name, Severity: r.severity}}}, nil
 }

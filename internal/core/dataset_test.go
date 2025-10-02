@@ -9,15 +9,21 @@ import (
 	"time"
 )
 
+const (
+	testPluginFrog     = "frog"
+	testLiteralMutated = "mutated"
+	testLiteralChanged = "changed"
+)
+
 type stringer struct{}
 
-func (stringer) String() string { return "frog" }
+func (stringer) String() string { return testPluginFrog }
 
 func TestDatasetTemplateRunSuccess(t *testing.T) {
 	reference := time.Date(2024, 1, 2, 3, 4, 5, 0, time.UTC)
 	invocations := 0
 	template := DatasetTemplate{
-		Plugin:      "frog",
+		Plugin:      testPluginFrog,
 		Key:         "snapshot",
 		Version:     "1.0.0",
 		Title:       "Snapshot",
@@ -39,7 +45,7 @@ func TestDatasetTemplateRunSuccess(t *testing.T) {
 			FormatCSV,
 		},
 		Binder: func(env DatasetEnvironment) (DatasetRunner, error) {
-			return func(ctx context.Context, req DatasetRunRequest) (DatasetRunResult, error) {
+			return func(_ context.Context, req DatasetRunRequest) (DatasetRunResult, error) {
 				invocations++
 				if req.Parameters["limit"].(int) != 25 {
 					t.Fatalf("expected coerced integer parameter, got %v", req.Parameters["limit"])
@@ -89,7 +95,7 @@ func TestDatasetTemplateRunSuccess(t *testing.T) {
 
 func TestDatasetTemplateRunParameterErrors(t *testing.T) {
 	template := DatasetTemplate{
-		Plugin:      "frog",
+		Plugin:      testPluginFrog,
 		Key:         "snapshot",
 		Version:     "1.0.0",
 		Title:       "Snapshot",
@@ -130,7 +136,7 @@ func TestDatasetValidateParametersCoercion(t *testing.T) {
 	when := time.Date(2023, 5, 6, 7, 8, 9, 0, time.UTC)
 	template := DatasetTemplate{
 		Parameters: []DatasetParameter{
-			{Name: "name", Type: "string", Required: true, Enum: []string{"frog", "newt"}},
+			{Name: "name", Type: "string", Required: true, Enum: []string{testPluginFrog, "newt"}},
 			{Name: "count", Type: "integer"},
 			{Name: "ratio", Type: "number"},
 			{Name: "flag", Type: "boolean"},
@@ -151,7 +157,7 @@ func TestDatasetValidateParametersCoercion(t *testing.T) {
 	if len(errs) != 0 {
 		t.Fatalf("unexpected errors: %+v", errs)
 	}
-	if cleaned["name"].(string) != "frog" {
+	if cleaned["name"].(string) != testPluginFrog {
 		t.Fatalf("expected enum stringer coercion, got %v", cleaned["name"])
 	}
 	if cleaned["count"].(int) != 7 {
@@ -182,12 +188,12 @@ func TestDatasetValidateParametersCoercion(t *testing.T) {
 
 func TestDatasetTemplateCollectionSort(t *testing.T) {
 	collection := DatasetTemplateCollection{
-		{Plugin: "frog", Key: "b", Version: "0.1.0"},
-		{Plugin: "frog", Key: "a", Version: "0.2.0"},
+		{Plugin: testPluginFrog, Key: "b", Version: "0.1.0"},
+		{Plugin: testPluginFrog, Key: "a", Version: "0.2.0"},
 		{Plugin: "newt", Key: "a", Version: "0.1.0"},
 	}
-	collection[0].Slug = "frog/b@0.1.0"
-	collection[1].Slug = "frog/a@0.2.0"
+	collection[0].Slug = testPluginFrog + "/b@0.1.0"
+	collection[1].Slug = testPluginFrog + "/a@0.2.0"
 	collection[2].Slug = "newt/a@0.1.0"
 
 	sort.Sort(collection)
@@ -282,8 +288,8 @@ func TestDatasetTemplateSlugVariants(t *testing.T) {
 	if slug := template.slug(); slug != "demo@1.0.0" {
 		t.Fatalf("unexpected slug without plugin: %s", slug)
 	}
-	template.Plugin = "frog"
-	if slug := template.slug(); slug != "frog/demo@1.0.0" {
+	template.Plugin = testPluginFrog
+	if slug := template.slug(); slug != testPluginFrog+"/demo@1.0.0" {
 		t.Fatalf("unexpected slug with plugin: %s", slug)
 	}
 }
@@ -331,14 +337,14 @@ func TestDatasetTemplateValidateFailures(t *testing.T) {
 func TestDatasetCloneHelpers(t *testing.T) {
 	parameters := []DatasetParameter{{Name: "enum", Enum: []string{"a", "b"}}, {Name: "plain"}}
 	clonedParams := cloneParameters(parameters)
-	clonedParams[0].Enum[0] = "mutated"
+	clonedParams[0].Enum[0] = testLiteralMutated
 	if parameters[0].Enum[0] != "a" {
 		t.Fatalf("expected parameter enum to remain unchanged")
 	}
 
 	columns := []DatasetColumn{{Name: "value", Type: "string"}}
 	clonedColumns := cloneColumns(columns)
-	clonedColumns[0].Name = "changed"
+	clonedColumns[0].Name = testLiteralChanged
 	if columns[0].Name != "value" {
 		t.Fatalf("expected original column to remain value")
 	}

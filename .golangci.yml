@@ -1,0 +1,96 @@
+version: "2"
+
+run:
+  timeout: 5m
+  issues-exit-code: 1
+  tests: true
+
+linters:
+  default: none
+  enable:
+    - depguard       # Enforce allowed/denied imports (project policy)
+    - govet          # Core vet checks
+    - staticcheck    # Advanced static analysis
+    - errcheck       # Ensure errors are handled
+    - ineffassign    # Detect ineffectual assignments
+    - unused         # Unused vars/funcs/types
+    - revive         # Style and best practices
+    - misspell       # Spelling
+    - goconst        # Repeated literal detection
+    - gocyclo        # Cyclomatic complexity
+    - gosec          # Security checks (may require tuning later)
+  settings:
+    errcheck:
+      check-type-assertions: false
+      check-blank: false
+    gocyclo:
+      min-complexity: 65
+    depguard:
+      rules:
+        Main:
+          files:
+            - $all
+            - "!$test"
+          allow:
+            - bufio
+            - bytes
+            - colonycore
+            - context
+            - crypto/rand
+            - crypto/sha256
+            - database/sql
+            - encoding/csv
+            - encoding/hex
+            - encoding/json
+            - errors
+            - flag
+            - fmt
+            - github.com/aws/aws-sdk-go-v2/aws
+            - github.com/aws/aws-sdk-go-v2/config
+            - github.com/aws/aws-sdk-go-v2/credentials
+            - github.com/aws/aws-sdk-go-v2/service/s3
+            - image
+            - io
+            - modernc.org/sqlite
+            - net/http
+            - net/url
+            - os
+            - path/filepath
+            - sort
+            - strconv
+            - strings
+            - sync
+            - testing
+            - time
+          deny:
+            - pkg: github.com/pkg/errors
+              desc: Use standard library errors instead
+        Test:
+          files:
+            - $test
+          allow:
+            - bytes
+            - colonycore
+            - context
+            - encoding/csv
+            - encoding/json
+            - errors
+            - fmt
+            - github.com/aws/aws-sdk-go-v2/aws
+            - github.com/aws/aws-sdk-go-v2/config
+            - github.com/aws/aws-sdk-go-v2/credentials
+            - github.com/aws/aws-sdk-go-v2/service/s3
+            - go/build
+            - io
+            - net/http
+            - net/http/httptest
+            - os
+            - path/filepath
+            - sort
+            - strconv
+            - strings
+            - testing
+            - time
+          deny:
+            - pkg: github.com/pkg/errors
+              desc: Use standard library errors instead

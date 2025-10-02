@@ -30,7 +30,7 @@ func TestDatasetTemplateBindErrorVariants(t *testing.T) { // renamed to avoid co
 func TestDatasetTemplateBindAndRun2(t *testing.T) { // renamed to avoid collision
 	called := false
 	tmpl := DatasetTemplate{Key: "k", Version: "v1", Title: "t", Dialect: DatasetDialectSQL, Query: "select 1", Columns: []DatasetColumn{{Name: "c", Type: "string"}}, OutputFormats: []DatasetFormat{FormatJSON}, Binder: func(DatasetEnvironment) (DatasetRunner, error) {
-		return func(ctx context.Context, req DatasetRunRequest) (DatasetRunResult, error) {
+		return func(_ context.Context, _ DatasetRunRequest) (DatasetRunResult, error) {
 			called = true
 			return DatasetRunResult{Rows: []map[string]any{{"c": 1}}, GeneratedAt: time.Now()}, nil
 		}, nil

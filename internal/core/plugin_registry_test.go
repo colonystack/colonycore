@@ -31,14 +31,14 @@ func TestPluginRegistryGuardsAndCopies(t *testing.T) {
 
 	schema := map[string]any{"type": "object"}
 	registry.RegisterSchema("organism", schema)
-	schema["type"] = "mutated"
+	schema["type"] = testLiteralMutated
 
 	stored := registry.Schemas()
 	if stored["organism"]["type"].(string) != "object" {
 		t.Fatalf("expected schema copy to remain object")
 	}
 
-	stored["organism"]["type"] = "changed"
+	stored["organism"]["type"] = testLiteralChanged
 	if registry.Schemas()["organism"]["type"].(string) != "object" {
 		t.Fatalf("expected registry to return defensive copies")
 	}
@@ -71,18 +71,18 @@ func TestPluginRegistryGuardsAndCopies(t *testing.T) {
 	if len(registered) != 1 {
 		t.Fatalf("expected dataset to be registered")
 	}
-	registered[0].Parameters[0].Enum[0] = "mutated"
-	registered[0].Metadata.Tags[0] = "changed"
-	registered[0].Metadata.Annotations["k"] = "changed"
+	registered[0].Parameters[0].Enum[0] = testLiteralMutated
+	registered[0].Metadata.Tags[0] = testLiteralChanged
+	registered[0].Metadata.Annotations["k"] = testLiteralChanged
 
-	copy := registry.DatasetTemplates()[0]
-	if copy.Parameters[0].Enum[0] != "adult" {
+	tmplCopy := registry.DatasetTemplates()[0]
+	if tmplCopy.Parameters[0].Enum[0] != "adult" {
 		t.Fatalf("expected enum to remain adult")
 	}
-	if copy.Metadata.Tags[0] != "demo" {
+	if tmplCopy.Metadata.Tags[0] != "demo" {
 		t.Fatalf("expected metadata tags copy")
 	}
-	if copy.Metadata.Annotations["k"] != "v" {
+	if tmplCopy.Metadata.Annotations["k"] != "v" {
 		t.Fatalf("expected annotation copy")
 	}
 

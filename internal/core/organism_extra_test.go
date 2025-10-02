@@ -21,7 +21,7 @@ func TestOrganism_UpdateDeleteBranches(t *testing.T) {
 		t.Fatalf("create: %v", err)
 	}
 	if _, err := store.RunInTransaction(context.Background(), func(tx Transaction) error {
-		updated, err := tx.UpdateOrganism(org.ID, func(o *Organism) error { o.Species = "frog2"; return nil })
+		updated, err := tx.UpdateOrganism(org.ID, func(o *Organism) error { o.Species = "frog2"; return nil }) // o used in closure
 		if err != nil {
 			return err
 		}
@@ -34,7 +34,7 @@ func TestOrganism_UpdateDeleteBranches(t *testing.T) {
 	}
 	// Update missing
 	if _, err := store.RunInTransaction(context.Background(), func(tx Transaction) error {
-		if _, uerr := tx.UpdateOrganism("missing", func(o *Organism) error { return nil }); uerr == nil {
+		if _, uerr := tx.UpdateOrganism("missing", func(_ *Organism) error { return nil }); uerr == nil {
 			t.Fatalf("expected not found")
 		}
 		return nil

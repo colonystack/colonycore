@@ -296,20 +296,21 @@ func TestMemStoreCRUDAndQueries(t *testing.T) {
 		if _, err := tx.UpdateHousingUnit("missing", func(*domain.HousingUnit) error { return nil }); err == nil {
 			return fmt.Errorf("expected missing housing update error")
 		}
+		const updatedDesc = "updated"
 		if _, err := tx.UpdateProject(projectID, func(p *domain.Project) error {
-			p.Description = "updated"
+			p.Description = updatedDesc
 			return nil
 		}); err != nil {
 			return err
 		}
 		if _, err := tx.UpdateProtocol(protocolID, func(p *domain.Protocol) error {
-			p.Description = "updated"
+			p.Description = updatedDesc
 			return nil
 		}); err != nil {
 			return err
 		}
 		if _, err := tx.UpdateCohort(cohortID, func(c *domain.Cohort) error {
-			c.Purpose = "updated"
+			c.Purpose = updatedDesc
 			return nil
 		}); err != nil {
 			return err
@@ -354,7 +355,7 @@ type blockingRule struct{}
 
 func (blockingRule) Name() string { return "block" }
 
-func (blockingRule) Evaluate(ctx context.Context, view domain.RuleView, changes []domain.Change) (domain.Result, error) {
+func (blockingRule) Evaluate(_ context.Context, _ domain.RuleView, _ []domain.Change) (domain.Result, error) {
 	res := domain.Result{}
 	res.Merge(domain.Result{Violations: []domain.Violation{{Rule: "block", Severity: domain.SeverityBlock}}})
 	return res, nil

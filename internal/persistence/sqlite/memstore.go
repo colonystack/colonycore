@@ -1,3 +1,5 @@
+// Package sqlite provides an in-memory reference implementation of a SQLite-backed
+// store used chiefly in tests. (Name retained for interface symmetry.)
 package sqlite
 
 import (
@@ -12,21 +14,35 @@ import (
 )
 
 type (
-	Organism        = domain.Organism
-	Cohort          = domain.Cohort
-	HousingUnit     = domain.HousingUnit
-	BreedingUnit    = domain.BreedingUnit
-	Procedure       = domain.Procedure
-	Protocol        = domain.Protocol
-	Project         = domain.Project
-	Change          = domain.Change
-	Result          = domain.Result
-	RulesEngine     = domain.RulesEngine
-	Transaction     = domain.Transaction
+	// Organism aliases domain.Organism for SQLite snapshot operations.
+	Organism = domain.Organism
+	// Cohort aliases domain.Cohort.
+	Cohort = domain.Cohort
+	// HousingUnit aliases domain.HousingUnit.
+	HousingUnit = domain.HousingUnit
+	// BreedingUnit aliases domain.BreedingUnit.
+	BreedingUnit = domain.BreedingUnit
+	// Procedure aliases domain.Procedure.
+	Procedure = domain.Procedure
+	// Protocol aliases domain.Protocol.
+	Protocol = domain.Protocol
+	// Project aliases domain.Project.
+	Project = domain.Project
+	// Change aliases domain.Change included in rule evaluation.
+	Change = domain.Change
+	// Result aliases domain.Result summarizing rule outcomes.
+	Result = domain.Result
+	// RulesEngine aliases domain.RulesEngine orchestrating rule evaluation.
+	RulesEngine = domain.RulesEngine
+	// Transaction aliases domain.Transaction unit of work.
+	Transaction = domain.Transaction
+	// TransactionView aliases domain.TransactionView read view.
 	TransactionView = domain.TransactionView
+	// PersistentStore aliases domain.PersistentStore abstraction.
 	PersistentStore = domain.PersistentStore
 )
 
+// Entity identifiers (buckets) for snapshot persistence.
 const (
 	EntityOrganism    = domain.EntityOrganism
 	EntityCohort      = domain.EntityCohort
@@ -37,6 +53,7 @@ const (
 	EntityProject     = domain.EntityProject
 )
 
+// Action identifiers persisted with changes.
 const (
 	ActionCreate = domain.ActionCreate
 	ActionUpdate = domain.ActionUpdate
@@ -341,7 +358,7 @@ func (s *memStore) RunInTransaction(ctx context.Context, fn func(tx Transaction)
 }
 
 // View executes fn against a read-only snapshot of the store state.
-func (s *memStore) View(ctx context.Context, fn func(TransactionView) error) error {
+func (s *memStore) View(_ context.Context, fn func(TransactionView) error) error {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 

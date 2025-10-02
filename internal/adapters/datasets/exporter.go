@@ -1,3 +1,5 @@
+// Package datasets provides dataset export scheduling and artifact management
+// adapters used internally by the colonycore service.
 package datasets
 
 import (
@@ -21,11 +23,16 @@ import (
 // ExportStatus describes the lifecycle stage of an export request.
 type ExportStatus string
 
+// Possible export lifecycle statuses.
 const (
-	ExportStatusQueued    ExportStatus = "queued"
-	ExportStatusRunning   ExportStatus = "running"
+	// ExportStatusQueued indicates the export request is queued for processing.
+	ExportStatusQueued ExportStatus = "queued"
+	// ExportStatusRunning indicates the worker is currently generating artifacts.
+	ExportStatusRunning ExportStatus = "running"
+	// ExportStatusSucceeded indicates all requested artifacts were generated successfully.
 	ExportStatusSucceeded ExportStatus = "succeeded"
-	ExportStatusFailed    ExportStatus = "failed"
+	// ExportStatusFailed indicates the export terminated with an error.
+	ExportStatusFailed ExportStatus = "failed"
 )
 
 // ExportArtifact captures a stored dataset artifact.
@@ -675,7 +682,7 @@ func NewMemoryObjectStore() *MemoryObjectStore {
 }
 
 // Put stores payload metadata and returns a signed URL for retrieval.
-func (s *MemoryObjectStore) Put(ctx context.Context, key string, payload []byte, contentType string, metadata map[string]any) (ExportArtifact, error) {
+func (s *MemoryObjectStore) Put(_ context.Context, key string, payload []byte, contentType string, metadata map[string]any) (ExportArtifact, error) {
 	now := time.Now().UTC()
 	s.mu.Lock()
 	if _, exists := s.objects[key]; exists {
@@ -698,7 +705,8 @@ func (s *MemoryObjectStore) Put(ctx context.Context, key string, payload []byte,
 	return artifact, nil
 }
 
-func (s *MemoryObjectStore) Get(ctx context.Context, key string) (ExportArtifact, []byte, error) {
+// Get retrieves an object payload and its metadata; returns error if key not found.
+func (s *MemoryObjectStore) Get(_ context.Context, key string) (ExportArtifact, []byte, error) {
 	s.mu.RLock()
 	obj, ok := s.objects[key]
 	s.mu.RUnlock()
@@ -714,7 +722,8 @@ func (s *MemoryObjectStore) Get(ctx context.Context, key string) (ExportArtifact
 	return artCopy, payloadCopy, nil
 }
 
-func (s *MemoryObjectStore) Delete(ctx context.Context, key string) (bool, error) {
+// Delete removes an object if it exists returning whether it was present.
+func (s *MemoryObjectStore) Delete(_ context.Context, key string) (bool, error) {
 	s.mu.Lock()
 	_, existed := s.objects[key]
 	if existed {
@@ -724,7 +733,8 @@ func (s *MemoryObjectStore) Delete(ctx context.Context, key string) (bool, error
 	return existed, nil
 }
 
-func (s *MemoryObjectStore) List(ctx context.Context, prefix string) ([]ExportArtifact, error) {
+// List returns artifacts whose IDs share the provided prefix (or all when prefix empty).
+func (s *MemoryObjectStore) List(_ context.Context, prefix string) ([]ExportArtifact, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	out := make([]ExportArtifact, 0, len(s.objects))
@@ -762,7 +772,7 @@ type MemoryAuditLog struct {
 }
 
 // Record stores an audit entry.
-func (l *MemoryAuditLog) Record(ctx context.Context, entry AuditEntry) {
+func (l *MemoryAuditLog) Record(_ context.Context, entry AuditEntry) {
 	l.mu.Lock()
 	l.entries = append(l.entries, entry)
 	l.mu.Unlock()

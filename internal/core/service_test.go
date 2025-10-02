@@ -422,7 +422,7 @@ func (testClockPlugin) Register(registry pluginapi.Registry) error {
 		OutputFormats: []datasetapi.Format{datasetapi.FormatJSON},
 		Columns:       []datasetapi.Column{{Name: "now", Type: "timestamp"}},
 		Binder: func(env datasetapi.Environment) (datasetapi.Runner, error) {
-			return func(ctx context.Context, req datasetapi.RunRequest) (datasetapi.RunResult, error) {
+			return func(_ context.Context, req datasetapi.RunRequest) (datasetapi.RunResult, error) {
 				now := env.Now
 				if now == nil {
 					now = func() time.Time { return time.Now().UTC() }

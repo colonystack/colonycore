@@ -1,3 +1,5 @@
+// Package frog implements a reference plugin providing frog-specific schema
+// extensions, rules, and example dataset templates for demonstration purposes.
 package frog
 
 import (
@@ -7,9 +9,9 @@ import (
 	"fmt"
 	"strings"
 	"time"
-
-	domain "colonycore/pkg/domain"
 )
+
+const frogHabitatRuleName = "frog_habitat_warning"
 
 // Plugin implements the frog reference module described in the RFC (stubbed for the PoC).
 type Plugin struct{}
@@ -66,12 +68,12 @@ WHERE species ILIKE 'frog%'`,
 				Type:        "string",
 				Description: "Optional lifecycle stage filter using canonical stage identifiers.",
 				Enum: []string{
-					string(domain.StagePlanned),
-					string(domain.StageLarva),
-					string(domain.StageJuvenile),
-					string(domain.StageAdult),
-					string(domain.StageRetired),
-					string(domain.StageDeceased),
+					string(datasetapi.StagePlanned),
+					string(datasetapi.StageLarva),
+					string(datasetapi.StageJuvenile),
+					string(datasetapi.StageAdult),
+					string(datasetapi.StageRetired),
+					string(datasetapi.StageDeceased),
 				},
 			},
 			{
@@ -123,10 +125,10 @@ WHERE species ILIKE 'frog%'`,
 
 type frogHabitatRule struct{}
 
-func (frogHabitatRule) Name() string { return "frog_habitat_warning" }
+func (frogHabitatRule) Name() string { return frogHabitatRuleName }
 
-func (frogHabitatRule) Evaluate(ctx context.Context, view domain.RuleView, changes []domain.Change) (domain.Result, error) {
-	var result domain.Result
+func (frogHabitatRule) Evaluate(_ context.Context, view pluginapi.RuleView, _ []pluginapi.Change) (pluginapi.Result, error) {
+	var result pluginapi.Result
 	for _, organism := range view.ListOrganisms() {
 		specie := strings.ToLower(organism.Species)
 		if !strings.Contains(specie, "frog") {
@@ -143,11 +145,11 @@ func (frogHabitatRule) Evaluate(ctx context.Context, view domain.RuleView, chang
 		if strings.Contains(env, "aquatic") || strings.Contains(env, "humid") {
 			continue
 		}
-		result.Violations = append(result.Violations, domain.Violation{
-			Rule:     "frog_habitat_warning",
-			Severity: domain.SeverityWarn,
+		result.Violations = append(result.Violations, pluginapi.Violation{
+			Rule:     frogHabitatRuleName,
+			Severity: pluginapi.SeverityWarn,
 			Message:  "frog assigned to non-aquatic/non-humid housing",
-			Entity:   domain.EntityOrganism,
+			Entity:   pluginapi.EntityOrganism,
 			EntityID: organism.ID,
 		})
 	}
@@ -171,7 +173,7 @@ func frogPopulationBinder(env datasetapi.Environment) (datasetapi.Runner, error)
 			t := ts
 			asOfTime = &t
 		}
-		err := env.Store.View(ctx, func(view domain.TransactionView) error {
+		err := env.Store.View(ctx, func(view datasetapi.TransactionView) error {
 			for _, organism := range view.ListOrganisms() {
 				species := strings.ToLower(organism.Species)
 				if !strings.Contains(species, "frog") {
@@ -180,7 +182,7 @@ func frogPopulationBinder(env datasetapi.Environment) (datasetapi.Runner, error)
 				if stageFilter != "" && string(organism.Stage) != stageFilter {
 					continue
 				}
-				if stageFilter == "" && !includeRetired && organism.Stage == domain.StageRetired {
+				if stageFilter == "" && !includeRetired && organism.Stage == datasetapi.StageRetired {
 					continue
 				}
 				if asOfTime != nil && organism.UpdatedAt.After(*asOfTime) {

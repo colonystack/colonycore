@@ -1,3 +1,5 @@
+// Package core defines core abstractions for blob storage backends
+// used internally by higher-level services.
 package core
 
 import (
@@ -11,9 +13,12 @@ import (
 type Driver string
 
 const (
-	DriverFilesystem Driver = "fs"     // local filesystem (default, dev)
-	DriverS3         Driver = "s3"     // S3 / MinIO compatible
-	DriverMemory     Driver = "memory" // in-memory (tests)
+	// DriverFilesystem represents the local filesystem implementation.
+	DriverFilesystem Driver = "fs" // local filesystem (default, dev)
+	// DriverS3 represents an S3 / MinIO compatible implementation.
+	DriverS3 Driver = "s3" // S3 / MinIO compatible
+	// DriverMemory represents an in-memory implementation typically used in tests.
+	DriverMemory Driver = "memory" // in-memory (tests)
 )
 
 // PutOptions specifies optional parameters for Put.

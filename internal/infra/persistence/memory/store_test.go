@@ -66,7 +66,7 @@ type blockingRule struct{}
 
 func (blockingRule) Name() string { return "block" }
 
-func (blockingRule) Evaluate(ctx context.Context, view domain.RuleView, changes []domain.Change) (domain.Result, error) {
+func (blockingRule) Evaluate(_ context.Context, _ domain.RuleView, _ []domain.Change) (domain.Result, error) {
 	res := domain.Result{}
 	res.Merge(domain.Result{Violations: []domain.Violation{{Rule: "block", Severity: domain.SeverityBlock}}})
 	return res, nil
@@ -83,7 +83,7 @@ func TestUpdateHousingUnitErrors(t *testing.T) {
 		if err != nil {
 			return err
 		}
-		_, err = tx.UpdateHousingUnit(h.ID, func(unit *domain.HousingUnit) error { return fmt.Errorf("boom") })
+		_, err = tx.UpdateHousingUnit(h.ID, func(_ *domain.HousingUnit) error { return fmt.Errorf("boom") })
 		if err == nil {
 			t.Fatalf("expected mutator error")
 		}

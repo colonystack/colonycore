@@ -3,8 +3,11 @@ package core
 import "colonycore/pkg/domain"
 
 type (
-	Rule        = domain.Rule
-	RuleView    = domain.RuleView
+	// Rule is an alias of domain.Rule representing a validation policy executed in transactions.
+	Rule = domain.Rule
+	// RuleView is an alias of domain.RuleView providing read-only access to state during evaluation.
+	RuleView = domain.RuleView
+	// RulesEngine is an alias of domain.RulesEngine coordinating rule registration and evaluation.
 	RulesEngine = domain.RulesEngine
 )
 

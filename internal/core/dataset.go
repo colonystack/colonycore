@@ -1,3 +1,6 @@
+// Package core contains internal domain logic, dataset execution, plugin
+// integration, and storage orchestration for colonycore. It is not considered
+// a stable public API; outward-facing packages live under pkg/.
 package core
 
 import (
@@ -23,12 +26,18 @@ const (
 // DatasetFormat enumerates supported output formats for datasets.
 type DatasetFormat string
 
+// Supported dataset output formats.
 const (
-	FormatJSON    DatasetFormat = "json"
-	FormatCSV     DatasetFormat = "csv"
+	// FormatJSON encodes rows as JSON objects.
+	FormatJSON DatasetFormat = "json"
+	// FormatCSV encodes rows as comma separated values.
+	FormatCSV DatasetFormat = "csv"
+	// FormatParquet encodes rows in Apache Parquet columnar format.
 	FormatParquet DatasetFormat = "parquet"
-	FormatPNG     DatasetFormat = "png"
-	FormatHTML    DatasetFormat = "html"
+	// FormatPNG encodes rows as a rendered PNG image (e.g. chart).
+	FormatPNG DatasetFormat = "png"
+	// FormatHTML encodes rows as an HTML document or fragment.
+	FormatHTML DatasetFormat = "html"
 )
 
 // DatasetScope captures RBAC-derived filters applied to dataset execution.

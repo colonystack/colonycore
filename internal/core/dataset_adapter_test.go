@@ -42,7 +42,7 @@ func TestNewDatasetTemplateFromAPI(t *testing.T) {
 		if env.Now == nil {
 			t.Fatalf("expected now function")
 		}
-		return func(ctx context.Context, req datasetapi.RunRequest) (datasetapi.RunResult, error) {
+		return func(_ context.Context, req datasetapi.RunRequest) (datasetapi.RunResult, error) {
 			if req.Template.Key != "demo" {
 				t.Fatalf("unexpected template key: %s", req.Template.Key)
 			}

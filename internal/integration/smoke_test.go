@@ -25,7 +25,7 @@ func TestIntegrationSmoke(t *testing.T) {
 	}{
 		{
 			name: "memory-store",
-			open: func(t *testing.T) core.PersistentStore {
+			open: func(_ *testing.T) core.PersistentStore {
 				return core.NewMemoryStore(core.NewDefaultRulesEngine())
 			},
 		},
@@ -51,7 +51,7 @@ func TestIntegrationSmoke(t *testing.T) {
 	}{
 		{
 			name: "memory-blob",
-			open: func(t *testing.T) blob.Store { return blob.NewMemory() },
+			open: func(_ *testing.T) blob.Store { return blob.NewMemory() },
 		},
 		{
 			name: "filesystem-blob",
@@ -66,7 +66,7 @@ func TestIntegrationSmoke(t *testing.T) {
 		},
 		{
 			name: "mock-s3-blob",
-			open: func(t *testing.T) blob.Store { return blob.NewMockS3ForTests() },
+			open: func(_ *testing.T) blob.Store { return blob.NewMockS3ForTests() },
 		},
 	}
 

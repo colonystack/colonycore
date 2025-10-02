@@ -30,7 +30,7 @@ func TestStore_UpdateBreedingUnit_NotFound(t *testing.T) {
 	eng := NewDefaultRulesEngine()
 	store := NewMemoryStore(eng)
 	_, err := store.RunInTransaction(context.Background(), func(tx Transaction) error {
-		if _, bErr := tx.UpdateBreedingUnit("missing", func(b *BreedingUnit) error { return nil }); bErr == nil {
+		if _, bErr := tx.UpdateBreedingUnit("missing", func(_ *BreedingUnit) error { return nil }); bErr == nil {
 			t.Fatalf("expected not found error")
 		}
 		return nil

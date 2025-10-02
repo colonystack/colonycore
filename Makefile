@@ -8,8 +8,10 @@ COVER_THRESHOLD ?= 90.0
 GOPATH_BIN := $(shell go env GOPATH)/bin
 GOLANGCI_BIN := $(GOPATH_BIN)/golangci-lint
 GOLANGCI_VERSION_PLAIN := $(patsubst v%,%,$(GOLANGCI_VERSION))
+MODULE := $(shell go list -m)
+IMPORT_BOSS_BIN := $(GOPATH_BIN)/import-boss
 
-.PHONY: all build lint go-test test registry-check fmt-check vet registry-lint golangci golangci-install python-lint r-lint go-lint
+.PHONY: all build lint go-test test registry-check fmt-check vet registry-lint golangci golangci-install python-lint r-lint go-lint import-boss import-boss-install
 
 all: build
 
@@ -31,6 +33,7 @@ go-lint:
 	@$(MAKE) --no-print-directory vet
 	@$(MAKE) --no-print-directory registry-lint
 	@$(MAKE) --no-print-directory golangci
+	@$(MAKE) --no-print-directory import-boss
 	@echo "Go lint: OK"
 
 fmt-check:
@@ -92,6 +95,36 @@ golangci-install:
 		exit 1; \
 	fi
 
+import-boss:
+	@set -e; \
+	if [ ! -x "$(IMPORT_BOSS_BIN)" ]; then \
+		$(MAKE) --no-print-directory import-boss-install; \
+	fi; \
+	pkgs=$$(find . -path './.cache' -prune -o -name '.import-restrictions' -print | while read -r file; do \
+		dir=$$(dirname "$$file"); \
+		if find "$$dir" -maxdepth 1 -name '*.go' -print -quit | grep -q .; then \
+			rel=$${dir#./}; \
+			if [ "$$rel" = "" ]; then \
+				echo "$(MODULE)"; \
+			else \
+				echo "$(MODULE)/$$rel"; \
+			fi; \
+		fi; \
+	done | sort -u); \
+	if [ -z "$$pkgs" ]; then \
+		echo "import-boss: no packages to verify"; \
+	else \
+		inputs=$$(printf '%s\n' $$pkgs | paste -sd, -); \
+		echo "==> import-boss"; \
+		$(IMPORT_BOSS_BIN) --alsologtostderr=false --logtostderr=false --stderrthreshold=ERROR --verify-only --input-dirs $$inputs; \
+		echo "import-boss: OK"; \
+	fi
+
+import-boss-install:
+	@echo "Installing import-boss to $(IMPORT_BOSS_BIN) via go build"
+	@mkdir -p $(dir $(IMPORT_BOSS_BIN))
+	@GOCACHE=$(GOCACHE) go build -o $(IMPORT_BOSS_BIN) k8s.io/gengo/examples/import-boss
+
 python-lint:
 	@echo "==> Python lint"
 	@python -m ruff check --quiet clients/python || ( \
@@ -103,8 +136,9 @@ r-lint:
 	@echo "==> R lint"
 	@python scripts/run_lintr.py && echo "R lint: OK" || (status=$$?; if [ $$status -eq 0 ]; then echo "R lint: OK"; else exit $$status; fi)
 
+
 go-test:
-	GOCACHE=$(GOCACHE) go test -race -covermode=$(COVERMODE) -coverprofile=$(COVERFILE) ./...
+	@GOCACHE=$(GOCACHE) go test -race -covermode=$(COVERMODE) -coverprofile=$(COVERFILE) ./...
 	@GOCACHE=$(GOCACHE) go tool cover -func=$(COVERFILE) > coverage.summary
 	@awk '/^total:/ { if ($$3+0 < $(COVER_THRESHOLD)) { printf "Coverage %.1f%% is below threshold $(COVER_THRESHOLD)%%\n", $$3+0; exit 1 } }' coverage.summary
 	@echo "Coverage check passed (>= $(COVER_THRESHOLD)% )"

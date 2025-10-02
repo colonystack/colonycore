@@ -13,7 +13,7 @@ import (
 func TestSQLiteStorePersistAndReload(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "state.db")
-	store, err := NewSQLiteStore(path, domain.NewRulesEngine())
+	store, err := NewStore(path, domain.NewRulesEngine())
 	if err != nil {
 		t.Fatalf("new sqlite store: %v", err)
 	}
@@ -27,7 +27,7 @@ func TestSQLiteStorePersistAndReload(t *testing.T) {
 	if _, err := os.Stat(path); err != nil {
 		t.Fatalf("db file missing: %v", err)
 	}
-	reloaded, err := NewSQLiteStore(path, domain.NewRulesEngine())
+	reloaded, err := NewStore(path, domain.NewRulesEngine())
 	if err != nil {
 		t.Fatalf("reload sqlite store: %v", err)
 	}
@@ -52,12 +52,12 @@ func TestSQLiteStorePersistAndReload(t *testing.T) {
 }
 
 func TestSQLiteStorePersistError(t *testing.T) {
-	store, err := NewSQLiteStore("", domain.NewRulesEngine())
+	store, err := NewStore("", domain.NewRulesEngine())
 	if err != nil {
 		t.Skipf("sqlite unavailable: %v", err)
 	}
 	_ = store.DB().Close()
-	if _, err := store.RunInTransaction(context.Background(), func(tx domain.Transaction) error { return nil }); err == nil {
+	if _, err := store.RunInTransaction(context.Background(), func(_ domain.Transaction) error { return nil }); err == nil {
 		t.Fatalf("expected persist error after closing db")
 	}
 }
@@ -65,7 +65,7 @@ func TestSQLiteStorePersistError(t *testing.T) {
 func TestSQLiteStorePersistAllBuckets(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "full.db")
-	store, err := NewSQLiteStore(path, domain.NewRulesEngine())
+	store, err := NewStore(path, domain.NewRulesEngine())
 	if err != nil {
 		t.Fatalf("new sqlite store: %v", err)
 	}
@@ -114,7 +114,7 @@ func TestSQLiteStorePersistAllBuckets(t *testing.T) {
 	if err := store.DB().Close(); err != nil {
 		t.Fatalf("close db: %v", err)
 	}
-	reloaded, err := NewSQLiteStore(path, domain.NewRulesEngine())
+	reloaded, err := NewStore(path, domain.NewRulesEngine())
 	if err != nil {
 		t.Fatalf("reload sqlite store: %v", err)
 	}
@@ -157,19 +157,19 @@ func TestSQLiteStorePersistAllBuckets(t *testing.T) {
 func TestSQLiteStoreLoadError(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "bad.db")
-	store, err := NewSQLiteStore(path, domain.NewRulesEngine())
+	store, err := NewStore(path, domain.NewRulesEngine())
 	if err != nil {
 		t.Skipf("sqlite unavailable: %v", err)
 	}
 	_, _ = store.DB().Exec(`INSERT INTO state(bucket, payload) VALUES('organisms', 'not-json')`)
 	_ = store.DB().Close()
-	if _, err := NewSQLiteStore(path, domain.NewRulesEngine()); err == nil {
+	if _, err := NewStore(path, domain.NewRulesEngine()); err == nil {
 		t.Fatalf("expected load error for invalid payload")
 	}
 }
 
 func TestSQLiteStoreDefaultPath(t *testing.T) {
-	store, err := NewSQLiteStore("", domain.NewRulesEngine())
+	store, err := NewStore("", domain.NewRulesEngine())
 	if err != nil {
 		t.Skipf("sqlite unavailable: %v", err)
 	}

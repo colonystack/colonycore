@@ -1,3 +1,5 @@
+// Package domain defines the core persistent entities, value types, and
+// rule evaluation primitives used by colonycore.
 package domain
 
 import "time"
@@ -5,21 +7,32 @@ import "time"
 // EntityType identifies the type of record stored in the core domain.
 type EntityType string
 
+// Supported entity type identifiers used in Change records and persistence buckets.
 const (
-	EntityOrganism    EntityType = "organism"
-	EntityCohort      EntityType = "cohort"
+	// EntityOrganism identifies an individual organism record.
+	EntityOrganism EntityType = "organism"
+	// EntityCohort identifies a cohort record.
+	EntityCohort EntityType = "cohort"
+	// EntityHousingUnit identifies a housing unit record.
 	EntityHousingUnit EntityType = "housing_unit"
-	EntityBreeding    EntityType = "breeding_unit"
-	EntityProcedure   EntityType = "procedure"
-	EntityProtocol    EntityType = "protocol"
-	EntityProject     EntityType = "project"
+	// EntityBreeding identifies a breeding unit record.
+	EntityBreeding EntityType = "breeding_unit"
+	// EntityProcedure identifies a procedure record.
+	EntityProcedure EntityType = "procedure"
+	// EntityProtocol identifies a protocol record.
+	EntityProtocol EntityType = "protocol"
+	// EntityProject identifies a project record.
+	EntityProject EntityType = "project"
 )
 
 // LifecycleStage represents the canonical organism lifecycle states described in the RFC.
 type LifecycleStage string
 
+// Canonical organism lifecycle stages used for housing and capacity rule evaluation.
 const (
-	StagePlanned  LifecycleStage = "planned"
+	// StagePlanned indicates a planned organism not yet created in lab.
+	StagePlanned LifecycleStage = "planned"
+	// StageLarva indicates embryonic or larval stage.
 	StageLarva    LifecycleStage = "embryo_larva"
 	StageJuvenile LifecycleStage = "juvenile"
 	StageAdult    LifecycleStage = "adult"
@@ -30,10 +43,13 @@ const (
 // Severity captures rule outcomes.
 type Severity string
 
+// Rule evaluation severities determine commit behavior and logging.
 const (
+	// SeverityBlock blocks transaction commit.
 	SeverityBlock Severity = "block"
-	SeverityWarn  Severity = "warn"
-	SeverityLog   Severity = "log"
+	// SeverityWarn logs a warning but allows commit.
+	SeverityWarn Severity = "warn"
+	SeverityLog  Severity = "log"
 )
 
 // Base contains common fields for all domain records.
@@ -126,8 +142,11 @@ type Change struct {
 // Action indicates the type of modification performed.
 type Action string
 
+// Change actions enumerate supported CRUD operations captured in audit trail.
 const (
+	// ActionCreate indicates an entity was created.
 	ActionCreate Action = "create"
+	// ActionUpdate indicates an entity was updated.
 	ActionUpdate Action = "update"
 	ActionDelete Action = "delete"
 )

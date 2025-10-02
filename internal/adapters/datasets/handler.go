@@ -55,7 +55,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (h *Handler) handleListTemplates(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) handleListTemplates(w http.ResponseWriter, _ *http.Request) {
 	templates := h.Catalog.DatasetTemplates()
 	sort.Sort(core.DatasetTemplateCollection(templates))
 	writeJSON(w, http.StatusOK, map[string]any{"templates": templates})
@@ -153,9 +153,11 @@ type validationResponse struct {
 	Errors     []core.DatasetParameterError   `json:"errors,omitempty"`
 }
 
+const emptyBodySentinel = "EOF"
+
 func (h *Handler) handleValidate(w http.ResponseWriter, r *http.Request, template core.DatasetTemplate) {
 	var req validationRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil && err.Error() != "EOF" {
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil && err.Error() != emptyBodySentinel {
 		writeError(w, http.StatusBadRequest, "invalid validation request payload")
 		return
 	}

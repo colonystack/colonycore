@@ -86,12 +86,13 @@ func (r *PluginRegistry) Schemas() map[string]map[string]any {
 func (r *PluginRegistry) DatasetTemplates() []DatasetTemplate {
 	out := make([]DatasetTemplate, 0, len(r.datasets))
 	for _, template := range r.datasets {
-		copy := template
-		copy.Parameters = cloneParameters(template.Parameters)
-		copy.Columns = cloneColumns(template.Columns)
-		copy.Metadata = cloneMetadata(template.Metadata)
-		copy.OutputFormats = append([]DatasetFormat(nil), template.OutputFormats...)
-		out = append(out, copy)
+		// clone to prevent external mutation of internal templates
+		tmplCopy := template
+		tmplCopy.Parameters = cloneParameters(template.Parameters)
+		tmplCopy.Columns = cloneColumns(template.Columns)
+		tmplCopy.Metadata = cloneMetadata(template.Metadata)
+		tmplCopy.OutputFormats = append([]DatasetFormat(nil), template.OutputFormats...)
+		out = append(out, tmplCopy)
 	}
 	sort.Slice(out, func(i, j int) bool {
 		if out[i].Key == out[j].Key {

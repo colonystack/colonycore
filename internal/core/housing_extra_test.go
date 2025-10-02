@@ -46,7 +46,7 @@ func TestHousingUnit_UpdateAndBranches(t *testing.T) {
 	}
 	// Mutator error branch
 	if _, err := store.RunInTransaction(context.Background(), func(tx Transaction) error {
-		_, uerr := tx.UpdateHousingUnit(created.ID, func(h *HousingUnit) error { return errors.New("boom") })
+		_, uerr := tx.UpdateHousingUnit(created.ID, func(_ *HousingUnit) error { return errors.New("boom") })
 		if uerr == nil {
 			t.Fatalf("expected mutator error")
 		}
@@ -56,7 +56,7 @@ func TestHousingUnit_UpdateAndBranches(t *testing.T) {
 	}
 	// Not found branch
 	if _, err := store.RunInTransaction(context.Background(), func(tx Transaction) error {
-		if _, nfErr := tx.UpdateHousingUnit("missing-id", func(h *HousingUnit) error { return nil }); nfErr == nil {
+		if _, nfErr := tx.UpdateHousingUnit("missing-id", func(_ *HousingUnit) error { return nil }); nfErr == nil {
 			t.Fatalf("expected not found error")
 		}
 		return nil
@@ -65,7 +65,7 @@ func TestHousingUnit_UpdateAndBranches(t *testing.T) {
 	}
 	// Invalid capacity in update branch
 	if _, err := store.RunInTransaction(context.Background(), func(tx Transaction) error {
-		_, badErr := tx.UpdateHousingUnit(created.ID, func(h *HousingUnit) error { h.Capacity = 0; return nil })
+		_, badErr := tx.UpdateHousingUnit(created.ID, func(h *HousingUnit) error { h.Capacity = 0; return nil }) // h used inside closure
 		if badErr == nil {
 			t.Fatalf("expected capacity validation error")
 		}

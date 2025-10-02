@@ -13,20 +13,21 @@ import (
 	_ "modernc.org/sqlite" // pure go sqlite driver
 )
 
-// SQLiteStore persists the in-memory state to a single SQLite table as JSON blobs.
+// Store persists the in-memory state to a single SQLite table as JSON blobs.
 // It snapshots the full state after every successful transaction.
-type SQLiteStore struct {
+type Store struct {
 	*memStore
 	db   *sql.DB
 	mu   sync.Mutex
 	path string
 }
 
-func NewSQLiteStore(path string, engine *RulesEngine) (*SQLiteStore, error) {
+// NewStore constructs a snapshotting SQLite-backed persistent store.
+func NewStore(path string, engine *RulesEngine) (*Store, error) {
 	if path == "" {
 		path = "colonycore.db"
 	}
-	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil && !errors.Is(err, os.ErrExist) {
+	if err := os.MkdirAll(filepath.Dir(path), 0o750); err != nil && !errors.Is(err, os.ErrExist) {
 		return nil, fmt.Errorf("create dirs: %w", err)
 	}
 	db, err := sql.Open("sqlite", path)
@@ -40,7 +41,7 @@ func NewSQLiteStore(path string, engine *RulesEngine) (*SQLiteStore, error) {
 		return nil, fmt.Errorf("create state table: %w", err)
 	}
 	ms := newMemStore(engine)
-	s := &SQLiteStore{memStore: ms, db: db, path: path}
+	s := &Store{memStore: ms, db: db, path: path}
 	if err := s.load(); err != nil {
 		return nil, err
 	}
@@ -51,7 +52,7 @@ var sqliteBuckets = []string{ // one row per bucket
 	"organisms", "cohorts", "housing", "breeding", "procedures", "protocols", "projects",
 }
 
-func (s *SQLiteStore) load() error {
+func (s *Store) load() error {
 	rows, err := s.db.Query(`SELECT bucket, payload FROM state`)
 	if err != nil {
 		return fmt.Errorf("select state: %w", err)
@@ -109,7 +110,7 @@ func (s *SQLiteStore) load() error {
 	return nil
 }
 
-func (s *SQLiteStore) persist() (retErr error) {
+func (s *Store) persist() (retErr error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	snapshot := s.ExportState()
@@ -155,7 +156,9 @@ func (s *SQLiteStore) persist() (retErr error) {
 	return nil
 }
 
-func (s *SQLiteStore) RunInTransaction(ctx context.Context, fn func(tx Transaction) error) (Result, error) {
+// RunInTransaction applies the provided function within a transaction, then
+// snapshots state to SQLite if successful.
+func (s *Store) RunInTransaction(ctx context.Context, fn func(tx Transaction) error) (Result, error) {
 	res, err := s.memStore.RunInTransaction(ctx, fn)
 	if err != nil {
 		return res, err
@@ -167,11 +170,11 @@ func (s *SQLiteStore) RunInTransaction(ctx context.Context, fn func(tx Transacti
 }
 
 // DB exposes the underlying sql.DB for integration testing hooks.
-func (s *SQLiteStore) DB() *sql.DB {
+func (s *Store) DB() *sql.DB {
 	return s.db
 }
 
 // Path returns the configured database path for observability and tests.
-func (s *SQLiteStore) Path() string {
+func (s *Store) Path() string {
 	return s.path
 }

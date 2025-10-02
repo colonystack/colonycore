@@ -1,3 +1,4 @@
+// Package fs implements a filesystem-backed blob Store.
 package fs
 
 import (
@@ -31,12 +32,13 @@ func New(root string) (*Store, error) {
 	if root == "" {
 		root = "./blobdata"
 	}
-	if err := os.MkdirAll(root, 0o755); err != nil {
+	if err := os.MkdirAll(root, 0o750); err != nil { // tightened perms to satisfy security baseline
 		return nil, err
 	}
 	return &Store{root: root}, nil
 }
 
+// Driver returns the blob driver identifier.
 func (s *Store) Driver() core.Driver { return core.DriverFilesystem }
 
 // sanitizeKey ensures key doesn't escape root and forbids path traversal and absolute paths.
@@ -77,7 +79,8 @@ type metaFile struct {
 	UpdatedAt   time.Time         `json:"updated_at"`
 }
 
-func (s *Store) Put(ctx context.Context, key string, r io.Reader, opts core.PutOptions) (core.Info, error) {
+// Put stores a new immutable blob; it fails if the key already exists.
+func (s *Store) Put(_ context.Context, key string, r io.Reader, opts core.PutOptions) (core.Info, error) {
 	dataPath, metaPath, err := s.pathFor(key)
 	if err != nil {
 		return core.Info{}, err
@@ -86,7 +89,7 @@ func (s *Store) Put(ctx context.Context, key string, r io.Reader, opts core.PutO
 	if _, err := os.Stat(dataPath); err == nil {
 		return core.Info{}, fmt.Errorf("blob %s already exists", key)
 	}
-	if err := os.MkdirAll(filepath.Dir(dataPath), 0o755); err != nil {
+	if err := os.MkdirAll(filepath.Dir(dataPath), 0o750); err != nil { // tightened perms
 		return core.Info{}, err
 	}
 	// stream to temp file to compute sha and size
@@ -124,12 +127,13 @@ func (s *Store) Put(ctx context.Context, key string, r io.Reader, opts core.PutO
 	return info, nil
 }
 
-func (s *Store) Get(ctx context.Context, key string) (core.Info, io.ReadCloser, error) {
+// Get returns the blob content and metadata for key.
+func (s *Store) Get(_ context.Context, key string) (core.Info, io.ReadCloser, error) {
 	dataPath, metaPath, err := s.pathFor(key)
 	if err != nil {
 		return core.Info{}, nil, err
 	}
-	file, err := os.Open(dataPath)
+	file, err := os.Open(dataPath) // #nosec G304 path validated via sanitizeKey
 	if errors.Is(err, fs.ErrNotExist) {
 		return core.Info{}, nil, err
 	}
@@ -145,7 +149,8 @@ func (s *Store) Get(ctx context.Context, key string) (core.Info, io.ReadCloser, 
 	return info, file, nil
 }
 
-func (s *Store) Head(ctx context.Context, key string) (core.Info, error) {
+// Head returns metadata without opening the blob contents.
+func (s *Store) Head(_ context.Context, key string) (core.Info, error) {
 	_, metaPath, err := s.pathFor(key)
 	if err != nil {
 		return core.Info{}, err
@@ -158,7 +163,8 @@ func (s *Store) Head(ctx context.Context, key string) (core.Info, error) {
 	return info, nil
 }
 
-func (s *Store) Delete(ctx context.Context, key string) (bool, error) {
+// Delete removes a blob and its metadata returning whether it existed.
+func (s *Store) Delete(_ context.Context, key string) (bool, error) {
 	dataPath, metaPath, err := s.pathFor(key)
 	if err != nil {
 		return false, err
@@ -174,7 +180,8 @@ func (s *Store) Delete(ctx context.Context, key string) (bool, error) {
 	return true, nil
 }
 
-func (s *Store) List(ctx context.Context, prefix string) ([]core.Info, error) {
+// List returns blobs whose keys share the prefix (or all if prefix empty).
+func (s *Store) List(_ context.Context, prefix string) ([]core.Info, error) {
 	// Walk root collecting .meta files and filter prefix.
 	var infos []core.Info
 	err := filepath.WalkDir(s.root, func(path string, d fs.DirEntry, err error) error {
@@ -209,7 +216,8 @@ func (s *Store) List(ctx context.Context, prefix string) ([]core.Info, error) {
 	return infos, nil
 }
 
-func (s *Store) PresignURL(ctx context.Context, key string, opts core.SignedURLOptions) (string, error) {
+// PresignURL returns a pseudo development URL (no auth) for GET requests.
+func (s *Store) PresignURL(_ context.Context, key string, opts core.SignedURLOptions) (string, error) {
 	// Local development convenience: we just return a pseudo URL; no auth.
 	if opts.Method != "" && strings.ToUpper(opts.Method) != "GET" {
 		return "", core.ErrUnsupported
@@ -240,11 +248,11 @@ func writeJSON(path string, v any) error {
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(path, b, 0o644)
+	return os.WriteFile(path, b, 0o600) // tightened perms
 }
 
 func readMeta(path string) (metaFile, error) {
-	b, err := os.ReadFile(path)
+	b, err := os.ReadFile(path) // #nosec G304 internal controlled path
 	if err != nil {
 		return metaFile{}, err
 	}

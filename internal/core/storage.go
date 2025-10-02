@@ -11,15 +11,22 @@ import (
 // StorageDriver identifies a concrete persistent storage implementation.
 type StorageDriver string
 
+// Supported storage driver identifiers.
 const (
-	StorageMemory   StorageDriver = "memory"   // in-memory only (tests / ephemeral)
-	StorageSQLite   StorageDriver = "sqlite"   // embedded sqlite file
+	// StorageMemory provides an in-memory ephemeral store (primarily tests).
+	StorageMemory StorageDriver = "memory" // in-memory only (tests / ephemeral)
+	// StorageSQLite provides an embedded SQLite-backed store.
+	StorageSQLite StorageDriver = "sqlite" // embedded sqlite file
+	// StoragePostgres provides a PostgreSQL-backed store.
 	StoragePostgres StorageDriver = "postgres" // PostgreSQL server
 )
 
 type (
-	Transaction     = domain.Transaction
+	// Transaction aliases domain.Transaction representing a mutable unit of work.
+	Transaction = domain.Transaction
+	// TransactionView aliases domain.TransactionView exposing read-only state for observers.
 	TransactionView = domain.TransactionView
+	// PersistentStore aliases domain.PersistentStore abstracting backing storage implementations.
 	PersistentStore = domain.PersistentStore
 )
 
@@ -39,7 +46,7 @@ func OpenPersistentStore(engine *RulesEngine) (PersistentStore, error) {
 		return memory.NewStore(engine), nil
 	case StorageSQLite:
 		path := os.Getenv("COLONYCORE_SQLITE_PATH")
-		return sqlite.NewSQLiteStore(path, engine)
+		return sqlite.NewStore(path, engine)
 	case StoragePostgres:
 		dsn := os.Getenv("COLONYCORE_POSTGRES_DSN")
 		ps, err := NewPostgresStore(dsn, engine)
