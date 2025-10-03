@@ -12,7 +12,7 @@ import (
 func TestWorkerMaterializePNGParquet(t *testing.T) {
 	tmpl := datasetapi.Template{Key: "allfmts", Version: "1.0.0", Title: "All Formats", Description: "cover png/parquet", Dialect: datasetapi.DialectSQL, Query: "SELECT 1", Columns: []datasetapi.Column{{Name: "value", Type: "string"}}, OutputFormats: []datasetapi.Format{datasetapi.FormatJSON, datasetapi.FormatCSV, datasetapi.FormatHTML, datasetapi.FormatPNG, datasetapi.FormatParquet}, Binder: func(datasetapi.Environment) (datasetapi.Runner, error) {
 		return func(context.Context, datasetapi.RunRequest) (datasetapi.RunResult, error) {
-			return datasetapi.RunResult{Rows: []map[string]any{{"value": "alpha"}}, Format: datasetapi.FormatJSON}, nil
+			return datasetapi.RunResult{Rows: []datasetapi.Row{{"value": "alpha"}}, Format: datasetapi.FormatJSON}, nil
 		}, nil
 	}}
 	svc := core.NewInMemoryService(core.NewDefaultRulesEngine())

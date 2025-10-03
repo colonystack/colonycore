@@ -4,7 +4,6 @@ Rules:
       - "colonycore/plugins/frog"
       - "colonycore/pkg/pluginapi"
       - "colonycore/pkg/datasetapi"
-      - "colonycore/pkg/domain" # transitively required via type aliases; avoid direct imports via grep policy
 InverseRules:
   - SelectorRegexp: "^colonycore/"
     AllowedPrefixes:
@@ -13,4 +12,3 @@ InverseRules:
       - "colonycore/internal/adapters/datasets"
       - "colonycore/pkg/pluginapi"
       - "colonycore/pkg/datasetapi"
-      - "colonycore/pkg/domain"

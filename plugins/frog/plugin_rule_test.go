@@ -3,6 +3,7 @@ package frog
 import (
 	"context"
 	"testing"
+	"time"
 
 	"colonycore/pkg/datasetapi"
 	"colonycore/pkg/pluginapi"
@@ -24,31 +25,70 @@ func (r *fakeRegistry) RegisterSchema(entity string, schema map[string]any) {
 func (r *fakeRegistry) RegisterRule(rule pluginapi.Rule)                    { r.rules = append(r.rules, rule) }
 func (r *fakeRegistry) RegisterDatasetTemplate(_ datasetapi.Template) error { r.datasets++; return nil }
 
-// fakeView implements pluginapi.RuleView (alias of domain.RuleView).
+// fakeView implements pluginapi.RuleView for exercising rule evaluation paths.
 type fakeView struct {
-	organisms []datasetapi.Organism
-	housing   []datasetapi.HousingUnit
+	organisms []pluginapi.OrganismView
+	housing   []pluginapi.HousingUnitView
 }
 
-func (v fakeView) ListOrganisms() []datasetapi.Organism       { return v.organisms }
-func (v fakeView) ListHousingUnits() []datasetapi.HousingUnit { return v.housing }
-func (v fakeView) FindHousingUnit(id string) (datasetapi.HousingUnit, bool) {
+func (v fakeView) ListOrganisms() []pluginapi.OrganismView       { return v.organisms }
+func (v fakeView) ListHousingUnits() []pluginapi.HousingUnitView { return v.housing }
+func (v fakeView) ListProtocols() []pluginapi.ProtocolView       { return nil }
+
+func (v fakeView) FindHousingUnit(id string) (pluginapi.HousingUnitView, bool) {
 	for _, h := range v.housing {
-		if h.ID == id {
+		if h.ID() == id {
 			return h, true
 		}
 	}
-	return datasetapi.HousingUnit{}, false
+	return nil, false
 }
-func (v fakeView) ListProtocols() []datasetapi.Protocol { return nil }
-func (v fakeView) FindOrganism(id string) (datasetapi.Organism, bool) {
+
+func (v fakeView) FindOrganism(id string) (pluginapi.OrganismView, bool) {
 	for _, o := range v.organisms {
-		if o.ID == id {
+		if o.ID() == id {
 			return o, true
 		}
 	}
-	return datasetapi.Organism{}, false
+	return nil, false
 }
+
+type stubOrganism struct {
+	id        string
+	species   string
+	housingID *string
+}
+
+func (o stubOrganism) ID() string                    { return o.id }
+func (stubOrganism) CreatedAt() time.Time            { return time.Time{} }
+func (stubOrganism) UpdatedAt() time.Time            { return time.Time{} }
+func (stubOrganism) Name() string                    { return "" }
+func (o stubOrganism) Species() string               { return o.species }
+func (stubOrganism) Line() string                    { return "" }
+func (stubOrganism) Stage() pluginapi.LifecycleStage { return "" }
+func (stubOrganism) CohortID() (string, bool)        { return "", false }
+func (o stubOrganism) HousingID() (string, bool) {
+	if o.housingID == nil {
+		return "", false
+	}
+	return *o.housingID, true
+}
+func (stubOrganism) ProtocolID() (string, bool) { return "", false }
+func (stubOrganism) ProjectID() (string, bool)  { return "", false }
+func (stubOrganism) Attributes() map[string]any { return nil }
+
+type stubHousing struct {
+	id          string
+	environment string
+}
+
+func (h stubHousing) ID() string          { return h.id }
+func (stubHousing) CreatedAt() time.Time  { return time.Time{} }
+func (stubHousing) UpdatedAt() time.Time  { return time.Time{} }
+func (stubHousing) Name() string          { return "" }
+func (stubHousing) Facility() string      { return "" }
+func (stubHousing) Capacity() int         { return 0 }
+func (h stubHousing) Environment() string { return h.environment }
 
 // TestFrogPluginRegisterAndRuleEvaluation covers plugin registration and rule violation generation.
 func TestFrogPluginRegisterAndRuleEvaluation(t *testing.T) {
@@ -73,11 +113,15 @@ func TestFrogPluginRegisterAndRuleEvaluation(t *testing.T) {
 	// Evaluate with one frog in non-humid housing to trigger warning
 	housingID := "H1"
 	view := fakeView{
-		organisms: []datasetapi.Organism{{Base: datasetapi.Base{ID: "O1"}, Species: "FrogX", HousingID: &housingID}},
-		housing:   []datasetapi.HousingUnit{{Base: datasetapi.Base{ID: housingID}, Environment: "dry"}},
+		organisms: []pluginapi.OrganismView{
+			stubOrganism{id: "O1", species: "FrogX", housingID: &housingID},
+		},
+		housing: []pluginapi.HousingUnitView{
+			stubHousing{id: housingID, environment: "dry"},
+		},
 	}
 	res, err := habitat.Evaluate(context.Background(), view, nil)
-	if err != nil || len(res.Violations) != 1 {
+	if err != nil || len(res.Violations()) != 1 {
 		t.Fatalf("expected 1 violation: %+v err=%v", res, err)
 	}
 }

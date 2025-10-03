@@ -130,28 +130,29 @@ func (frogHabitatRule) Name() string { return frogHabitatRuleName }
 func (frogHabitatRule) Evaluate(_ context.Context, view pluginapi.RuleView, _ []pluginapi.Change) (pluginapi.Result, error) {
 	var result pluginapi.Result
 	for _, organism := range view.ListOrganisms() {
-		specie := strings.ToLower(organism.Species)
+		specie := strings.ToLower(organism.Species())
 		if !strings.Contains(specie, "frog") {
 			continue
 		}
-		if organism.HousingID == nil {
-			continue
-		}
-		housing, ok := view.FindHousingUnit(*organism.HousingID)
+		housingID, ok := organism.HousingID()
 		if !ok {
 			continue
 		}
-		env := strings.ToLower(housing.Environment)
+		housing, ok := view.FindHousingUnit(housingID)
+		if !ok {
+			continue
+		}
+		env := strings.ToLower(housing.Environment())
 		if strings.Contains(env, "aquatic") || strings.Contains(env, "humid") {
 			continue
 		}
-		result.Violations = append(result.Violations, pluginapi.Violation{
-			Rule:     frogHabitatRuleName,
-			Severity: pluginapi.SeverityWarn,
-			Message:  "frog assigned to non-aquatic/non-humid housing",
-			Entity:   pluginapi.EntityOrganism,
-			EntityID: organism.ID,
-		})
+		result = result.AddViolation(pluginapi.NewViolation(
+			frogHabitatRuleName,
+			pluginapi.SeverityWarn,
+			"frog assigned to non-aquatic/non-humid housing",
+			pluginapi.EntityOrganism,
+			organism.ID(),
+		))
 	}
 	return result, nil
 }
@@ -165,7 +166,7 @@ func frogPopulationBinder(env datasetapi.Environment) (datasetapi.Runner, error)
 		now = func() time.Time { return time.Now().UTC() }
 	}
 	return func(ctx context.Context, req datasetapi.RunRequest) (datasetapi.RunResult, error) {
-		var rows []map[string]any
+		var rows []datasetapi.Row
 		stageFilter, _ := req.Parameters["stage"].(string)
 		includeRetired, _ := req.Parameters["include_retired"].(bool)
 		var asOfTime *time.Time
@@ -175,38 +176,40 @@ func frogPopulationBinder(env datasetapi.Environment) (datasetapi.Runner, error)
 		}
 		err := env.Store.View(ctx, func(view datasetapi.TransactionView) error {
 			for _, organism := range view.ListOrganisms() {
-				species := strings.ToLower(organism.Species)
+				species := strings.ToLower(organism.Species())
 				if !strings.Contains(species, "frog") {
 					continue
 				}
-				if stageFilter != "" && string(organism.Stage) != stageFilter {
+				if stageFilter != "" && string(organism.Stage()) != stageFilter {
 					continue
 				}
-				if stageFilter == "" && !includeRetired && organism.Stage == datasetapi.StageRetired {
+				if stageFilter == "" && !includeRetired && organism.Stage() == datasetapi.StageRetired {
 					continue
 				}
-				if asOfTime != nil && organism.UpdatedAt.After(*asOfTime) {
+				if asOfTime != nil && organism.UpdatedAt().After(*asOfTime) {
 					continue
 				}
 				if len(req.Scope.ProjectIDs) > 0 {
-					if organism.ProjectID == nil || !contains(req.Scope.ProjectIDs, *organism.ProjectID) {
+					projectID, ok := organism.ProjectID()
+					if !ok || !contains(req.Scope.ProjectIDs, projectID) {
 						continue
 					}
 				}
 				if len(req.Scope.ProtocolIDs) > 0 {
-					if organism.ProtocolID == nil || !contains(req.Scope.ProtocolIDs, *organism.ProtocolID) {
+					protocolID, ok := organism.ProtocolID()
+					if !ok || !contains(req.Scope.ProtocolIDs, protocolID) {
 						continue
 					}
 				}
-				row := map[string]any{
-					"organism_id":     organism.ID,
-					"organism_name":   organism.Name,
-					"species":         organism.Species,
-					"lifecycle_stage": string(organism.Stage),
-					"project_id":      valueOrNil(organism.ProjectID),
-					"protocol_id":     valueOrNil(organism.ProtocolID),
-					"housing_id":      valueOrNil(organism.HousingID),
-					"updated_at":      organism.UpdatedAt.UTC(),
+				row := datasetapi.Row{
+					"organism_id":     organism.ID(),
+					"organism_name":   organism.Name(),
+					"species":         organism.Species(),
+					"lifecycle_stage": string(organism.Stage()),
+					"project_id":      valueOrNil(organism.ProjectID()),
+					"protocol_id":     valueOrNil(organism.ProtocolID()),
+					"housing_id":      valueOrNil(organism.HousingID()),
+					"updated_at":      organism.UpdatedAt().UTC(),
 				}
 				rows = append(rows, row)
 			}
@@ -250,9 +253,9 @@ func contains(list []string, target string) bool {
 	return false
 }
 
-func valueOrNil(ptr *string) any {
-	if ptr == nil {
+func valueOrNil(value string, ok bool) any {
+	if !ok {
 		return nil
 	}
-	return *ptr
+	return value
 }

@@ -7,6 +7,7 @@ import (
 
 	"colonycore/pkg/datasetapi"
 	"colonycore/pkg/pluginapi"
+	"colonycore/plugins/testhelper"
 )
 
 type stubRegistry struct {
@@ -57,11 +58,11 @@ func (s *stubView) ListProtocols() []datasetapi.Protocol { return nil }
 
 func (s *stubView) FindOrganism(id string) (datasetapi.Organism, bool) {
 	for _, org := range s.organisms {
-		if org.ID == id {
+		if org.ID() == id {
 			return org, true
 		}
 	}
-	return datasetapi.Organism{}, false
+	return nil, false
 }
 
 func (s *stubView) FindHousingUnit(id string) (datasetapi.HousingUnit, bool) {
@@ -73,18 +74,14 @@ type stubStore struct {
 	view datasetapi.TransactionView
 }
 
-func (s stubStore) RunInTransaction(context.Context, func(datasetapi.Transaction) error) (datasetapi.Result, error) {
-	return datasetapi.Result{}, nil
-}
-
 func (s stubStore) View(_ context.Context, fn func(datasetapi.TransactionView) error) error {
 	return fn(s.view)
 }
 
-func (stubStore) GetOrganism(string) (datasetapi.Organism, bool) { return datasetapi.Organism{}, false }
+func (stubStore) GetOrganism(string) (datasetapi.Organism, bool) { return nil, false }
 func (stubStore) ListOrganisms() []datasetapi.Organism           { return nil }
 func (stubStore) GetHousingUnit(string) (datasetapi.HousingUnit, bool) {
-	return datasetapi.HousingUnit{}, false
+	return nil, false
 }
 func (stubStore) ListHousingUnits() []datasetapi.HousingUnit   { return nil }
 func (stubStore) ListCohorts() []datasetapi.Cohort             { return nil }
@@ -114,32 +111,34 @@ func TestPluginRegistration(t *testing.T) {
 
 func TestFrogHabitatRuleOutcomes(t *testing.T) {
 	rule := frogHabitatRule{}
-	view := newStubView()
-
-	aquatic := datasetapi.HousingUnit{Base: datasetapi.Base{ID: "AQUA"}, Environment: "humid"}
-	dry := datasetapi.HousingUnit{Base: datasetapi.Base{ID: "DRY"}, Environment: "dry"}
-	view.housing[aquatic.ID] = aquatic
-	view.housing[dry.ID] = dry
-
-	frogSafe := datasetapi.Organism{Base: datasetapi.Base{ID: "frog-safe"}, Species: "Tree Frog", HousingID: &aquatic.ID}
-	frogUnsafe := datasetapi.Organism{Base: datasetapi.Base{ID: "frog-risk"}, Species: "Poison Frog", HousingID: &dry.ID}
-	notFrog := datasetapi.Organism{Base: datasetapi.Base{ID: "not-frog"}, Species: "Gecko", HousingID: &dry.ID}
-	view.organisms = append(view.organisms, frogSafe, frogUnsafe, notFrog)
+	aquaticID := "AQUA"
+	dryID := "DRY"
+	view := fakeView{
+		organisms: []pluginapi.OrganismView{
+			stubOrganism{id: "frog-safe", species: "Tree Frog", housingID: &aquaticID},
+			stubOrganism{id: "frog-risk", species: "Poison Frog", housingID: &dryID},
+			stubOrganism{id: "not-frog", species: "Gecko", housingID: &dryID},
+		},
+		housing: []pluginapi.HousingUnitView{
+			stubHousing{id: aquaticID, environment: "humid"},
+			stubHousing{id: dryID, environment: "dry"},
+		},
+	}
 
 	res, err := rule.Evaluate(context.Background(), view, nil)
 	if err != nil {
 		t.Fatalf("evaluate rule: %v", err)
 	}
 
-	if len(res.Violations) != 1 {
-		t.Fatalf("expected exactly one violation, got %d", len(res.Violations))
+	if len(res.Violations()) != 1 {
+		t.Fatalf("expected exactly one violation, got %d", len(res.Violations()))
 	}
-	violation := res.Violations[0]
-	if violation.EntityID != frogUnsafe.ID {
-		t.Fatalf("expected violation for %s, got %s", frogUnsafe.ID, violation.EntityID)
+	violation := res.Violations()[0]
+	if violation.EntityID() != "frog-risk" {
+		t.Fatalf("expected violation for frog-risk, got %s", violation.EntityID())
 	}
-	if violation.Severity != pluginapi.SeverityWarn {
-		t.Fatalf("expected warning severity, got %v", violation.Severity)
+	if violation.Severity() != pluginapi.SeverityWarn {
+		t.Fatalf("expected warning severity, got %v", violation.Severity())
 	}
 }
 
@@ -156,16 +155,47 @@ func TestFrogPopulationBinderFilters(t *testing.T) {
 	housing := "housing"
 	retired := datasetapi.StageRetired
 	adult := datasetapi.StageAdult
-	organisms := []datasetapi.Organism{
-		{Base: datasetapi.Base{ID: "alpha", UpdatedAt: now}, Name: "Alpha", Species: "Tree Frog", Stage: adult, ProjectID: &projectA, ProtocolID: &protocol, HousingID: &housing},
-		{Base: datasetapi.Base{ID: "bravo", UpdatedAt: now.Add(time.Second)}, Name: "Bravo", Species: "Tree Frog", Stage: adult, ProjectID: &projectB, ProtocolID: &protocol, HousingID: &housing},
-		{Base: datasetapi.Base{ID: "charlie", UpdatedAt: now.Add(2 * time.Second)}, Name: "Charlie", Species: "Tree Frog", Stage: retired, ProjectID: &projectA},
-		{Base: datasetapi.Base{ID: "other", UpdatedAt: now}, Name: "Gecko", Species: "Gecko", Stage: adult},
-	}
+	organisms := testhelper.Organisms(
+		testhelper.OrganismFixtureConfig{
+			BaseFixture: testhelper.BaseFixture{ID: "alpha", UpdatedAt: now},
+			Name:        "Alpha",
+			Species:     "Tree Frog",
+			Stage:       adult,
+			ProjectID:   &projectA,
+			ProtocolID:  &protocol,
+			HousingID:   &housing,
+		},
+		testhelper.OrganismFixtureConfig{
+			BaseFixture: testhelper.BaseFixture{ID: "bravo", UpdatedAt: now.Add(time.Second)},
+			Name:        "Bravo",
+			Species:     "Tree Frog",
+			Stage:       adult,
+			ProjectID:   &projectB,
+			ProtocolID:  &protocol,
+			HousingID:   &housing,
+		},
+		testhelper.OrganismFixtureConfig{
+			BaseFixture: testhelper.BaseFixture{ID: "charlie", UpdatedAt: now.Add(2 * time.Second)},
+			Name:        "Charlie",
+			Species:     "Tree Frog",
+			Stage:       retired,
+			ProjectID:   &projectA,
+		},
+		testhelper.OrganismFixtureConfig{
+			BaseFixture: testhelper.BaseFixture{ID: "other", UpdatedAt: now},
+			Name:        "Gecko",
+			Species:     "Gecko",
+			Stage:       adult,
+		},
+	)
 
 	view := newStubView()
 	view.organisms = organisms
-	view.housing[housing] = datasetapi.HousingUnit{Base: datasetapi.Base{ID: housing}, Environment: "humid"}
+	view.housing[housing] = testhelper.HousingUnit(testhelper.HousingUnitFixtureConfig{
+		BaseFixture: testhelper.BaseFixture{ID: housing},
+		Name:        "Habitat",
+		Environment: "humid",
+	})
 	store := stubStore{view: view}
 
 	env := datasetapi.Environment{Store: store, Now: func() time.Time { return now }}

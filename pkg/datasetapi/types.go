@@ -3,7 +3,6 @@
 package datasetapi
 
 import (
-	"colonycore/pkg/domain"
 	"context"
 	"time"
 )
@@ -74,7 +73,7 @@ type Metadata struct {
 
 // Environment bundles dependencies needed for binding template runners.
 type Environment struct {
-	Store domain.PersistentStore
+	Store PersistentStore
 	Now   func() time.Time
 }
 
@@ -93,7 +92,7 @@ type Template struct {
 	Binder        Binder
 }
 
-// TemplateDescriptor is a serializable view of a Template for clients.
+// TemplateDescriptor is a serialization-focused projection of a dataset template.
 type TemplateDescriptor struct {
 	Plugin        string      `json:"plugin"`
 	Key           string      `json:"key"`
@@ -116,13 +115,22 @@ type RunRequest struct {
 	Scope      Scope
 }
 
+// EntityRef identifies a domain entity related to a dataset resource.
+type EntityRef struct {
+	Entity string `json:"entity"`
+	ID     string `json:"id"`
+}
+
+// Row is a serialization-friendly dataset row representation.
+type Row map[string]any
+
 // RunResult is the materialized outcome of a dataset execution.
 type RunResult struct {
-	Schema      []Column         `json:"schema"`
-	Rows        []map[string]any `json:"rows"`
-	Metadata    map[string]any   `json:"metadata,omitempty"`
-	GeneratedAt time.Time        `json:"generated_at"`
-	Format      Format           `json:"format"`
+	Schema      []Column       `json:"schema"`
+	Rows        []Row          `json:"rows"`
+	Metadata    map[string]any `json:"metadata,omitempty"`
+	GeneratedAt time.Time      `json:"generated_at"`
+	Format      Format         `json:"format"`
 }
 
 // Runner executes a dataset with provided parameters and scope.

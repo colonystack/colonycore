@@ -36,7 +36,7 @@ func TestDatasetTemplateRunSuccess(t *testing.T) {
 			Required: true,
 		}},
 		Columns: []DatasetColumn{{
-			Name: "value",
+			Name: testAttributeOriginalValue,
 			Type: "integer",
 		}},
 		Metadata: DatasetTemplateMetadata{Tags: []string{"demo"}},
@@ -51,7 +51,7 @@ func TestDatasetTemplateRunSuccess(t *testing.T) {
 					t.Fatalf("expected coerced integer parameter, got %v", req.Parameters["limit"])
 				}
 				return DatasetRunResult{
-					Rows:        []map[string]any{{"value": 99}},
+					Rows:        []map[string]any{{testAttributeOriginalValue: 99}},
 					GeneratedAt: env.Now(),
 				}, nil
 			}, nil
@@ -75,7 +75,7 @@ func TestDatasetTemplateRunSuccess(t *testing.T) {
 	if result.Format != FormatCSV {
 		t.Fatalf("expected format csv, got %s", result.Format)
 	}
-	if len(result.Schema) != 1 || result.Schema[0].Name != "value" {
+	if len(result.Schema) != 1 || result.Schema[0].Name != testAttributeOriginalValue {
 		t.Fatalf("expected schema fallback from template, got %+v", result.Schema)
 	}
 	if !result.GeneratedAt.Equal(reference) {
@@ -107,7 +107,7 @@ func TestDatasetTemplateRunParameterErrors(t *testing.T) {
 			Type:     "integer",
 			Required: true,
 		}},
-		Columns:       []DatasetColumn{{Name: "value", Type: "integer"}},
+		Columns:       []DatasetColumn{{Name: testAttributeOriginalValue, Type: "integer"}},
 		OutputFormats: []DatasetFormat{FormatJSON},
 		Binder: func(DatasetEnvironment) (DatasetRunner, error) {
 			return func(context.Context, DatasetRunRequest) (DatasetRunResult, error) {
@@ -219,7 +219,7 @@ func TestDatasetTemplateBindErrors(t *testing.T) {
 		Description: "demo",
 		Dialect:     DatasetDialectSQL,
 		Query:       "SELECT 1",
-		Columns:     []DatasetColumn{{Name: "value", Type: "integer"}},
+		Columns:     []DatasetColumn{{Name: testAttributeOriginalValue, Type: "integer"}},
 		OutputFormats: []DatasetFormat{
 			FormatJSON,
 		},
@@ -243,7 +243,7 @@ func TestDatasetValidateParametersUnknownType(t *testing.T) {
 	template := DatasetTemplate{
 		Parameters: []DatasetParameter{{Name: "mystery", Type: "uuid"}},
 	}
-	_, errs := template.ValidateParameters(map[string]any{"mystery": "value"})
+	_, errs := template.ValidateParameters(map[string]any{"mystery": testAttributeOriginalValue})
 	if len(errs) == 0 {
 		t.Fatalf("expected error for unsupported parameter type")
 	}
@@ -302,7 +302,7 @@ func TestDatasetTemplateValidateFailures(t *testing.T) {
 		Description: "demo",
 		Dialect:     DatasetDialectSQL,
 		Query:       "SELECT 1",
-		Columns:     []DatasetColumn{{Name: "value", Type: "integer"}},
+		Columns:     []DatasetColumn{{Name: testAttributeOriginalValue, Type: "integer"}},
 		OutputFormats: []DatasetFormat{
 			FormatJSON,
 		},
@@ -342,10 +342,10 @@ func TestDatasetCloneHelpers(t *testing.T) {
 		t.Fatalf("expected parameter enum to remain unchanged")
 	}
 
-	columns := []DatasetColumn{{Name: "value", Type: "string"}}
+	columns := []DatasetColumn{{Name: testAttributeOriginalValue, Type: "string"}}
 	clonedColumns := cloneColumns(columns)
 	clonedColumns[0].Name = testLiteralChanged
-	if columns[0].Name != "value" {
+	if columns[0].Name != testAttributeOriginalValue {
 		t.Fatalf("expected original column to remain value")
 	}
 }
@@ -367,7 +367,7 @@ func TestDatasetTemplateBindError(t *testing.T) {
 		Description: "demo",
 		Dialect:     DatasetDialectSQL,
 		Query:       "SELECT 1",
-		Columns:     []DatasetColumn{{Name: "value", Type: "integer"}},
+		Columns:     []DatasetColumn{{Name: testAttributeOriginalValue, Type: "integer"}},
 		OutputFormats: []DatasetFormat{
 			FormatJSON,
 		},

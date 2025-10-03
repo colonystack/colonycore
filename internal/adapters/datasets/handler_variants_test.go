@@ -47,7 +47,7 @@ func TestHandlerExportsVariants(t *testing.T) {
 func TestTemplateVariants(t *testing.T) {
 	template := datasetapi.Template{Key: "variants", Version: "1.0.0", Title: "Variants", Description: "variants", Dialect: datasetapi.DialectSQL, Query: "SELECT 1", Columns: []datasetapi.Column{{Name: "value", Type: "string"}}, OutputFormats: []datasetapi.Format{datasetapi.FormatJSON}, Binder: func(datasetapi.Environment) (datasetapi.Runner, error) {
 		return func(context.Context, datasetapi.RunRequest) (datasetapi.RunResult, error) {
-			return datasetapi.RunResult{Rows: []map[string]any{{"value": "ok"}}, Format: datasetapi.FormatJSON}, nil
+			return datasetapi.RunResult{Rows: []datasetapi.Row{{"value": "ok"}}, Format: datasetapi.FormatJSON}, nil
 		}, nil
 	}}
 	svc := core.NewInMemoryService(core.NewDefaultRulesEngine())

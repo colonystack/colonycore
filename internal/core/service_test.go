@@ -430,7 +430,7 @@ func (testClockPlugin) Register(registry pluginapi.Registry) error {
 				timestamp := now().UTC()
 				return datasetapi.RunResult{
 					Schema:      req.Template.Columns,
-					Rows:        []map[string]any{{"now": timestamp}},
+					Rows:        []datasetapi.Row{{"now": timestamp}},
 					GeneratedAt: timestamp,
 					Format:      datasetapi.FormatJSON,
 				}, nil

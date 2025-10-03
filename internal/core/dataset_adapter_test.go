@@ -54,7 +54,7 @@ func TestNewDatasetTemplateFromAPI(t *testing.T) {
 			}
 			return datasetapi.RunResult{
 				Schema: []datasetapi.Column{{Name: "value", Type: "string"}},
-				Rows:   []map[string]any{{"value": 1}},
+				Rows:   []datasetapi.Row{{"value": 1}},
 				Metadata: map[string]any{
 					"source": "binder",
 				},
@@ -69,7 +69,7 @@ func TestNewDatasetTemplateFromAPI(t *testing.T) {
 		t.Fatalf("newDatasetTemplateFromAPI: %v", err)
 	}
 
-	apiTemplate.Parameters[0].Enum[0] = "mutated"
+	apiTemplate.Parameters[0].Enum[0] = testLiteralMutated
 	if converted.Parameters[0].Enum[0] != "adult" {
 		t.Fatalf("expected defensive copy of enum")
 	}

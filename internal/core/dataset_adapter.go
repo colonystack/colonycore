@@ -32,7 +32,7 @@ func adaptDatasetBinder(template datasetapi.Template) DatasetBinder {
 		return nil
 	}
 	return func(env DatasetEnvironment) (DatasetRunner, error) {
-		runner, err := template.Binder(datasetapi.Environment{Store: env.Store, Now: env.Now})
+		runner, err := template.Binder(datasetapi.Environment{Store: newDatasetPersistentStore(env.Store), Now: env.Now})
 		if err != nil {
 			return nil, err
 		}
@@ -51,7 +51,7 @@ func adaptDatasetBinder(template datasetapi.Template) DatasetBinder {
 			}
 			return DatasetRunResult{
 				Schema:      copyColumnsFromAPI(apiResult.Schema),
-				Rows:        apiResult.Rows,
+				Rows:        copyRowsFromAPI(apiResult.Rows),
 				Metadata:    apiResult.Metadata,
 				GeneratedAt: apiResult.GeneratedAt,
 				Format:      DatasetFormat(apiResult.Format),
@@ -199,6 +199,24 @@ func copyMetadataToAPI(metadata DatasetTemplateMetadata) datasetapi.Metadata {
 		}
 	}
 	return converted
+}
+
+func copyRowsFromAPI(rows []datasetapi.Row) []map[string]any {
+	if len(rows) == 0 {
+		return nil
+	}
+	out := make([]map[string]any, len(rows))
+	for i, row := range rows {
+		if row == nil {
+			continue
+		}
+		clone := make(map[string]any, len(row))
+		for k, v := range row {
+			clone[k] = v
+		}
+		out[i] = clone
+	}
+	return out
 }
 
 func copyFormatsFromAPI(formats []datasetapi.Format) []DatasetFormat {

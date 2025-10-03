@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"colonycore/pkg/datasetapi"
+	"colonycore/plugins/testhelper"
 )
 
 // TestFrogPopulationBinderMetadata covers metadata enrichment branches (stage_filter, project_scope, protocol_scope, as_of).
@@ -26,9 +27,25 @@ func TestFrogPopulationBinderMetadata(t *testing.T) {
 	asOf := now.Add(30 * time.Minute)
 
 	// organisms: include adult with protA, retired with protB (filtered by stage parameter), other species ignored
-	adult := datasetapi.Organism{Base: datasetapi.Base{ID: "adult", UpdatedAt: now}, Species: "Frog", Stage: stageAdult, ProjectID: &proj, ProtocolID: &protA}
-	retired := datasetapi.Organism{Base: datasetapi.Base{ID: "retired", UpdatedAt: now}, Species: "Frog", Stage: stageRetired, ProjectID: &proj, ProtocolID: &protB}
-	other := datasetapi.Organism{Base: datasetapi.Base{ID: "other", UpdatedAt: now}, Species: "Gecko", Stage: stageAdult}
+	adult := testhelper.Organism(testhelper.OrganismFixtureConfig{
+		BaseFixture: testhelper.BaseFixture{ID: "adult", UpdatedAt: now},
+		Species:     "Frog",
+		Stage:       stageAdult,
+		ProjectID:   &proj,
+		ProtocolID:  &protA,
+	})
+	retired := testhelper.Organism(testhelper.OrganismFixtureConfig{
+		BaseFixture: testhelper.BaseFixture{ID: "retired", UpdatedAt: now},
+		Species:     "Frog",
+		Stage:       stageRetired,
+		ProjectID:   &proj,
+		ProtocolID:  &protB,
+	})
+	other := testhelper.Organism(testhelper.OrganismFixtureConfig{
+		BaseFixture: testhelper.BaseFixture{ID: "other", UpdatedAt: now},
+		Species:     "Gecko",
+		Stage:       stageAdult,
+	})
 	view := newStubView()
 	view.organisms = []datasetapi.Organism{adult, retired, other}
 	store := stubStore{view: view}

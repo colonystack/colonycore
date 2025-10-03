@@ -2,15 +2,12 @@
 // (plugins) which can register schemas, rules, and dataset templates.
 package pluginapi
 
-import (
-	"colonycore/pkg/datasetapi"
-	"colonycore/pkg/domain"
-)
+import "colonycore/pkg/datasetapi"
 
 // Registry is implemented by the host to allow plugins to register resources.
 type Registry interface {
 	RegisterSchema(entity string, schema map[string]any)
-	RegisterRule(rule domain.Rule)
+	RegisterRule(rule Rule)
 	RegisterDatasetTemplate(template datasetapi.Template) error
 }
 

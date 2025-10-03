@@ -29,11 +29,15 @@ func NewPluginRegistry() *PluginRegistry {
 }
 
 // RegisterRule adds an in-transaction rule contributed by the plugin.
-func (r *PluginRegistry) RegisterRule(rule Rule) {
+func (r *PluginRegistry) RegisterRule(rule pluginapi.Rule) {
 	if rule == nil {
 		return
 	}
-	r.rules = append(r.rules, rule)
+	adapted := adaptPluginRule(rule)
+	if adapted == nil {
+		return
+	}
+	r.rules = append(r.rules, adapted)
 }
 
 // RegisterSchema stores a JSON Schema fragment for an entity type.

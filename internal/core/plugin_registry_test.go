@@ -6,7 +6,18 @@ import (
 	"time"
 
 	"colonycore/pkg/datasetapi"
+	"colonycore/pkg/pluginapi"
 )
+
+type pluginRuleStub struct {
+	name string
+}
+
+func (r pluginRuleStub) Name() string { return r.name }
+
+func (r pluginRuleStub) Evaluate(_ context.Context, _ pluginapi.RuleView, _ []pluginapi.Change) (pluginapi.Result, error) {
+	return pluginapi.Result{}, nil
+}
 
 func TestPluginRegistryGuardsAndCopies(t *testing.T) {
 	registry := NewPluginRegistry()
@@ -19,10 +30,16 @@ func TestPluginRegistryGuardsAndCopies(t *testing.T) {
 	registry.RegisterSchema("", map[string]any{"ignored": true})
 	registry.RegisterSchema("organism", nil)
 
-	registry.RegisterRule(staticRule{"rule", SeverityLog})
+	registry.RegisterRule(pluginRuleStub{name: "rule"})
 	rules := registry.Rules()
 	if len(rules) != 1 {
 		t.Fatalf("expected single registered rule, got %d", len(rules))
+	}
+	if rules[0].Name() != "rule" {
+		t.Fatalf("expected adapter to preserve rule name")
+	}
+	if _, err := rules[0].Evaluate(context.Background(), emptyView{}, nil); err != nil {
+		t.Fatalf("expected adapted rule to evaluate: %v", err)
 	}
 	rules[0] = nil
 	if registry.Rules()[0] == nil {
@@ -60,7 +77,7 @@ func TestPluginRegistryGuardsAndCopies(t *testing.T) {
 		OutputFormats: []datasetapi.Format{datasetapi.FormatJSON},
 		Binder: func(datasetapi.Environment) (datasetapi.Runner, error) {
 			return func(context.Context, datasetapi.RunRequest) (datasetapi.RunResult, error) {
-				return datasetapi.RunResult{Rows: []map[string]any{{"value": 1}}, GeneratedAt: time.Now().UTC(), Format: datasetapi.FormatJSON}, nil
+				return datasetapi.RunResult{Rows: []datasetapi.Row{{"value": 1}}, GeneratedAt: time.Now().UTC(), Format: datasetapi.FormatJSON}, nil
 			}, nil
 		},
 	}

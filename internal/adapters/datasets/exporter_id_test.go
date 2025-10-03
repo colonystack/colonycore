@@ -21,7 +21,7 @@ func TestEnqueueExportGeneratesUniqueIDs(t *testing.T) {
 		OutputFormats: []datasetapi.Format{datasetapi.FormatJSON},
 		Binder: func(datasetapi.Environment) (datasetapi.Runner, error) {
 			return func(context.Context, datasetapi.RunRequest) (datasetapi.RunResult, error) {
-				return datasetapi.RunResult{Rows: []map[string]any{{"v": "ok"}}}, nil
+				return datasetapi.RunResult{Rows: []datasetapi.Row{{"v": "ok"}}}, nil
 			}, nil
 		},
 	}

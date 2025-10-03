@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"colonycore/pkg/datasetapi"
+	"colonycore/plugins/testhelper"
 )
 
 // TestFrogPopulationBinderAsOfSkip covers branch skipping rows updated after as_of timestamp.
@@ -19,7 +20,11 @@ func TestFrogPopulationBinderAsOfSkip(t *testing.T) {
 
 	baseTime := time.Date(2024, 6, 1, 12, 0, 0, 0, time.UTC)
 	asOf := baseTime.Add(-time.Minute) // earlier than organism update time so it will skip
-	adult := datasetapi.Organism{Base: datasetapi.Base{ID: "alpha", UpdatedAt: baseTime}, Species: "Frog", Stage: datasetapi.StageAdult}
+	adult := testhelper.Organism(testhelper.OrganismFixtureConfig{
+		BaseFixture: testhelper.BaseFixture{ID: "alpha", UpdatedAt: baseTime},
+		Species:     "Frog",
+		Stage:       datasetapi.StageAdult,
+	})
 	view := newStubView()
 	view.organisms = []datasetapi.Organism{adult}
 	store := stubStore{view: view}
