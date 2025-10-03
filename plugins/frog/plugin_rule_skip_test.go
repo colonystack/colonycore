@@ -4,24 +4,24 @@ import (
 	"context"
 	"testing"
 
-	"colonycore/pkg/domain"
+	"colonycore/pkg/datasetapi"
 	"colonycore/pkg/pluginapi"
 )
 
 // fakeRuleViewNoHousing tests habitat rule skip branches (no housing id, housing lookup miss, non-frog species).
 type fakeRuleViewNoHousing struct {
-	orgs    []domain.Organism
-	housing []domain.HousingUnit
+	orgs    []datasetapi.Organism
+	housing []datasetapi.HousingUnit
 }
 
-func (v fakeRuleViewNoHousing) ListOrganisms() []domain.Organism       { return v.orgs }
-func (v fakeRuleViewNoHousing) ListHousingUnits() []domain.HousingUnit { return v.housing }
-func (v fakeRuleViewNoHousing) ListProtocols() []domain.Protocol       { return nil }
-func (v fakeRuleViewNoHousing) FindOrganism(_ string) (domain.Organism, bool) {
-	return domain.Organism{}, false
+func (v fakeRuleViewNoHousing) ListOrganisms() []datasetapi.Organism       { return v.orgs }
+func (v fakeRuleViewNoHousing) ListHousingUnits() []datasetapi.HousingUnit { return v.housing }
+func (v fakeRuleViewNoHousing) ListProtocols() []datasetapi.Protocol       { return nil }
+func (v fakeRuleViewNoHousing) FindOrganism(_ string) (datasetapi.Organism, bool) {
+	return datasetapi.Organism{}, false
 }
-func (v fakeRuleViewNoHousing) FindHousingUnit(_ string) (domain.HousingUnit, bool) {
-	return domain.HousingUnit{}, false
+func (v fakeRuleViewNoHousing) FindHousingUnit(_ string) (datasetapi.HousingUnit, bool) {
+	return datasetapi.HousingUnit{}, false
 }
 func strPtr(s string) *string { return &s }
 
@@ -31,10 +31,10 @@ func TestFrogHabitatRuleSkipBranches(t *testing.T) {
 	if rule.Name() != frogHabitatRuleName {
 		t.Fatalf("unexpected rule name: %s", rule.Name())
 	}
-	view := fakeRuleViewNoHousing{orgs: []domain.Organism{
-		{Base: domain.Base{ID: "1"}, Species: "Gecko"},                                 // non-frog species
-		{Base: domain.Base{ID: "2"}, Species: "FrogX"},                                 // frog with nil housing id
-		{Base: domain.Base{ID: "3"}, Species: "FrogY", HousingID: strPtr("H-missing")}, // housing lookup miss
+	view := fakeRuleViewNoHousing{orgs: []datasetapi.Organism{
+		{Base: datasetapi.Base{ID: "1"}, Species: "Gecko"},                                 // non-frog species
+		{Base: datasetapi.Base{ID: "2"}, Species: "FrogX"},                                 // frog with nil housing id
+		{Base: datasetapi.Base{ID: "3"}, Species: "FrogY", HousingID: strPtr("H-missing")}, // housing lookup miss
 	}}
 	res, err := rule.Evaluate(context.Background(), view, nil)
 	if err != nil {

@@ -5,7 +5,6 @@ import (
 	"testing"
 
 	"colonycore/pkg/datasetapi"
-	"colonycore/pkg/domain"
 	"colonycore/pkg/pluginapi"
 )
 
@@ -27,28 +26,28 @@ func (r *fakeRegistry) RegisterDatasetTemplate(_ datasetapi.Template) error { r.
 
 // fakeView implements pluginapi.RuleView (alias of domain.RuleView).
 type fakeView struct {
-	organisms []domain.Organism
-	housing   []domain.HousingUnit
+	organisms []datasetapi.Organism
+	housing   []datasetapi.HousingUnit
 }
 
-func (v fakeView) ListOrganisms() []domain.Organism       { return v.organisms }
-func (v fakeView) ListHousingUnits() []domain.HousingUnit { return v.housing }
-func (v fakeView) FindHousingUnit(id string) (domain.HousingUnit, bool) {
+func (v fakeView) ListOrganisms() []datasetapi.Organism       { return v.organisms }
+func (v fakeView) ListHousingUnits() []datasetapi.HousingUnit { return v.housing }
+func (v fakeView) FindHousingUnit(id string) (datasetapi.HousingUnit, bool) {
 	for _, h := range v.housing {
 		if h.ID == id {
 			return h, true
 		}
 	}
-	return domain.HousingUnit{}, false
+	return datasetapi.HousingUnit{}, false
 }
-func (v fakeView) ListProtocols() []domain.Protocol { return nil }
-func (v fakeView) FindOrganism(id string) (domain.Organism, bool) {
+func (v fakeView) ListProtocols() []datasetapi.Protocol { return nil }
+func (v fakeView) FindOrganism(id string) (datasetapi.Organism, bool) {
 	for _, o := range v.organisms {
 		if o.ID == id {
 			return o, true
 		}
 	}
-	return domain.Organism{}, false
+	return datasetapi.Organism{}, false
 }
 
 // TestFrogPluginRegisterAndRuleEvaluation covers plugin registration and rule violation generation.
@@ -61,7 +60,7 @@ func TestFrogPluginRegisterAndRuleEvaluation(t *testing.T) {
 		t.Fatalf("expected registrations captured: %+v", reg)
 	}
 	// locate frog habitat rule
-	var habitat domain.Rule
+	var habitat pluginapi.Rule
 	for _, r := range reg.rules {
 		if r.Name() == frogHabitatRuleName {
 			habitat = r
@@ -74,8 +73,8 @@ func TestFrogPluginRegisterAndRuleEvaluation(t *testing.T) {
 	// Evaluate with one frog in non-humid housing to trigger warning
 	housingID := "H1"
 	view := fakeView{
-		organisms: []domain.Organism{{Base: domain.Base{ID: "O1"}, Species: "FrogX", HousingID: &housingID}},
-		housing:   []domain.HousingUnit{{Base: domain.Base{ID: housingID}, Environment: "dry"}},
+		organisms: []datasetapi.Organism{{Base: datasetapi.Base{ID: "O1"}, Species: "FrogX", HousingID: &housingID}},
+		housing:   []datasetapi.HousingUnit{{Base: datasetapi.Base{ID: housingID}, Environment: "dry"}},
 	}
 	res, err := habitat.Evaluate(context.Background(), view, nil)
 	if err != nil || len(res.Violations) != 1 {
