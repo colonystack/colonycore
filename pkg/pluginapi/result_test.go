@@ -28,7 +28,7 @@ func TestResultConstructionAndAccessors(t *testing.T) {
 	if len(vols) != 1 { // baseline
 		t.Fatalf("expected copy length 1")
 	}
-	vols = append(vols, v1) // should not change original internal slice
+	_ = append(vols, v1) // append to local copy; original should remain length 1
 	if len(r1.Violations()) != 1 {
 		t.Fatalf("internal slice mutated via external append copy")
 	}
