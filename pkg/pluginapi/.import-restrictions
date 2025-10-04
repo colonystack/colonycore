@@ -3,7 +3,6 @@ Rules:
     AllowedPrefixes:
       - "colonycore/pkg/pluginapi"
       - "colonycore/pkg/datasetapi"
-      - "colonycore/pkg/domain"
 InverseRules:
   - SelectorRegexp: "^colonycore/"
     AllowedPrefixes:

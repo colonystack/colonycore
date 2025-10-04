@@ -1,0 +1,41 @@
+# DO NOT EDIT MANUALLY.
+# Generated snapshot of exported pluginapi surface (types, funcs, consts, vars, methods on exported interfaces) used by TestPluginAPISnapshot.
+CONST ActionCreate
+CONST ActionDelete
+CONST ActionUpdate
+CONST EntityBreeding
+CONST EntityCohort
+CONST EntityHousingUnit
+CONST EntityOrganism
+CONST EntityProcedure
+CONST EntityProject
+CONST EntityProtocol
+CONST SeverityBlock
+CONST SeverityLog
+CONST SeverityWarn
+CONST StageAdult
+CONST StageDeceased
+CONST StageJuvenile
+CONST StageLarva
+CONST StagePlanned
+CONST StageRetired
+CONST Version
+FUNC NewChange(colonycore/pkg/pluginapi.EntityType,colonycore/pkg/pluginapi.Action,any,any) colonycore/pkg/pluginapi.Change
+FUNC NewResult([]colonycore/pkg/pluginapi.Violation) colonycore/pkg/pluginapi.Result
+FUNC NewViolation(string,colonycore/pkg/pluginapi.Severity,string,colonycore/pkg/pluginapi.EntityType,string) colonycore/pkg/pluginapi.Violation
+TYPE Action (string)
+TYPE BaseView interface { CreatedAt() time.Time ID() string UpdatedAt() time.Time }
+TYPE Change struct { unexported }
+TYPE EntityType (string)
+TYPE HousingUnitView interface { Capacity() int CreatedAt() time.Time Environment() string Facility() string ID() string Name() string UpdatedAt() time.Time }
+TYPE LifecycleStage (string)
+TYPE OrganismView interface { Attributes() map[string]any CohortID() (string,bool) CreatedAt() time.Time HousingID() (string,bool) ID() string Line() string Name() string ProjectID() (string,bool) ProtocolID() (string,bool) Species() string Stage() colonycore/pkg/pluginapi.LifecycleStage UpdatedAt() time.Time }
+TYPE Plugin interface { Name() string Register(colonycore/pkg/pluginapi.Registry) error Version() string }
+TYPE ProtocolView interface { Code() string CreatedAt() time.Time Description() string ID() string MaxSubjects() int Title() string UpdatedAt() time.Time }
+TYPE Registry interface { RegisterDatasetTemplate(colonycore/pkg/datasetapi.Template) error RegisterRule(colonycore/pkg/pluginapi.Rule) RegisterSchema(string,map[string]any) }
+TYPE Result struct { unexported }
+TYPE Rule interface { Evaluate(context.Context,colonycore/pkg/pluginapi.RuleView,[]colonycore/pkg/pluginapi.Change) (colonycore/pkg/pluginapi.Result,error) Name() string }
+TYPE RuleView interface { FindHousingUnit(string) (colonycore/pkg/pluginapi.HousingUnitView,bool) FindOrganism(string) (colonycore/pkg/pluginapi.OrganismView,bool) ListHousingUnits() []colonycore/pkg/pluginapi.HousingUnitView ListOrganisms() []colonycore/pkg/pluginapi.OrganismView ListProtocols() []colonycore/pkg/pluginapi.ProtocolView }
+TYPE RuleViolationError struct { unexported }
+TYPE Severity (string)
+TYPE Violation struct { unexported }

@@ -1,11 +1,36 @@
 package testhelper
 
 import (
+	"colonycore/pkg/datasetapi"
 	"testing"
 	"time"
-
-	"colonycore/pkg/datasetapi"
 )
+
+func TestOrganismFixtureBuilder(t *testing.T) {
+	now := time.Now().UTC().Truncate(time.Second)
+	name := "Org1"
+	cfg := OrganismFixtureConfig{
+		BaseFixture: BaseFixture{ID: "o1", CreatedAt: now, UpdatedAt: now},
+		Name:        name, Species: "sp", Line: "L", Stage: datasetapi.StageAdult,
+	}
+	org := Organism(cfg)
+	if org.Name() != name || org.Stage() != datasetapi.StageAdult {
+		t.Fatalf("unexpected organism attributes: %s %v", org.Name(), org.Stage())
+	}
+	list := Organisms(cfg)
+	if len(list) != 1 || list[0].Name() != name {
+		t.Fatalf("Organisms slice builder failed")
+	}
+}
+
+func TestHousingUnitFixtureBuilder(t *testing.T) {
+	now := time.Now().UTC()
+	cfg := HousingUnitFixtureConfig{BaseFixture: BaseFixture{ID: "h1", CreatedAt: now, UpdatedAt: now}, Name: "H", Facility: "F", Capacity: 2, Environment: "env"}
+	hu := HousingUnit(cfg)
+	if hu.Capacity() != 2 || hu.Environment() != "env" {
+		t.Fatalf("unexpected housing unit values")
+	}
+}
 
 func TestOrganismHelperClonesData(t *testing.T) {
 	now := time.Now().UTC()

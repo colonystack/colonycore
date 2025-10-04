@@ -45,6 +45,8 @@ linters:
             - errors
             - flag
             - fmt
+            - go/parser
+            - go/token
             - github.com/aws/aws-sdk-go-v2/aws
             - github.com/aws/aws-sdk-go-v2/config
             - github.com/aws/aws-sdk-go-v2/credentials
@@ -55,6 +57,7 @@ linters:
             - net/http
             - net/url
             - os
+            - os/exec
             - path/filepath
             - sort
             - strconv
@@ -72,6 +75,9 @@ linters:
             - bytes
             - colonycore
             - context
+            - go/ast
+            - go/parser
+            - go/token
             - encoding/csv
             - encoding/json
             - errors
@@ -81,6 +87,7 @@ linters:
             - github.com/aws/aws-sdk-go-v2/credentials
             - github.com/aws/aws-sdk-go-v2/service/s3
             - go/build
+            - runtime
             - io
             - net/http
             - net/http/httptest

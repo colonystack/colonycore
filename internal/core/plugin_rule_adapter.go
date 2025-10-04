@@ -275,7 +275,59 @@ func cloneAttributes(attrs map[string]any) map[string]any {
 	}
 	out := make(map[string]any, len(attrs))
 	for k, v := range attrs {
-		out[k] = v
+		out[k] = deepCloneAttribute(v)
 	}
 	return out
+}
+
+// deepCloneAttribute performs a best-effort recursive clone of common container
+// shapes used in organism Attributes to harden immutability of projections:
+//   - map[string]any
+//   - []any
+//   - []string
+//   - []map[string]any
+// Primitive values and unrecognized types are returned as-is. Cycles are not
+// supported (the domain model is expected to be acyclic for attributes).
+func deepCloneAttribute(v any) any {
+	switch tv := v.(type) {
+	case map[string]any:
+		if len(tv) == 0 {
+			return map[string]any{}
+		}
+		m := make(map[string]any, len(tv))
+		for k, vv := range tv {
+			m[k] = deepCloneAttribute(vv)
+		}
+		return m
+	case []any:
+		if len(tv) == 0 {
+			return []any{}
+		}
+		s := make([]any, len(tv))
+		for i, vv := range tv {
+			s[i] = deepCloneAttribute(vv)
+		}
+		return s
+	case []string:
+		if len(tv) == 0 {
+			return []string{}
+		}
+		s := make([]string, len(tv))
+		copy(s, tv)
+		return s
+	case []map[string]any:
+		if len(tv) == 0 {
+			return []map[string]any{}
+		}
+		s := make([]map[string]any, len(tv))
+		for i, mv := range tv {
+			if mv == nil {
+				continue
+			}
+			s[i] = cloneAttributes(mv)
+		}
+		return s
+	default:
+		return v
+	}
 }

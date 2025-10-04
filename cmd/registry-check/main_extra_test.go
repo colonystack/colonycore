@@ -1,8 +1,87 @@
 package main
 
 import (
+	"os"
+	"strings"
 	"testing"
 )
+
+func TestValidatePath(t *testing.T) {
+	if _, err := validatePath(""); err == nil {
+		t.Fatalf("expected error for empty path")
+	}
+	if _, err := validatePath("/abs/path"); err == nil {
+		t.Fatalf("expected error for absolute path")
+	}
+	if _, err := validatePath("../traverse"); err == nil {
+		t.Fatalf("expected error for traversal path")
+	}
+	if p, err := validatePath("docs/rfc/registry.yaml"); err != nil || p == "" {
+		t.Fatalf("expected clean path, got %q err %v", p, err)
+	}
+}
+
+func TestAssignScalarUnsupported(t *testing.T) {
+	d := &Document{}
+	if err := assignScalar(d, "unknown_field", "val"); err == nil {
+		t.Fatalf("expected error for unsupported scalar field")
+	}
+}
+
+func TestAppendListUnsupported(t *testing.T) {
+	d := &Document{}
+	if err := appendList(d, "unknown_list", "val"); err == nil {
+		t.Fatalf("expected error for unsupported list field")
+	}
+}
+
+func TestValidateDate(t *testing.T) {
+	if err := validateDate("2024-13-01"); err == nil { // invalid month
+		t.Fatalf("expected invalid date error")
+	}
+	if err := validateDate("2025-10-04"); err != nil { // valid
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestParseRegistryErrorsAdditional(t *testing.T) {
+	// malformed content (missing documents: header)
+	f, err := os.CreateTemp(t.TempDir(), "badreg-*.yaml")
+	if err != nil {
+		t.Fatalf("temp file: %v", err)
+	}
+	if _, err := f.WriteString("notdocuments: \n"); err != nil {
+		t.Fatalf("write: %v", err)
+	}
+	if _, err := f.Seek(0, 0); err != nil {
+		t.Fatalf("seek: %v", err)
+	}
+	if _, err := parseRegistry(f); err == nil {
+		t.Fatalf("expected header error")
+	}
+	_ = f.Close()
+
+	// unsupported scalar field inside a document
+	f2, err := os.CreateTemp(t.TempDir(), "badreg2-*.yaml")
+	if err != nil {
+		t.Fatalf("temp file2: %v", err)
+	}
+	content := strings.Join([]string{
+		"documents:",
+		"  - id: DOC-1",
+		"    unknown: value",
+	}, "\n")
+	if _, err := f2.WriteString(content); err != nil {
+		t.Fatalf("write2: %v", err)
+	}
+	if _, err := f2.Seek(0, 0); err != nil {
+		t.Fatalf("seek2: %v", err)
+	}
+	if _, err := parseRegistry(f2); err == nil {
+		t.Fatalf("expected unsupported scalar error")
+	}
+	_ = f2.Close()
+}
 
 // TestRegistryHelperFunctions exercises individual helper functions to lift coverage.
 func TestRegistryHelperFunctions(t *testing.T) {

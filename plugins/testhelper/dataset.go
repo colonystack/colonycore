@@ -129,7 +129,53 @@ func cloneAttributes(attrs map[string]any) map[string]any {
 	}
 	out := make(map[string]any, len(attrs))
 	for k, v := range attrs {
-		out[k] = v
+		out[k] = deepCloneAttr(v)
 	}
 	return out
+}
+
+// deepCloneAttr mirrors the deep cloning strategy used in production code to
+// ensure test fixtures reflect immutability guarantees.
+func deepCloneAttr(v any) any {
+	switch tv := v.(type) {
+	case map[string]any:
+		if len(tv) == 0 {
+			return map[string]any{}
+		}
+		m := make(map[string]any, len(tv))
+		for k, vv := range tv {
+			m[k] = deepCloneAttr(vv)
+		}
+		return m
+	case []any:
+		if len(tv) == 0 {
+			return []any{}
+		}
+		s := make([]any, len(tv))
+		for i, vv := range tv {
+			s[i] = deepCloneAttr(vv)
+		}
+		return s
+	case []string:
+		if len(tv) == 0 {
+			return []string{}
+		}
+		s := make([]string, len(tv))
+		copy(s, tv)
+		return s
+	case []map[string]any:
+		if len(tv) == 0 {
+			return []map[string]any{}
+		}
+		s := make([]map[string]any, len(tv))
+		for i, mv := range tv {
+			if mv == nil {
+				continue
+			}
+			s[i] = cloneAttributes(mv)
+		}
+		return s
+	default:
+		return v
+	}
 }
