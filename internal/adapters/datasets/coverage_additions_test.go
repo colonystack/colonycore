@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"colonycore/internal/core"
+	"colonycore/pkg/domain"
 	"colonycore/plugins/frog"
 )
 
@@ -98,12 +99,12 @@ func TestHandlerRunAcceptHeaderNegotiation(t *testing.T) {
 	h := NewHandler(svc)
 
 	ctx := context.Background()
-	project, _, err := svc.CreateProject(ctx, core.Project{Code: "PRJ-ACPT", Title: "Negotiate"})
+	project, _, err := svc.CreateProject(ctx, domain.Project{Code: "PRJ-ACPT", Title: "Negotiate"})
 	if err != nil {
 		t.Fatalf("create project: %v", err)
 	}
 	projectID := project.ID
-	if _, _, err := svc.CreateOrganism(ctx, core.Organism{Name: "Frog", Species: "Tree Frog", Stage: core.StageAdult, ProjectID: &projectID}); err != nil {
+	if _, _, err := svc.CreateOrganism(ctx, domain.Organism{Name: "Frog", Species: "Tree Frog", Stage: domain.StageAdult, ProjectID: &projectID}); err != nil {
 		t.Fatalf("create organism: %v", err)
 	}
 

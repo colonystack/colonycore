@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	memory "colonycore/internal/infra/persistence/memory"
+	"colonycore/pkg/domain"
 )
 
 // helper to unset and restore env vars
@@ -43,7 +44,7 @@ func TestOpenPersistentStore_DefaultSQLite(t *testing.T) {
 		if !ok {
 			t.Fatalf("expected *sqlite.Store, got %T", store)
 		}
-		_, _ = sqliteStore.RunInTransaction(context.Background(), func(_ Transaction) error { return nil })
+		_, _ = sqliteStore.RunInTransaction(context.Background(), func(_ domain.Transaction) error { return nil })
 	})
 }
 

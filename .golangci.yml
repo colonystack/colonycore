@@ -71,13 +71,22 @@ linters:
         Test:
           files:
             - $test
+            - "!**/internal/core/persistence_contract_test.go"
+            - "!**/internal/core/service_contract_test.go"
+            - "!**/internal/core/alias_guard_test.go"
+            - "!**/internal/blob/architecture_test.go"
+            - "!**/pkg/datasetapi/alias_guard_test.go"
+            - "!**/pkg/datasetapi/serialization_guard_test.go"
+            - "!**/pkg/pluginapi/alias_guard_test.go"
+            - "!**/pkg/pluginapi/api_snapshot_extra_test.go"
+            - "!**/pkg/pluginapi/api_snapshot_test.go"
+            - "!**/pkg/pluginapi/exposure_architecture_test.go"
+            - "!**/pkg/pluginapi/interface_contract_test.go"
           allow:
             - bytes
             - colonycore
             - context
-            - go/ast
-            - go/parser
-            - go/token
+            - flag
             - encoding/csv
             - encoding/json
             - errors
@@ -101,3 +110,64 @@ linters:
           deny:
             - pkg: github.com/pkg/errors
               desc: Use standard library errors instead
+        Reflection:
+          files:
+            - "**/internal/core/persistence_contract_test.go"
+            - "**/internal/core/service_contract_test.go"
+            - "**/internal/core/alias_guard_test.go"
+            - "**/internal/blob/architecture_test.go"
+            - "**/pkg/datasetapi/alias_guard_test.go"
+            - "**/pkg/datasetapi/serialization_guard_test.go"
+            - "**/pkg/pluginapi/alias_guard_test.go"
+            - "**/pkg/pluginapi/api_snapshot_extra_test.go"
+            - "**/pkg/pluginapi/api_snapshot_test.go"
+            - "**/pkg/pluginapi/exposure_architecture_test.go"
+            - "**/pkg/pluginapi/interface_contract_test.go"
+          allow:
+            - bytes
+            - colonycore
+            - context
+            - flag
+            - go/ast
+            - go/parser
+            - go/token
+            - go/types
+            - encoding/json
+            - errors
+            - fmt
+            - golang.org/x/tools/go/packages
+            - os
+            - path/filepath
+            - runtime
+            - sort
+            - strings
+            - sync
+            - testing
+            - time
+          deny:
+            - pkg: github.com/pkg/errors
+              desc: Use standard library errors instead
+        BlobInfraIsolation:
+          files:
+            - $all
+            - "!**/internal/blob/filesystem.go"
+            - "!**/internal/blob/memory.go"
+            - "!**/internal/blob/s3.go"
+          deny:
+            - pkg: colonycore/internal/infra/blob/fs
+              desc: Use blob.NewFilesystem or blob.Open instead of importing infra/fs
+            - pkg: colonycore/internal/infra/blob/memory
+              desc: Use blob.NewMemory instead of importing infra/memory
+            - pkg: colonycore/internal/infra/blob/s3
+              desc: Use blob.NewS3/OpenFromEnv instead of importing infra/s3
+        BlobInfraWrappers:
+          files:
+            - "**/internal/blob/filesystem.go"
+            - "**/internal/blob/memory.go"
+            - "**/internal/blob/s3.go"
+          allow:
+            - colonycore/internal/infra/blob/fs
+            - colonycore/internal/infra/blob/memory
+            - colonycore/internal/infra/blob/s3
+            - colonycore
+            - context

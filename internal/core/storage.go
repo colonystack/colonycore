@@ -21,22 +21,13 @@ const (
 	StoragePostgres StorageDriver = "postgres" // PostgreSQL server
 )
 
-type (
-	// Transaction aliases domain.Transaction representing a mutable unit of work.
-	Transaction = domain.Transaction
-	// TransactionView aliases domain.TransactionView exposing read-only state for observers.
-	TransactionView = domain.TransactionView
-	// PersistentStore aliases domain.PersistentStore abstracting backing storage implementations.
-	PersistentStore = domain.PersistentStore
-)
-
 // OpenPersistentStore selects a backend using environment variables.
 // Defaults to sqlite when unset.
 //
 //	COLONYCORE_STORAGE_DRIVER: memory|sqlite|postgres (default sqlite)
 //	COLONYCORE_SQLITE_PATH: path to sqlite file (default ./colonycore.db)
 //	COLONYCORE_POSTGRES_DSN: postgres DSN when driver=postgres
-func OpenPersistentStore(engine *RulesEngine) (PersistentStore, error) {
+func OpenPersistentStore(engine *domain.RulesEngine) (domain.PersistentStore, error) {
 	driver := os.Getenv("COLONYCORE_STORAGE_DRIVER")
 	if driver == "" {
 		driver = string(StorageSQLite)

@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"colonycore/internal/core"
+	"colonycore/pkg/domain"
 	"colonycore/plugins/frog"
 )
 
@@ -24,12 +25,12 @@ func TestWorkerProcessesExport(t *testing.T) {
 	t.Cleanup(func() { _ = worker.Stop(context.Background()) })
 
 	ctx := context.Background()
-	project, _, err := svc.CreateProject(ctx, core.Project{Code: "PRJ-WORK", Title: "Worker"})
+	project, _, err := svc.CreateProject(ctx, domain.Project{Code: "PRJ-WORK", Title: "Worker"})
 	if err != nil {
 		t.Fatalf("create project: %v", err)
 	}
 	projectID := project.ID
-	if _, _, err := svc.CreateOrganism(ctx, core.Organism{Name: "Frog", Species: "Tree Frog", Stage: core.StageAdult, ProjectID: &projectID}); err != nil {
+	if _, _, err := svc.CreateOrganism(ctx, domain.Organism{Name: "Frog", Species: "Tree Frog", Stage: domain.StageAdult, ProjectID: &projectID}); err != nil {
 		t.Fatalf("create organism: %v", err)
 	}
 

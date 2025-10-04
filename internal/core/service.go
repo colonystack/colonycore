@@ -1,6 +1,7 @@
 package core
 
 import (
+	"colonycore/pkg/domain"
 	"colonycore/pkg/pluginapi"
 	"context"
 	"fmt"
@@ -75,8 +76,8 @@ func defaultServiceOptions() serviceOptions {
 
 // Service orchestrates transactional operations, plugin registration, and dataset binding.
 type Service struct {
-	store    PersistentStore
-	engine   *RulesEngine
+	store    domain.PersistentStore
+	engine   *domain.RulesEngine
 	clock    Clock
 	now      func() time.Time
 	logger   Logger
@@ -86,7 +87,7 @@ type Service struct {
 }
 
 // NewService constructs a service backed by the supplied store.
-func NewService(store PersistentStore, opts ...ServiceOption) *Service {
+func NewService(store domain.PersistentStore, opts ...ServiceOption) *Service {
 	if store == nil {
 		panic("core: service requires a persistent store")
 	}
@@ -109,20 +110,20 @@ func NewService(store PersistentStore, opts ...ServiceOption) *Service {
 }
 
 // NewInMemoryService creates a service and in-memory store with the given rules engine.
-func NewInMemoryService(engine *RulesEngine, opts ...ServiceOption) *Service {
+func NewInMemoryService(engine *domain.RulesEngine, opts ...ServiceOption) *Service {
 	store := NewMemoryStore(engine)
 	return NewService(store, opts...)
 }
 
 // Store returns the underlying storage implementation.
-func (s *Service) Store() PersistentStore {
+func (s *Service) Store() domain.PersistentStore {
 	return s.store
 }
 
 // CreateProject persists a new project.
-func (s *Service) CreateProject(ctx context.Context, project Project) (Project, Result, error) {
-	var created Project
-	res, err := s.run(ctx, "create_project", func(tx Transaction) error {
+func (s *Service) CreateProject(ctx context.Context, project domain.Project) (domain.Project, domain.Result, error) {
+	var created domain.Project
+	res, err := s.run(ctx, "create_project", func(tx domain.Transaction) error {
 		var innerErr error
 		created, innerErr = tx.CreateProject(project)
 		return innerErr
@@ -131,9 +132,9 @@ func (s *Service) CreateProject(ctx context.Context, project Project) (Project, 
 }
 
 // CreateProtocol persists a new protocol.
-func (s *Service) CreateProtocol(ctx context.Context, protocol Protocol) (Protocol, Result, error) {
-	var created Protocol
-	res, err := s.run(ctx, "create_protocol", func(tx Transaction) error {
+func (s *Service) CreateProtocol(ctx context.Context, protocol domain.Protocol) (domain.Protocol, domain.Result, error) {
+	var created domain.Protocol
+	res, err := s.run(ctx, "create_protocol", func(tx domain.Transaction) error {
 		var innerErr error
 		created, innerErr = tx.CreateProtocol(protocol)
 		return innerErr
@@ -142,9 +143,9 @@ func (s *Service) CreateProtocol(ctx context.Context, protocol Protocol) (Protoc
 }
 
 // CreateHousingUnit persists housing metadata.
-func (s *Service) CreateHousingUnit(ctx context.Context, housing HousingUnit) (HousingUnit, Result, error) {
-	var created HousingUnit
-	res, err := s.run(ctx, "create_housing_unit", func(tx Transaction) error {
+func (s *Service) CreateHousingUnit(ctx context.Context, housing domain.HousingUnit) (domain.HousingUnit, domain.Result, error) {
+	var created domain.HousingUnit
+	res, err := s.run(ctx, "create_housing_unit", func(tx domain.Transaction) error {
 		var innerErr error
 		created, innerErr = tx.CreateHousingUnit(housing)
 		return innerErr
@@ -153,9 +154,9 @@ func (s *Service) CreateHousingUnit(ctx context.Context, housing HousingUnit) (H
 }
 
 // CreateCohort persists a new cohort.
-func (s *Service) CreateCohort(ctx context.Context, cohort Cohort) (Cohort, Result, error) {
-	var created Cohort
-	res, err := s.run(ctx, "create_cohort", func(tx Transaction) error {
+func (s *Service) CreateCohort(ctx context.Context, cohort domain.Cohort) (domain.Cohort, domain.Result, error) {
+	var created domain.Cohort
+	res, err := s.run(ctx, "create_cohort", func(tx domain.Transaction) error {
 		var innerErr error
 		created, innerErr = tx.CreateCohort(cohort)
 		return innerErr
@@ -164,9 +165,9 @@ func (s *Service) CreateCohort(ctx context.Context, cohort Cohort) (Cohort, Resu
 }
 
 // CreateOrganism persists a new organism.
-func (s *Service) CreateOrganism(ctx context.Context, organism Organism) (Organism, Result, error) {
-	var created Organism
-	res, err := s.run(ctx, "create_organism", func(tx Transaction) error {
+func (s *Service) CreateOrganism(ctx context.Context, organism domain.Organism) (domain.Organism, domain.Result, error) {
+	var created domain.Organism
+	res, err := s.run(ctx, "create_organism", func(tx domain.Transaction) error {
 		var innerErr error
 		created, innerErr = tx.CreateOrganism(organism)
 		return innerErr
@@ -175,9 +176,9 @@ func (s *Service) CreateOrganism(ctx context.Context, organism Organism) (Organi
 }
 
 // UpdateOrganism mutates an organism using the provided mutator.
-func (s *Service) UpdateOrganism(ctx context.Context, id string, mutator func(*Organism) error) (Organism, Result, error) {
-	var updated Organism
-	res, err := s.run(ctx, "update_organism", func(tx Transaction) error {
+func (s *Service) UpdateOrganism(ctx context.Context, id string, mutator func(*domain.Organism) error) (domain.Organism, domain.Result, error) {
+	var updated domain.Organism
+	res, err := s.run(ctx, "update_organism", func(tx domain.Transaction) error {
 		var innerErr error
 		updated, innerErr = tx.UpdateOrganism(id, mutator)
 		return innerErr
@@ -186,21 +187,21 @@ func (s *Service) UpdateOrganism(ctx context.Context, id string, mutator func(*O
 }
 
 // DeleteOrganism removes an organism record.
-func (s *Service) DeleteOrganism(ctx context.Context, id string) (Result, error) {
-	return s.run(ctx, "delete_organism", func(tx Transaction) error {
+func (s *Service) DeleteOrganism(ctx context.Context, id string) (domain.Result, error) {
+	return s.run(ctx, "delete_organism", func(tx domain.Transaction) error {
 		return tx.DeleteOrganism(id)
 	})
 }
 
 // AssignOrganismHousing updates an organism's housing reference within a transaction that validates dependencies.
-func (s *Service) AssignOrganismHousing(ctx context.Context, organismID, housingID string) (Organism, Result, error) {
-	var updated Organism
-	res, err := s.run(ctx, "assign_organism_housing", func(tx Transaction) error {
+func (s *Service) AssignOrganismHousing(ctx context.Context, organismID, housingID string) (domain.Organism, domain.Result, error) {
+	var updated domain.Organism
+	res, err := s.run(ctx, "assign_organism_housing", func(tx domain.Transaction) error {
 		if _, ok := tx.FindHousingUnit(housingID); !ok {
-			return ErrNotFound{Entity: EntityHousingUnit, ID: housingID}
+			return ErrNotFound{Entity: domain.EntityHousingUnit, ID: housingID}
 		}
 		var innerErr error
-		updated, innerErr = tx.UpdateOrganism(organismID, func(o *Organism) error {
+		updated, innerErr = tx.UpdateOrganism(organismID, func(o *domain.Organism) error {
 			o.HousingID = &housingID
 			return nil
 		})
@@ -210,14 +211,14 @@ func (s *Service) AssignOrganismHousing(ctx context.Context, organismID, housing
 }
 
 // AssignOrganismProtocol links an organism to a protocol within the same transactional scope.
-func (s *Service) AssignOrganismProtocol(ctx context.Context, organismID, protocolID string) (Organism, Result, error) {
-	var updated Organism
-	res, err := s.run(ctx, "assign_organism_protocol", func(tx Transaction) error {
+func (s *Service) AssignOrganismProtocol(ctx context.Context, organismID, protocolID string) (domain.Organism, domain.Result, error) {
+	var updated domain.Organism
+	res, err := s.run(ctx, "assign_organism_protocol", func(tx domain.Transaction) error {
 		if _, ok := tx.FindProtocol(protocolID); !ok {
-			return ErrNotFound{Entity: EntityProtocol, ID: protocolID}
+			return ErrNotFound{Entity: domain.EntityProtocol, ID: protocolID}
 		}
 		var innerErr error
-		updated, innerErr = tx.UpdateOrganism(organismID, func(o *Organism) error {
+		updated, innerErr = tx.UpdateOrganism(organismID, func(o *domain.Organism) error {
 			o.ProtocolID = &protocolID
 			return nil
 		})
@@ -227,9 +228,9 @@ func (s *Service) AssignOrganismProtocol(ctx context.Context, organismID, protoc
 }
 
 // CreateBreedingUnit persists a breeding configuration.
-func (s *Service) CreateBreedingUnit(ctx context.Context, unit BreedingUnit) (BreedingUnit, Result, error) {
-	var created BreedingUnit
-	res, err := s.run(ctx, "create_breeding_unit", func(tx Transaction) error {
+func (s *Service) CreateBreedingUnit(ctx context.Context, unit domain.BreedingUnit) (domain.BreedingUnit, domain.Result, error) {
+	var created domain.BreedingUnit
+	res, err := s.run(ctx, "create_breeding_unit", func(tx domain.Transaction) error {
 		var innerErr error
 		created, innerErr = tx.CreateBreedingUnit(unit)
 		return innerErr
@@ -238,9 +239,9 @@ func (s *Service) CreateBreedingUnit(ctx context.Context, unit BreedingUnit) (Br
 }
 
 // CreateProcedure persists a procedure record.
-func (s *Service) CreateProcedure(ctx context.Context, procedure Procedure) (Procedure, Result, error) {
-	var created Procedure
-	res, err := s.run(ctx, "create_procedure", func(tx Transaction) error {
+func (s *Service) CreateProcedure(ctx context.Context, procedure domain.Procedure) (domain.Procedure, domain.Result, error) {
+	var created domain.Procedure
+	res, err := s.run(ctx, "create_procedure", func(tx domain.Transaction) error {
 		var innerErr error
 		created, innerErr = tx.CreateProcedure(procedure)
 		return innerErr
@@ -249,9 +250,9 @@ func (s *Service) CreateProcedure(ctx context.Context, procedure Procedure) (Pro
 }
 
 // UpdateProcedure mutates a procedure.
-func (s *Service) UpdateProcedure(ctx context.Context, id string, mutator func(*Procedure) error) (Procedure, Result, error) {
-	var updated Procedure
-	res, err := s.run(ctx, "update_procedure", func(tx Transaction) error {
+func (s *Service) UpdateProcedure(ctx context.Context, id string, mutator func(*domain.Procedure) error) (domain.Procedure, domain.Result, error) {
+	var updated domain.Procedure
+	res, err := s.run(ctx, "update_procedure", func(tx domain.Transaction) error {
 		var innerErr error
 		updated, innerErr = tx.UpdateProcedure(id, mutator)
 		return innerErr
@@ -260,15 +261,15 @@ func (s *Service) UpdateProcedure(ctx context.Context, id string, mutator func(*
 }
 
 // DeleteProcedure removes a procedure record.
-func (s *Service) DeleteProcedure(ctx context.Context, id string) (Result, error) {
-	return s.run(ctx, "delete_procedure", func(tx Transaction) error {
+func (s *Service) DeleteProcedure(ctx context.Context, id string) (domain.Result, error) {
+	return s.run(ctx, "delete_procedure", func(tx domain.Transaction) error {
 		return tx.DeleteProcedure(id)
 	})
 }
 
 // ErrNotFound is returned when reference validation fails within transactional helpers.
 type ErrNotFound struct {
-	Entity EntityType
+	Entity domain.EntityType
 	ID     string
 }
 
@@ -376,7 +377,7 @@ func (s *Service) ResolveDatasetTemplate(slug string) (DatasetTemplate, bool) {
 	return template, ok
 }
 
-func (s *Service) run(ctx context.Context, op string, fn func(Transaction) error) (Result, error) {
+func (s *Service) run(ctx context.Context, op string, fn func(domain.Transaction) error) (domain.Result, error) {
 	res, err := s.store.RunInTransaction(ctx, fn)
 	if err != nil {
 		s.logger.Error("service operation failed", "op", op, "error", err)
@@ -387,21 +388,21 @@ func (s *Service) run(ctx context.Context, op string, fn func(Transaction) error
 }
 
 type rulesEngineProvider interface {
-	RulesEngine() *RulesEngine
+	RulesEngine() *domain.RulesEngine
 }
 
 type nowFuncProvider interface {
 	NowFunc() func() time.Time
 }
 
-func extractRulesEngine(store PersistentStore) *RulesEngine {
+func extractRulesEngine(store domain.PersistentStore) *domain.RulesEngine {
 	if provider, ok := store.(rulesEngineProvider); ok {
 		return provider.RulesEngine()
 	}
 	return nil
 }
 
-func selectNowFunc(store PersistentStore, clock Clock) func() time.Time {
+func selectNowFunc(store domain.PersistentStore, clock Clock) func() time.Time {
 	if provider, ok := store.(nowFuncProvider); ok {
 		if fn := provider.NowFunc(); fn != nil {
 			return func() time.Time { return fn().UTC() }

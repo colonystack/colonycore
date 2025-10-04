@@ -4,6 +4,8 @@ import (
 	"context"
 	"testing"
 	"time"
+
+	"colonycore/pkg/domain"
 )
 
 type stubClock struct{ t time.Time }
@@ -24,7 +26,7 @@ func TestServiceOptionsCoversClockLogger(t *testing.T) {
 	log := &captureLogger{}
 	svc := NewInMemoryService(nil, WithClock(clk), WithLogger(log))
 	// invoke a couple operations to trigger logger usage in run()
-	if _, _, err := svc.CreateProject(context.Background(), Project{Base: Base{ID: "p1"}}); err != nil {
+	if _, _, err := svc.CreateProject(context.Background(), domain.Project{Base: domain.Base{ID: "p1"}}); err != nil {
 		t.Fatalf("create project: %v", err)
 	}
 	if svc.clock == nil || svc.clock.Now().Unix() != fixed.Unix() {

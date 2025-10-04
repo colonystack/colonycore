@@ -13,6 +13,8 @@ import (
 	_ "modernc.org/sqlite" // pure go sqlite driver
 )
 
+// NOTE: domain import kept indirect through memstore.go aliases to avoid cycles; compile-time assertion lives there.
+
 // Store persists the in-memory state to a single SQLite table as JSON blobs.
 // It snapshots the full state after every successful transaction.
 type Store struct {

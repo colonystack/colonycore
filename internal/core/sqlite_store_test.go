@@ -2,6 +2,7 @@ package core_test
 
 import (
 	core "colonycore/internal/core"
+	"colonycore/pkg/domain"
 	"context"
 	"os"
 	"path/filepath"
@@ -16,8 +17,8 @@ func TestSQLiteStoreSnapshot(t *testing.T) {
 		t.Fatalf("new sqlite store: %v", err)
 	}
 	ctx := context.Background()
-	if _, err := store.RunInTransaction(ctx, func(tx core.Transaction) error {
-		_, e := tx.CreateOrganism(core.Organism{Name: "Alpha", Species: "Frog"})
+	if _, err := store.RunInTransaction(ctx, func(tx domain.Transaction) error {
+		_, e := tx.CreateOrganism(domain.Organism{Name: "Alpha", Species: "Frog"})
 		return e
 	}); err != nil {
 		t.Fatalf("create organism: %v", err)

@@ -8,7 +8,7 @@ import (
 	"colonycore/pkg/pluginapi"
 )
 
-func adaptPluginRule(rule pluginapi.Rule) Rule {
+func adaptPluginRule(rule pluginapi.Rule) domain.Rule {
 	if rule == nil {
 		return nil
 	}
@@ -21,7 +21,7 @@ type pluginRuleAdapter struct {
 
 func (a pluginRuleAdapter) Name() string { return a.impl.Name() }
 
-func (a pluginRuleAdapter) Evaluate(ctx context.Context, view RuleView, changes []domain.Change) (domain.Result, error) {
+func (a pluginRuleAdapter) Evaluate(ctx context.Context, view domain.RuleView, changes []domain.Change) (domain.Result, error) {
 	pluginView := adaptRuleView(view)
 	pluginChanges := toPluginChanges(changes)
 	res, err := a.impl.Evaluate(ctx, pluginView, pluginChanges)
@@ -31,7 +31,7 @@ func (a pluginRuleAdapter) Evaluate(ctx context.Context, view RuleView, changes 
 	return toDomainResult(res), nil
 }
 
-func adaptRuleView(view RuleView) pluginapi.RuleView {
+func adaptRuleView(view domain.RuleView) pluginapi.RuleView {
 	if view == nil {
 		return nil
 	}
@@ -39,7 +39,7 @@ func adaptRuleView(view RuleView) pluginapi.RuleView {
 }
 
 type ruleViewAdapter struct {
-	view RuleView
+	view domain.RuleView
 }
 
 func (a ruleViewAdapter) ListOrganisms() []pluginapi.OrganismView {

@@ -21,17 +21,17 @@ func TestIntegrationSmoke(t *testing.T) {
 	// Define core persistent store variants to exercise.
 	coreVariants := []struct {
 		name string
-		open func(t *testing.T) core.PersistentStore
+		open func(t *testing.T) domain.PersistentStore
 	}{
 		{
 			name: "memory-store",
-			open: func(_ *testing.T) core.PersistentStore {
+			open: func(_ *testing.T) domain.PersistentStore {
 				return core.NewMemoryStore(core.NewDefaultRulesEngine())
 			},
 		},
 		{
 			name: "sqlite-store",
-			open: func(t *testing.T) core.PersistentStore {
+			open: func(t *testing.T) domain.PersistentStore {
 				dir := t.TempDir()
 				path := filepath.Join(dir, "core.db")
 				s, err := core.NewSQLiteStore(path, core.NewDefaultRulesEngine())

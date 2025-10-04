@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"colonycore/internal/core"
+	"colonycore/pkg/domain"
 )
 
 type captureLogger struct {
@@ -24,7 +25,7 @@ func TestServiceLoggerDebugAndError(t *testing.T) {
 	svc := core.NewInMemoryService(core.NewDefaultRulesEngine(), core.WithLogger(logger))
 	ctx := context.Background()
 	// success path: create project => run() succeeds => Debug call
-	if _, _, err := svc.CreateProject(ctx, core.Project{Code: "PRJ-LOG", Title: "Logging"}); err != nil {
+	if _, _, err := svc.CreateProject(ctx, domain.Project{Code: "PRJ-LOG", Title: "Logging"}); err != nil {
 		// shouldn't happen; but fail early
 		t.Fatalf("create project: %v", err)
 	}

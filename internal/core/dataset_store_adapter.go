@@ -7,7 +7,7 @@ import (
 	"colonycore/pkg/domain"
 )
 
-func newDatasetPersistentStore(store PersistentStore) datasetapi.PersistentStore {
+func newDatasetPersistentStore(store domain.PersistentStore) datasetapi.PersistentStore {
 	if store == nil {
 		return nil
 	}
@@ -15,7 +15,7 @@ func newDatasetPersistentStore(store PersistentStore) datasetapi.PersistentStore
 }
 
 type datasetPersistentStoreAdapter struct {
-	store PersistentStore
+	store domain.PersistentStore
 }
 
 var _ datasetapi.PersistentStore = datasetPersistentStoreAdapter{}

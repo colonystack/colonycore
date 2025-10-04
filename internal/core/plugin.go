@@ -5,15 +5,13 @@ import (
 	"sort"
 
 	"colonycore/pkg/datasetapi"
+	"colonycore/pkg/domain"
 	"colonycore/pkg/pluginapi"
 )
 
-// Plugin describes a species module or extension that contributes rules and schema.
-type Plugin = pluginapi.Plugin
-
 // PluginRegistry accumulates plugin contributions during registration.
 type PluginRegistry struct {
-	rules    []Rule
+	rules    []domain.Rule
 	schemas  map[string]map[string]any
 	datasets map[string]DatasetTemplate
 }
@@ -67,8 +65,8 @@ func (r *PluginRegistry) RegisterDatasetTemplate(template datasetapi.Template) e
 }
 
 // Rules returns a copy of registered rules.
-func (r *PluginRegistry) Rules() []Rule {
-	out := make([]Rule, len(r.rules))
+func (r *PluginRegistry) Rules() []domain.Rule {
+	out := make([]domain.Rule, len(r.rules))
 	copy(out, r.rules)
 	return out
 }

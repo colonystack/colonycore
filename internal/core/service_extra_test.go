@@ -3,6 +3,8 @@ package core
 import (
 	"context"
 	"testing"
+
+	"colonycore/pkg/domain"
 )
 
 // TestNewServicePanicsOnNilStore validates constructor guard.
@@ -19,7 +21,7 @@ func TestNewServicePanicsOnNilStore(t *testing.T) {
 func TestAssignOrganismHousing(t *testing.T) {
 	svc := NewInMemoryService(NewRulesEngine())
 	ctx := context.Background()
-	org, _, err := svc.CreateOrganism(ctx, Organism{Name: "A", Species: "frog"})
+	org, _, err := svc.CreateOrganism(ctx, domain.Organism{Name: "A", Species: "frog"})
 	if err != nil {
 		t.Fatalf("create organism: %v", err)
 	}
@@ -28,7 +30,7 @@ func TestAssignOrganismHousing(t *testing.T) {
 		t.Fatalf("expected not found error")
 	}
 	// create housing then assign
-	h, _, err := svc.CreateHousingUnit(ctx, HousingUnit{Name: "H", Capacity: 10})
+	h, _, err := svc.CreateHousingUnit(ctx, domain.HousingUnit{Name: "H", Capacity: 10})
 	if err != nil {
 		t.Fatalf("create housing: %v", err)
 	}
@@ -42,14 +44,14 @@ func TestAssignOrganismHousing(t *testing.T) {
 func TestAssignOrganismProtocol(t *testing.T) {
 	svc := NewInMemoryService(NewRulesEngine())
 	ctx := context.Background()
-	org, _, err := svc.CreateOrganism(ctx, Organism{Name: "B", Species: "frog"})
+	org, _, err := svc.CreateOrganism(ctx, domain.Organism{Name: "B", Species: "frog"})
 	if err != nil {
 		t.Fatalf("create organism: %v", err)
 	}
 	if _, _, err := svc.AssignOrganismProtocol(ctx, org.ID, "missing"); err == nil {
 		t.Fatalf("expected not found error")
 	}
-	proto, _, err := svc.CreateProtocol(ctx, Protocol{Code: "P", Title: "Prot", MaxSubjects: 5})
+	proto, _, err := svc.CreateProtocol(ctx, domain.Protocol{Code: "P", Title: "Prot", MaxSubjects: 5})
 	if err != nil {
 		t.Fatalf("create protocol: %v", err)
 	}

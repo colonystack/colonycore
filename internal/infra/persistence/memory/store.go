@@ -13,6 +13,9 @@ import (
 	"time"
 )
 
+// Compile-time contract assertions ensuring memory.Store adheres to the domain persistence interfaces.
+var _ domain.PersistentStore = (*Store)(nil)
+
 type (
 	// Organism aliases domain.Organism for in-memory persistence operations.
 	Organism = domain.Organism

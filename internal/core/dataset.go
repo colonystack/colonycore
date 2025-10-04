@@ -11,6 +11,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"colonycore/pkg/domain"
 )
 
 // DatasetDialect indicates the query language used by a dataset template.
@@ -86,7 +88,7 @@ type DatasetRunner func(context.Context, DatasetRunRequest) (DatasetRunResult, e
 
 // DatasetEnvironment provides runtime dependencies to binders.
 type DatasetEnvironment struct {
-	Store PersistentStore
+	Store domain.PersistentStore
 	Now   func() time.Time
 }
 

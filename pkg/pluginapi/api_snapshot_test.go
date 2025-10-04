@@ -13,12 +13,12 @@ package pluginapi
 
 import (
 	"bytes"
-	"flag" //nolint:depguard // test-only snapshot update flag
+	"flag"
 	"go/ast"
 	"go/parser"
 	"go/token"
-	"go/types"                       //nolint:depguard // reflective inspection for snapshot
-	"golang.org/x/tools/go/packages" //nolint:depguard // test-time package loading for snapshot
+	"go/types"
+	"golang.org/x/tools/go/packages"
 	"os"
 	"path/filepath"
 	"sort"
