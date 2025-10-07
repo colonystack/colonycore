@@ -121,8 +121,8 @@ func (emptyView) ListProtocols() []domain.Protocol { return nil }
 
 func TestRulesEngineEvaluateDirect(t *testing.T) {
 	engine := NewRulesEngine()
-	engine.Register(staticRule{"first", SeverityWarn})
-	engine.Register(staticRule{"second", SeverityLog})
+	engine.Register(staticRule{"first", domain.SeverityWarn})
+	engine.Register(staticRule{"second", domain.SeverityLog})
 
 	view := emptyView{}
 	result, err := engine.Evaluate(context.Background(), view, nil)

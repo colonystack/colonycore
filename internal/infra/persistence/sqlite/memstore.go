@@ -45,23 +45,8 @@ type (
 	PersistentStore = domain.PersistentStore
 )
 
-// Entity constants forwarded from domain for change records.
-const (
-	EntityOrganism    = domain.EntityOrganism
-	EntityCohort      = domain.EntityCohort
-	EntityHousingUnit = domain.EntityHousingUnit
-	EntityBreeding    = domain.EntityBreeding
-	EntityProcedure   = domain.EntityProcedure
-	EntityProtocol    = domain.EntityProtocol
-	EntityProject     = domain.EntityProject
-)
-
-// Action constants forwarded from domain for change records.
-const (
-	ActionCreate = domain.ActionCreate
-	ActionUpdate = domain.ActionUpdate
-	ActionDelete = domain.ActionDelete
-)
+// Infra implementations use domain types directly via their interfaces
+// No constant aliases needed - use domain.EntityType, domain.Action values directly
 
 type memoryState struct {
 	organisms  map[string]Organism
@@ -321,7 +306,7 @@ func (tx *transaction) CreateOrganism(o Organism) (Organism, error) {
 		o.Attributes = map[string]any{}
 	}
 	tx.state.organisms[o.ID] = cloneOrganism(o)
-	tx.recordChange(Change{Entity: EntityOrganism, Action: ActionCreate, After: cloneOrganism(o)})
+	tx.recordChange(Change{Entity: domain.EntityOrganism, Action: domain.ActionCreate, After: cloneOrganism(o)})
 	return cloneOrganism(o), nil
 }
 func (tx *transaction) UpdateOrganism(id string, mutator func(*Organism) error) (Organism, error) {
@@ -336,7 +321,7 @@ func (tx *transaction) UpdateOrganism(id string, mutator func(*Organism) error) 
 	current.ID = id
 	current.UpdatedAt = tx.now
 	tx.state.organisms[id] = cloneOrganism(current)
-	tx.recordChange(Change{Entity: EntityOrganism, Action: ActionUpdate, Before: before, After: cloneOrganism(current)})
+	tx.recordChange(Change{Entity: domain.EntityOrganism, Action: domain.ActionUpdate, Before: before, After: cloneOrganism(current)})
 	return cloneOrganism(current), nil
 }
 func (tx *transaction) DeleteOrganism(id string) error {
@@ -345,7 +330,7 @@ func (tx *transaction) DeleteOrganism(id string) error {
 		return fmt.Errorf("organism %q not found", id)
 	}
 	delete(tx.state.organisms, id)
-	tx.recordChange(Change{Entity: EntityOrganism, Action: ActionDelete, Before: cloneOrganism(current)})
+	tx.recordChange(Change{Entity: domain.EntityOrganism, Action: domain.ActionDelete, Before: cloneOrganism(current)})
 	return nil
 }
 func (tx *transaction) CreateCohort(c Cohort) (Cohort, error) {
@@ -358,7 +343,7 @@ func (tx *transaction) CreateCohort(c Cohort) (Cohort, error) {
 	c.CreatedAt = tx.now
 	c.UpdatedAt = tx.now
 	tx.state.cohorts[c.ID] = cloneCohort(c)
-	tx.recordChange(Change{Entity: EntityCohort, Action: ActionCreate, After: cloneCohort(c)})
+	tx.recordChange(Change{Entity: domain.EntityCohort, Action: domain.ActionCreate, After: cloneCohort(c)})
 	return cloneCohort(c), nil
 }
 func (tx *transaction) UpdateCohort(id string, mutator func(*Cohort) error) (Cohort, error) {
@@ -373,7 +358,7 @@ func (tx *transaction) UpdateCohort(id string, mutator func(*Cohort) error) (Coh
 	current.ID = id
 	current.UpdatedAt = tx.now
 	tx.state.cohorts[id] = cloneCohort(current)
-	tx.recordChange(Change{Entity: EntityCohort, Action: ActionUpdate, Before: before, After: cloneCohort(current)})
+	tx.recordChange(Change{Entity: domain.EntityCohort, Action: domain.ActionUpdate, Before: before, After: cloneCohort(current)})
 	return cloneCohort(current), nil
 }
 func (tx *transaction) DeleteCohort(id string) error {
@@ -382,7 +367,7 @@ func (tx *transaction) DeleteCohort(id string) error {
 		return fmt.Errorf("cohort %q not found", id)
 	}
 	delete(tx.state.cohorts, id)
-	tx.recordChange(Change{Entity: EntityCohort, Action: ActionDelete, Before: cloneCohort(current)})
+	tx.recordChange(Change{Entity: domain.EntityCohort, Action: domain.ActionDelete, Before: cloneCohort(current)})
 	return nil
 }
 func (tx *transaction) CreateHousingUnit(h HousingUnit) (HousingUnit, error) {
@@ -398,7 +383,7 @@ func (tx *transaction) CreateHousingUnit(h HousingUnit) (HousingUnit, error) {
 	h.CreatedAt = tx.now
 	h.UpdatedAt = tx.now
 	tx.state.housing[h.ID] = cloneHousing(h)
-	tx.recordChange(Change{Entity: EntityHousingUnit, Action: ActionCreate, After: cloneHousing(h)})
+	tx.recordChange(Change{Entity: domain.EntityHousingUnit, Action: domain.ActionCreate, After: cloneHousing(h)})
 	return cloneHousing(h), nil
 }
 func (tx *transaction) UpdateHousingUnit(id string, mutator func(*HousingUnit) error) (HousingUnit, error) {
@@ -416,7 +401,7 @@ func (tx *transaction) UpdateHousingUnit(id string, mutator func(*HousingUnit) e
 	current.ID = id
 	current.UpdatedAt = tx.now
 	tx.state.housing[id] = cloneHousing(current)
-	tx.recordChange(Change{Entity: EntityHousingUnit, Action: ActionUpdate, Before: before, After: cloneHousing(current)})
+	tx.recordChange(Change{Entity: domain.EntityHousingUnit, Action: domain.ActionUpdate, Before: before, After: cloneHousing(current)})
 	return cloneHousing(current), nil
 }
 func (tx *transaction) DeleteHousingUnit(id string) error {
@@ -425,7 +410,7 @@ func (tx *transaction) DeleteHousingUnit(id string) error {
 		return fmt.Errorf("housing unit %q not found", id)
 	}
 	delete(tx.state.housing, id)
-	tx.recordChange(Change{Entity: EntityHousingUnit, Action: ActionDelete, Before: cloneHousing(current)})
+	tx.recordChange(Change{Entity: domain.EntityHousingUnit, Action: domain.ActionDelete, Before: cloneHousing(current)})
 	return nil
 }
 func (tx *transaction) CreateBreedingUnit(b BreedingUnit) (BreedingUnit, error) {
@@ -438,7 +423,7 @@ func (tx *transaction) CreateBreedingUnit(b BreedingUnit) (BreedingUnit, error) 
 	b.CreatedAt = tx.now
 	b.UpdatedAt = tx.now
 	tx.state.breeding[b.ID] = cloneBreeding(b)
-	tx.recordChange(Change{Entity: EntityBreeding, Action: ActionCreate, After: cloneBreeding(b)})
+	tx.recordChange(Change{Entity: domain.EntityBreeding, Action: domain.ActionCreate, After: cloneBreeding(b)})
 	return cloneBreeding(b), nil
 }
 func (tx *transaction) UpdateBreedingUnit(id string, mutator func(*BreedingUnit) error) (BreedingUnit, error) {
@@ -453,7 +438,7 @@ func (tx *transaction) UpdateBreedingUnit(id string, mutator func(*BreedingUnit)
 	current.ID = id
 	current.UpdatedAt = tx.now
 	tx.state.breeding[id] = cloneBreeding(current)
-	tx.recordChange(Change{Entity: EntityBreeding, Action: ActionUpdate, Before: before, After: cloneBreeding(current)})
+	tx.recordChange(Change{Entity: domain.EntityBreeding, Action: domain.ActionUpdate, Before: before, After: cloneBreeding(current)})
 	return cloneBreeding(current), nil
 }
 func (tx *transaction) DeleteBreedingUnit(id string) error {
@@ -462,7 +447,7 @@ func (tx *transaction) DeleteBreedingUnit(id string) error {
 		return fmt.Errorf("breeding unit %q not found", id)
 	}
 	delete(tx.state.breeding, id)
-	tx.recordChange(Change{Entity: EntityBreeding, Action: ActionDelete, Before: cloneBreeding(current)})
+	tx.recordChange(Change{Entity: domain.EntityBreeding, Action: domain.ActionDelete, Before: cloneBreeding(current)})
 	return nil
 }
 func (tx *transaction) CreateProcedure(p Procedure) (Procedure, error) {
@@ -475,7 +460,7 @@ func (tx *transaction) CreateProcedure(p Procedure) (Procedure, error) {
 	p.CreatedAt = tx.now
 	p.UpdatedAt = tx.now
 	tx.state.procedures[p.ID] = cloneProcedure(p)
-	tx.recordChange(Change{Entity: EntityProcedure, Action: ActionCreate, After: cloneProcedure(p)})
+	tx.recordChange(Change{Entity: domain.EntityProcedure, Action: domain.ActionCreate, After: cloneProcedure(p)})
 	return cloneProcedure(p), nil
 }
 func (tx *transaction) UpdateProcedure(id string, mutator func(*Procedure) error) (Procedure, error) {
@@ -490,7 +475,7 @@ func (tx *transaction) UpdateProcedure(id string, mutator func(*Procedure) error
 	current.ID = id
 	current.UpdatedAt = tx.now
 	tx.state.procedures[id] = cloneProcedure(current)
-	tx.recordChange(Change{Entity: EntityProcedure, Action: ActionUpdate, Before: before, After: cloneProcedure(current)})
+	tx.recordChange(Change{Entity: domain.EntityProcedure, Action: domain.ActionUpdate, Before: before, After: cloneProcedure(current)})
 	return cloneProcedure(current), nil
 }
 func (tx *transaction) DeleteProcedure(id string) error {
@@ -499,7 +484,7 @@ func (tx *transaction) DeleteProcedure(id string) error {
 		return fmt.Errorf("procedure %q not found", id)
 	}
 	delete(tx.state.procedures, id)
-	tx.recordChange(Change{Entity: EntityProcedure, Action: ActionDelete, Before: cloneProcedure(current)})
+	tx.recordChange(Change{Entity: domain.EntityProcedure, Action: domain.ActionDelete, Before: cloneProcedure(current)})
 	return nil
 }
 func (tx *transaction) CreateProtocol(p Protocol) (Protocol, error) {
@@ -512,7 +497,7 @@ func (tx *transaction) CreateProtocol(p Protocol) (Protocol, error) {
 	p.CreatedAt = tx.now
 	p.UpdatedAt = tx.now
 	tx.state.protocols[p.ID] = cloneProtocol(p)
-	tx.recordChange(Change{Entity: EntityProtocol, Action: ActionCreate, After: cloneProtocol(p)})
+	tx.recordChange(Change{Entity: domain.EntityProtocol, Action: domain.ActionCreate, After: cloneProtocol(p)})
 	return cloneProtocol(p), nil
 }
 func (tx *transaction) UpdateProtocol(id string, mutator func(*Protocol) error) (Protocol, error) {
@@ -527,7 +512,7 @@ func (tx *transaction) UpdateProtocol(id string, mutator func(*Protocol) error) 
 	current.ID = id
 	current.UpdatedAt = tx.now
 	tx.state.protocols[id] = cloneProtocol(current)
-	tx.recordChange(Change{Entity: EntityProtocol, Action: ActionUpdate, Before: before, After: cloneProtocol(current)})
+	tx.recordChange(Change{Entity: domain.EntityProtocol, Action: domain.ActionUpdate, Before: before, After: cloneProtocol(current)})
 	return cloneProtocol(current), nil
 }
 func (tx *transaction) DeleteProtocol(id string) error {
@@ -536,7 +521,7 @@ func (tx *transaction) DeleteProtocol(id string) error {
 		return fmt.Errorf("protocol %q not found", id)
 	}
 	delete(tx.state.protocols, id)
-	tx.recordChange(Change{Entity: EntityProtocol, Action: ActionDelete, Before: cloneProtocol(current)})
+	tx.recordChange(Change{Entity: domain.EntityProtocol, Action: domain.ActionDelete, Before: cloneProtocol(current)})
 	return nil
 }
 func (tx *transaction) CreateProject(p Project) (Project, error) {
@@ -549,7 +534,7 @@ func (tx *transaction) CreateProject(p Project) (Project, error) {
 	p.CreatedAt = tx.now
 	p.UpdatedAt = tx.now
 	tx.state.projects[p.ID] = cloneProject(p)
-	tx.recordChange(Change{Entity: EntityProject, Action: ActionCreate, After: cloneProject(p)})
+	tx.recordChange(Change{Entity: domain.EntityProject, Action: domain.ActionCreate, After: cloneProject(p)})
 	return cloneProject(p), nil
 }
 func (tx *transaction) UpdateProject(id string, mutator func(*Project) error) (Project, error) {
@@ -564,7 +549,7 @@ func (tx *transaction) UpdateProject(id string, mutator func(*Project) error) (P
 	current.ID = id
 	current.UpdatedAt = tx.now
 	tx.state.projects[id] = cloneProject(current)
-	tx.recordChange(Change{Entity: EntityProject, Action: ActionUpdate, Before: before, After: cloneProject(current)})
+	tx.recordChange(Change{Entity: domain.EntityProject, Action: domain.ActionUpdate, Before: before, After: cloneProject(current)})
 	return cloneProject(current), nil
 }
 func (tx *transaction) DeleteProject(id string) error {
@@ -573,7 +558,7 @@ func (tx *transaction) DeleteProject(id string) error {
 		return fmt.Errorf("project %q not found", id)
 	}
 	delete(tx.state.projects, id)
-	tx.recordChange(Change{Entity: EntityProject, Action: ActionDelete, Before: cloneProject(current)})
+	tx.recordChange(Change{Entity: domain.EntityProject, Action: domain.ActionDelete, Before: cloneProject(current)})
 	return nil
 }
 func (s *memStore) GetOrganism(id string) (Organism, bool) {
