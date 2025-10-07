@@ -82,6 +82,8 @@ linters:
             - "!**/pkg/pluginapi/api_snapshot_test.go"
             - "!**/pkg/pluginapi/exposure_architecture_test.go"
             - "!**/pkg/pluginapi/interface_contract_test.go"
+            - "!**/pkg/pluginapi/architecture_guard_test.go"
+            - "!**/pkg/pluginapi/plugin_antipattern_test.go"
           allow:
             - bytes
             - colonycore
@@ -123,6 +125,8 @@ linters:
             - "**/pkg/pluginapi/api_snapshot_test.go"
             - "**/pkg/pluginapi/exposure_architecture_test.go"
             - "**/pkg/pluginapi/interface_contract_test.go"
+            - "**/pkg/pluginapi/architecture_guard_test.go"
+            - "**/pkg/pluginapi/plugin_antipattern_test.go"
           allow:
             - bytes
             - colonycore
@@ -138,6 +142,7 @@ linters:
             - golang.org/x/tools/go/packages
             - os
             - path/filepath
+            - reflect
             - runtime
             - sort
             - strings

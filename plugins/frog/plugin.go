@@ -3,12 +3,13 @@
 package frog
 
 import (
-	"colonycore/pkg/datasetapi"
-	"colonycore/pkg/pluginapi"
 	"context"
 	"fmt"
 	"strings"
 	"time"
+
+	"colonycore/pkg/datasetapi"
+	"colonycore/pkg/pluginapi"
 )
 
 const frogHabitatRuleName = "frog_habitat_warning"
@@ -129,6 +130,11 @@ func (frogHabitatRule) Name() string { return frogHabitatRuleName }
 
 func (frogHabitatRule) Evaluate(_ context.Context, view pluginapi.RuleView, _ []pluginapi.Change) (pluginapi.Result, error) {
 	var result pluginapi.Result
+
+	// TODO: Use contextual interfaces when RuleView.EntityTypes() and RuleView.Severities() are implemented
+	// entityTypes := view.EntityTypes()
+	// severities := view.Severities()
+
 	for _, organism := range view.ListOrganisms() {
 		specie := strings.ToLower(organism.Species())
 		if !strings.Contains(specie, "frog") {
@@ -146,6 +152,7 @@ func (frogHabitatRule) Evaluate(_ context.Context, view pluginapi.RuleView, _ []
 		if strings.Contains(env, "aquatic") || strings.Contains(env, "humid") {
 			continue
 		}
+
 		result = result.AddViolation(pluginapi.NewViolation(
 			frogHabitatRuleName,
 			pluginapi.SeverityWarn,
@@ -175,6 +182,8 @@ func frogPopulationBinder(env datasetapi.Environment) (datasetapi.Runner, error)
 			asOfTime = &t
 		}
 		err := env.Store.View(ctx, func(view datasetapi.TransactionView) error {
+			// TODO: Use contextual lifecycle stages when TransactionView.LifecycleStages() is implemented
+
 			for _, organism := range view.ListOrganisms() {
 				species := strings.ToLower(organism.Species())
 				if !strings.Contains(species, "frog") {
@@ -183,6 +192,7 @@ func frogPopulationBinder(env datasetapi.Environment) (datasetapi.Runner, error)
 				if stageFilter != "" && string(organism.Stage()) != stageFilter {
 					continue
 				}
+				// TODO: Use contextual comparison when lifecycle stage contexts are available
 				if stageFilter == "" && !includeRetired && organism.Stage() == datasetapi.StageRetired {
 					continue
 				}
