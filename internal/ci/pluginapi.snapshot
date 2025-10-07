@@ -20,13 +20,21 @@ CONST StageLarva
 CONST StagePlanned
 CONST StageRetired
 CONST Version
+FUNC NewActionContext() colonycore/pkg/pluginapi.ActionContext
 FUNC NewChange(colonycore/pkg/pluginapi.EntityType,colonycore/pkg/pluginapi.Action,any,any) colonycore/pkg/pluginapi.Change
+FUNC NewEntityContext() colonycore/pkg/pluginapi.EntityContext
 FUNC NewResult([]colonycore/pkg/pluginapi.Violation) colonycore/pkg/pluginapi.Result
+FUNC NewSeverityContext() colonycore/pkg/pluginapi.SeverityContext
 FUNC NewViolation(string,colonycore/pkg/pluginapi.Severity,string,colonycore/pkg/pluginapi.EntityType,string) colonycore/pkg/pluginapi.Violation
+FUNC NewViolationWithEntityRef(string,colonycore/pkg/pluginapi.SeverityRef,string,colonycore/pkg/pluginapi.EntityTypeRef,string) colonycore/pkg/pluginapi.Violation
 TYPE Action (string)
+TYPE ActionContext interface { Create() colonycore/pkg/pluginapi.ActionRef Delete() colonycore/pkg/pluginapi.ActionRef Update() colonycore/pkg/pluginapi.ActionRef }
+TYPE ActionRef interface { Equals(colonycore/pkg/pluginapi.ActionRef) bool IsDestructive() bool IsMutation() bool String() string }
 TYPE BaseView interface { CreatedAt() time.Time ID() string UpdatedAt() time.Time }
 TYPE Change struct { unexported }
+TYPE EntityContext interface { Housing() colonycore/pkg/pluginapi.EntityTypeRef Organism() colonycore/pkg/pluginapi.EntityTypeRef Protocol() colonycore/pkg/pluginapi.EntityTypeRef }
 TYPE EntityType (string)
+TYPE EntityTypeRef interface { Equals(colonycore/pkg/pluginapi.EntityTypeRef) bool IsCore() bool String() string }
 TYPE HousingUnitView interface { Capacity() int CreatedAt() time.Time Environment() string Facility() string ID() string Name() string UpdatedAt() time.Time }
 TYPE LifecycleStage (string)
 TYPE OrganismView interface { Attributes() map[string]any CohortID() (string,bool) CreatedAt() time.Time HousingID() (string,bool) ID() string Line() string Name() string ProjectID() (string,bool) ProtocolID() (string,bool) Species() string Stage() colonycore/pkg/pluginapi.LifecycleStage UpdatedAt() time.Time }
@@ -38,4 +46,6 @@ TYPE Rule interface { Evaluate(context.Context,colonycore/pkg/pluginapi.RuleView
 TYPE RuleView interface { FindHousingUnit(string) (colonycore/pkg/pluginapi.HousingUnitView,bool) FindOrganism(string) (colonycore/pkg/pluginapi.OrganismView,bool) ListHousingUnits() []colonycore/pkg/pluginapi.HousingUnitView ListOrganisms() []colonycore/pkg/pluginapi.OrganismView ListProtocols() []colonycore/pkg/pluginapi.ProtocolView }
 TYPE RuleViolationError struct { unexported }
 TYPE Severity (string)
+TYPE SeverityContext interface { Block() colonycore/pkg/pluginapi.SeverityRef Log() colonycore/pkg/pluginapi.SeverityRef Warn() colonycore/pkg/pluginapi.SeverityRef }
+TYPE SeverityRef interface { Equals(colonycore/pkg/pluginapi.SeverityRef) bool IsBlocking() bool String() string }
 TYPE Violation struct { unexported }

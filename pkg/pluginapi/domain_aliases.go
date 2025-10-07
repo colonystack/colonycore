@@ -148,6 +148,33 @@ func NewViolation(rule string, severity Severity, message string, entity EntityT
 	return Violation{rule: rule, severity: severity, message: message, entity: entity, entityID: entityID}
 }
 
+// NewViolationWithEntityRef constructs an immutable violation using contextual interface references.
+// This promotes hexagonal architecture by allowing violation creation without direct constant access.
+func NewViolationWithEntityRef(rule string, severity SeverityRef, message string, entity EntityTypeRef, entityID string) Violation {
+	// Extract underlying values from contextual interfaces
+	rawSeverity := extractSeverity(severity)
+	rawEntity := extractEntityType(entity)
+	return Violation{rule: rule, severity: rawSeverity, message: message, entity: rawEntity, entityID: entityID}
+}
+
+// extractSeverity safely extracts the underlying Severity from a SeverityRef.
+func extractSeverity(ref SeverityRef) Severity {
+	if severityRef, ok := ref.(severityRef); ok {
+		return severityRef.value
+	}
+	// Fallback for unexpected implementations - should not happen in normal usage
+	return Severity(ref.String())
+}
+
+// extractEntityType safely extracts the underlying EntityType from an EntityTypeRef.
+func extractEntityType(ref EntityTypeRef) EntityType {
+	if entityRef, ok := ref.(entityTypeRef); ok {
+		return entityRef.value
+	}
+	// Fallback for unexpected implementations - should not happen in normal usage
+	return EntityType(ref.String())
+}
+
 // Rule returns the identifier of the rule that produced the violation.
 func (v Violation) Rule() string { return v.rule }
 
