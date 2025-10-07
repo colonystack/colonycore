@@ -97,7 +97,9 @@ func checkRuleViewContextualMethods(t *testing.T) {
 	}
 
 	t.Log("RuleView contextual methods verified through interface availability")
-} // TestContextualInterfaceImmutability ensures contextual interfaces maintain immutability.
+}
+
+// TestContextualInterfaceImmutability ensures contextual interfaces maintain immutability.
 func TestContextualInterfaceImmutability(t *testing.T) {
 	entityCtx := NewEntityContext()
 	severityCtx := NewSeverityContext()

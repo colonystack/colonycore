@@ -160,14 +160,8 @@ func checkRawSeverityUsageInViolations(file *ast.File) []string {
 
 func isInAllowedContext(_ *ast.Ident) bool {
 	// Check if the identifier is used in contexts where raw constants are acceptable
-	// This is a simplified check - in practice, you'd walk up the AST to check context
-
-	// For now, allow usage in:
-	// 1. Variable assignments within contextual interface implementations
-	// 2. Return statements in contextual methods
-	// 3. Switch case statements in adapters
-
-	// This is a placeholder - implement based on specific needs
+	// Currently returns false to enforce strict contextual interface usage
+	// Future enhancement could analyze AST context for legitimate exceptions
 	return false
 }
 

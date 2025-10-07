@@ -14,7 +14,7 @@ import (
 
 const frogHabitatRuleName = "frog_habitat_warning"
 
-// Plugin implements the frog reference module described in the RFC (stubbed for the PoC).
+// Plugin implements the frog reference module described in the RFC.
 type Plugin struct{}
 
 // New constructs a frog plugin instance.
@@ -131,10 +131,6 @@ func (frogHabitatRule) Name() string { return frogHabitatRuleName }
 func (frogHabitatRule) Evaluate(_ context.Context, view pluginapi.RuleView, _ []pluginapi.Change) (pluginapi.Result, error) {
 	var result pluginapi.Result
 
-	// TODO: Use contextual interfaces when RuleView.EntityTypes() and RuleView.Severities() are implemented
-	// entityTypes := view.EntityTypes()
-	// severities := view.Severities()
-
 	for _, organism := range view.ListOrganisms() {
 		specie := strings.ToLower(organism.Species())
 		if !strings.Contains(specie, "frog") {
@@ -182,8 +178,6 @@ func frogPopulationBinder(env datasetapi.Environment) (datasetapi.Runner, error)
 			asOfTime = &t
 		}
 		err := env.Store.View(ctx, func(view datasetapi.TransactionView) error {
-			// TODO: Use contextual lifecycle stages when TransactionView.LifecycleStages() is implemented
-
 			for _, organism := range view.ListOrganisms() {
 				species := strings.ToLower(organism.Species())
 				if !strings.Contains(species, "frog") {
@@ -192,7 +186,6 @@ func frogPopulationBinder(env datasetapi.Environment) (datasetapi.Runner, error)
 				if stageFilter != "" && string(organism.Stage()) != stageFilter {
 					continue
 				}
-				// TODO: Use contextual comparison when lifecycle stage contexts are available
 				if stageFilter == "" && !includeRetired && organism.Stage() == datasetapi.StageRetired {
 					continue
 				}
