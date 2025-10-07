@@ -24,7 +24,7 @@ func TestWorkerMaterializePNGParquet(t *testing.T) {
 	worker.Start()
 	t.Cleanup(func() { _ = worker.Stop(context.Background()) })
 	slug := svc.DatasetTemplates()[0].Slug
-	formats := []core.DatasetFormat{core.FormatJSON, core.FormatPNG, core.FormatParquet}
+	formats := []datasetapi.Format{datasetapi.FormatJSON, datasetapi.FormatPNG, datasetapi.FormatParquet}
 	rec, err := worker.EnqueueExport(context.Background(), ExportInput{TemplateSlug: slug, RequestedBy: "tester", Formats: formats})
 	if err != nil {
 		t.Fatalf("enqueue: %v", err)
@@ -36,7 +36,7 @@ func TestWorkerMaterializePNGParquet(t *testing.T) {
 			if len(cur.Artifacts) != len(formats) {
 				t.Fatalf("expected %d artifacts, got %d", len(formats), len(cur.Artifacts))
 			}
-			seen := map[core.DatasetFormat]bool{}
+			seen := map[datasetapi.Format]bool{}
 			for _, a := range cur.Artifacts {
 				seen[a.Format] = true
 			}

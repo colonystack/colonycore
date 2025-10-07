@@ -13,6 +13,9 @@ import (
 func TestMemStoreBasicLifecycle(t *testing.T) {
 	store := newMemStore(nil)
 	ctx := context.Background()
+	if store.NowFunc() == nil {
+		t.Fatalf("expected NowFunc to be initialized")
+	}
 	if _, err := store.RunInTransaction(ctx, func(tx domain.Transaction) error {
 		_, err := tx.CreateOrganism(domain.Organism{Name: "Specimen", Species: "Test"})
 		return err

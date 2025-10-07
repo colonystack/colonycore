@@ -1,6 +1,7 @@
 package datasets
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -12,6 +13,9 @@ import (
 func TestHandleRunNotAcceptable(t *testing.T) {
 	tpl := buildTemplate()
 	tpl.OutputFormats = []core.DatasetFormat{core.FormatJSON} // no CSV support
+	core.BindTemplateForTests(&tpl, func(context.Context, core.DatasetRunRequest) (core.DatasetRunResult, error) {
+		return core.DatasetRunResult{}, nil
+	})
 	h := NewHandler(testCatalog{tpl: tpl})
 	d := tpl.Descriptor()
 	r := httptest.NewRequest(http.MethodPost, "/api/v1/datasets/templates/"+d.Plugin+"/"+d.Key+"/"+d.Version+"/run?format=csv", nil)

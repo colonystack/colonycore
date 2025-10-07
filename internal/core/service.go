@@ -1,11 +1,11 @@
 package core
 
 import (
+	"colonycore/pkg/datasetapi"
 	"colonycore/pkg/domain"
 	"colonycore/pkg/pluginapi"
 	"context"
 	"fmt"
-	"sort"
 	"sync"
 	"time"
 )
@@ -323,7 +323,7 @@ func (s *Service) InstallPlugin(plugin pluginapi.Plugin) (PluginMetadata, error)
 	}
 
 	if len(meta.Datasets) > 0 {
-		sort.Sort(DatasetTemplateCollection(meta.Datasets))
+		datasetapi.SortTemplateDescriptors(meta.Datasets)
 	}
 
 	s.plugins[plugin.Name()] = meta
@@ -358,23 +358,26 @@ func (s *Service) RegisteredPlugins() []PluginMetadata {
 }
 
 // DatasetTemplates returns all installed dataset template descriptors.
-func (s *Service) DatasetTemplates() []DatasetTemplateDescriptor {
+func (s *Service) DatasetTemplates() []datasetapi.TemplateDescriptor {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	out := make([]DatasetTemplateDescriptor, 0, len(s.datasets))
+	out := make([]datasetapi.TemplateDescriptor, 0, len(s.datasets))
 	for _, template := range s.datasets {
 		out = append(out, template.Descriptor())
 	}
-	sort.Sort(DatasetTemplateCollection(out))
+	datasetapi.SortTemplateDescriptors(out)
 	return out
 }
 
 // ResolveDatasetTemplate fetches a dataset template by slug.
-func (s *Service) ResolveDatasetTemplate(slug string) (DatasetTemplate, bool) {
+func (s *Service) ResolveDatasetTemplate(slug string) (datasetapi.TemplateRuntime, bool) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	template, ok := s.datasets[slug]
-	return template, ok
+	if !ok {
+		return nil, false
+	}
+	return newDatasetTemplateRuntime(template), true
 }
 
 func (s *Service) run(ctx context.Context, op string, fn func(domain.Transaction) error) (domain.Result, error) {

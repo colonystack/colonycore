@@ -209,6 +209,9 @@ func TestHousingAndProtocolViews(t *testing.T) {
 	if got := unitView.Environment(); got != domainUnit.Environment {
 		t.Fatalf("unexpected housing environment: %s", got)
 	}
+	if unitView.Facility() != domainUnit.Facility || unitView.Capacity() != domainUnit.Capacity {
+		t.Fatalf("unexpected housing facility/capacity: %s %d", unitView.Facility(), unitView.Capacity())
+	}
 
 	domainProtocol := domain.Protocol{
 		Base:        domain.Base{ID: "PROTO", CreatedAt: createdAt, UpdatedAt: updatedAt},
@@ -220,6 +223,9 @@ func TestHousingAndProtocolViews(t *testing.T) {
 	protocolView := newProtocolView(domainProtocol)
 	if protocolView.ID() != domainProtocol.ID || protocolView.Code() != domainProtocol.Code {
 		t.Fatalf("unexpected protocol view %+v", protocolView)
+	}
+	if protocolView.Title() != domainProtocol.Title {
+		t.Fatalf("unexpected protocol title: %s", protocolView.Title())
 	}
 	if protocolView.Description() != domainProtocol.Description || protocolView.MaxSubjects() != domainProtocol.MaxSubjects {
 		t.Fatalf("unexpected protocol details")

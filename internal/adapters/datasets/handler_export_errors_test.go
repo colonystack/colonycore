@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"colonycore/internal/core"
+	"colonycore/pkg/datasetapi"
 )
 
 // TestHandleExportCreateErrorBranches exercises missing slug and unsupported format paths.
@@ -55,8 +56,8 @@ func TestHandleExportCreateDedupFormats(t *testing.T) {
 	}
 	var resp struct {
 		Export struct {
-			Formats []core.DatasetFormat `json:"formats"`
-			ID      string               `json:"id"`
+			Formats []datasetapi.Format `json:"formats"`
+			ID      string              `json:"id"`
 		} `json:"export"`
 	}
 	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil || len(resp.Export.Formats) != 2 {

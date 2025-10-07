@@ -331,7 +331,7 @@ func TestServiceClockAndLoggerOptions(t *testing.T) {
 	if !ok {
 		t.Fatalf("resolve dataset template: %v", templates[0])
 	}
-	result, errs, err := template.Run(context.Background(), nil, core.DatasetScope{}, core.FormatJSON)
+	result, errs, err := template.Run(context.Background(), nil, datasetapi.Scope{}, datasetapi.FormatJSON)
 	if err != nil {
 		t.Fatalf("run dataset: %v", err)
 	}

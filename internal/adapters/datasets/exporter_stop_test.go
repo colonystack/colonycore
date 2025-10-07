@@ -2,6 +2,7 @@ package datasets
 
 import (
 	"colonycore/internal/core"
+	"colonycore/pkg/datasetapi"
 	"context"
 	"testing"
 	"time"
@@ -10,10 +11,10 @@ import (
 // TestWorkerStopTwice covers branch where Stop is invoked multiple times (second call should be a no-op).
 func TestWorkerStopTwice(t *testing.T) {
 	tpl := buildTemplate()
-	w := NewWorker(fakeCatalog{tpl: tpl}, nil, nil)
+	w := NewWorker(fakeCatalog{tpl: core.DatasetTemplateRuntimeForTests(tpl)}, nil, nil)
 	w.Start()
 	// enqueue one export to ensure worker loop started
-	_, _ = w.EnqueueExport(context.Background(), ExportInput{TemplateSlug: tpl.Descriptor().Slug, Formats: []core.DatasetFormat{core.FormatJSON}})
+	_, _ = w.EnqueueExport(context.Background(), ExportInput{TemplateSlug: tpl.Descriptor().Slug, Formats: []datasetapi.Format{datasetapi.FormatJSON}})
 	// stop worker first time
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()

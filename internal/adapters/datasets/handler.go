@@ -9,13 +9,13 @@ import (
 	"strings"
 	"time"
 
-	"colonycore/internal/core"
+	"colonycore/pkg/datasetapi"
 )
 
 // Catalog exposes dataset templates for HTTP handlers.
 type Catalog interface {
-	DatasetTemplates() []core.DatasetTemplateDescriptor
-	ResolveDatasetTemplate(slug string) (core.DatasetTemplate, bool)
+	DatasetTemplates() []datasetapi.TemplateDescriptor
+	ResolveDatasetTemplate(slug string) (datasetapi.TemplateRuntime, bool)
 }
 
 // Handler provides HTTP access to dataset templates and exports.
@@ -57,7 +57,17 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) handleListTemplates(w http.ResponseWriter, _ *http.Request) {
 	templates := h.Catalog.DatasetTemplates()
-	sort.Sort(core.DatasetTemplateCollection(templates))
+	sort.Slice(templates, func(i, j int) bool {
+		a := templates[i]
+		b := templates[j]
+		if a.Plugin == b.Plugin {
+			if a.Key == b.Key {
+				return a.Version < b.Version
+			}
+			return a.Key < b.Key
+		}
+		return a.Plugin < b.Plugin
+	})
 	writeJSON(w, http.StatusOK, map[string]any{"templates": templates})
 }
 
@@ -147,15 +157,15 @@ type validationRequest struct {
 }
 
 type validationResponse struct {
-	Template   core.DatasetTemplateDescriptor `json:"template"`
-	Valid      bool                           `json:"valid"`
-	Parameters map[string]any                 `json:"parameters"`
-	Errors     []core.DatasetParameterError   `json:"errors,omitempty"`
+	Template   datasetapi.TemplateDescriptor `json:"template"`
+	Valid      bool                          `json:"valid"`
+	Parameters map[string]any                `json:"parameters"`
+	Errors     []datasetapi.ParameterError   `json:"errors,omitempty"`
 }
 
 const emptyBodySentinel = "EOF"
 
-func (h *Handler) handleValidate(w http.ResponseWriter, r *http.Request, template core.DatasetTemplate) {
+func (h *Handler) handleValidate(w http.ResponseWriter, r *http.Request, template datasetapi.TemplateRuntime) {
 	var req validationRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil && err.Error() != emptyBodySentinel {
 		writeError(w, http.StatusBadRequest, "invalid validation request payload")
@@ -181,10 +191,10 @@ type runRequest struct {
 }
 
 type runResponse struct {
-	Template   core.DatasetTemplateDescriptor `json:"template"`
-	Scope      core.DatasetScope              `json:"scope"`
-	Parameters map[string]any                 `json:"parameters"`
-	Result     core.DatasetRunResult          `json:"result"`
+	Template   datasetapi.TemplateDescriptor `json:"template"`
+	Scope      datasetapi.Scope              `json:"scope"`
+	Parameters map[string]any                `json:"parameters"`
+	Result     datasetapi.RunResult          `json:"result"`
 }
 
 type exportRequest struct {
@@ -208,24 +218,30 @@ type exportRequest struct {
 	ProtocolID  string `json:"protocol_id"`
 }
 
-func (h *Handler) handleRun(w http.ResponseWriter, r *http.Request, template core.DatasetTemplate) {
+func (h *Handler) handleRun(w http.ResponseWriter, r *http.Request, template datasetapi.TemplateRuntime) {
 	var req runRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil && err.Error() != "EOF" {
 		writeError(w, http.StatusBadRequest, "invalid run request payload")
 		return
 	}
 
-	scope := core.DatasetScope{
-		Requestor:   req.Scope.Requestor,
-		Roles:       req.Scope.Roles,
-		ProjectIDs:  req.Scope.ProjectIDs,
-		ProtocolIDs: req.Scope.ProtocolIDs,
+	descriptor := template.Descriptor()
+
+	scope := datasetapi.Scope{Requestor: req.Scope.Requestor}
+	if len(req.Scope.Roles) > 0 {
+		scope.Roles = append([]string(nil), req.Scope.Roles...)
+	}
+	if len(req.Scope.ProjectIDs) > 0 {
+		scope.ProjectIDs = append([]string(nil), req.Scope.ProjectIDs...)
+	}
+	if len(req.Scope.ProtocolIDs) > 0 {
+		scope.ProtocolIDs = append([]string(nil), req.Scope.ProtocolIDs...)
 	}
 
 	cleaned, errs := template.ValidateParameters(req.Parameters)
 	if len(errs) > 0 {
 		writeJSON(w, http.StatusBadRequest, validationResponse{
-			Template:   template.Descriptor(),
+			Template:   descriptor,
 			Valid:      false,
 			Parameters: cleaned,
 			Errors:     errs,
@@ -233,20 +249,21 @@ func (h *Handler) handleRun(w http.ResponseWriter, r *http.Request, template cor
 		return
 	}
 
-	format := negotiateFormat(r, template.OutputFormats)
+	format := negotiateFormat(r, descriptor.OutputFormats)
 	if format == "" {
 		writeError(w, http.StatusNotAcceptable, "requested format not supported")
 		return
 	}
 
-	result, paramErrs, err := template.Run(r.Context(), cleaned, scope, core.DatasetFormat(format))
+	selectedFormat := datasetapi.Format(strings.ToLower(format))
+	result, paramErrs, err := template.Run(r.Context(), cleaned, scope, selectedFormat)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 	if len(paramErrs) > 0 {
 		writeJSON(w, http.StatusBadRequest, validationResponse{
-			Template:   template.Descriptor(),
+			Template:   descriptor,
 			Valid:      false,
 			Parameters: cleaned,
 			Errors:     paramErrs,
@@ -254,12 +271,12 @@ func (h *Handler) handleRun(w http.ResponseWriter, r *http.Request, template cor
 		return
 	}
 
-	switch core.DatasetFormat(format) {
-	case core.FormatCSV:
-		streamCSV(w, template, result)
+	switch selectedFormat {
+	case datasetapi.FormatCSV:
+		streamCSV(w, descriptor, result)
 	default:
 		writeJSON(w, http.StatusOK, runResponse{
-			Template:   template.Descriptor(),
+			Template:   descriptor,
 			Scope:      scope,
 			Parameters: cleaned,
 			Result:     result,
@@ -283,30 +300,34 @@ func (h *Handler) handleExportCreate(w http.ResponseWriter, r *http.Request) {
 		slug = fmt.Sprintf("%s/%s@%s", req.Template.Plugin, req.Template.Key, req.Template.Version)
 	}
 
-	formats := make([]core.DatasetFormat, 0, len(req.Formats))
+	formats := make([]datasetapi.Format, 0, len(req.Formats))
 	for _, f := range req.Formats {
 		switch strings.ToLower(strings.TrimSpace(f)) {
 		case "json":
-			formats = append(formats, core.FormatJSON)
+			formats = append(formats, datasetapi.FormatJSON)
 		case "csv":
-			formats = append(formats, core.FormatCSV)
+			formats = append(formats, datasetapi.FormatCSV)
 		case "parquet":
-			formats = append(formats, core.FormatParquet)
+			formats = append(formats, datasetapi.FormatParquet)
 		case "png":
-			formats = append(formats, core.FormatPNG)
+			formats = append(formats, datasetapi.FormatPNG)
 		case "html":
-			formats = append(formats, core.FormatHTML)
+			formats = append(formats, datasetapi.FormatHTML)
 		default:
 			writeError(w, http.StatusBadRequest, "unsupported export format")
 			return
 		}
 	}
 
-	scope := core.DatasetScope{
-		Requestor:   req.Scope.Requestor,
-		Roles:       req.Scope.Roles,
-		ProjectIDs:  req.Scope.ProjectIDs,
-		ProtocolIDs: req.Scope.ProtocolIDs,
+	scope := datasetapi.Scope{Requestor: req.Scope.Requestor}
+	if len(req.Scope.Roles) > 0 {
+		scope.Roles = append([]string(nil), req.Scope.Roles...)
+	}
+	if len(req.Scope.ProjectIDs) > 0 {
+		scope.ProjectIDs = append([]string(nil), req.Scope.ProjectIDs...)
+	}
+	if len(req.Scope.ProtocolIDs) > 0 {
+		scope.ProtocolIDs = append([]string(nil), req.Scope.ProtocolIDs...)
 	}
 
 	record, err := h.Exports.EnqueueExport(r.Context(), ExportInput{
@@ -336,18 +357,18 @@ func firstNonEmpty(values ...string) string {
 	return ""
 }
 
-func negotiateFormat(r *http.Request, supported []core.DatasetFormat) string {
+func negotiateFormat(r *http.Request, supported []datasetapi.Format) string {
 	wanted := strings.ToLower(r.URL.Query().Get("format"))
 	if wanted == "" {
 		accept := r.Header.Get("Accept")
 		if strings.Contains(accept, "text/csv") {
-			wanted = string(core.FormatCSV)
+			wanted = string(datasetapi.FormatCSV)
 		} else {
-			wanted = string(core.FormatJSON)
+			wanted = string(datasetapi.FormatJSON)
 		}
 	}
-	switch core.DatasetFormat(wanted) {
-	case core.FormatCSV, core.FormatJSON:
+	switch datasetapi.Format(wanted) {
+	case datasetapi.FormatCSV, datasetapi.FormatJSON:
 		for _, candidate := range supported {
 			if string(candidate) == wanted {
 				return wanted
@@ -357,8 +378,7 @@ func negotiateFormat(r *http.Request, supported []core.DatasetFormat) string {
 	return ""
 }
 
-func streamCSV(w http.ResponseWriter, template core.DatasetTemplate, result core.DatasetRunResult) {
-	descriptor := template.Descriptor()
+func streamCSV(w http.ResponseWriter, descriptor datasetapi.TemplateDescriptor, result datasetapi.RunResult) {
 	filename := fmt.Sprintf("%s-%s.csv", descriptor.Key, time.Now().UTC().Format("20060102T150405Z"))
 
 	w.Header().Set("Content-Type", "text/csv")
@@ -366,7 +386,7 @@ func streamCSV(w http.ResponseWriter, template core.DatasetTemplate, result core
 	writer := csv.NewWriter(w)
 	defer writer.Flush()
 
-	var columns []core.DatasetColumn
+	var columns []datasetapi.Column
 	if len(result.Schema) > 0 {
 		columns = result.Schema
 	} else {

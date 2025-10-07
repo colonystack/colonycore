@@ -90,10 +90,8 @@ func (r *PluginRegistry) DatasetTemplates() []DatasetTemplate {
 	for _, template := range r.datasets {
 		// clone to prevent external mutation of internal templates
 		tmplCopy := template
-		tmplCopy.Parameters = cloneParameters(template.Parameters)
-		tmplCopy.Columns = cloneColumns(template.Columns)
-		tmplCopy.Metadata = cloneMetadata(template.Metadata)
-		tmplCopy.OutputFormats = append([]DatasetFormat(nil), template.OutputFormats...)
+		tmplCopy.Template = cloneTemplate(template.Template)
+		tmplCopy.host = nil
 		out = append(out, tmplCopy)
 	}
 	sort.Slice(out, func(i, j int) bool {

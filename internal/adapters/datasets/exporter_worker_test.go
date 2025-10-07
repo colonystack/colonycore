@@ -7,55 +7,210 @@ import (
 	"testing"
 	"time"
 
-	"colonycore/internal/core"
+	"colonycore/pkg/datasetapi"
 )
 
-// fake template implementing core.DatasetTemplate
-func buildTemplate() core.DatasetTemplate {
-	t := core.DatasetTemplate{
-		Plugin: "frog", Key: "snap", Version: "1", Title: "Snap", Dialect: core.DatasetDialectSQL, Query: "SELECT 1",
-		Parameters:    []core.DatasetParameter{{Name: "limit", Type: "integer", Required: false}},
-		Columns:       []core.DatasetColumn{{Name: "value", Type: "integer"}},
-		OutputFormats: []core.DatasetFormat{core.FormatJSON, core.FormatCSV, core.FormatHTML, core.FormatParquet, core.FormatPNG},
-	}
-	core.BindTemplateForTests(&t, func(_ context.Context, _ core.DatasetRunRequest) (core.DatasetRunResult, error) {
-		return core.DatasetRunResult{Rows: []map[string]any{{"value": 42}}, Schema: []core.DatasetColumn{{Name: "value", Type: "integer"}}, GeneratedAt: time.Unix(0, 0).UTC()}, nil
-	})
-	return t
+type stubRuntime struct {
+	desc       datasetapi.TemplateDescriptor
+	formats    map[datasetapi.Format]struct{}
+	validateFn func(map[string]any) (map[string]any, []datasetapi.ParameterError)
+	runFn      func(context.Context, map[string]any, datasetapi.Scope, datasetapi.Format) (datasetapi.RunResult, []datasetapi.ParameterError, error)
 }
 
-type fakeCatalog struct{ tpl core.DatasetTemplate }
+func newStubRuntime(plugin, key, version, title, description string, columns []datasetapi.Column, formats []datasetapi.Format) *stubRuntime {
+	desc := datasetapi.TemplateDescriptor{
+		Plugin:        plugin,
+		Key:           key,
+		Version:       version,
+		Title:         title,
+		Description:   description,
+		Columns:       append([]datasetapi.Column(nil), columns...),
+		OutputFormats: append([]datasetapi.Format(nil), formats...),
+		Slug:          fmt.Sprintf("%s/%s@%s", plugin, key, version),
+	}
+	formatSet := make(map[datasetapi.Format]struct{}, len(formats))
+	for _, f := range formats {
+		formatSet[f] = struct{}{}
+	}
+	return &stubRuntime{desc: desc, formats: formatSet}
+}
 
-func (f fakeCatalog) ResolveDatasetTemplate(slug string) (core.DatasetTemplate, bool) {
-	if slug == f.tpl.Descriptor().Slug {
+func (s *stubRuntime) Descriptor() datasetapi.TemplateDescriptor {
+	return s.desc
+}
+
+func (s *stubRuntime) SupportsFormat(format datasetapi.Format) bool {
+	if s.formats == nil {
+		return false
+	}
+	_, ok := s.formats[format]
+	return ok
+}
+
+func (s *stubRuntime) ValidateParameters(params map[string]any) (map[string]any, []datasetapi.ParameterError) {
+	if s.validateFn != nil {
+		return s.validateFn(params)
+	}
+	return cloneParams(params), nil
+}
+
+func (s *stubRuntime) Run(ctx context.Context, params map[string]any, scope datasetapi.Scope, format datasetapi.Format) (datasetapi.RunResult, []datasetapi.ParameterError, error) {
+	if s.runFn != nil {
+		return s.runFn(ctx, params, scope, format)
+	}
+	return datasetapi.RunResult{Format: format}, nil, nil
+}
+
+func cloneParams(in map[string]any) map[string]any {
+	if in == nil {
+		return nil
+	}
+	out := make(map[string]any, len(in))
+	for k, v := range in {
+		out[k] = v
+	}
+	return out
+}
+
+func buildRuntimeTemplate() *stubRuntime {
+	runtime := newStubRuntime(
+		"frog",
+		"snap",
+		"1",
+		"Snap",
+		"snap dataset",
+		[]datasetapi.Column{{Name: "value", Type: "integer"}},
+		[]datasetapi.Format{datasetapi.FormatJSON, datasetapi.FormatCSV, datasetapi.FormatHTML, datasetapi.FormatParquet, datasetapi.FormatPNG},
+	)
+	runtime.validateFn = func(params map[string]any) (map[string]any, []datasetapi.ParameterError) {
+		if params == nil {
+			return nil, nil
+		}
+		cleaned := cloneParams(params)
+		if v, ok := params["limit"]; ok {
+			switch val := v.(type) {
+			case int, int64:
+				cleaned["limit"] = val
+			case float64:
+				cleaned["limit"] = int(val)
+			default:
+				return nil, []datasetapi.ParameterError{{Name: "limit", Message: "must be integer"}}
+			}
+		}
+		return cleaned, nil
+	}
+	runtime.runFn = func(context.Context, map[string]any, datasetapi.Scope, datasetapi.Format) (datasetapi.RunResult, []datasetapi.ParameterError, error) {
+		return datasetapi.RunResult{
+			Schema:      append([]datasetapi.Column(nil), runtime.desc.Columns...),
+			Rows:        []datasetapi.Row{{"value": 42}},
+			GeneratedAt: time.Unix(0, 0).UTC(),
+			Format:      datasetapi.FormatJSON,
+		}, nil, nil
+	}
+	return runtime
+}
+
+func buildFailRuntime() *stubRuntime {
+	runtime := newStubRuntime(
+		"frog",
+		"fail",
+		"1",
+		"Fail",
+		"fail dataset",
+		[]datasetapi.Column{{Name: "value", Type: "integer"}},
+		[]datasetapi.Format{datasetapi.FormatJSON},
+	)
+	runtime.runFn = func(context.Context, map[string]any, datasetapi.Scope, datasetapi.Format) (datasetapi.RunResult, []datasetapi.ParameterError, error) {
+		return datasetapi.RunResult{}, nil, fmt.Errorf("boom run")
+	}
+	return runtime
+}
+
+func buildBadJSONRuntime() *stubRuntime {
+	runtime := newStubRuntime(
+		"frog",
+		"badjson",
+		"1",
+		"Bad JSON",
+		"bad json dataset",
+		[]datasetapi.Column{{Name: "value", Type: "string"}},
+		[]datasetapi.Format{datasetapi.FormatJSON},
+	)
+	runtime.runFn = func(context.Context, map[string]any, datasetapi.Scope, datasetapi.Format) (datasetapi.RunResult, []datasetapi.ParameterError, error) {
+		return datasetapi.RunResult{
+			Schema:      append([]datasetapi.Column(nil), runtime.desc.Columns...),
+			Rows:        []datasetapi.Row{{"value": make(chan int)}},
+			GeneratedAt: time.Unix(0, 0).UTC(),
+			Format:      datasetapi.FormatJSON,
+		}, nil, nil
+	}
+	return runtime
+}
+
+type fakeCatalog struct{ tpl datasetapi.TemplateRuntime }
+
+func (f fakeCatalog) ResolveDatasetTemplate(slug string) (datasetapi.TemplateRuntime, bool) {
+	if f.tpl != nil && f.tpl.Descriptor().Slug == slug {
 		return f.tpl, true
 	}
-	return core.DatasetTemplate{}, false
+	return nil, false
 }
 
-func (f fakeCatalog) DatasetTemplates() []core.DatasetTemplateDescriptor {
-	return []core.DatasetTemplateDescriptor{f.tpl.Descriptor()}
+func (f fakeCatalog) DatasetTemplates() []datasetapi.TemplateDescriptor {
+	if f.tpl == nil {
+		return nil
+	}
+	return []datasetapi.TemplateDescriptor{f.tpl.Descriptor()}
 }
 
-// simple audit collector
+type transientCatalog struct {
+	tpl    datasetapi.TemplateRuntime
+	served bool
+}
+
+func (c *transientCatalog) ResolveDatasetTemplate(slug string) (datasetapi.TemplateRuntime, bool) {
+	if !c.served && c.tpl != nil && slug == c.tpl.Descriptor().Slug {
+		c.served = true
+		return c.tpl, true
+	}
+	return nil, false
+}
+
+func (c *transientCatalog) DatasetTemplates() []datasetapi.TemplateDescriptor {
+	if c.tpl == nil {
+		return nil
+	}
+	return []datasetapi.TemplateDescriptor{c.tpl.Descriptor()}
+}
+
 type memAudit struct{ entries []AuditEntry }
 
 func (m *memAudit) Record(_ context.Context, e AuditEntry) { m.entries = append(m.entries, e) }
 
 func TestWorkerSuccessAcrossFormats(t *testing.T) {
-	tpl := buildTemplate()
+	tpl := buildRuntimeTemplate()
 	catalog := fakeCatalog{tpl: tpl}
 	store := NewMemoryObjectStore()
 	audit := &memAudit{}
 	w := NewWorker(catalog, store, audit)
 	w.Start()
 	defer func() { _ = w.Stop(context.Background()) }()
-	// request all formats
-	rec, err := w.EnqueueExport(context.Background(), ExportInput{TemplateSlug: tpl.Descriptor().Slug, Formats: []core.DatasetFormat{core.FormatJSON, core.FormatCSV, core.FormatHTML, core.FormatParquet, core.FormatPNG}, RequestedBy: "tester"})
+
+	rec, err := w.EnqueueExport(context.Background(), ExportInput{
+		TemplateSlug: tpl.Descriptor().Slug,
+		Formats: []datasetapi.Format{
+			datasetapi.FormatJSON,
+			datasetapi.FormatCSV,
+			datasetapi.FormatHTML,
+			datasetapi.FormatParquet,
+			datasetapi.FormatPNG,
+		},
+		RequestedBy: "tester",
+	})
 	if err != nil {
 		t.Fatalf("enqueue: %v", err)
 	}
-	// spin until completed or timeout
+
 	deadline := time.Now().Add(2 * time.Second)
 	for time.Now().Before(deadline) {
 		cur, ok := w.GetExport(rec.ID)
@@ -77,15 +232,21 @@ func TestWorkerSuccessAcrossFormats(t *testing.T) {
 }
 
 func TestWorkerParameterValidationFailure(t *testing.T) {
-	tpl := buildTemplate()
+	tpl := buildRuntimeTemplate()
 	catalog := fakeCatalog{tpl: tpl}
 	w := NewWorker(catalog, nil, nil)
 	w.Start()
 	defer func() { _ = w.Stop(context.Background()) }()
-	rec, err := w.EnqueueExport(context.Background(), ExportInput{TemplateSlug: tpl.Descriptor().Slug, Formats: []core.DatasetFormat{core.FormatJSON}, Parameters: map[string]any{"limit": "not-int"}})
+
+	rec, err := w.EnqueueExport(context.Background(), ExportInput{
+		TemplateSlug: tpl.Descriptor().Slug,
+		Formats:      []datasetapi.Format{datasetapi.FormatJSON},
+		Parameters:   map[string]any{"limit": "not-int"},
+	})
 	if err != nil {
 		t.Fatalf("enqueue unexpected error: %v", err)
 	}
+
 	deadline := time.Now().Add(2 * time.Second)
 	for time.Now().Before(deadline) {
 		cur, ok := w.GetExport(rec.ID)
@@ -101,61 +262,52 @@ func TestWorkerParameterValidationFailure(t *testing.T) {
 }
 
 func TestWorkerUnsupportedFormat(t *testing.T) {
-	tpl := buildTemplate()
+	tpl := buildRuntimeTemplate()
 	catalog := fakeCatalog{tpl: tpl}
 	w := NewWorker(catalog, nil, nil)
 	w.Start()
 	defer func() { _ = w.Stop(context.Background()) }()
-	_, err := w.EnqueueExport(context.Background(), ExportInput{TemplateSlug: tpl.Descriptor().Slug, Formats: []core.DatasetFormat{"bogus"}})
+
+	_, err := w.EnqueueExport(context.Background(), ExportInput{TemplateSlug: tpl.Descriptor().Slug, Formats: []datasetapi.Format{"bogus"}})
 	if err == nil {
 		t.Fatalf("expected unsupported format error")
 	}
 }
 
 func TestWorkerTemplateNotFound(t *testing.T) {
-	catalog := fakeCatalog{tpl: buildTemplate()}
+	catalog := fakeCatalog{tpl: buildRuntimeTemplate()}
 	w := NewWorker(catalog, nil, nil)
 	w.Start()
 	defer func() { _ = w.Stop(context.Background()) }()
-	_, err := w.EnqueueExport(context.Background(), ExportInput{TemplateSlug: "missing/slug@1", Formats: []core.DatasetFormat{core.FormatJSON}})
+
+	_, err := w.EnqueueExport(context.Background(), ExportInput{TemplateSlug: "missing/slug@1", Formats: []datasetapi.Format{datasetapi.FormatJSON}})
 	if err == nil {
 		t.Fatalf("expected not found error")
 	}
 }
 
 func TestMaterializeUnsupportedFormat(t *testing.T) {
-	tpl := buildTemplate()
+	tpl := buildRuntimeTemplate()
 	w := NewWorker(fakeCatalog{tpl: tpl}, nil, nil)
-	// directly call materialize for unsupported format
-	_, err := w.materialize("weird", tpl, core.DatasetRunResult{Rows: []map[string]any{{"value": 1}}})
+
+	_, err := w.materialize(datasetapi.Format("weird"), tpl, datasetapi.RunResult{Rows: []datasetapi.Row{{"value": 1}}})
 	if err == nil {
 		t.Fatalf("expected unsupported format error")
 	}
 }
 
-// buildFailTemplate constructs a template whose binder returns an error when run.
-func buildFailTemplate() core.DatasetTemplate {
-	t := core.DatasetTemplate{
-		Plugin: "frog", Key: "fail", Version: "1", Title: "Fail", Dialect: core.DatasetDialectSQL, Query: "SELECT 1",
-		Columns:       []core.DatasetColumn{{Name: "value", Type: "integer"}},
-		OutputFormats: []core.DatasetFormat{core.FormatJSON},
-	}
-	core.BindTemplateForTests(&t, func(_ context.Context, _ core.DatasetRunRequest) (core.DatasetRunResult, error) {
-		return core.DatasetRunResult{}, fmt.Errorf("boom run")
-	})
-	return t
-}
-
 func TestWorkerRunFailure(t *testing.T) {
-	tpl := buildFailTemplate()
+	tpl := buildFailRuntime()
 	catalog := fakeCatalog{tpl: tpl}
 	w := NewWorker(catalog, nil, nil)
 	w.Start()
 	defer func() { _ = w.Stop(context.Background()) }()
-	rec, err := w.EnqueueExport(context.Background(), ExportInput{TemplateSlug: tpl.Descriptor().Slug, Formats: []core.DatasetFormat{core.FormatJSON}})
+
+	rec, err := w.EnqueueExport(context.Background(), ExportInput{TemplateSlug: tpl.Descriptor().Slug, Formats: []datasetapi.Format{datasetapi.FormatJSON}})
 	if err != nil {
 		t.Fatalf("enqueue: %v", err)
 	}
+
 	deadline := time.Now().Add(2 * time.Second)
 	for time.Now().Before(deadline) {
 		cur, ok := w.GetExport(rec.ID)
@@ -170,60 +322,30 @@ func TestWorkerRunFailure(t *testing.T) {
 	t.Fatalf("expected failed status due to run error")
 }
 
-// TestWorkerQueueFull covers the non-blocking enqueue default branch when queue channel is full.
 func TestWorkerQueueFull(t *testing.T) {
-	tpl := buildTemplate()
+	tpl := buildRuntimeTemplate()
 	catalog := fakeCatalog{tpl: tpl}
 	w := NewWorker(catalog, nil, nil)
-	// Replace queue with size 1 to force full condition quickly
 	w.queue = make(chan exportTask, 1)
-	// Pre-fill queue without starting worker so it remains full
 	w.queue <- exportTask{id: "pre", input: ExportInput{TemplateSlug: tpl.Descriptor().Slug}}
-	// Attempt enqueue should hit default path returning queue full error
-	if _, err := w.EnqueueExport(context.Background(), ExportInput{TemplateSlug: tpl.Descriptor().Slug, Formats: []core.DatasetFormat{core.FormatJSON}}); err == nil || !strings.Contains(err.Error(), "queue full") {
+
+	if _, err := w.EnqueueExport(context.Background(), ExportInput{TemplateSlug: tpl.Descriptor().Slug, Formats: []datasetapi.Format{datasetapi.FormatJSON}}); err == nil || !strings.Contains(err.Error(), "queue full") {
 		t.Fatalf("expected queue full error, got %v", err)
 	}
 }
 
-// errorStore implements ObjectStore that fails on Put.
-type errorStore struct{}
-
-func (errorStore) Put(context.Context, string, []byte, string, map[string]any) (ExportArtifact, error) {
-	return ExportArtifact{}, fmt.Errorf("put failed")
-}
-func (errorStore) Get(context.Context, string) (ExportArtifact, []byte, error) {
-	return ExportArtifact{}, nil, fmt.Errorf("no")
-}
-func (errorStore) Delete(context.Context, string) (bool, error)           { return false, nil }
-func (errorStore) List(context.Context, string) ([]ExportArtifact, error) { return nil, nil }
-
-// transientCatalog returns template first time then reports missing to exercise process missing template branch.
-type transientCatalog struct {
-	tpl    core.DatasetTemplate
-	served bool
-}
-
-func (c *transientCatalog) ResolveDatasetTemplate(slug string) (core.DatasetTemplate, bool) {
-	if !c.served && slug == c.tpl.Descriptor().Slug {
-		c.served = true
-		return c.tpl, true
-	}
-	return core.DatasetTemplate{}, false
-}
-func (c *transientCatalog) DatasetTemplates() []core.DatasetTemplateDescriptor {
-	return []core.DatasetTemplateDescriptor{c.tpl.Descriptor()}
-}
-
 func TestWorkerProcessTemplateMissingSecondPass(t *testing.T) {
-	tpl := buildTemplate()
+	tpl := buildRuntimeTemplate()
 	cat := &transientCatalog{tpl: tpl}
 	w := NewWorker(cat, nil, nil)
 	w.Start()
 	defer func() { _ = w.Stop(context.Background()) }()
-	rec, err := w.EnqueueExport(context.Background(), ExportInput{TemplateSlug: tpl.Descriptor().Slug, Formats: []core.DatasetFormat{core.FormatJSON}})
+
+	rec, err := w.EnqueueExport(context.Background(), ExportInput{TemplateSlug: tpl.Descriptor().Slug, Formats: []datasetapi.Format{datasetapi.FormatJSON}})
 	if err != nil {
 		t.Fatalf("enqueue: %v", err)
 	}
+
 	deadline := time.Now().Add(2 * time.Second)
 	for time.Now().Before(deadline) {
 		cur, ok := w.GetExport(rec.ID)
@@ -245,14 +367,16 @@ func TestWorkerProcessTemplateMissingSecondPass(t *testing.T) {
 }
 
 func TestWorkerStoreArtifactFailure(t *testing.T) {
-	tpl := buildTemplate()
+	tpl := buildRuntimeTemplate()
 	w := NewWorker(fakeCatalog{tpl: tpl}, errorStore{}, nil)
 	w.Start()
 	defer func() { _ = w.Stop(context.Background()) }()
-	rec, err := w.EnqueueExport(context.Background(), ExportInput{TemplateSlug: tpl.Descriptor().Slug, Formats: []core.DatasetFormat{core.FormatJSON}})
+
+	rec, err := w.EnqueueExport(context.Background(), ExportInput{TemplateSlug: tpl.Descriptor().Slug, Formats: []datasetapi.Format{datasetapi.FormatJSON}})
 	if err != nil {
 		t.Fatalf("enqueue: %v", err)
 	}
+
 	deadline := time.Now().Add(2 * time.Second)
 	for time.Now().Before(deadline) {
 		cur, ok := w.GetExport(rec.ID)
@@ -271,40 +395,26 @@ func TestWorkerStoreArtifactFailure(t *testing.T) {
 }
 
 func TestWorkerProcessMissingRecordBranch(_ *testing.T) {
-	tpl := buildTemplate()
+	tpl := buildRuntimeTemplate()
 	w := NewWorker(fakeCatalog{tpl: tpl}, nil, nil)
 	w.Start()
 	defer func() { _ = w.Stop(context.Background()) }()
-	// inject task with id not present in jobs map to hit record==nil early return
-	w.queue <- exportTask{id: "ghost", input: ExportInput{TemplateSlug: tpl.Descriptor().Slug}}
-	// allow loop iteration
-	time.Sleep(50 * time.Millisecond)
-	// nothing to assert; absence of panic and normal exit covers branch
-}
 
-// buildBadJSONTemplate returns a template whose binder yields a row containing an unsupported JSON type (channel) to force marshal failure.
-func buildBadJSONTemplate() core.DatasetTemplate {
-	t := core.DatasetTemplate{
-		Plugin: "frog", Key: "badjson", Version: "1", Title: "Bad JSON", Dialect: core.DatasetDialectSQL, Query: "SELECT 1",
-		Columns:       []core.DatasetColumn{{Name: "value", Type: "string"}},
-		OutputFormats: []core.DatasetFormat{core.FormatJSON},
-	}
-	ch := make(chan int)
-	core.BindTemplateForTests(&t, func(_ context.Context, _ core.DatasetRunRequest) (core.DatasetRunResult, error) {
-		return core.DatasetRunResult{Rows: []map[string]any{{"value": ch}}, Schema: t.Columns, GeneratedAt: time.Unix(0, 0).UTC()}, nil
-	})
-	return t
+	w.queue <- exportTask{id: "ghost", input: ExportInput{TemplateSlug: tpl.Descriptor().Slug}}
+	time.Sleep(50 * time.Millisecond)
 }
 
 func TestWorkerMaterializeJSONMarshalError(t *testing.T) {
-	tpl := buildBadJSONTemplate()
+	tpl := buildBadJSONRuntime()
 	w := NewWorker(fakeCatalog{tpl: tpl}, nil, nil)
 	w.Start()
 	defer func() { _ = w.Stop(context.Background()) }()
-	rec, err := w.EnqueueExport(context.Background(), ExportInput{TemplateSlug: tpl.Descriptor().Slug, Formats: []core.DatasetFormat{core.FormatJSON}})
+
+	rec, err := w.EnqueueExport(context.Background(), ExportInput{TemplateSlug: tpl.Descriptor().Slug, Formats: []datasetapi.Format{datasetapi.FormatJSON}})
 	if err != nil {
 		t.Fatalf("enqueue: %v", err)
 	}
+
 	deadline := time.Now().Add(2 * time.Second)
 	for time.Now().Before(deadline) {
 		cur, ok := w.GetExport(rec.ID)
@@ -321,3 +431,17 @@ func TestWorkerMaterializeJSONMarshalError(t *testing.T) {
 	}
 	t.Fatalf("expected JSON marshal failure not observed")
 }
+
+type errorStore struct{}
+
+func (errorStore) Put(context.Context, string, []byte, string, map[string]any) (ExportArtifact, error) {
+	return ExportArtifact{}, fmt.Errorf("put failed")
+}
+
+func (errorStore) Get(context.Context, string) (ExportArtifact, []byte, error) {
+	return ExportArtifact{}, nil, fmt.Errorf("no")
+}
+
+func (errorStore) Delete(context.Context, string) (bool, error) { return false, nil }
+
+func (errorStore) List(context.Context, string) ([]ExportArtifact, error) { return nil, nil }

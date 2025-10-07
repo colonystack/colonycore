@@ -16,8 +16,8 @@ func TestDeepCloneAdditionalBranches(t *testing.T) {
 	}
 	org := NewOrganism(OrganismData{Base: BaseData{ID: "clone", CreatedAt: time.Now().UTC()}, Attributes: nested})
 	attrs := org.Attributes()
-	attrs["mapslice"].([]map[string]any)[0]["k"] = "mutated"
-	attrs["mixed"].([]any)[0].([]string)[0] = "z"
+	attrs["mapslice"].([]map[string]any)[0]["k"] = mutatedLiteral
+	attrs["mixed"].([]any)[0].([]string)[0] = mutatedLiteral
 	fresh := org.Attributes()
 	if fresh["mapslice"].([]map[string]any)[0]["k"].(string) != "v" {
 		t.Fatalf("expected nested map value to remain 'v'")

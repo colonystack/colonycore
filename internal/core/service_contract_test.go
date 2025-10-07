@@ -332,7 +332,7 @@ func loopHasBindCall(body *ast.BlockStmt) bool {
 		if !ok || sel.Sel.Name != "bind" {
 			return true
 		}
-		if ident, ok := sel.X.(*ast.Ident); ok && ident.Name == "dataset" {
+		if ident, ok := sel.X.(*ast.Ident); ok && ident.Name == datasetIdentName {
 			found = true
 			return false
 		}
@@ -340,6 +340,8 @@ func loopHasBindCall(body *ast.BlockStmt) bool {
 	})
 	return found
 }
+
+const datasetIdentName = "dataset"
 
 func containsDatasetDescriptorAppend(body *ast.BlockStmt) bool {
 	found := false
@@ -389,14 +391,12 @@ func selectorMatches(expr ast.Expr, recvName, selName string) bool {
 
 func hasDatasetDescriptor(args []ast.Expr) bool {
 	for _, arg := range args {
-		call, ok := arg.(*ast.CallExpr)
-		if !ok {
-			continue
-		}
-		if sel, ok := call.Fun.(*ast.SelectorExpr); ok {
-			if sel.Sel.Name == "Descriptor" {
-				if ident, ok := sel.X.(*ast.Ident); ok && ident.Name == "dataset" {
-					return true
+		if call, ok := arg.(*ast.CallExpr); ok {
+			if sel, ok := call.Fun.(*ast.SelectorExpr); ok {
+				if sel.Sel.Name == "Descriptor" {
+					if ident, ok := sel.X.(*ast.Ident); ok && ident.Name == datasetIdentName {
+						return true
+					}
 				}
 			}
 		}

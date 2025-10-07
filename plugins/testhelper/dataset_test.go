@@ -6,6 +6,8 @@ import (
 	"time"
 )
 
+const mutatedValue = "mutated"
+
 func TestOrganismFixtureBuilder(t *testing.T) {
 	now := time.Now().UTC().Truncate(time.Second)
 	name := "Org1"
@@ -56,7 +58,7 @@ func TestOrganismHelperClonesData(t *testing.T) {
 		t.Fatalf("expected adult stage")
 	}
 
-	project = "mutated"
+	project = mutatedValue
 	if value, _ := organism.ProjectID(); value != "project" {
 		t.Fatalf("expected project pointer clone, got %s", value)
 	}
@@ -84,5 +86,45 @@ func TestHousingUnitHelper(t *testing.T) {
 
 	if unit.ID() != "unit" || unit.Environment() != "humid" || unit.Capacity() != 4 {
 		t.Fatalf("unexpected housing unit values: %+v", unit)
+	}
+}
+
+func TestCloneHelpersCoverage(t *testing.T) {
+	if cloneOptionalString(nil) != nil {
+		t.Fatalf("expected nil optional string clone")
+	}
+	value := "orig"
+	ptr := cloneOptionalString(&value)
+	value = mutatedValue
+	if ptr == nil || *ptr != "orig" {
+		t.Fatalf("expected cloned string pointer to remain original")
+	}
+
+	attrs := map[string]any{
+		"map":   map[string]any{"inner": []any{1, map[string]any{"k": "v"}}},
+		"slice": []string{"a", "b"},
+		"maps":  []map[string]any{{"flag": true}},
+	}
+	cloned := cloneAttributes(attrs)
+	inner := cloned["map"].(map[string]any)["inner"].([]any)
+	if len(inner) != 2 || inner[0].(int) != 1 {
+		t.Fatalf("expected cloned inner slice to retain values")
+	}
+	if innerMap, ok := inner[1].(map[string]any); !ok || innerMap["k"].(string) != "v" {
+		t.Fatalf("expected cloned nested map value")
+	}
+	attrs["slice"].([]string)[0] = mutatedValue
+	if cloned["slice"].([]string)[0] != "a" {
+		t.Fatalf("expected slice clone to remain unchanged")
+	}
+	attrs["maps"].([]map[string]any)[0]["flag"] = false
+	if cloned["maps"].([]map[string]any)[0]["flag"].(bool) != true {
+		t.Fatalf("expected map slice clone to remain true")
+	}
+	if out := cloneAttributes(nil); out != nil {
+		t.Fatalf("expected nil attributes clone, got %+v", out)
+	}
+	if result := deepCloneAttr([]map[string]any{}); result == nil {
+		t.Fatalf("expected empty slice clone")
 	}
 }

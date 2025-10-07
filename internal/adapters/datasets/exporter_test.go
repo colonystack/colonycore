@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"colonycore/internal/core"
+	"colonycore/pkg/datasetapi"
 	"colonycore/pkg/domain"
 	"colonycore/plugins/frog"
 )
@@ -34,7 +35,7 @@ func TestWorkerProcessesExport(t *testing.T) {
 		t.Fatalf("create organism: %v", err)
 	}
 
-	record, err := worker.EnqueueExport(ctx, ExportInput{TemplateSlug: descriptor.Slug, Parameters: map[string]any{"include_retired": true}, Formats: []core.DatasetFormat{core.FormatJSON}, Scope: core.DatasetScope{ProjectIDs: []string{project.ID}, Requestor: "worker@colonycore"}, RequestedBy: "worker@colonycore"})
+	record, err := worker.EnqueueExport(ctx, ExportInput{TemplateSlug: descriptor.Slug, Parameters: map[string]any{"include_retired": true}, Formats: []datasetapi.Format{datasetapi.FormatJSON}, Scope: datasetapi.Scope{ProjectIDs: []string{project.ID}, Requestor: "worker@colonycore"}, RequestedBy: "worker@colonycore"})
 	if err != nil {
 		t.Fatalf("enqueue export: %v", err)
 	}
@@ -76,7 +77,7 @@ func TestWorkerRejectsUnsupportedFormat(t *testing.T) {
 	descriptor := meta.Datasets[0]
 	worker := NewWorker(svc, NewMemoryObjectStore(), &MemoryAuditLog{})
 	ctx := context.Background()
-	_, err = worker.EnqueueExport(ctx, ExportInput{TemplateSlug: descriptor.Slug, Formats: []core.DatasetFormat{core.DatasetFormat("xml")}})
+	_, err = worker.EnqueueExport(ctx, ExportInput{TemplateSlug: descriptor.Slug, Formats: []datasetapi.Format{datasetapi.Format("xml")}})
 	if err == nil {
 		t.Fatalf("expected error for unsupported format")
 	}

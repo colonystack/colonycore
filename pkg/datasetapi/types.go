@@ -115,6 +115,13 @@ type RunRequest struct {
 	Scope      Scope
 }
 
+// ParameterError captures validation failures reported during parameter coercion
+// and validation when invoking dataset templates.
+type ParameterError struct {
+	Name    string `json:"name"`
+	Message string `json:"message"`
+}
+
 // EntityRef identifies a domain entity related to a dataset resource.
 type EntityRef struct {
 	Entity string `json:"entity"`
@@ -138,3 +145,13 @@ type Runner func(context.Context, RunRequest) (RunResult, error)
 
 // Binder produces a Runner from an Environment.
 type Binder func(Environment) (Runner, error)
+
+// TemplateRuntime exposes host-managed capabilities for executing dataset templates.
+// Implementations are provided by the colonycore service layer and adapt plugin-
+// supplied templates to runtime dependencies and validation semantics.
+type TemplateRuntime interface {
+	Descriptor() TemplateDescriptor
+	SupportsFormat(format Format) bool
+	ValidateParameters(params map[string]any) (map[string]any, []ParameterError)
+	Run(ctx context.Context, params map[string]any, scope Scope, format Format) (RunResult, []ParameterError, error)
+}

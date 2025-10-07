@@ -32,7 +32,7 @@ func TestEnqueueExportGeneratesUniqueIDs(t *testing.T) {
 	worker := NewWorker(svc, nil, nil)
 	ids := make(map[string]struct{})
 	for i := 0; i < 30; i++ {
-		rec, err := worker.EnqueueExport(context.Background(), ExportInput{TemplateSlug: svc.DatasetTemplates()[0].Slug, RequestedBy: "tester", Formats: []core.DatasetFormat{core.FormatJSON}})
+		rec, err := worker.EnqueueExport(context.Background(), ExportInput{TemplateSlug: svc.DatasetTemplates()[0].Slug, RequestedBy: "tester", Formats: []datasetapi.Format{datasetapi.FormatJSON}})
 		if err != nil {
 			t.Fatalf("enqueue: %v", err)
 		}

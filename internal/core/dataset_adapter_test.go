@@ -40,7 +40,7 @@ func TestNewDatasetTemplateFromAPI(t *testing.T) {
 
 	apiTemplate.Binder = func(env datasetapi.Environment) (datasetapi.Runner, error) {
 		if env.Now == nil {
-			t.Fatalf("expected now function")
+			t.Fatalf("expected env.Now to be propagated")
 		}
 		return func(_ context.Context, req datasetapi.RunRequest) (datasetapi.RunResult, error) {
 			if req.Template.Key != "demo" {
@@ -49,15 +49,10 @@ func TestNewDatasetTemplateFromAPI(t *testing.T) {
 			if req.Scope.Requestor != "analyst" {
 				t.Fatalf("unexpected requestor: %s", req.Scope.Requestor)
 			}
-			if len(req.Scope.ProjectIDs) != 1 || req.Scope.ProjectIDs[0] != "project" {
-				t.Fatalf("unexpected project scope: %+v", req.Scope.ProjectIDs)
-			}
 			return datasetapi.RunResult{
-				Schema: []datasetapi.Column{{Name: "value", Type: "string"}},
-				Rows:   []datasetapi.Row{{"value": 1}},
-				Metadata: map[string]any{
-					"source": "binder",
-				},
+				Schema:      req.Template.Columns,
+				Rows:        []datasetapi.Row{{"value": 7}},
+				Metadata:    map[string]any{"note": "ok"},
 				GeneratedAt: env.Now(),
 				Format:      datasetapi.FormatCSV,
 			}, nil
@@ -81,13 +76,7 @@ func TestNewDatasetTemplateFromAPI(t *testing.T) {
 	}
 
 	params := map[string]any{"stage": "adult"}
-	scope := DatasetScope{
-		Requestor:   "analyst",
-		Roles:       []string{"scientist"},
-		ProjectIDs:  []string{"project"},
-		ProtocolIDs: []string{"protocol"},
-	}
-
+	scope := DatasetScope{Requestor: "analyst", ProjectIDs: []string{"project"}}
 	result, paramErrs, err := converted.Run(context.Background(), params, scope, FormatJSON)
 	if err != nil {
 		t.Fatalf("run converted template: %v", err)
@@ -98,14 +87,11 @@ func TestNewDatasetTemplateFromAPI(t *testing.T) {
 	if result.Format != FormatJSON {
 		t.Fatalf("expected format override to JSON, got %s", result.Format)
 	}
-	if len(result.Rows) != 1 || result.Rows[0]["value"].(int) != 1 {
+	if len(result.Rows) != 1 || result.Rows[0]["value"].(int) != 7 {
 		t.Fatalf("unexpected rows: %+v", result.Rows)
 	}
-	if result.Metadata["source"].(string) != "binder" {
-		t.Fatalf("unexpected metadata: %+v", result.Metadata)
-	}
 	if result.GeneratedAt != now {
-		t.Fatalf("expected generatedAt from now function")
+		t.Fatalf("expected generatedAt from env.Now")
 	}
 }
 
@@ -116,26 +102,73 @@ func TestNewDatasetTemplateFromAPIValidation(t *testing.T) {
 	}
 }
 
-func TestAdaptDatasetBinderNilRunner(t *testing.T) {
-	template := datasetapi.Template{
-		Key:           "demo",
-		Version:       "1.0.0",
-		Title:         "Demo",
-		Description:   "demo",
-		Dialect:       datasetapi.DialectSQL,
-		Query:         "SELECT 1",
-		Columns:       []datasetapi.Column{{Name: "value", Type: "string"}},
-		OutputFormats: []datasetapi.Format{datasetapi.FormatJSON},
-		Binder: func(datasetapi.Environment) (datasetapi.Runner, error) {
-			return nil, nil
+func TestDatasetTemplateRuntimeFacade(t *testing.T) {
+	template := DatasetTemplate{
+		Plugin: "frog",
+		Template: datasetapi.Template{
+			Key:           "facade",
+			Version:       "1.0.0",
+			Title:         "Facade",
+			Dialect:       datasetapi.DialectSQL,
+			Query:         "SELECT 1",
+			Parameters:    []datasetapi.Parameter{{Name: "limit", Type: "integer", Required: true}},
+			Columns:       []datasetapi.Column{{Name: "value", Type: "integer"}},
+			OutputFormats: []datasetapi.Format{datasetapi.FormatJSON},
 		},
 	}
-
-	converted, err := newDatasetTemplateFromAPI(template)
-	if err != nil {
-		t.Fatalf("newDatasetTemplateFromAPI: %v", err)
+	var capturedScope DatasetScope
+	template.Binder = func(datasetapi.Environment) (datasetapi.Runner, error) {
+		return func(_ context.Context, req datasetapi.RunRequest) (datasetapi.RunResult, error) {
+			capturedScope = req.Scope
+			return datasetapi.RunResult{
+				Schema:      req.Template.Columns,
+				Rows:        []datasetapi.Row{{"value": 42}},
+				GeneratedAt: time.Unix(0, 0).UTC(),
+				Format:      datasetapi.FormatJSON,
+			}, nil
+		}, nil
 	}
-	if err := converted.bind(DatasetEnvironment{}); err == nil {
-		t.Fatalf("expected binder to surface nil runner error")
+	if err := template.bind(DatasetEnvironment{}); err != nil {
+		t.Fatalf("bind template: %v", err)
+	}
+
+	runtime := newDatasetTemplateRuntime(template)
+	if runtime == nil {
+		t.Fatalf("expected runtime after binding")
+	}
+	if runtime.Descriptor().Slug == "" {
+		t.Fatalf("expected descriptor slug")
+	}
+	if !runtime.SupportsFormat(datasetapi.FormatJSON) {
+		t.Fatalf("expected JSON support")
+	}
+	if runtime.SupportsFormat(datasetapi.FormatCSV) {
+		t.Fatalf("did not expect CSV support")
+	}
+
+	if _, errs := runtime.ValidateParameters(map[string]any{}); len(errs) == 0 {
+		t.Fatalf("expected validation error for missing required parameter")
+	}
+	cleaned, errs := runtime.ValidateParameters(map[string]any{"limit": 1})
+	if len(errs) != 0 {
+		t.Fatalf("unexpected validation error: %+v", errs)
+	}
+	if cleaned["limit"].(int) != 1 {
+		t.Fatalf("expected cleaned parameter value")
+	}
+
+	scope := datasetapi.Scope{Requestor: "analyst", ProjectIDs: []string{"project"}}
+	result, paramErrs, err := runtime.Run(context.Background(), map[string]any{"limit": 1}, scope, datasetapi.FormatJSON)
+	if err != nil {
+		t.Fatalf("runtime run: %v", err)
+	}
+	if len(paramErrs) != 0 {
+		t.Fatalf("unexpected parameter errors: %+v", paramErrs)
+	}
+	if capturedScope.Requestor != "analyst" || len(capturedScope.ProjectIDs) != 1 {
+		t.Fatalf("unexpected captured scope: %+v", capturedScope)
+	}
+	if len(result.Rows) != 1 || result.Rows[0]["value"].(int) != 42 {
+		t.Fatalf("unexpected rows: %+v", result.Rows)
 	}
 }

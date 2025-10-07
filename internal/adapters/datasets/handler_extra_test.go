@@ -10,18 +10,21 @@ import (
 	"time"
 
 	"colonycore/internal/core"
+	"colonycore/pkg/datasetapi"
 )
 
 type testCatalog struct{ tpl core.DatasetTemplate }
 
-func (c testCatalog) DatasetTemplates() []core.DatasetTemplateDescriptor {
-	return []core.DatasetTemplateDescriptor{c.tpl.Descriptor()}
+func (c testCatalog) DatasetTemplates() []datasetapi.TemplateDescriptor {
+	runtime := core.DatasetTemplateRuntimeForTests(c.tpl)
+	return []datasetapi.TemplateDescriptor{runtime.Descriptor()}
 }
-func (c testCatalog) ResolveDatasetTemplate(slug string) (core.DatasetTemplate, bool) {
-	if slug == c.tpl.Descriptor().Slug {
-		return c.tpl, true
+func (c testCatalog) ResolveDatasetTemplate(slug string) (datasetapi.TemplateRuntime, bool) {
+	runtime := core.DatasetTemplateRuntimeForTests(c.tpl)
+	if runtime.Descriptor().Slug == slug {
+		return runtime, true
 	}
-	return core.DatasetTemplate{}, false
+	return nil, false
 }
 
 func TestHandlerListAndGetTemplate(t *testing.T) {
@@ -34,7 +37,7 @@ func TestHandlerListAndGetTemplate(t *testing.T) {
 		t.Fatalf("list templates status: %d", w.Code)
 	}
 	var listResp struct {
-		Templates []core.DatasetTemplateDescriptor `json:"templates"`
+		Templates []datasetapi.TemplateDescriptor `json:"templates"`
 	}
 	if err := json.Unmarshal(w.Body.Bytes(), &listResp); err != nil || len(listResp.Templates) != 1 {
 		t.Fatalf("unexpected list body: %s err=%v", w.Body.String(), err)
@@ -132,4 +135,28 @@ func TestHandlerRunCSV(t *testing.T) {
 	if !strings.Contains(w.Body.String(), "value") {
 		t.Fatalf("expected header row in csv output: %s", w.Body.String())
 	}
+}
+
+func buildTemplate() core.DatasetTemplate {
+	tpl := core.DatasetTemplate{
+		Plugin: "frog",
+		Template: datasetapi.Template{
+			Key:           "fixture",
+			Version:       "1",
+			Title:         "Fixture",
+			Dialect:       datasetapi.DialectSQL,
+			Query:         "SELECT 1",
+			Columns:       []datasetapi.Column{{Name: "value", Type: "string"}},
+			OutputFormats: []datasetapi.Format{datasetapi.FormatJSON, datasetapi.FormatCSV},
+		},
+	}
+	core.BindTemplateForTests(&tpl, func(_ context.Context, _ core.DatasetRunRequest) (core.DatasetRunResult, error) {
+		return core.DatasetRunResult{
+			Schema:      tpl.Columns,
+			Rows:        []datasetapi.Row{{"value": "ok"}},
+			GeneratedAt: time.Unix(0, 0).UTC(),
+			Format:      core.FormatJSON,
+		}, nil
+	})
+	return tpl
 }

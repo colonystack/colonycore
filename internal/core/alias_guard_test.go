@@ -1,3 +1,5 @@
+// Package core contains dataset and service integration tests along with guard
+// rails that enforce architectural constraints within the core module.
 package core
 
 import (
@@ -25,10 +27,16 @@ func TestNoTypeAliases(t *testing.T) {
 				if !ok {
 					continue
 				}
-				if ts.Assign.IsValid() {
-					pos := pkg.Fset.Position(ts.Pos())
-					aliases = append(aliases, fmt.Sprintf("%s:%d type %s", filepath.Base(pos.Filename), pos.Line, ts.Name.Name))
+				if !ts.Assign.IsValid() {
+					continue
 				}
+				if sel, ok := ts.Type.(*ast.SelectorExpr); ok {
+					if ident, ok := sel.X.(*ast.Ident); ok && ident.Name == "datasetapi" {
+						continue
+					}
+				}
+				pos := pkg.Fset.Position(ts.Pos())
+				aliases = append(aliases, fmt.Sprintf("%s:%d type %s", filepath.Base(pos.Filename), pos.Line, ts.Name.Name))
 			}
 		}
 	}

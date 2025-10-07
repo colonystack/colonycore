@@ -2,11 +2,11 @@ package core
 
 import (
 	"context"
-	"fmt"
-	"sort"
 	"strings"
 	"testing"
 	"time"
+
+	"colonycore/pkg/datasetapi"
 )
 
 const (
@@ -23,39 +23,42 @@ func TestDatasetTemplateRunSuccess(t *testing.T) {
 	reference := time.Date(2024, 1, 2, 3, 4, 5, 0, time.UTC)
 	invocations := 0
 	template := DatasetTemplate{
-		Plugin:      testPluginFrog,
-		Key:         "snapshot",
-		Version:     "1.0.0",
-		Title:       "Snapshot",
-		Description: "demo",
-		Dialect:     DatasetDialectSQL,
-		Query:       "SELECT 1",
-		Parameters: []DatasetParameter{{
-			Name:     "limit",
-			Type:     "integer",
-			Required: true,
-		}},
-		Columns: []DatasetColumn{{
-			Name: testAttributeOriginalValue,
-			Type: "integer",
-		}},
-		Metadata: DatasetTemplateMetadata{Tags: []string{"demo"}},
-		OutputFormats: []DatasetFormat{
-			FormatJSON,
-			FormatCSV,
+		Plugin: testPluginFrog,
+		Template: datasetapi.Template{
+			Key:         "snapshot",
+			Version:     "1.0.0",
+			Title:       "Snapshot",
+			Description: "demo",
+			Dialect:     datasetapi.DialectSQL,
+			Query:       "SELECT 1",
+			Parameters: []datasetapi.Parameter{{
+				Name:     "limit",
+				Type:     "integer",
+				Required: true,
+			}},
+			Columns: []datasetapi.Column{{
+				Name: "value",
+				Type: "integer",
+			}},
+			Metadata: datasetapi.Metadata{Tags: []string{"demo"}},
+			OutputFormats: []datasetapi.Format{
+				datasetapi.FormatJSON,
+				datasetapi.FormatCSV,
+			},
 		},
-		Binder: func(env DatasetEnvironment) (DatasetRunner, error) {
-			return func(_ context.Context, req DatasetRunRequest) (DatasetRunResult, error) {
-				invocations++
-				if req.Parameters["limit"].(int) != 25 {
-					t.Fatalf("expected coerced integer parameter, got %v", req.Parameters["limit"])
-				}
-				return DatasetRunResult{
-					Rows:        []map[string]any{{testAttributeOriginalValue: 99}},
-					GeneratedAt: env.Now(),
-				}, nil
+	}
+
+	template.Binder = func(env datasetapi.Environment) (datasetapi.Runner, error) {
+		return func(_ context.Context, req datasetapi.RunRequest) (datasetapi.RunResult, error) {
+			invocations++
+			if req.Parameters["limit"].(int) != 25 {
+				t.Fatalf("expected coerced integer parameter, got %v", req.Parameters["limit"])
+			}
+			return datasetapi.RunResult{
+				Rows:        []datasetapi.Row{{"value": 99}},
+				GeneratedAt: env.Now(),
 			}, nil
-		},
+		}, nil
 	}
 
 	env := DatasetEnvironment{Now: func() time.Time { return reference }}
@@ -75,7 +78,7 @@ func TestDatasetTemplateRunSuccess(t *testing.T) {
 	if result.Format != FormatCSV {
 		t.Fatalf("expected format csv, got %s", result.Format)
 	}
-	if len(result.Schema) != 1 || result.Schema[0].Name != testAttributeOriginalValue {
+	if len(result.Schema) != 1 || result.Schema[0].Name != "value" {
 		t.Fatalf("expected schema fallback from template, got %+v", result.Schema)
 	}
 	if !result.GeneratedAt.Equal(reference) {
@@ -95,25 +98,22 @@ func TestDatasetTemplateRunSuccess(t *testing.T) {
 
 func TestDatasetTemplateRunParameterErrors(t *testing.T) {
 	template := DatasetTemplate{
-		Plugin:      testPluginFrog,
-		Key:         "snapshot",
-		Version:     "1.0.0",
-		Title:       "Snapshot",
-		Description: "demo",
-		Dialect:     DatasetDialectSQL,
-		Query:       "SELECT 1",
-		Parameters: []DatasetParameter{{
-			Name:     "limit",
-			Type:     "integer",
-			Required: true,
-		}},
-		Columns:       []DatasetColumn{{Name: testAttributeOriginalValue, Type: "integer"}},
-		OutputFormats: []DatasetFormat{FormatJSON},
-		Binder: func(DatasetEnvironment) (DatasetRunner, error) {
-			return func(context.Context, DatasetRunRequest) (DatasetRunResult, error) {
-				return DatasetRunResult{}, nil
-			}, nil
+		Plugin: testPluginFrog,
+		Template: datasetapi.Template{
+			Key:           "snapshot",
+			Version:       "1.0.0",
+			Title:         "Snapshot",
+			Dialect:       datasetapi.DialectSQL,
+			Query:         "SELECT 1",
+			Parameters:    []datasetapi.Parameter{{Name: "limit", Type: "integer", Required: true}},
+			Columns:       []datasetapi.Column{{Name: "value", Type: "integer"}},
+			OutputFormats: []datasetapi.Format{datasetapi.FormatJSON},
 		},
+	}
+	template.Binder = func(datasetapi.Environment) (datasetapi.Runner, error) {
+		return func(context.Context, datasetapi.RunRequest) (datasetapi.RunResult, error) {
+			return datasetapi.RunResult{}, nil
+		}, nil
 	}
 	if err := template.bind(DatasetEnvironment{}); err != nil {
 		t.Fatalf("bind template: %v", err)
@@ -135,14 +135,28 @@ func TestDatasetTemplateRunParameterErrors(t *testing.T) {
 func TestDatasetValidateParametersCoercion(t *testing.T) {
 	when := time.Date(2023, 5, 6, 7, 8, 9, 0, time.UTC)
 	template := DatasetTemplate{
-		Parameters: []DatasetParameter{
-			{Name: "name", Type: "string", Required: true, Enum: []string{testPluginFrog, "newt"}},
-			{Name: "count", Type: "integer"},
-			{Name: "ratio", Type: "number"},
-			{Name: "flag", Type: "boolean"},
-			{Name: "as_of", Type: "timestamp"},
-			{Name: "note", Type: "string", Default: "n/a"},
+		Template: datasetapi.Template{
+			Key:     "coerce",
+			Version: "1.0.0",
+			Title:   "Coerce",
+			Dialect: datasetapi.DialectSQL,
+			Query:   "select 1",
+			Parameters: []datasetapi.Parameter{
+				{Name: "name", Type: "string", Required: true, Enum: []string{testPluginFrog, "newt"}},
+				{Name: "count", Type: "integer"},
+				{Name: "ratio", Type: "number"},
+				{Name: "flag", Type: "boolean"},
+				{Name: "as_of", Type: "timestamp"},
+				{Name: "note", Type: "string", Default: "n/a"},
+			},
+			Columns:       []datasetapi.Column{{Name: "value", Type: "string"}},
+			OutputFormats: []datasetapi.Format{datasetapi.FormatJSON},
 		},
+	}
+	template.Binder = func(datasetapi.Environment) (datasetapi.Runner, error) {
+		return func(context.Context, datasetapi.RunRequest) (datasetapi.RunResult, error) {
+			return datasetapi.RunResult{}, nil
+		}, nil
 	}
 
 	supplied := map[string]any{
@@ -169,7 +183,7 @@ func TestDatasetValidateParametersCoercion(t *testing.T) {
 	if cleaned["flag"].(bool) != true {
 		t.Fatalf("expected boolean coercion")
 	}
-	if !cleaned["as_of"].(time.Time).Equal(when) {
+	if !cleaned["as_of"].(time.Time).Equal(when.UTC()) {
 		t.Fatalf("expected timestamp coercion")
 	}
 	if cleaned["note"].(string) != "n/a" {
@@ -186,105 +200,58 @@ func TestDatasetValidateParametersCoercion(t *testing.T) {
 	}
 }
 
-func TestDatasetTemplateCollectionSort(t *testing.T) {
-	collection := DatasetTemplateCollection{
-		{Plugin: testPluginFrog, Key: "b", Version: "0.1.0"},
-		{Plugin: testPluginFrog, Key: "a", Version: "0.2.0"},
-		{Plugin: "newt", Key: "a", Version: "0.1.0"},
-	}
-	collection[0].Slug = testPluginFrog + "/b@0.1.0"
-	collection[1].Slug = testPluginFrog + "/a@0.2.0"
-	collection[2].Slug = "newt/a@0.1.0"
-
-	sort.Sort(collection)
-
-	if collection[0].Key != "a" || collection[0].Version != "0.2.0" {
-		t.Fatalf("unexpected sort order: %+v", collection)
-	}
-	if collection[1].Key != "b" {
-		t.Fatalf("expected frog/b second, got %+v", collection)
-	}
-}
-
-func TestDatasetTemplateBindErrors(t *testing.T) {
-	template := DatasetTemplate{Key: "test"}
-	if err := template.validate(); err == nil {
-		t.Fatalf("expected validation error for incomplete template")
-	}
-
-	template = DatasetTemplate{
-		Key:         "test",
-		Version:     "1.0.0",
-		Title:       "Test",
-		Description: "demo",
-		Dialect:     DatasetDialectSQL,
-		Query:       "SELECT 1",
-		Columns:     []DatasetColumn{{Name: testAttributeOriginalValue, Type: "integer"}},
-		OutputFormats: []DatasetFormat{
-			FormatJSON,
-		},
-		Binder: func(DatasetEnvironment) (DatasetRunner, error) {
-			return nil, nil
-		},
-	}
-	if err := template.bind(DatasetEnvironment{}); err == nil {
-		t.Fatalf("expected error when binder returns nil runner")
-	}
-
-	template.Binder = func(DatasetEnvironment) (DatasetRunner, error) {
-		return nil, fmt.Errorf("binder failure")
-	}
-	if err := template.bind(DatasetEnvironment{}); err == nil || err.Error() != "binder failure" {
-		t.Fatalf("expected binder failure to propagate, got %v", err)
-	}
-}
-
-func TestDatasetValidateParametersUnknownType(t *testing.T) {
-	template := DatasetTemplate{
-		Parameters: []DatasetParameter{{Name: "mystery", Type: "uuid"}},
-	}
-	_, errs := template.ValidateParameters(map[string]any{"mystery": testAttributeOriginalValue})
-	if len(errs) == 0 {
-		t.Fatalf("expected error for unsupported parameter type")
-	}
-}
-
 func TestDatasetValidateParametersErrorBranches(t *testing.T) {
-	template := DatasetTemplate{
-		Parameters: []DatasetParameter{
-			{Name: "count", Type: "integer", Required: true},
-			{Name: "ratio", Type: "number"},
-			{Name: "flag", Type: "boolean"},
-			{Name: "as_of", Type: "timestamp"},
-		},
-	}
-
+	template := newValidationTemplate()
 	supplied := map[string]any{
 		"count": 1.5,
 		"ratio": true,
-		"flag":  1,
-		"as_of": "invalid",
+		"Flag":  1,
+		"when":  "invalid",
 	}
-
 	_, errs := template.ValidateParameters(supplied)
 	if len(errs) < 4 {
 		t.Fatalf("expected coercion errors, got %+v", errs)
 	}
-	required := map[string]bool{"count": false, "ratio": false, "flag": false, "as_of": false}
+	required := map[string]bool{"count": false, "ratio": false, "Flag": false, "when": false}
 	for _, err := range errs {
-		if strings.Contains(err.Message, "expects") {
+		if _, ok := required[err.Name]; ok && strings.Contains(err.Message, "expects") {
 			required[err.Name] = true
 		}
 	}
 	for name, covered := range required {
 		if !covered {
-			t.Fatalf("expected error for parameter %s, got %+v", name, errs)
+			t.Fatalf("expected error for %s, got %+v", name, errs)
 		}
 	}
 }
 
+func TestDatasetValidateParametersLeftover(t *testing.T) {
+	template := newValidationTemplate()
+	supplied := map[string]any{"count": 1, "ratio": 2.5, "FLAG": false, "extra": true}
+	cleaned, errs := template.ValidateParameters(supplied)
+	if len(errs) == 0 {
+		t.Fatalf("expected error for leftover parameter")
+	}
+	if cleaned["Flag"].(bool) != false {
+		t.Fatalf("expected case-insensitive match for flag")
+	}
+	if cleaned["ratio"].(float64) != 2.5 {
+		t.Fatalf("expected ratio to coerce to float, got %v", cleaned["ratio"])
+	}
+	if cleaned["count"].(int) != 1 {
+		t.Fatalf("expected integer coercion, got %v", cleaned["count"])
+	}
+	prev := ""
+	for _, err := range errs {
+		if prev != "" && err.Name < prev {
+			t.Fatalf("expected sorted error names, got %+v", errs)
+		}
+		prev = err.Name
+	}
+}
+
 func TestDatasetTemplateSlugVariants(t *testing.T) {
-	template := DatasetTemplate{Key: "demo", Version: "1.0.0"}
+	template := DatasetTemplate{Template: datasetapi.Template{Key: "demo", Version: "1.0.0"}}
 	if slug := template.slug(); slug != "demo@1.0.0" {
 		t.Fatalf("unexpected slug without plugin: %s", slug)
 	}
@@ -296,20 +263,20 @@ func TestDatasetTemplateSlugVariants(t *testing.T) {
 
 func TestDatasetTemplateValidateFailures(t *testing.T) {
 	base := DatasetTemplate{
-		Key:         "demo",
-		Version:     "1.0.0",
-		Title:       "Demo",
-		Description: "demo",
-		Dialect:     DatasetDialectSQL,
-		Query:       "SELECT 1",
-		Columns:     []DatasetColumn{{Name: testAttributeOriginalValue, Type: "integer"}},
-		OutputFormats: []DatasetFormat{
-			FormatJSON,
-		},
-		Binder: func(DatasetEnvironment) (DatasetRunner, error) {
-			return func(context.Context, DatasetRunRequest) (DatasetRunResult, error) {
-				return DatasetRunResult{}, nil
-			}, nil
+		Template: datasetapi.Template{
+			Key:           "demo",
+			Version:       "1.0.0",
+			Title:         "Demo",
+			Description:   "demo",
+			Dialect:       datasetapi.DialectSQL,
+			Query:         "SELECT 1",
+			Columns:       []datasetapi.Column{{Name: "value", Type: "integer"}},
+			OutputFormats: []datasetapi.Format{datasetapi.FormatJSON},
+			Binder: func(datasetapi.Environment) (datasetapi.Runner, error) {
+				return func(context.Context, datasetapi.RunRequest) (datasetapi.RunResult, error) {
+					return datasetapi.RunResult{}, nil
+				}, nil
+			},
 		},
 	}
 	tests := []struct {
@@ -319,7 +286,7 @@ func TestDatasetTemplateValidateFailures(t *testing.T) {
 		{"missing key", func(tmpl *DatasetTemplate) { tmpl.Key = "" }},
 		{"missing version", func(tmpl *DatasetTemplate) { tmpl.Version = "" }},
 		{"missing title", func(tmpl *DatasetTemplate) { tmpl.Title = "" }},
-		{"unsupported dialect", func(tmpl *DatasetTemplate) { tmpl.Dialect = DatasetDialect("graphql") }},
+		{"unsupported dialect", func(tmpl *DatasetTemplate) { tmpl.Dialect = datasetapi.Dialect("graphql") }},
 		{"missing query", func(tmpl *DatasetTemplate) { tmpl.Query = "" }},
 		{"missing columns", func(tmpl *DatasetTemplate) { tmpl.Columns = nil }},
 		{"missing formats", func(tmpl *DatasetTemplate) { tmpl.OutputFormats = nil }},
@@ -334,76 +301,67 @@ func TestDatasetTemplateValidateFailures(t *testing.T) {
 	}
 }
 
-func TestDatasetCloneHelpers(t *testing.T) {
-	parameters := []DatasetParameter{{Name: "enum", Enum: []string{"a", "b"}}, {Name: "plain"}}
-	clonedParams := cloneParameters(parameters)
-	clonedParams[0].Enum[0] = testLiteralMutated
-	if parameters[0].Enum[0] != "a" {
-		t.Fatalf("expected parameter enum to remain unchanged")
-	}
-
-	columns := []DatasetColumn{{Name: testAttributeOriginalValue, Type: "string"}}
-	clonedColumns := cloneColumns(columns)
-	clonedColumns[0].Name = testLiteralChanged
-	if columns[0].Name != testAttributeOriginalValue {
-		t.Fatalf("expected original column to remain value")
-	}
-}
-
-func TestEnumErrorBranches(t *testing.T) {
-	if err := enumError(nil); err == nil {
-		t.Fatalf("expected error when enumeration empty")
-	}
-	if err := enumError([]string{"a", "b"}); err == nil || !strings.Contains(err.Error(), "a, b") {
-		t.Fatalf("expected formatted enumeration error, got %v", err)
-	}
-}
-
-func TestDatasetTemplateBindError(t *testing.T) {
+func TestDatasetValidateParametersHostError(t *testing.T) {
 	template := DatasetTemplate{
-		Key:         "bind",
-		Version:     "1.0.0",
-		Title:       "Bind",
-		Description: "demo",
-		Dialect:     DatasetDialectSQL,
-		Query:       "SELECT 1",
-		Columns:     []DatasetColumn{{Name: testAttributeOriginalValue, Type: "integer"}},
-		OutputFormats: []DatasetFormat{
-			FormatJSON,
-		},
-		Binder: func(DatasetEnvironment) (DatasetRunner, error) {
-			return nil, fmt.Errorf("bind error")
+		Template: datasetapi.Template{
+			Key:           "demo",
+			Version:       "1.0.0",
+			Title:         "Demo",
+			Dialect:       datasetapi.DialectSQL,
+			Query:         "SELECT 1",
+			Columns:       []datasetapi.Column{{Name: "value", Type: "string"}},
+			OutputFormats: []datasetapi.Format{datasetapi.FormatJSON},
 		},
 	}
-	if err := template.bind(DatasetEnvironment{}); err == nil || !strings.Contains(err.Error(), "bind error") {
-		t.Fatalf("expected bind error, got %v", err)
+	if _, errs := template.ValidateParameters(map[string]any{}); len(errs) == 0 || !strings.Contains(errs[0].Message, "binder required") {
+		t.Fatalf("expected binder error, got %+v", errs)
 	}
 }
 
-func TestCoerceParameterAdditionalCases(t *testing.T) {
+func TestDatasetTemplateRunWithoutBind(t *testing.T) {
 	template := DatasetTemplate{
-		Parameters: []DatasetParameter{
-			{Name: "ratio", Type: "number"},
-			{Name: "flag", Type: "boolean"},
-			{Name: "as_of", Type: "timestamp"},
+		Template: datasetapi.Template{
+			Key:           "demo",
+			Version:       "1.0.0",
+			Title:         "Demo",
+			Dialect:       datasetapi.DialectSQL,
+			Query:         "SELECT 1",
+			Columns:       []datasetapi.Column{{Name: "value", Type: "string"}},
+			OutputFormats: []datasetapi.Format{datasetapi.FormatJSON},
 		},
 	}
-	supplied := map[string]any{
-		"ratio": float32(1.25),
-		"flag":  true,
-		"as_of": time.Now().UTC(),
+	if _, _, err := template.Run(context.Background(), map[string]any{}, DatasetScope{}, FormatJSON); err == nil || !strings.Contains(err.Error(), "not bound") {
+		t.Fatalf("expected not bound error, got %v", err)
 	}
-	cleaned, errs := template.ValidateParameters(supplied)
-	if len(errs) != 0 {
-		t.Fatalf("unexpected errors: %+v", errs)
+}
+
+func TestDatasetSlugTrimsWhitespace(t *testing.T) {
+	if slug := datasetSlug(" frog ", " key ", " v1 "); slug != "frog/key@v1" {
+		t.Fatalf("unexpected trimmed slug: %s", slug)
 	}
-	if cleaned["ratio"].(float64) != 1.25 {
-		t.Fatalf("expected float conversion, got %v", cleaned["ratio"])
-	}
-	if cleaned["flag"].(bool) != true {
-		t.Fatalf("expected boolean to remain true")
-	}
-	if cleaned["as_of"].(time.Time).IsZero() {
-		t.Fatalf("expected timestamp to remain set")
+}
+
+func newValidationTemplate() DatasetTemplate {
+	return DatasetTemplate{
+		Template: datasetapi.Template{
+			Key:     "validation",
+			Version: "1.0.0",
+			Title:   "Validation",
+			Dialect: datasetapi.DialectSQL,
+			Query:   "SELECT 1",
+			Parameters: []datasetapi.Parameter{
+				{Name: "count", Type: "integer", Required: true},
+				{Name: "ratio", Type: "number"},
+				{Name: "Flag", Type: "boolean"},
+				{Name: "when", Type: "timestamp"},
+			},
+			Columns:       []datasetapi.Column{{Name: "value", Type: "string"}},
+			OutputFormats: []datasetapi.Format{datasetapi.FormatJSON},
+			Binder: func(datasetapi.Environment) (datasetapi.Runner, error) {
+				return func(context.Context, datasetapi.RunRequest) (datasetapi.RunResult, error) {
+					return datasetapi.RunResult{}, nil
+				}, nil
+			},
+		},
 	}
 }

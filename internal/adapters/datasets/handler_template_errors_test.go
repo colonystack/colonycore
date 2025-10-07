@@ -1,28 +1,40 @@
 package datasets
 
 import (
-	"colonycore/internal/core"
 	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 	"time"
+
+	"colonycore/internal/core"
+	"colonycore/pkg/datasetapi"
 )
 
 // NOTE: reuse fakeCatalog type defined in exporter_worker_test.go (with field tpl)
 
 // buildSimpleTemplate returns a minimal bound template.
 func buildSimpleTemplate() core.DatasetTemplate {
-	tmpl := core.DatasetTemplate{Key: "k", Version: "1", Title: "T", Dialect: core.DatasetDialectSQL, Query: "SELECT 1", Columns: []core.DatasetColumn{{Name: "v", Type: "string"}}, OutputFormats: []core.DatasetFormat{core.FormatJSON}}
+	tmpl := core.DatasetTemplate{
+		Template: datasetapi.Template{
+			Key:           "k",
+			Version:       "1",
+			Title:         "T",
+			Dialect:       datasetapi.DialectSQL,
+			Query:         "SELECT 1",
+			Columns:       []datasetapi.Column{{Name: "v", Type: "string"}},
+			OutputFormats: []datasetapi.Format{datasetapi.FormatJSON},
+		},
+	}
 	core.BindTemplateForTests(&tmpl, func(_ context.Context, _ core.DatasetRunRequest) (core.DatasetRunResult, error) {
-		return core.DatasetRunResult{Rows: []map[string]any{{"v": "x"}}, Schema: tmpl.Columns, GeneratedAt: time.Unix(0, 0).UTC()}, nil
+		return core.DatasetRunResult{Rows: []datasetapi.Row{{"v": "x"}}, Schema: tmpl.Columns, GeneratedAt: time.Unix(0, 0).UTC()}, nil
 	})
 	return tmpl
 }
 
 func TestHandleTemplateMissingSegments(t *testing.T) {
-	h := NewHandler(fakeCatalog{tpl: buildSimpleTemplate()})
+	h := NewHandler(fakeCatalog{tpl: core.DatasetTemplateRuntimeForTests(buildSimpleTemplate())})
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/datasets/templates/frog", nil)
 	rr := httptest.NewRecorder()
 	h.ServeHTTP(rr, req)
@@ -32,7 +44,7 @@ func TestHandleTemplateMissingSegments(t *testing.T) {
 }
 
 func TestHandleTemplateUnknownSlug(t *testing.T) {
-	h := NewHandler(fakeCatalog{tpl: buildSimpleTemplate()})
+	h := NewHandler(fakeCatalog{tpl: core.DatasetTemplateRuntimeForTests(buildSimpleTemplate())})
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/datasets/templates/frog/unknown/2", nil)
 	rr := httptest.NewRecorder()
 	h.ServeHTTP(rr, req)

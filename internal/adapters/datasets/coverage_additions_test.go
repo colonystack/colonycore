@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"colonycore/internal/core"
+	"colonycore/pkg/datasetapi"
 	"colonycore/pkg/domain"
 	"colonycore/plugins/frog"
 )
@@ -41,12 +42,12 @@ func TestWorkerEnqueueDuplicateFormatsAndQueueFull(t *testing.T) {
 	slug := meta.Datasets[0].Slug
 	w := NewWorker(svc, nil, nil) // do NOT start worker so queue fills
 
-	rec, err := w.EnqueueExport(context.Background(), ExportInput{TemplateSlug: slug, Formats: []core.DatasetFormat{core.FormatJSON, core.FormatJSON, core.FormatCSV}})
+	rec, err := w.EnqueueExport(context.Background(), ExportInput{TemplateSlug: slug, Formats: []datasetapi.Format{datasetapi.FormatJSON, datasetapi.FormatJSON, datasetapi.FormatCSV}})
 	if err != nil {
 		t.Fatalf("enqueue: %v", err)
 	}
 	// expect de-duplicated formats preserving first appearances order
-	if len(rec.Formats) != 2 || rec.Formats[0] != core.FormatJSON || rec.Formats[1] != core.FormatCSV {
+	if len(rec.Formats) != 2 || rec.Formats[0] != datasetapi.FormatJSON || rec.Formats[1] != datasetapi.FormatCSV {
 		t.Fatalf("unexpected formats after dedup: %#v", rec.Formats)
 	}
 
@@ -123,11 +124,22 @@ func TestHandlerRunAcceptHeaderNegotiation(t *testing.T) {
 }
 
 func TestHandlerRunInternalError(t *testing.T) {
-	failing := core.DatasetTemplate{Plugin: "frog", Key: "failing2", Version: "1.0.0", Title: "Failing2", Dialect: core.DatasetDialectSQL, Query: "SELECT 1", Columns: []core.DatasetColumn{{Name: "v", Type: "string"}}, OutputFormats: []core.DatasetFormat{core.FormatJSON}}
+	failing := core.DatasetTemplate{
+		Plugin: "frog",
+		Template: datasetapi.Template{
+			Key:           "failing2",
+			Version:       "1.0.0",
+			Title:         "Failing2",
+			Dialect:       datasetapi.DialectSQL,
+			Query:         "SELECT 1",
+			Columns:       []datasetapi.Column{{Name: "v", Type: "string"}},
+			OutputFormats: []datasetapi.Format{datasetapi.FormatJSON},
+		},
+	}
 	failing.RunnerForTests(func(context.Context, core.DatasetRunRequest) (core.DatasetRunResult, error) {
 		return core.DatasetRunResult{}, fmt.Errorf("boom")
 	})
-	fc := fakeCatalog{tpl: failing}
+	fc := fakeCatalog{tpl: core.DatasetTemplateRuntimeForTests(failing)}
 	h := NewHandler(fc)
 	url := fmt.Sprintf("/api/v1/datasets/templates/%s/%s/%s/run", failing.Plugin, failing.Key, failing.Version)
 	req := httptest.NewRequest(http.MethodPost, url, bytes.NewBufferString(`{"parameters":{}}`))

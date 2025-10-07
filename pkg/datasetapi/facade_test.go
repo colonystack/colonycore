@@ -39,6 +39,9 @@ func TestOrganismFacadeReadOnly(t *testing.T) {
 	if organism.ID() != "id" || organism.Name() != "Alpha" || organism.Stage() != StageAdult {
 		t.Fatalf("unexpected organism values: %+v", organism)
 	}
+	if organism.Species() != "Frog" || organism.Line() != "Line" {
+		t.Fatalf("unexpected organism species/line: %s %s", organism.Species(), organism.Line())
+	}
 	if organism.CreatedAt() != createdAt || organism.UpdatedAt() != updatedAt {
 		t.Fatalf("unexpected timestamps: %+v", organism)
 	}
@@ -106,7 +109,7 @@ func TestBreedingProcedureFacadesCloneCollections(t *testing.T) {
 
 	females := breeding.FemaleIDs()
 	females[0] = mutatedLiteral
-	if breeding.FemaleIDs()[0] != "f1" {
+	if breeding.Name() != "Breeding" || breeding.FemaleIDs()[0] != "f1" {
 		t.Fatalf("expected female ids clone to remain unchanged")
 	}
 	if id, ok := breeding.HousingID(); !ok || id != housing {
@@ -186,7 +189,7 @@ func TestProtocolProjectCohortFacades(t *testing.T) {
 		Description: "Desc",
 		MaxSubjects: 5,
 	})
-	if protocol.Code() != "P" || protocol.MaxSubjects() != 5 {
+	if protocol.Code() != "P" || protocol.Title() != "Protocol" || protocol.MaxSubjects() != 5 {
 		t.Fatalf("unexpected protocol values")
 	}
 
@@ -196,7 +199,7 @@ func TestProtocolProjectCohortFacades(t *testing.T) {
 		Title:       "Project",
 		Description: "Description",
 	})
-	if project.Title() != "Project" || project.Description() != "Description" {
+	if project.Code() != "PR" || project.Title() != "Project" || project.Description() != "Description" {
 		t.Fatalf("unexpected project values")
 	}
 
