@@ -3,53 +3,60 @@
 // domain package.
 package pluginapi
 
-import "encoding/json"
+import (
+	"encoding/json"
+	"errors"
+)
 
 // Severity captures rule outcomes exposed to plugins.
 type Severity string
 
 // Rule evaluation severities determine commit behavior and logging.
+// These are now internal - use SeverityContext for plugin access.
 const (
-	SeverityBlock Severity = "block"
-	SeverityWarn  Severity = "warn"
-	SeverityLog   Severity = "log"
+	severityBlock Severity = "block"
+	severityWarn  Severity = "warn"
+	severityLog   Severity = "log"
 )
 
 // LifecycleStage represents canonical organism lifecycle identifiers available to plugins.
 type LifecycleStage string
 
 // Canonical organism lifecycle stages mirrored from the domain package.
+// These are now internal - use views with contextual methods for plugin access.
 const (
-	StagePlanned  LifecycleStage = "planned"
-	StageLarva    LifecycleStage = "embryo_larva"
-	StageJuvenile LifecycleStage = "juvenile"
-	StageAdult    LifecycleStage = "adult"
-	StageRetired  LifecycleStage = "retired"
-	StageDeceased LifecycleStage = "deceased"
+	stagePlanned  LifecycleStage = "planned"
+	stageLarva    LifecycleStage = "embryo_larva"
+	stageJuvenile LifecycleStage = "juvenile"
+	stageAdult    LifecycleStage = "adult"
+	stageRetired  LifecycleStage = "retired"
+	stageDeceased LifecycleStage = "deceased"
 )
 
 // EntityType identifies the type of record referenced by rule changes.
 type EntityType string
 
 // Supported entity type identifiers used in Change records and persistence buckets.
+// These are now internal - use EntityContext for plugin access.
 const (
-	EntityOrganism    EntityType = "organism"
-	EntityCohort      EntityType = "cohort"
-	EntityHousingUnit EntityType = "housing_unit"
-	EntityBreeding    EntityType = "breeding_unit"
-	EntityProcedure   EntityType = "procedure"
-	EntityProtocol    EntityType = "protocol"
-	EntityProject     EntityType = "project"
+	entityOrganism    EntityType = "organism"
+	entityCohort      EntityType = "cohort"
+	entityHousingUnit EntityType = "housing_unit"
+	entityBreeding    EntityType = "breeding_unit"
+	entityProcedure   EntityType = "procedure"
+	entityProtocol    EntityType = "protocol"
+	entityProject     EntityType = "project"
 )
 
 // Action indicates the type of modification performed.
 type Action string
 
 // Change actions enumerate supported CRUD operations captured in audit trail.
+// These are now internal - use ActionContext for plugin access.
 const (
-	ActionCreate Action = "create"
-	ActionUpdate Action = "update"
-	ActionDelete Action = "delete"
+	actionCreate Action = "create"
+	actionUpdate Action = "update"
+	actionDelete Action = "delete"
 )
 
 // Change describes a mutation applied to an entity during a transaction. It is
@@ -65,8 +72,13 @@ type Change struct {
 
 // NewChange constructs an immutable Change for use by the host when adapting
 // domain transactions for plugin rule evaluation.
-func NewChange(entity EntityType, action Action, before, after any) Change {
-	return Change{entity: entity, action: action, before: snapshotValue(before), after: snapshotValue(after)}
+func NewChange(entity EntityTypeRef, action ActionRef, before, after any) Change {
+	return Change{
+		entity: entity.Value(),
+		action: action.Value(),
+		before: snapshotValue(before),
+		after:  snapshotValue(after),
+	}
 }
 
 // Entity returns the entity type affected.
@@ -80,6 +92,80 @@ func (c Change) Before() any { return snapshotValue(c.before) }
 
 // After returns the new value (if any) of the entity. Treat as read-only.
 func (c Change) After() any { return snapshotValue(c.after) }
+
+// ChangeBuilder provides a fluent interface for building changes.
+type ChangeBuilder struct {
+	entity EntityTypeRef
+	action ActionRef
+	before any
+	after  any
+	built  bool
+}
+
+// NewChangeBuilder creates a new change builder.
+func NewChangeBuilder() *ChangeBuilder {
+	return &ChangeBuilder{}
+}
+
+// WithEntity sets the entity using contextual interface.
+func (cb *ChangeBuilder) WithEntity(entity EntityTypeRef) *ChangeBuilder {
+	if cb.built {
+		panic("cannot modify builder after Build() is called")
+	}
+	cb.entity = entity
+	return cb
+}
+
+// WithAction sets the action using contextual interface.
+func (cb *ChangeBuilder) WithAction(action ActionRef) *ChangeBuilder {
+	if cb.built {
+		panic("cannot modify builder after Build() is called")
+	}
+	cb.action = action
+	return cb
+}
+
+// WithBefore sets the before state.
+func (cb *ChangeBuilder) WithBefore(before any) *ChangeBuilder {
+	if cb.built {
+		panic("cannot modify builder after Build() is called")
+	}
+	cb.before = before
+	return cb
+}
+
+// WithAfter sets the after state.
+func (cb *ChangeBuilder) WithAfter(after any) *ChangeBuilder {
+	if cb.built {
+		panic("cannot modify builder after Build() is called")
+	}
+	cb.after = after
+	return cb
+}
+
+// Build creates the immutable Change.
+func (cb *ChangeBuilder) Build() (Change, error) {
+	if cb.built {
+		return Change{}, errors.New("builder already used")
+	}
+
+	// Validation
+	if cb.entity == nil {
+		return Change{}, errors.New("entity is required")
+	}
+	if cb.action == nil {
+		return Change{}, errors.New("action is required")
+	}
+
+	cb.built = true
+
+	return Change{
+		entity: cb.entity.Value(),
+		action: cb.action.Value(),
+		before: snapshotValue(cb.before),
+		after:  snapshotValue(cb.after),
+	}, nil
+}
 
 // snapshotValue performs a best-effort defensive copy of common container types
 // to prevent plugin authors from mutating internal state through Change.Before/After.
@@ -143,18 +229,140 @@ type Violation struct {
 	entityID string
 }
 
-// NewViolation constructs an immutable violation.
-func NewViolation(rule string, severity Severity, message string, entity EntityType, entityID string) Violation {
-	return Violation{rule: rule, severity: severity, message: message, entity: entity, entityID: entityID}
-}
-
-// NewViolationWithEntityRef constructs an immutable violation using contextual interface references.
+// NewViolation constructs an immutable violation using contextual interface references.
 // This promotes hexagonal architecture by allowing violation creation without direct constant access.
-func NewViolationWithEntityRef(rule string, severity SeverityRef, message string, entity EntityTypeRef, entityID string) Violation {
+// DEPRECATED: Use NewViolationBuilder() instead for better fluent interface and validation.
+func NewViolation(rule string, severity SeverityRef, message string, entity EntityTypeRef, entityID string) Violation {
 	// Extract underlying values from contextual interfaces
 	rawSeverity := extractSeverity(severity)
 	rawEntity := extractEntityType(entity)
 	return Violation{rule: rule, severity: rawSeverity, message: message, entity: rawEntity, entityID: entityID}
+}
+
+// ConvertEntityType converts a raw EntityType to EntityTypeRef for core->plugin API conversion
+func ConvertEntityType(et EntityType) EntityTypeRef {
+	return newEntityTypeRef(et)
+}
+
+// ConvertAction converts a raw Action to ActionRef for core->plugin API conversion
+func ConvertAction(a Action) ActionRef {
+	return newActionRef(a)
+}
+
+// NewViolationWithEntityRef is an alias for NewViolation for backwards compatibility.
+// DEPRECATED: Use NewViolationBuilder() instead for better fluent interface and validation.
+func NewViolationWithEntityRef(rule string, severity SeverityRef, message string, entity EntityTypeRef, entityID string) Violation {
+	return NewViolation(rule, severity, message, entity, entityID)
+}
+
+// ViolationBuilder provides a fluent interface for building violations.
+type ViolationBuilder struct {
+	rule     string
+	severity SeverityRef
+	message  string
+	entity   EntityTypeRef
+	entityID string
+	built    bool
+}
+
+// NewViolationBuilder creates a new violation builder.
+func NewViolationBuilder() *ViolationBuilder {
+	return &ViolationBuilder{}
+}
+
+// WithRule sets the rule identifier.
+func (vb *ViolationBuilder) WithRule(rule string) *ViolationBuilder {
+	if vb.built {
+		panic("cannot modify builder after Build() is called")
+	}
+	vb.rule = rule
+	return vb
+}
+
+// WithSeverity sets the severity using contextual interface.
+func (vb *ViolationBuilder) WithSeverity(severity SeverityRef) *ViolationBuilder {
+	if vb.built {
+		panic("cannot modify builder after Build() is called")
+	}
+	vb.severity = severity
+	return vb
+}
+
+// WithMessage sets the violation message.
+func (vb *ViolationBuilder) WithMessage(message string) *ViolationBuilder {
+	if vb.built {
+		panic("cannot modify builder after Build() is called")
+	}
+	vb.message = message
+	return vb
+}
+
+// WithEntity sets the entity using contextual interface.
+func (vb *ViolationBuilder) WithEntity(entity EntityTypeRef) *ViolationBuilder {
+	if vb.built {
+		panic("cannot modify builder after Build() is called")
+	}
+	vb.entity = entity
+	return vb
+}
+
+// WithEntityID sets the entity identifier.
+func (vb *ViolationBuilder) WithEntityID(entityID string) *ViolationBuilder {
+	if vb.built {
+		panic("cannot modify builder after Build() is called")
+	}
+	vb.entityID = entityID
+	return vb
+}
+
+// BuildWarning creates a warning violation with the current builder state.
+func (vb *ViolationBuilder) BuildWarning() (Violation, error) {
+	severityCtx := NewSeverityContext()
+	return vb.WithSeverity(severityCtx.Warn()).Build()
+}
+
+// BuildBlocking creates a blocking violation with the current builder state.
+func (vb *ViolationBuilder) BuildBlocking() (Violation, error) {
+	severityCtx := NewSeverityContext()
+	return vb.WithSeverity(severityCtx.Block()).Build()
+}
+
+// BuildLog creates a log violation with the current builder state.
+func (vb *ViolationBuilder) BuildLog() (Violation, error) {
+	severityCtx := NewSeverityContext()
+	return vb.WithSeverity(severityCtx.Log()).Build()
+}
+
+// Build creates the immutable Violation.
+func (vb *ViolationBuilder) Build() (Violation, error) {
+	if vb.built {
+		return Violation{}, errors.New("builder already used")
+	}
+
+	// Validation
+	if vb.rule == "" {
+		return Violation{}, errors.New("rule is required")
+	}
+	if vb.severity == nil {
+		return Violation{}, errors.New("severity is required")
+	}
+	if vb.entity == nil {
+		return Violation{}, errors.New("entity is required")
+	}
+
+	vb.built = true
+
+	// Extract underlying values from contextual interfaces
+	rawSeverity := extractSeverity(vb.severity)
+	rawEntity := extractEntityType(vb.entity)
+
+	return Violation{
+		rule:     vb.rule,
+		severity: rawSeverity,
+		message:  vb.message,
+		entity:   rawEntity,
+		entityID: vb.entityID,
+	}, nil
 }
 
 // extractSeverity safely extracts the underlying Severity from a SeverityRef.
@@ -244,7 +452,7 @@ func (r Result) Merge(other Result) Result {
 // HasBlocking returns true if the result contains blocking violations.
 func (r Result) HasBlocking() bool {
 	for _, v := range r.violations {
-		if v.severity == SeverityBlock {
+		if v.severity == severityBlock {
 			return true
 		}
 	}
@@ -258,4 +466,98 @@ type RuleViolationError struct {
 
 func (e RuleViolationError) Error() string {
 	return "transaction blocked by rules"
+}
+
+// ResultBuilder provides a fluent interface for building results.
+type ResultBuilder struct {
+	violations []Violation
+	built      bool
+}
+
+// NewResultBuilder creates a new result builder.
+func NewResultBuilder() *ResultBuilder {
+	return &ResultBuilder{
+		violations: make([]Violation, 0),
+	}
+}
+
+// AddViolation appends a violation to the result.
+func (rb *ResultBuilder) AddViolation(violation Violation) *ResultBuilder {
+	if rb.built {
+		panic("cannot modify builder after Build() is called")
+	}
+	rb.violations = append(rb.violations, violation)
+	return rb
+}
+
+// AddViolations appends multiple violations to the result.
+func (rb *ResultBuilder) AddViolations(violations ...Violation) *ResultBuilder {
+	if rb.built {
+		panic("cannot modify builder after Build() is called")
+	}
+	rb.violations = append(rb.violations, violations...)
+	return rb
+}
+
+// FromBuilder adds violations from a violation builder.
+func (rb *ResultBuilder) FromBuilder(vb *ViolationBuilder) *ResultBuilder {
+	if rb.built {
+		panic("cannot modify builder after Build() is called")
+	}
+	violation, err := vb.Build()
+	if err != nil {
+		panic("violation builder error: " + err.Error())
+	}
+	rb.violations = append(rb.violations, violation)
+	return rb
+}
+
+// MergeResult adds violations from an existing result.
+func (rb *ResultBuilder) MergeResult(result Result) *ResultBuilder {
+	if rb.built {
+		panic("cannot modify builder after Build() is called")
+	}
+	rb.violations = append(rb.violations, result.Violations()...)
+	return rb
+}
+
+// Build creates the immutable Result.
+func (rb *ResultBuilder) Build() Result {
+	if rb.built {
+		panic("builder already used")
+	}
+
+	rb.built = true
+
+	if len(rb.violations) == 0 {
+		return Result{}
+	}
+
+	// Defensive copy
+	cp := make([]Violation, len(rb.violations))
+	copy(cp, rb.violations)
+
+	return Result{violations: cp}
+}
+
+// Internal test helpers - DO NOT USE IN PRODUCTION CODE
+// These are only for internal testing and will be removed in future versions
+
+func newViolationForTest(rule string, severity Severity, message string, entity EntityType, entityID string) Violation {
+	return Violation{
+		rule:     rule,
+		severity: severity,
+		message:  message,
+		entity:   entity,
+		entityID: entityID,
+	}
+}
+
+func newChangeForTest(entity EntityType, action Action, before, after any) Change {
+	return Change{
+		entity: entity,
+		action: action,
+		before: snapshotValue(before),
+		after:  snapshotValue(after),
+	}
 }

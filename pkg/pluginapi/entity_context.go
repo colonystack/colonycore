@@ -22,6 +22,8 @@ type EntityTypeRef interface {
 	IsCore() bool
 	// Equals compares two EntityTypeRef instances for equality.
 	Equals(other EntityTypeRef) bool
+	// Value returns the underlying EntityType value - INTERNAL USE ONLY
+	Value() EntityType
 	// internal marker to prevent external implementations
 	isEntityTypeRef()
 }
@@ -36,7 +38,7 @@ func (e entityTypeRef) String() string {
 }
 
 func (e entityTypeRef) IsCore() bool {
-	return e.value == EntityOrganism || e.value == EntityHousingUnit
+	return e.value == entityOrganism || e.value == entityHousingUnit
 }
 
 func (e entityTypeRef) Equals(other EntityTypeRef) bool {
@@ -44,6 +46,10 @@ func (e entityTypeRef) Equals(other EntityTypeRef) bool {
 		return e.value == otherRef.value
 	}
 	return false
+}
+
+func (e entityTypeRef) Value() EntityType {
+	return e.value
 }
 
 func (e entityTypeRef) isEntityTypeRef() {}
@@ -56,9 +62,9 @@ func newEntityTypeRef(entityType EntityType) EntityTypeRef {
 // entityContext is the default implementation of EntityContext.
 type entityContext struct{}
 
-func (entityContext) Organism() EntityTypeRef { return newEntityTypeRef(EntityOrganism) }
-func (entityContext) Housing() EntityTypeRef  { return newEntityTypeRef(EntityHousingUnit) }
-func (entityContext) Protocol() EntityTypeRef { return newEntityTypeRef(EntityProtocol) }
+func (entityContext) Organism() EntityTypeRef { return newEntityTypeRef(entityOrganism) }
+func (entityContext) Housing() EntityTypeRef  { return newEntityTypeRef(entityHousingUnit) }
+func (entityContext) Protocol() EntityTypeRef { return newEntityTypeRef(entityProtocol) }
 
 // NewEntityContext creates a new entity context for accessing entity type references.
 func NewEntityContext() EntityContext {

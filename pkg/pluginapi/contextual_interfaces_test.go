@@ -138,11 +138,11 @@ func TestNewViolationWithEntityRef(t *testing.T) {
 	}
 
 	// Verify the underlying types were correctly extracted
-	if violation.Severity() != SeverityWarn {
-		t.Errorf("Expected severity %s, got %s", SeverityWarn, violation.Severity())
+	if violation.Severity() != severityWarn {
+		t.Errorf("Expected severity %s, got %s", severityWarn, violation.Severity())
 	}
-	if violation.Entity() != EntityOrganism {
-		t.Errorf("Expected entity %s, got %s", EntityOrganism, violation.Entity())
+	if violation.Entity() != entityOrganism {
+		t.Errorf("Expected entity %s, got %s", entityOrganism, violation.Entity())
 	}
 
 	// Test with different contextual references
@@ -151,11 +151,11 @@ func TestNewViolationWithEntityRef(t *testing.T) {
 
 	violation2 := NewViolationWithEntityRef("test-rule-2", block, "Block message", housing, "housing-1")
 
-	if violation2.Severity() != SeverityBlock {
-		t.Errorf("Expected severity %s, got %s", SeverityBlock, violation2.Severity())
+	if violation2.Severity() != severityBlock {
+		t.Errorf("Expected severity %s, got %s", severityBlock, violation2.Severity())
 	}
-	if violation2.Entity() != EntityHousingUnit {
-		t.Errorf("Expected entity %s, got %s", EntityHousingUnit, violation2.Entity())
+	if violation2.Entity() != entityHousingUnit {
+		t.Errorf("Expected entity %s, got %s", entityHousingUnit, violation2.Entity())
 	}
 }
 
@@ -164,7 +164,7 @@ func TestContextualViolationEquivalence(t *testing.T) {
 	severityCtx := NewSeverityContext()
 
 	// Create the same violation using both methods
-	rawViolation := NewViolation("rule", SeverityLog, "message", EntityProtocol, "id")
+	rawViolation := newViolationForTest("rule", severityLog, "message", entityProtocol, "id")
 	contextualViolation := NewViolationWithEntityRef("rule", severityCtx.Log(), "message", entityCtx.Protocol(), "id")
 
 	// They should be equivalent

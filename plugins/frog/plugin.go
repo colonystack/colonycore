@@ -68,14 +68,17 @@ WHERE species ILIKE 'frog%'`,
 				Name:        "stage",
 				Type:        "string",
 				Description: "Optional lifecycle stage filter using canonical stage identifiers.",
-				Enum: []string{
-					string(datasetapi.StagePlanned),
-					string(datasetapi.StageLarva),
-					string(datasetapi.StageJuvenile),
-					string(datasetapi.StageAdult),
-					string(datasetapi.StageRetired),
-					string(datasetapi.StageDeceased),
-				},
+				Enum: func() []string {
+					stages := datasetapi.NewLifecycleStageContext()
+					return []string{
+						stages.Planned().String(),
+						stages.Larva().String(),
+						stages.Juvenile().String(),
+						stages.Adult().String(),
+						stages.Retired().String(),
+						stages.Deceased().String(),
+					}
+				}(),
 			},
 			{
 				Name:        "as_of",
@@ -149,13 +152,19 @@ func (frogHabitatRule) Evaluate(_ context.Context, view pluginapi.RuleView, _ []
 			continue
 		}
 
-		result = result.AddViolation(pluginapi.NewViolation(
-			frogHabitatRuleName,
-			pluginapi.SeverityWarn,
-			"frog assigned to non-aquatic/non-humid housing",
-			pluginapi.EntityOrganism,
-			organism.ID(),
-		))
+		entities := pluginapi.NewEntityContext()
+
+		violation, err := pluginapi.NewViolationBuilder().
+			WithRule(frogHabitatRuleName).
+			WithMessage("frog assigned to non-aquatic/non-humid housing").
+			WithEntity(entities.Organism()).
+			WithEntityID(organism.ID()).
+			BuildWarning()
+		if err != nil {
+			return pluginapi.Result{}, fmt.Errorf("failed to build violation: %w", err)
+		}
+
+		result = result.AddViolation(violation)
 	}
 	return result, nil
 }
@@ -183,10 +192,10 @@ func frogPopulationBinder(env datasetapi.Environment) (datasetapi.Runner, error)
 				if !strings.Contains(species, "frog") {
 					continue
 				}
-				if stageFilter != "" && string(organism.Stage()) != stageFilter {
+				if stageFilter != "" && organism.GetCurrentStage().String() != stageFilter {
 					continue
 				}
-				if stageFilter == "" && !includeRetired && organism.Stage() == datasetapi.StageRetired {
+				if stageFilter == "" && !includeRetired && organism.IsRetired() {
 					continue
 				}
 				if asOfTime != nil && organism.UpdatedAt().After(*asOfTime) {
@@ -208,7 +217,7 @@ func frogPopulationBinder(env datasetapi.Environment) (datasetapi.Runner, error)
 					"organism_id":     organism.ID(),
 					"organism_name":   organism.Name(),
 					"species":         organism.Species(),
-					"lifecycle_stage": string(organism.Stage()),
+					"lifecycle_stage": organism.GetCurrentStage().String(),
 					"project_id":      valueOrNil(organism.ProjectID()),
 					"protocol_id":     valueOrNil(organism.ProtocolID()),
 					"housing_id":      valueOrNil(organism.HousingID()),

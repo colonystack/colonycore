@@ -24,6 +24,8 @@ type ActionRef interface {
 	IsDestructive() bool
 	// Equals compares two ActionRef instances for equality.
 	Equals(other ActionRef) bool
+	// Value returns the underlying Action value - INTERNAL USE ONLY
+	Value() Action
 	// internal marker to prevent external implementations
 	isActionRef()
 }
@@ -39,11 +41,11 @@ func (a actionRef) String() string {
 
 func (a actionRef) IsMutation() bool {
 	// All currently defined actions are mutations
-	return a.value == ActionCreate || a.value == ActionUpdate || a.value == ActionDelete
+	return a.value == actionCreate || a.value == actionUpdate || a.value == actionDelete
 }
 
 func (a actionRef) IsDestructive() bool {
-	return a.value == ActionDelete
+	return a.value == actionDelete
 }
 
 func (a actionRef) Equals(other ActionRef) bool {
@@ -51,6 +53,10 @@ func (a actionRef) Equals(other ActionRef) bool {
 		return a.value == otherRef.value
 	}
 	return false
+}
+
+func (a actionRef) Value() Action {
+	return a.value
 }
 
 func (a actionRef) isActionRef() {}
@@ -63,9 +69,9 @@ func newActionRef(action Action) ActionRef {
 // actionContext is the default implementation of ActionContext.
 type actionContext struct{}
 
-func (actionContext) Create() ActionRef { return newActionRef(ActionCreate) }
-func (actionContext) Update() ActionRef { return newActionRef(ActionUpdate) }
-func (actionContext) Delete() ActionRef { return newActionRef(ActionDelete) }
+func (actionContext) Create() ActionRef { return newActionRef(actionCreate) }
+func (actionContext) Update() ActionRef { return newActionRef(actionUpdate) }
+func (actionContext) Delete() ActionRef { return newActionRef(actionDelete) }
 
 // NewActionContext creates a new action context for accessing action references.
 func NewActionContext() ActionContext {

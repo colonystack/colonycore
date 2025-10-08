@@ -39,9 +39,11 @@ Initial classification:
 
 Stable
 - Interfaces: `Plugin`, `Registry`, `Rule`, `RuleView`, `OrganismView`, `HousingUnitView`, `ProtocolView`, `BaseView`
+- Contextual Access Interfaces: `EntityContext`, `ActionContext`, `SeverityContext`, `LifecycleStageContext`
+- Reference Interfaces: `EntityTypeRef`, `ActionRef`, `SeverityRef`, `LifecycleStageRef`
 - Data/Value Types: `Change`, `Violation`, `Result`
-- Enums / Constants: `Severity*`, `LifecycleStage*`, `EntityType*`, `Action*`
-- Functions / Constructors: `NewChange`, `NewViolation`, `NewResult`
+- Builder Types: `ChangeBuilder`, `ViolationBuilder`, `ResultBuilder`
+- Functions / Constructors: `NewChange`, `NewViolation`, `NewResult`, `NewEntityContext`, `NewActionContext`, `NewSeverityContext`, `NewLifecycleStageContext`
 - Constant: `Version`
 
 Experimental

@@ -137,7 +137,9 @@ func TestFrogHabitatRuleOutcomes(t *testing.T) {
 	if violation.EntityID() != "frog-risk" {
 		t.Fatalf("expected violation for frog-risk, got %s", violation.EntityID())
 	}
-	if violation.Severity() != pluginapi.SeverityWarn {
+	severities := pluginapi.NewSeverityContext()
+	expectedSeverity := severities.Warn()
+	if violation.Severity() != pluginapi.Severity(expectedSeverity.String()) {
 		t.Fatalf("expected warning severity, got %v", violation.Severity())
 	}
 }
@@ -153,8 +155,9 @@ func TestFrogPopulationBinderFilters(t *testing.T) {
 	projectA, projectB := "project-a", "project-b"
 	protocol := "protocol"
 	housing := "housing"
-	retired := datasetapi.StageRetired
-	adult := datasetapi.StageAdult
+	stages := testhelper.LifecycleStages()
+	retired := stages.Retired
+	adult := stages.Adult
 	organisms := testhelper.Organisms(
 		testhelper.OrganismFixtureConfig{
 			BaseFixture: testhelper.BaseFixture{ID: "alpha", UpdatedAt: now},
@@ -231,7 +234,7 @@ func TestFrogPopulationBinderFilters(t *testing.T) {
 		t.Fatalf("expected two rows with retired included, got %d", len(result.Rows))
 	}
 
-	request.Parameters = map[string]any{"stage": string(datasetapi.StageLarva)}
+	request.Parameters = map[string]any{"stage": string(testhelper.LifecycleStages().Larva)}
 	result, err = runner(context.Background(), request)
 	if err != nil {
 		t.Fatalf("run binder stage filter: %v", err)

@@ -23,7 +23,7 @@ func TestFrogPopulationBinderAsOfSkip(t *testing.T) {
 	adult := testhelper.Organism(testhelper.OrganismFixtureConfig{
 		BaseFixture: testhelper.BaseFixture{ID: "alpha", UpdatedAt: baseTime},
 		Species:     "Frog",
-		Stage:       datasetapi.StageAdult,
+		Stage:       testhelper.LifecycleStages().Adult,
 	})
 	view := newStubView()
 	view.organisms = []datasetapi.Organism{adult}

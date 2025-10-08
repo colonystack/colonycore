@@ -56,7 +56,8 @@ func TestDatasetPersistentStoreAdapter(t *testing.T) {
 	}
 
 	adaptedOrg, ok := adapter.GetOrganism(organismID)
-	if !ok || adaptedOrg.ID() != organismID || adaptedOrg.Stage() != datasetapi.StageAdult {
+	expectedStage := datasetapi.LifecycleStage(datasetapi.NewLifecycleStageContext().Adult().String())
+	if !ok || adaptedOrg.ID() != organismID || adaptedOrg.Stage() != expectedStage {
 		t.Fatalf("expected converted organism")
 	}
 	attrs := adaptedOrg.Attributes()

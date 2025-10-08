@@ -36,7 +36,7 @@ func (s severityRef) String() string {
 }
 
 func (s severityRef) IsBlocking() bool {
-	return s.value == SeverityBlock
+	return s.value == severityBlock
 }
 
 func (s severityRef) Equals(other SeverityRef) bool {
@@ -56,9 +56,9 @@ func newSeverityRef(severity Severity) SeverityRef {
 // severityContext is the default implementation of SeverityContext.
 type severityContext struct{}
 
-func (severityContext) Log() SeverityRef   { return newSeverityRef(SeverityLog) }
-func (severityContext) Warn() SeverityRef  { return newSeverityRef(SeverityWarn) }
-func (severityContext) Block() SeverityRef { return newSeverityRef(SeverityBlock) }
+func (severityContext) Log() SeverityRef   { return newSeverityRef(severityLog) }
+func (severityContext) Warn() SeverityRef  { return newSeverityRef(severityWarn) }
+func (severityContext) Block() SeverityRef { return newSeverityRef(severityBlock) }
 
 // NewSeverityContext creates a new severity context for accessing severity references.
 func NewSeverityContext() SeverityContext {

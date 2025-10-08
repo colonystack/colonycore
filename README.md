@@ -87,6 +87,16 @@ If the environment variable `COLONYCORE_STORAGE_DRIVER` is unset, the code will 
 - Sample analyst clients are provided in `clients/python/dataset_client.py` (requests-based) and
   `clients/R/dataset_client.R` (httr-based) to illustrate reproducing exports from external runtimes.
 
+## Plugin Development
+ColonyCore follows hexagonal architecture principles with pure interface-based plugin APIs:
+
+- **Contextual Access**: Use `pluginapi.NewEntityContext()`, `NewActionContext()`, `NewSeverityContext()`, and `NewLifecycleStageContext()` instead of raw constants
+- **Builder Patterns**: Create violations and changes via fluent builders: `NewViolationBuilder().WithRule("name").BuildWarning()`
+- **Semantic Queries**: Use organism view methods like `IsActive()`, `IsRetired()` instead of direct stage comparisons
+- **Reference Pattern**: All domain values are accessed via opaque references (e.g., `EntityTypeRef`, `SeverityRef`) that prevent direct manipulation
+
+See the `plugins/frog` reference implementation for patterns and ADR-0009 for stability guarantees.
+
 ## Testing
 - `make test` runs the race-enabled Go test suite and enforces the configured coverage threshold.
 - `make lint` chains formatting checks, vetting, registry validation, and `golangci-lint` (install instructions are in the Makefile). Use `SKIP_GOLANGCI=1 make lint` to bypass the aggregated linter when necessary.

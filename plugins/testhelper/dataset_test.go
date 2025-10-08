@@ -1,7 +1,6 @@
 package testhelper
 
 import (
-	"colonycore/pkg/datasetapi"
 	"testing"
 	"time"
 )
@@ -13,10 +12,10 @@ func TestOrganismFixtureBuilder(t *testing.T) {
 	name := "Org1"
 	cfg := OrganismFixtureConfig{
 		BaseFixture: BaseFixture{ID: "o1", CreatedAt: now, UpdatedAt: now},
-		Name:        name, Species: "sp", Line: "L", Stage: datasetapi.StageAdult,
+		Name:        name, Species: "sp", Line: "L", Stage: LifecycleStages().Adult,
 	}
 	org := Organism(cfg)
-	if org.Name() != name || org.Stage() != datasetapi.StageAdult {
+	if org.Name() != name || org.Stage() != LifecycleStages().Adult {
 		t.Fatalf("unexpected organism attributes: %s %v", org.Name(), org.Stage())
 	}
 	list := Organisms(cfg)
@@ -45,7 +44,7 @@ func TestOrganismHelperClonesData(t *testing.T) {
 		Name:        "Name",
 		Species:     "Species",
 		Line:        "Line",
-		Stage:       datasetapi.StageAdult,
+		Stage:       LifecycleStages().Adult,
 		ProjectID:   &project,
 		HousingID:   &housing,
 		Attributes:  attributes,
@@ -54,7 +53,7 @@ func TestOrganismHelperClonesData(t *testing.T) {
 	if organism.ID() != "org" || organism.Name() != "Name" {
 		t.Fatalf("unexpected organism values: %+v", organism)
 	}
-	if organism.Stage() != datasetapi.StageAdult {
+	if organism.Stage() != LifecycleStages().Adult {
 		t.Fatalf("expected adult stage")
 	}
 

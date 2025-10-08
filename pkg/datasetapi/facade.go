@@ -43,14 +43,14 @@ type BaseData struct {
 // LifecycleStage represents canonical organism lifecycle identifiers.
 type LifecycleStage string
 
-// Canonical lifecycle stage constants available to dataset plugins.
+// Canonical lifecycle stage constants - now internal, accessed via contextual interfaces.
 const (
-	StagePlanned  LifecycleStage = "planned"
-	StageLarva    LifecycleStage = "embryo_larva"
-	StageJuvenile LifecycleStage = "juvenile"
-	StageAdult    LifecycleStage = "adult"
-	StageRetired  LifecycleStage = "retired"
-	StageDeceased LifecycleStage = "deceased"
+	stagePlanned  LifecycleStage = "planned"
+	stageLarva    LifecycleStage = "embryo_larva"
+	stageJuvenile LifecycleStage = "juvenile"
+	stageAdult    LifecycleStage = "adult"
+	stageRetired  LifecycleStage = "retired"
+	stageDeceased LifecycleStage = "deceased"
 )
 
 // OrganismData describes the fields required to construct an Organism facade.
@@ -133,12 +133,18 @@ type Organism interface {
 	Name() string
 	Species() string
 	Line() string
-	Stage() LifecycleStage
+	Stage() LifecycleStage // Legacy - prefer GetCurrentStage() for new code
 	CohortID() (string, bool)
 	HousingID() (string, bool)
 	ProtocolID() (string, bool)
 	ProjectID() (string, bool)
 	Attributes() map[string]any
+
+	// Contextual lifecycle stage accessors
+	GetCurrentStage() LifecycleStageRef
+	IsActive() bool
+	IsRetired() bool
+	IsDeceased() bool
 }
 
 // Cohort exposes read-only cohort metadata to dataset plugins.
@@ -278,6 +284,40 @@ func (o organism) ProjectID() (string, bool) {
 }
 func (o organism) Attributes() map[string]any {
 	return cloneAttributes(o.attributes)
+}
+
+// Contextual lifecycle stage accessors
+func (o organism) GetCurrentStage() LifecycleStageRef {
+	stages := NewLifecycleStageContext()
+	switch o.stage {
+	case stagePlanned:
+		return stages.Planned()
+	case stageLarva:
+		return stages.Larva()
+	case stageJuvenile:
+		return stages.Juvenile()
+	case stageAdult:
+		return stages.Adult()
+	case stageRetired:
+		return stages.Retired()
+	case stageDeceased:
+		return stages.Deceased()
+	default:
+		// Fallback for unknown stages - should not happen in normal operation
+		return stages.Adult()
+	}
+}
+
+func (o organism) IsActive() bool {
+	return o.GetCurrentStage().IsActive()
+}
+
+func (o organism) IsRetired() bool {
+	return o.stage == stageRetired
+}
+
+func (o organism) IsDeceased() bool {
+	return o.stage == stageDeceased
 }
 
 func (o organism) MarshalJSON() ([]byte, error) {

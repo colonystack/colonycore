@@ -81,11 +81,10 @@ func checkPluginFile(t *testing.T, file *ast.File, filepath string) {
 		violations := pattern.check(file)
 		for _, violation := range violations {
 			if strings.HasPrefix(violation, "SUGGESTION:") {
-				t.Logf("Architecture suggestion for %s: %s", filepath, violation)
+				t.Errorf("Architecture violation in %s: %s", filepath, violation)
 			} else {
-				// Report as suggestion for existing code to avoid breaking builds
-				// Change to t.Errorf for strict enforcement in new code
-				t.Logf("Architecture suggestion for %s - Anti-pattern '%s': %s", filepath, pattern.name, violation)
+				// Now enforcing strict hexagonal architecture - no raw constants allowed
+				t.Errorf("Architecture violation in %s - Anti-pattern '%s': %s", filepath, pattern.name, violation)
 			}
 		}
 	}

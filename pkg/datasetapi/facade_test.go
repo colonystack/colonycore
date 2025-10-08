@@ -28,7 +28,7 @@ func TestOrganismFacadeReadOnly(t *testing.T) {
 		Name:       "Alpha",
 		Species:    "Frog",
 		Line:       "Line",
-		Stage:      StageAdult,
+		Stage:      LifecycleStage(NewLifecycleStageContext().Adult().String()),
 		CohortID:   &cohort,
 		HousingID:  &housing,
 		ProtocolID: &protocol,
@@ -36,7 +36,8 @@ func TestOrganismFacadeReadOnly(t *testing.T) {
 		Attributes: attrs,
 	})
 
-	if organism.ID() != "id" || organism.Name() != "Alpha" || organism.Stage() != StageAdult {
+	expectedStage := LifecycleStage(NewLifecycleStageContext().Adult().String())
+	if organism.ID() != "id" || organism.Name() != "Alpha" || organism.Stage() != expectedStage {
 		t.Fatalf("unexpected organism values: %+v", organism)
 	}
 	if organism.Species() != "Frog" || organism.Line() != "Line" {

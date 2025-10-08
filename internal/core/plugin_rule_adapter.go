@@ -138,6 +138,40 @@ func (o organismView) Attributes() map[string]any {
 	return cloneAttributes(o.attributes)
 }
 
+// Contextual lifecycle stage accessors
+func (o organismView) GetCurrentStage() pluginapi.LifecycleStageRef {
+	stages := pluginapi.NewLifecycleStageContext()
+	switch o.stage {
+	case "planned":
+		return stages.Planned()
+	case "embryo_larva":
+		return stages.Larva()
+	case "juvenile":
+		return stages.Juvenile()
+	case "adult":
+		return stages.Adult()
+	case "retired":
+		return stages.Retired()
+	case "deceased":
+		return stages.Deceased()
+	default:
+		// Fallback for unknown stages - should not happen in normal operation
+		return stages.Adult()
+	}
+}
+
+func (o organismView) IsActive() bool {
+	return o.GetCurrentStage().IsActive()
+}
+
+func (o organismView) IsRetired() bool {
+	return string(o.stage) == "retired"
+}
+
+func (o organismView) IsDeceased() bool {
+	return string(o.stage) == "deceased"
+}
+
 type housingUnitView struct {
 	baseView
 	name        string
@@ -227,8 +261,8 @@ func toPluginChanges(changes []domain.Change) []pluginapi.Change {
 	converted := make([]pluginapi.Change, len(changes))
 	for i, change := range changes {
 		converted[i] = pluginapi.NewChange(
-			pluginapi.EntityType(change.Entity),
-			pluginapi.Action(change.Action),
+			pluginapi.ConvertEntityType(pluginapi.EntityType(change.Entity)),
+			pluginapi.ConvertAction(pluginapi.Action(change.Action)),
 			change.Before,
 			change.After,
 		)

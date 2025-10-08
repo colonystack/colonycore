@@ -84,6 +84,7 @@ linters:
             - "!**/pkg/pluginapi/interface_contract_test.go"
             - "!**/pkg/pluginapi/architecture_guard_test.go"
             - "!**/pkg/pluginapi/plugin_antipattern_test.go"
+            - "!**/pkg/pluginapi/breaking_change_enforcement_test.go"
           allow:
             - bytes
             - colonycore
@@ -127,6 +128,7 @@ linters:
             - "**/pkg/pluginapi/interface_contract_test.go"
             - "**/pkg/pluginapi/architecture_guard_test.go"
             - "**/pkg/pluginapi/plugin_antipattern_test.go"
+            - "**/pkg/pluginapi/breaking_change_enforcement_test.go"
           allow:
             - bytes
             - colonycore

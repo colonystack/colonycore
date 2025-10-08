@@ -42,6 +42,7 @@ func TestFrogHabitatRuleSkipBranches(t *testing.T) {
 	if len(res.Violations()) != 0 {
 		t.Fatalf("expected 0 violations, got %d", len(res.Violations()))
 	}
-	// ensure alias types still accessible
-	_ = pluginapi.SeverityWarn
+	// ensure contextual interfaces are accessible
+	severities := pluginapi.NewSeverityContext()
+	_ = severities.Warn()
 }

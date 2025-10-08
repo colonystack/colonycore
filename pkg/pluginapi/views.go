@@ -15,12 +15,18 @@ type OrganismView interface {
 	Name() string
 	Species() string
 	Line() string
-	Stage() LifecycleStage
+	Stage() LifecycleStage // Legacy - prefer GetCurrentStage() for new code
 	CohortID() (string, bool)
 	HousingID() (string, bool)
 	ProtocolID() (string, bool)
 	ProjectID() (string, bool)
 	Attributes() map[string]any
+
+	// Contextual lifecycle stage accessors
+	GetCurrentStage() LifecycleStageRef
+	IsActive() bool
+	IsRetired() bool
+	IsDeceased() bool
 }
 
 // HousingUnitView is a read-only projection of a housing unit record.

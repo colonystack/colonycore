@@ -22,8 +22,9 @@ func TestFrogPopulationBinderMetadata(t *testing.T) {
 	proj := "proj"
 	protA := "protA"
 	protB := "protB"
-	stageAdult := datasetapi.StageAdult
-	stageRetired := datasetapi.StageRetired
+	stages := testhelper.LifecycleStages()
+	stageAdult := stages.Adult
+	stageRetired := stages.Retired
 	asOf := now.Add(30 * time.Minute)
 
 	// organisms: include adult with protA, retired with protB (filtered by stage parameter), other species ignored

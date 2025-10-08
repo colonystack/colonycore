@@ -8,6 +8,33 @@ import (
 	"time"
 )
 
+// LifecycleStages provides access to lifecycle stage values for testing without exposing constants
+func LifecycleStages() struct {
+	Planned  datasetapi.LifecycleStage
+	Larva    datasetapi.LifecycleStage
+	Juvenile datasetapi.LifecycleStage
+	Adult    datasetapi.LifecycleStage
+	Retired  datasetapi.LifecycleStage
+	Deceased datasetapi.LifecycleStage
+} {
+	stages := datasetapi.NewLifecycleStageContext()
+	return struct {
+		Planned  datasetapi.LifecycleStage
+		Larva    datasetapi.LifecycleStage
+		Juvenile datasetapi.LifecycleStage
+		Adult    datasetapi.LifecycleStage
+		Retired  datasetapi.LifecycleStage
+		Deceased datasetapi.LifecycleStage
+	}{
+		Planned:  datasetapi.LifecycleStage(stages.Planned().String()),
+		Larva:    datasetapi.LifecycleStage(stages.Larva().String()),
+		Juvenile: datasetapi.LifecycleStage(stages.Juvenile().String()),
+		Adult:    datasetapi.LifecycleStage(stages.Adult().String()),
+		Retired:  datasetapi.LifecycleStage(stages.Retired().String()),
+		Deceased: datasetapi.LifecycleStage(stages.Deceased().String()),
+	}
+}
+
 // BaseFixture captures shared metadata for entity fixtures.
 type BaseFixture struct {
 	ID        string

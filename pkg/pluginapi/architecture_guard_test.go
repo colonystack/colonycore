@@ -71,10 +71,10 @@ func checkViolationCreationPatterns(t *testing.T) {
 		t.Errorf("Expected message 'test violation', got %s", violation.Message())
 	}
 
-	// Test that legacy NewViolation still exists
-	legacyViolation := NewViolation(testRule, SeverityWarn, "legacy violation", EntityOrganism, "entity-456")
+	// Test that legacy newViolationForTest still exists for internal testing
+	legacyViolation := newViolationForTest(testRule, severityWarn, "legacy violation", entityOrganism, "entity-456")
 	if legacyViolation.Rule() != testRule {
-		t.Error("Legacy NewViolation should still exist")
+		t.Error("Legacy newViolationForTest should still exist")
 	}
 }
 

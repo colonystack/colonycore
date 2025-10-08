@@ -8,6 +8,8 @@ import (
 	"colonycore/pkg/datasetapi"
 )
 
+const testAdultStage = "adult"
+
 func TestNewDatasetTemplateFromAPI(t *testing.T) {
 	now := time.Date(2024, 1, 2, 3, 4, 5, 0, time.UTC)
 	apiTemplate := datasetapi.Template{
@@ -20,7 +22,7 @@ func TestNewDatasetTemplateFromAPI(t *testing.T) {
 		Parameters: []datasetapi.Parameter{{
 			Name:        "stage",
 			Type:        "string",
-			Enum:        []string{"adult"},
+			Enum:        []string{testAdultStage},
 			Description: "stage filter",
 		}},
 		Columns: []datasetapi.Column{{
@@ -64,8 +66,9 @@ func TestNewDatasetTemplateFromAPI(t *testing.T) {
 		t.Fatalf("newDatasetTemplateFromAPI: %v", err)
 	}
 
+	const testLiteralMutated = "mutated"
 	apiTemplate.Parameters[0].Enum[0] = testLiteralMutated
-	if converted.Parameters[0].Enum[0] != "adult" {
+	if converted.Parameters[0].Enum[0] != testAdultStage {
 		t.Fatalf("expected defensive copy of enum")
 	}
 
@@ -75,7 +78,7 @@ func TestNewDatasetTemplateFromAPI(t *testing.T) {
 		t.Fatalf("bind converted template: %v", err)
 	}
 
-	params := map[string]any{"stage": "adult"}
+	params := map[string]any{"stage": testAdultStage}
 	scope := DatasetScope{Requestor: "analyst", ProjectIDs: []string{"project"}}
 	result, paramErrs, err := converted.Run(context.Background(), params, scope, FormatJSON)
 	if err != nil {

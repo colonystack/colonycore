@@ -13,8 +13,10 @@ func TestResultConstructionAndAccessors(t *testing.T) {
 		t.Fatalf("expected nil violations slice, got %v", vols)
 	}
 
-	v1 := NewViolation("rule-a", SeverityWarn, "warn msg", EntityOrganism, "O1")
-	if v1.Rule() != "rule-a" || v1.Severity() != SeverityWarn || v1.Message() != "warn msg" || v1.Entity() != EntityOrganism || v1.EntityID() != "O1" {
+	sev := NewSeverityContext().Warn()
+	ent := NewEntityContext().Organism()
+	v1 := NewViolation("rule-a", sev, "warn msg", ent, "O1")
+	if v1.Rule() != "rule-a" || v1.Severity() != severityWarn || v1.Message() != "warn msg" || v1.Entity() != entityOrganism || v1.EntityID() != "O1" {
 		t.Fatalf("violation accessor mismatch: %#v", v1)
 	}
 
@@ -40,7 +42,9 @@ func TestResultConstructionAndAccessors(t *testing.T) {
 	}
 
 	// AddViolation append path
-	v2 := NewViolation("rule-b", SeverityBlock, "block msg", EntityProtocol, "P1")
+	sev2 := NewSeverityContext().Block()
+	ent2 := NewEntityContext().Protocol()
+	v2 := NewViolation("rule-b", sev2, "block msg", ent2, "P1")
 	appended := added.AddViolation(v2)
 	if !appended.HasBlocking() {
 		t.Fatalf("expected blocking violation detected")

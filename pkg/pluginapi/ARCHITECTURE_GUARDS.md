@@ -48,13 +48,58 @@ if entity == pluginapi.EntityOrganism { ... }
 
 ### Violation Creation Patterns
 ```go
-// ✅ PREFERRED: Interface-based violation creation
-violation := pluginapi.NewViolationWithEntityRef(
+// ✅ PREFERRED: Builder pattern with fluent interface
+violation, err := pluginapi.NewViolationBuilder().
+    WithRule("rule-name").
+    WithMessage("message").
+    WithEntity(pluginapi.NewEntityContext().Organism()).
+    WithEntityID("id").
+    BuildWarning()
+if err != nil {
+    return pluginapi.Result{}, err
+}
+
+// ✅ ACCEPTABLE: Direct interface-based creation
+entities := pluginapi.NewEntityContext()
+severities := pluginapi.NewSeverityContext()
+violation := pluginapi.NewViolation(
     "rule", severities.Warn(), "message", entities.Organism(), "id")
 
-// ✅ SUPPORTED: Legacy pattern for backwards compatibility  
-violation := pluginapi.NewViolation(
-    "rule", pluginapi.SeverityWarn, "message", pluginapi.EntityOrganism, "id")
+// ❌ NO LONGER SUPPORTED: Raw constants are not accessible
+// violation := pluginapi.NewViolation(
+//     "rule", pluginapi.SeverityWarn, "message", pluginapi.EntityOrganism, "id")
+```
+
+### Result Creation Patterns
+```go
+// ✅ PREFERRED: Builder pattern for complex results
+result := pluginapi.NewResultBuilder().
+    AddViolation(violation1).
+    AddViolation(violation2).
+    Build()
+
+// ✅ ACCEPTABLE: Direct constructor for simple cases
+result := pluginapi.NewResult(violation)
+```
+
+### Change Creation Patterns  
+```go
+// ✅ PREFERRED: Builder pattern with validation
+change, err := pluginapi.NewChangeBuilder().
+    WithEntity(pluginapi.NewEntityContext().Organism()).
+    WithAction(pluginapi.NewActionContext().Update()).
+    WithBefore(beforeData).
+    WithAfter(afterData).
+    Build()
+if err != nil {
+    return pluginapi.Result{}, err
+}
+
+// ✅ ACCEPTABLE: Direct constructor 
+entities := pluginapi.NewEntityContext()
+actions := pluginapi.NewActionContext()
+change := pluginapi.NewChange(
+    entities.Organism(), actions.Update(), beforeData, afterData)
 ```
 
 ### Import Restrictions

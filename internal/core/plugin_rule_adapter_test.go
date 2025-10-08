@@ -33,7 +33,19 @@ func (r *capturingRule) Evaluate(_ context.Context, view pluginapi.RuleView, cha
 		r.seenProtocols = len(view.ListProtocols())
 	}
 	r.seenChanges = len(changes)
-	return pluginapi.NewResult(pluginapi.NewViolation(r.Name(), pluginapi.SeverityWarn, "", pluginapi.EntityOrganism, "")), nil
+	entities := pluginapi.NewEntityContext()
+
+	violation, err := pluginapi.NewViolationBuilder().
+		WithRule(r.Name()).
+		WithEntity(entities.Organism()).
+		BuildWarning()
+	if err != nil {
+		return pluginapi.Result{}, err
+	}
+
+	return pluginapi.NewResultBuilder().
+		AddViolation(violation).
+		Build(), nil
 }
 
 type stubDomainView struct {

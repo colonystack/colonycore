@@ -5,11 +5,11 @@ import "testing"
 func TestChangeAccessors(t *testing.T) {
 	before := map[string]any{"a": 1}
 	after := map[string]any{"a": 2}
-	ch := NewChange(EntityOrganism, ActionUpdate, before, after)
-	if ch.Entity() != EntityOrganism {
+	ch := newChangeForTest(entityOrganism, actionUpdate, before, after)
+	if ch.Entity() != entityOrganism {
 		t.Fatalf("unexpected entity: %v", ch.Entity())
 	}
-	if ch.Action() != ActionUpdate {
+	if ch.Action() != actionUpdate {
 		t.Fatalf("unexpected action: %v", ch.Action())
 	}
 	// mutate originals after construction; snapshots should be stable
@@ -36,7 +36,9 @@ func TestChangeAccessors(t *testing.T) {
 
 func TestResultMergeAndBlocking(t *testing.T) {
 	r1 := Result{}
-	r2 := NewResult(NewViolation("r", SeverityWarn, "", EntityOrganism, ""))
+	sev := NewSeverityContext().Warn()
+	ent := NewEntityContext().Organism()
+	r2 := NewResult(NewViolation("r", sev, "", ent, ""))
 	r1 = r1.Merge(r2)
 	if len(r1.Violations()) != 1 {
 		t.Fatalf("expected 1 violation, got %d", len(r1.Violations()))
@@ -44,14 +46,18 @@ func TestResultMergeAndBlocking(t *testing.T) {
 	if r1.HasBlocking() {
 		t.Fatalf("did not expect blocking violation")
 	}
-	r3 := NewResult(NewViolation("b", SeverityBlock, "", EntityOrganism, ""))
+	sevBlock := NewSeverityContext().Block()
+	entOrg := NewEntityContext().Organism()
+	r3 := NewResult(NewViolation("b", sevBlock, "", entOrg, ""))
 	if !r3.HasBlocking() {
 		t.Fatalf("expected blocking violation detection")
 	}
 }
 
 func TestRuleViolationError(t *testing.T) {
-	err := RuleViolationError{Result: NewResult(NewViolation("x", SeverityWarn, "", EntityOrganism, ""))}
+	sevWarn := NewSeverityContext().Warn()
+	entOrg := NewEntityContext().Organism()
+	err := RuleViolationError{Result: NewResult(NewViolation("x", sevWarn, "", entOrg, ""))}
 	if err.Error() == "" {
 		t.Fatalf("expected non-empty error message")
 	}
@@ -61,7 +67,7 @@ func TestRuleViolationError(t *testing.T) {
 func TestChangeSnapshotSlicesAndMaps(t *testing.T) {
 	beforeSlice := []string{"x", "y"}
 	afterSlice := []map[string]any{{"k": "v"}}
-	ch := NewChange(EntityProtocol, ActionUpdate, beforeSlice, afterSlice)
+	ch := newChangeForTest(entityProtocol, actionUpdate, beforeSlice, afterSlice)
 	// mutate originals
 	beforeSlice[0] = "z"
 	afterSlice[0]["k"] = "w"
@@ -80,7 +86,7 @@ func TestChangeSnapshotStructFallback(t *testing.T) {
 		N int `json:"n"`
 	}
 	s := simple{N: 5}
-	ch := NewChange(EntityProject, ActionCreate, s, nil)
+	ch := newChangeForTest(entityProject, actionCreate, s, nil)
 	// JSON round-trip returns map[string]any representation
 	b := ch.Before()
 	m, ok := b.(map[string]any)

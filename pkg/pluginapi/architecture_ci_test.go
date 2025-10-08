@@ -28,10 +28,10 @@ func TestArchitectureAPIStability(t *testing.T) {
 	})
 
 	t.Run("legacy violation creation still works", func(t *testing.T) {
-		// Ensure backwards compatibility
-		violation := NewViolation(testRuleCI, SeverityWarn, "message", EntityOrganism, "id")
+		// Test internal test function for backwards compatibility
+		violation := newViolationForTest(testRuleCI, severityWarn, "message", entityOrganism, "id")
 		if violation.Rule() != testRuleCI {
-			t.Error("Legacy NewViolation should still work")
+			t.Error("Test violation creation should still work")
 		}
 	})
 
@@ -49,7 +49,7 @@ func TestArchitectureAPIStability(t *testing.T) {
 		entities := NewEntityContext()
 		severities := NewSeverityContext()
 
-		legacy := NewViolation("rule", SeverityLog, "msg", EntityProtocol, "id")
+		legacy := newViolationForTest("rule", severityLog, "msg", entityProtocol, "id")
 		contextual := NewViolationWithEntityRef("rule", severities.Log(), "msg", entities.Protocol(), "id")
 
 		if legacy.Rule() != contextual.Rule() ||

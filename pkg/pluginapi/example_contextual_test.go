@@ -38,6 +38,42 @@ func ExampleNewViolationWithEntityRef() {
 	// Violation 2: Housing unit exceeds maximum capacity (block)
 }
 
+// Example demonstrates builder patterns for creating violations
+func ExampleNewViolationBuilder() {
+	// Builder pattern provides fluent interface and validation
+	violation1, err := pluginapi.NewViolationBuilder().
+		WithRule("habitat-rule").
+		WithMessage("Organism requires aquatic environment").
+		WithEntity(pluginapi.NewEntityContext().Organism()).
+		WithEntityID("frog-123").
+		BuildWarning()
+	if err != nil {
+		panic(err)
+	}
+
+	// Convenient methods for common severity levels
+	violation2, err := pluginapi.NewViolationBuilder().
+		WithRule("capacity-rule").
+		WithMessage("Housing unit exceeds maximum capacity").
+		WithEntity(pluginapi.NewEntityContext().Housing()).
+		WithEntityID("tank-456").
+		BuildBlocking()
+	if err != nil {
+		panic(err)
+	}
+
+	// Builder pattern for complex results
+	result := pluginapi.NewResultBuilder().
+		AddViolation(violation1).
+		AddViolation(violation2).
+		Build()
+
+	fmt.Printf("Result has %d violations, blocking: %v\n", len(result.Violations()), result.HasBlocking())
+
+	// Output:
+	// Result has 2 violations, blocking: true
+}
+
 // Example shows how hexagonal architecture promotes testability
 func Example_contextualInterfacesBenefits() {
 	entities := pluginapi.NewEntityContext()

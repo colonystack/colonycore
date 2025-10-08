@@ -6,7 +6,7 @@ func TestChangeSnapshotDeepClone(t *testing.T) {
 	before := map[string]any{
 		"outer": []any{map[string]any{"k": "v"}, []string{"x", "y"}},
 	}
-	ch := NewChange(EntityOrganism, ActionUpdate, before, nil)
+	ch := newChangeForTest(entityOrganism, actionUpdate, before, nil)
 	// mutate after construction deeply
 	before["outer"].([]any)[0].(map[string]any)["k"] = "mutated"
 	before["outer"].([]any)[1].([]string)[0] = "z"
@@ -30,7 +30,7 @@ func TestChangeSnapshotDeepClone(t *testing.T) {
 
 func TestSnapshotValuePrimitiveScalars(t *testing.T) {
 	primitives := []any{uint64(5), float32(3.14), true, "text"}
-	ch := NewChange(EntityProject, ActionUpdate, primitives, nil)
+	ch := newChangeForTest(entityProject, actionUpdate, primitives, nil)
 	got := ch.Before().([]any)
 	if len(got) != 4 {
 		t.Fatalf("expected 4 primitives, got %d", len(got))

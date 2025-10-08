@@ -1,7 +1,6 @@
 package testhelper
 
 import (
-	"colonycore/pkg/datasetapi"
 	"testing"
 	"time"
 )
@@ -18,7 +17,7 @@ func TestDeepCloneAttrEmptyBranches(t *testing.T) {
 	org := Organism(OrganismFixtureConfig{
 		BaseFixture: BaseFixture{ID: "empty", CreatedAt: now, UpdatedAt: now},
 		Attributes:  emptyAttrs,
-		Stage:       datasetapi.StageAdult,
+		Stage:       LifecycleStages().Adult,
 	})
 	attrs := org.Attributes()
 	for k, v := range attrs {

@@ -77,6 +77,14 @@ func (stubOrganism) ProtocolID() (string, bool) { return "", false }
 func (stubOrganism) ProjectID() (string, bool)  { return "", false }
 func (stubOrganism) Attributes() map[string]any { return nil }
 
+// Contextual lifecycle stage accessors
+func (stubOrganism) GetCurrentStage() pluginapi.LifecycleStageRef {
+	return pluginapi.NewLifecycleStageContext().Adult()
+}
+func (stubOrganism) IsActive() bool   { return true }
+func (stubOrganism) IsRetired() bool  { return false }
+func (stubOrganism) IsDeceased() bool { return false }
+
 type stubHousing struct {
 	id          string
 	environment string
