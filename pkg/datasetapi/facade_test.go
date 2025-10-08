@@ -327,3 +327,76 @@ func TestDeepCloneAttributes(t *testing.T) {
 		t.Fatalf("expected deep-cloned string slice element 'a', got %s", oSlice[0])
 	}
 }
+
+func TestOrganismContextualMethods(t *testing.T) {
+	createdAt := time.Now().UTC()
+	updatedAt := createdAt.Add(time.Hour)
+
+	stages := NewLifecycleStageContext()
+
+	// Test different lifecycle stages
+	testCases := []struct {
+		name             string
+		stage            LifecycleStage
+		expectedActive   bool
+		expectedRetired  bool
+		expectedDeceased bool
+	}{
+		{"adult", LifecycleStage(stages.Adult().String()), true, false, false},
+		{"juvenile", LifecycleStage(stages.Juvenile().String()), true, false, false},
+		{"larva", LifecycleStage(stages.Larva().String()), true, false, false},
+		{"planned", LifecycleStage(stages.Planned().String()), true, false, false},
+		{"retired", LifecycleStage(stages.Retired().String()), false, true, false},
+		{"deceased", LifecycleStage(stages.Deceased().String()), false, false, true},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			organism := NewOrganism(OrganismData{
+				Base:    BaseData{ID: "test", CreatedAt: createdAt, UpdatedAt: updatedAt},
+				Name:    "Test",
+				Species: "Test Species",
+				Line:    "Test Line",
+				Stage:   tc.stage,
+			})
+
+			// Test GetCurrentStage
+			currentStage := organism.GetCurrentStage()
+			if currentStage.String() != string(tc.stage) {
+				t.Errorf("expected GetCurrentStage().String() to be '%s', got '%s'", tc.stage, currentStage.String())
+			}
+
+			// Test IsActive
+			if organism.IsActive() != tc.expectedActive {
+				t.Errorf("expected IsActive() to be %t for stage %s, got %t", tc.expectedActive, tc.stage, organism.IsActive())
+			}
+
+			// Test IsRetired
+			if organism.IsRetired() != tc.expectedRetired {
+				t.Errorf("expected IsRetired() to be %t for stage %s, got %t", tc.expectedRetired, tc.stage, organism.IsRetired())
+			}
+
+			// Test IsDeceased
+			if organism.IsDeceased() != tc.expectedDeceased {
+				t.Errorf("expected IsDeceased() to be %t for stage %s, got %t", tc.expectedDeceased, tc.stage, organism.IsDeceased())
+			}
+		})
+	}
+}
+
+func TestOrganismGetCurrentStageEdgeCases(t *testing.T) {
+	// Test unknown stage fallback
+	organism := NewOrganism(OrganismData{
+		Base:    BaseData{ID: "test", CreatedAt: time.Now(), UpdatedAt: time.Now()},
+		Name:    "Test",
+		Species: "Test Species",
+		Line:    "Test Line",
+		Stage:   LifecycleStage("unknown_stage"),
+	})
+
+	currentStage := organism.GetCurrentStage()
+	stages := NewLifecycleStageContext()
+	if !currentStage.Equals(stages.Adult()) {
+		t.Error("expected unknown stage to fallback to Adult")
+	}
+}

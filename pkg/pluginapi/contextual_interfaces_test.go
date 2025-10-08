@@ -184,3 +184,23 @@ func TestContextualViolationEquivalence(t *testing.T) {
 		t.Error("Entity IDs should be identical")
 	}
 }
+
+func TestInternalMarkerMethods(t *testing.T) {
+	// Test entity marker method
+	entityCtx := NewEntityContext()
+	organism := entityCtx.Organism()
+	organism.isEntityTypeRef() // Should not panic - if it panics, test will fail
+
+	// Test action marker method
+	actionCtx := NewActionContext()
+	create := actionCtx.Create()
+	create.isActionRef() // Should not panic - if it panics, test will fail
+
+	// Test severity marker method
+	severityCtx := NewSeverityContext()
+	warn := severityCtx.Warn()
+	warn.isSeverityRef() // Should not panic - if it panics, test will fail
+
+	// If we reach here, all marker methods work correctly
+	t.Log("All marker methods executed successfully")
+}
