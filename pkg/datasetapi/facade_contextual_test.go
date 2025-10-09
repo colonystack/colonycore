@@ -365,30 +365,6 @@ func TestProcedureContextualAccessors(t *testing.T) {
 	})
 }
 
-func TestBreedingUnitAccessors(t *testing.T) {
-	t.Run("Strategy and ProtocolID accessors work", func(t *testing.T) {
-		protocolID := testProtocolID
-		breeding := NewBreedingUnit(BreedingUnitData{
-			Base:       BaseData{ID: "breeding1"},
-			Name:       "Test Breeding",
-			Strategy:   "natural",
-			ProtocolID: &protocolID,
-		})
-
-		if breeding.Strategy() != "natural" {
-			t.Errorf("Expected strategy 'natural', got '%s'", breeding.Strategy())
-		}
-
-		protocol, hasProtocol := breeding.ProtocolID()
-		if !hasProtocol {
-			t.Error("Expected breeding unit to have protocol ID")
-		}
-		if protocol != testProtocolID {
-			t.Errorf("Expected protocol ID 'protocol1', got '%s'", protocol)
-		}
-	})
-}
-
 func TestCohortAccessors(t *testing.T) {
 	t.Run("HousingID and ProtocolID accessors work", func(t *testing.T) {
 		housingID := "housing1"
@@ -411,6 +387,96 @@ func TestCohortAccessors(t *testing.T) {
 		protocol, hasProtocol := cohort.ProtocolID()
 		if !hasProtocol {
 			t.Error("Expected cohort to have protocol ID")
+		}
+		if protocol != testProtocolID {
+			t.Errorf("Expected protocol ID 'protocol1', got '%s'", protocol)
+		}
+	})
+
+	t.Run("contextual purpose accessors work", func(t *testing.T) {
+		cohort := NewCohort(CohortData{
+			Base:    BaseData{ID: "cohort1"},
+			Name:    "Research Cohort",
+			Purpose: "research",
+		})
+
+		purposeRef := cohort.GetPurpose()
+		if purposeRef.String() != purposeResearch {
+			t.Errorf("Expected purpose '%s', got '%s'", purposeResearch, purposeRef.String())
+		}
+
+		if !cohort.IsResearchCohort() {
+			t.Error("Research cohort should return true for IsResearchCohort()")
+		}
+
+		if !cohort.RequiresProtocol() {
+			t.Error("Research cohort should require protocol")
+		}
+
+		// Test breeding cohort
+		breedingCohort := NewCohort(CohortData{
+			Base:    BaseData{ID: "cohort2"},
+			Purpose: "breeding",
+		})
+
+		if breedingCohort.IsResearchCohort() {
+			t.Error("Breeding cohort should return false for IsResearchCohort()")
+		}
+	})
+}
+
+func TestBreedingUnitContextualAccessors(t *testing.T) {
+	t.Run("contextual strategy accessors work", func(t *testing.T) {
+		breedingUnit := NewBreedingUnit(BreedingUnitData{
+			Base:     BaseData{ID: "breeding1"},
+			Name:     "Natural Breeding Unit",
+			Strategy: strategyNatural,
+		})
+
+		strategyRef := breedingUnit.GetBreedingStrategy()
+		if strategyRef.String() != strategyNatural {
+			t.Errorf("Expected strategy '%s', got '%s'", strategyNatural, strategyRef.String())
+		}
+
+		if !breedingUnit.IsNaturalBreeding() {
+			t.Error("Natural breeding unit should return true for IsNaturalBreeding()")
+		}
+
+		if breedingUnit.RequiresIntervention() {
+			t.Error("Natural breeding should not require intervention")
+		}
+
+		// Test artificial breeding
+		artificialUnit := NewBreedingUnit(BreedingUnitData{
+			Base:     BaseData{ID: "breeding2"},
+			Strategy: "artificial",
+		})
+
+		if artificialUnit.IsNaturalBreeding() {
+			t.Error("Artificial breeding unit should return false for IsNaturalBreeding()")
+		}
+
+		if !artificialUnit.RequiresIntervention() {
+			t.Error("Artificial breeding should require intervention")
+		}
+	})
+
+	t.Run("Strategy and ProtocolID accessors work", func(t *testing.T) {
+		protocolID := testProtocolID
+		breeding := NewBreedingUnit(BreedingUnitData{
+			Base:       BaseData{ID: "breeding1"},
+			Name:       "Test Breeding",
+			Strategy:   "natural",
+			ProtocolID: &protocolID,
+		})
+
+		if breeding.Strategy() != strategyNatural {
+			t.Errorf("Expected strategy '%s', got '%s'", strategyNatural, breeding.Strategy())
+		}
+
+		protocol, hasProtocol := breeding.ProtocolID()
+		if !hasProtocol {
+			t.Error("Expected breeding unit to have protocol ID")
 		}
 		if protocol != testProtocolID {
 			t.Errorf("Expected protocol ID 'protocol1', got '%s'", protocol)

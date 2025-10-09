@@ -45,6 +45,12 @@ func validateFacadeInterfaceContextualAccessors(t *testing.T) {
 		"Procedure": {
 			"GetCurrentStatus", "IsActiveProcedure", "IsTerminalStatus", "IsSuccessful",
 		},
+		"Cohort": {
+			"GetPurpose", "IsResearchCohort", "RequiresProtocol",
+		},
+		"BreedingUnit": {
+			"GetBreedingStrategy", "IsNaturalBreeding", "RequiresIntervention",
+		},
 	}
 
 	// Use reflection to check that all required methods exist
@@ -61,6 +67,10 @@ func validateFacadeInterfaceContextualAccessors(t *testing.T) {
 			interfaceType = reflect.TypeOf((*Protocol)(nil)).Elem()
 		case "Procedure":
 			interfaceType = reflect.TypeOf((*Procedure)(nil)).Elem()
+		case "Cohort":
+			interfaceType = reflect.TypeOf((*Cohort)(nil)).Elem()
+		case "BreedingUnit":
+			interfaceType = reflect.TypeOf((*BreedingUnit)(nil)).Elem()
 		default:
 			t.Fatalf("Unknown interface: %s", interfaceName)
 		}
@@ -201,6 +211,8 @@ func validateDatasetContextualInterfacePattern(t *testing.T) {
 		reflect.TypeOf((*EnvironmentTypeRef)(nil)).Elem(),
 		reflect.TypeOf((*ProtocolStatusRef)(nil)).Elem(),
 		reflect.TypeOf((*ProcedureStatusRef)(nil)).Elem(),
+		reflect.TypeOf((*BreedingStrategyRef)(nil)).Elem(),
+		reflect.TypeOf((*CohortPurposeRef)(nil)).Elem(),
 	}
 
 	for _, refType := range contextualRefTypes {

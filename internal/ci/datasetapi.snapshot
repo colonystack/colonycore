@@ -2,8 +2,10 @@
 # Generated snapshot of exported datasetapi surface (types, funcs, consts, vars, methods on exported interfaces) used by TestDatasetAPISnapshot.
 FUNC GetDialectProvider() colonycore/pkg/datasetapi.DialectProvider
 FUNC GetFormatProvider() colonycore/pkg/datasetapi.FormatProvider
+FUNC NewBreedingContext() colonycore/pkg/datasetapi.BreedingContext
 FUNC NewBreedingUnit(colonycore/pkg/datasetapi.BreedingUnitData) colonycore/pkg/datasetapi.BreedingUnit
 FUNC NewCohort(colonycore/pkg/datasetapi.CohortData) colonycore/pkg/datasetapi.Cohort
+FUNC NewCohortContext() colonycore/pkg/datasetapi.CohortContext
 FUNC NewHostTemplate(string,colonycore/pkg/datasetapi.Template) (colonycore/pkg/datasetapi.HostTemplate,error)
 FUNC NewHousingContext() colonycore/pkg/datasetapi.HousingContext
 FUNC NewHousingUnit(colonycore/pkg/datasetapi.HousingUnitData) colonycore/pkg/datasetapi.HousingUnit
@@ -17,11 +19,17 @@ FUNC NewProtocolContext() colonycore/pkg/datasetapi.ProtocolContext
 FUNC SortTemplateDescriptors([]colonycore/pkg/datasetapi.TemplateDescriptor)
 TYPE BaseData struct { unexported }
 TYPE Binder (func(colonycore/pkg/datasetapi.Environment) (colonycore/pkg/datasetapi.Runner, error))
-TYPE BreedingUnit interface { CreatedAt() time.Time FemaleIDs() []string HousingID() (string,bool) ID() string MaleIDs() []string Name() string ProtocolID() (string,bool) Strategy() string UpdatedAt() time.Time }
+TYPE BreedingContext interface { Artificial() colonycore/pkg/datasetapi.BreedingStrategyRef Controlled() colonycore/pkg/datasetapi.BreedingStrategyRef Natural() colonycore/pkg/datasetapi.BreedingStrategyRef Selective() colonycore/pkg/datasetapi.BreedingStrategyRef }
+TYPE BreedingStrategyRef interface { Equals(colonycore/pkg/datasetapi.BreedingStrategyRef) bool IsNatural() bool RequiresIntervention() bool String() string }
+TYPE BreedingUnit interface { CreatedAt() time.Time FemaleIDs() []string GetBreedingStrategy() colonycore/pkg/datasetapi.BreedingStrategyRef HousingID() (string,bool) ID() string IsNaturalBreeding() bool MaleIDs() []string Name() string ProtocolID() (string,bool) RequiresIntervention() bool Strategy() string UpdatedAt() time.Time }
 TYPE BreedingUnitData struct { unexported }
-TYPE Cohort interface { CreatedAt() time.Time HousingID() (string,bool) ID() string Name() string ProjectID() (string,bool) ProtocolID() (string,bool) Purpose() string UpdatedAt() time.Time }
+TYPE Cohort interface { CreatedAt() time.Time GetPurpose() colonycore/pkg/datasetapi.CohortPurposeRef HousingID() (string,bool) ID() string IsResearchCohort() bool Name() string ProjectID() (string,bool) ProtocolID() (string,bool) Purpose() string RequiresProtocol() bool UpdatedAt() time.Time }
+TYPE CohortContext interface { Breeding() colonycore/pkg/datasetapi.CohortPurposeRef Conservation() colonycore/pkg/datasetapi.CohortPurposeRef Production() colonycore/pkg/datasetapi.CohortPurposeRef Research() colonycore/pkg/datasetapi.CohortPurposeRef Teaching() colonycore/pkg/datasetapi.CohortPurposeRef }
 TYPE CohortData struct { unexported }
+TYPE CohortPurposeRef interface { Equals(colonycore/pkg/datasetapi.CohortPurposeRef) bool IsResearch() bool RequiresProtocol() bool String() string }
 TYPE Column struct { unexported }
+TYPE DefaultBreedingContext struct { unexported }
+TYPE DefaultCohortContext struct { unexported }
 TYPE DefaultDialectProvider struct { unexported }
 TYPE DefaultFormatProvider struct { unexported }
 TYPE DefaultHousingContext struct { unexported }

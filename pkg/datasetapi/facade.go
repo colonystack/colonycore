@@ -166,6 +166,11 @@ type Cohort interface {
 	ProjectID() (string, bool)
 	HousingID() (string, bool)
 	ProtocolID() (string, bool)
+
+	// Contextual purpose accessors
+	GetPurpose() CohortPurposeRef
+	IsResearchCohort() bool
+	RequiresProtocol() bool
 }
 
 // HousingUnit exposes read-only housing metadata to dataset plugins.
@@ -196,6 +201,11 @@ type BreedingUnit interface {
 	ProtocolID() (string, bool)
 	FemaleIDs() []string
 	MaleIDs() []string
+
+	// Contextual strategy accessors
+	GetBreedingStrategy() BreedingStrategyRef
+	IsNaturalBreeding() bool
+	RequiresIntervention() bool
 }
 
 // Procedure exposes read-only procedure metadata to dataset plugins.
@@ -411,6 +421,34 @@ func (c cohort) ProtocolID() (string, bool) {
 	return derefString(c.protocolID)
 }
 
+// Contextual purpose accessors
+func (c cohort) GetPurpose() CohortPurposeRef {
+	ctx := NewCohortContext()
+	switch strings.ToLower(c.purpose) {
+	case "research":
+		return ctx.Research()
+	case "breeding":
+		return ctx.Breeding()
+	case "teaching":
+		return ctx.Teaching()
+	case "conservation":
+		return ctx.Conservation()
+	case "production":
+		return ctx.Production()
+	default:
+		// Default to research for unknown purposes
+		return ctx.Research()
+	}
+}
+
+func (c cohort) IsResearchCohort() bool {
+	return c.GetPurpose().IsResearch()
+}
+
+func (c cohort) RequiresProtocol() bool {
+	return c.GetPurpose().RequiresProtocol()
+}
+
 func (c cohort) MarshalJSON() ([]byte, error) {
 	type cohortJSON struct {
 		ID         string    `json:"id"`
@@ -558,6 +596,32 @@ func (b breedingUnit) FemaleIDs() []string {
 }
 func (b breedingUnit) MaleIDs() []string {
 	return cloneStringSlice(b.maleIDs)
+}
+
+// Contextual strategy accessors
+func (b breedingUnit) GetBreedingStrategy() BreedingStrategyRef {
+	ctx := NewBreedingContext()
+	switch strings.ToLower(b.strategy) {
+	case "natural":
+		return ctx.Natural()
+	case "artificial":
+		return ctx.Artificial()
+	case "controlled":
+		return ctx.Controlled()
+	case "selective":
+		return ctx.Selective()
+	default:
+		// Default to natural for unknown strategies
+		return ctx.Natural()
+	}
+}
+
+func (b breedingUnit) IsNaturalBreeding() bool {
+	return b.GetBreedingStrategy().IsNatural()
+}
+
+func (b breedingUnit) RequiresIntervention() bool {
+	return b.GetBreedingStrategy().RequiresIntervention()
 }
 
 func (b breedingUnit) MarshalJSON() ([]byte, error) {

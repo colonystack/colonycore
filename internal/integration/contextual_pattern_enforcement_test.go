@@ -55,6 +55,8 @@ func validateAllViewInterfacesHaveContextualAccessors(t *testing.T, baseDir stri
 		"ProtocolView":    {"GetCurrentStatus", "IsActiveProtocol", "IsTerminalStatus", "CanAcceptNewSubjects"},
 		"Protocol":        {"GetCurrentStatus", "IsActiveProtocol", "IsTerminalStatus", "CanAcceptNewSubjects"},
 		"Procedure":       {"GetCurrentStatus", "IsActiveProcedure", "IsTerminalStatus", "IsSuccessful"},
+		"Cohort":          {"GetPurpose", "IsResearchCohort", "RequiresProtocol"},
+		"BreedingUnit":    {"GetBreedingStrategy", "IsNaturalBreeding", "RequiresIntervention"},
 	}
 
 	// Scan for Go files in pkg directories
