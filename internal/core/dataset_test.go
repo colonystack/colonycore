@@ -20,8 +20,12 @@ type stringer struct{}
 func (stringer) String() string { return testPluginFrog }
 
 func TestDatasetTemplateRunSuccess(t *testing.T) {
+	dialectProvider := datasetapi.GetDialectProvider()
+	formatProvider := datasetapi.GetFormatProvider()
+
 	reference := time.Date(2024, 1, 2, 3, 4, 5, 0, time.UTC)
 	invocations := 0
+
 	template := DatasetTemplate{
 		Plugin: testPluginFrog,
 		Template: datasetapi.Template{
@@ -29,7 +33,7 @@ func TestDatasetTemplateRunSuccess(t *testing.T) {
 			Version:     "1.0.0",
 			Title:       "Snapshot",
 			Description: "demo",
-			Dialect:     datasetapi.DialectSQL,
+			Dialect:     dialectProvider.SQL(),
 			Query:       "SELECT 1",
 			Parameters: []datasetapi.Parameter{{
 				Name:     "limit",
@@ -42,8 +46,8 @@ func TestDatasetTemplateRunSuccess(t *testing.T) {
 			}},
 			Metadata: datasetapi.Metadata{Tags: []string{"demo"}},
 			OutputFormats: []datasetapi.Format{
-				datasetapi.FormatJSON,
-				datasetapi.FormatCSV,
+				formatProvider.JSON(),
+				formatProvider.CSV(),
 			},
 		},
 	}
@@ -68,14 +72,14 @@ func TestDatasetTemplateRunSuccess(t *testing.T) {
 
 	params := map[string]any{"limit": "25"}
 	scope := DatasetScope{Requestor: "analyst"}
-	result, paramErrs, err := template.Run(context.Background(), params, scope, FormatCSV)
+	result, paramErrs, err := template.Run(context.Background(), params, scope, formatProvider.CSV())
 	if err != nil {
 		t.Fatalf("run template: %v", err)
 	}
 	if len(paramErrs) != 0 {
 		t.Fatalf("unexpected parameter errors: %+v", paramErrs)
 	}
-	if result.Format != FormatCSV {
+	if result.Format != formatProvider.CSV() {
 		t.Fatalf("expected format csv, got %s", result.Format)
 	}
 	if len(result.Schema) != 1 || result.Schema[0].Name != "value" {
@@ -88,26 +92,29 @@ func TestDatasetTemplateRunSuccess(t *testing.T) {
 		t.Fatalf("expected single runner invocation, got %d", invocations)
 	}
 
-	if !template.SupportsFormat(FormatJSON) {
+	if !template.SupportsFormat(formatProvider.JSON()) {
 		t.Fatalf("expected template to support JSON format")
 	}
-	if template.SupportsFormat(FormatPNG) {
+	if template.SupportsFormat(formatProvider.PNG()) {
 		t.Fatalf("did not expect template to support PNG format")
 	}
 }
 
 func TestDatasetTemplateRunParameterErrors(t *testing.T) {
+	dialectProvider := datasetapi.GetDialectProvider()
+	formatProvider := datasetapi.GetFormatProvider()
+
 	template := DatasetTemplate{
 		Plugin: testPluginFrog,
 		Template: datasetapi.Template{
 			Key:           "snapshot",
 			Version:       "1.0.0",
 			Title:         "Snapshot",
-			Dialect:       datasetapi.DialectSQL,
+			Dialect:       dialectProvider.SQL(),
 			Query:         "SELECT 1",
 			Parameters:    []datasetapi.Parameter{{Name: "limit", Type: "integer", Required: true}},
 			Columns:       []datasetapi.Column{{Name: "value", Type: "integer"}},
-			OutputFormats: []datasetapi.Format{datasetapi.FormatJSON},
+			OutputFormats: []datasetapi.Format{formatProvider.JSON()},
 		},
 	}
 	template.Binder = func(datasetapi.Environment) (datasetapi.Runner, error) {
@@ -120,7 +127,7 @@ func TestDatasetTemplateRunParameterErrors(t *testing.T) {
 	}
 
 	params := map[string]any{"unexpected": true}
-	result, paramErrs, err := template.Run(context.Background(), params, DatasetScope{}, FormatJSON)
+	result, paramErrs, err := template.Run(context.Background(), params, DatasetScope{}, formatProvider.JSON())
 	if err != nil {
 		t.Fatalf("run template: %v", err)
 	}
@@ -133,13 +140,16 @@ func TestDatasetTemplateRunParameterErrors(t *testing.T) {
 }
 
 func TestDatasetValidateParametersCoercion(t *testing.T) {
+	dialectProvider := datasetapi.GetDialectProvider()
+	formatProvider := datasetapi.GetFormatProvider()
+
 	when := time.Date(2023, 5, 6, 7, 8, 9, 0, time.UTC)
 	template := DatasetTemplate{
 		Template: datasetapi.Template{
 			Key:     "coerce",
 			Version: "1.0.0",
 			Title:   "Coerce",
-			Dialect: datasetapi.DialectSQL,
+			Dialect: dialectProvider.SQL(),
 			Query:   "select 1",
 			Parameters: []datasetapi.Parameter{
 				{Name: "name", Type: "string", Required: true, Enum: []string{testPluginFrog, "newt"}},
@@ -150,7 +160,7 @@ func TestDatasetValidateParametersCoercion(t *testing.T) {
 				{Name: "note", Type: "string", Default: "n/a"},
 			},
 			Columns:       []datasetapi.Column{{Name: "value", Type: "string"}},
-			OutputFormats: []datasetapi.Format{datasetapi.FormatJSON},
+			OutputFormats: []datasetapi.Format{formatProvider.JSON()},
 		},
 	}
 	template.Binder = func(datasetapi.Environment) (datasetapi.Runner, error) {
@@ -262,16 +272,19 @@ func TestDatasetTemplateSlugVariants(t *testing.T) {
 }
 
 func TestDatasetTemplateValidateFailures(t *testing.T) {
+	dialectProvider := datasetapi.GetDialectProvider()
+	formatProvider := datasetapi.GetFormatProvider()
+
 	base := DatasetTemplate{
 		Template: datasetapi.Template{
 			Key:           "demo",
 			Version:       "1.0.0",
 			Title:         "Demo",
 			Description:   "demo",
-			Dialect:       datasetapi.DialectSQL,
+			Dialect:       dialectProvider.SQL(),
 			Query:         "SELECT 1",
 			Columns:       []datasetapi.Column{{Name: "value", Type: "integer"}},
-			OutputFormats: []datasetapi.Format{datasetapi.FormatJSON},
+			OutputFormats: []datasetapi.Format{formatProvider.JSON()},
 			Binder: func(datasetapi.Environment) (datasetapi.Runner, error) {
 				return func(context.Context, datasetapi.RunRequest) (datasetapi.RunResult, error) {
 					return datasetapi.RunResult{}, nil
@@ -302,15 +315,18 @@ func TestDatasetTemplateValidateFailures(t *testing.T) {
 }
 
 func TestDatasetValidateParametersHostError(t *testing.T) {
+	dialectProvider := datasetapi.GetDialectProvider()
+	formatProvider := datasetapi.GetFormatProvider()
+
 	template := DatasetTemplate{
 		Template: datasetapi.Template{
 			Key:           "demo",
 			Version:       "1.0.0",
 			Title:         "Demo",
-			Dialect:       datasetapi.DialectSQL,
+			Dialect:       dialectProvider.SQL(),
 			Query:         "SELECT 1",
 			Columns:       []datasetapi.Column{{Name: "value", Type: "string"}},
-			OutputFormats: []datasetapi.Format{datasetapi.FormatJSON},
+			OutputFormats: []datasetapi.Format{formatProvider.JSON()},
 		},
 	}
 	if _, errs := template.ValidateParameters(map[string]any{}); len(errs) == 0 || !strings.Contains(errs[0].Message, "binder required") {
@@ -319,15 +335,18 @@ func TestDatasetValidateParametersHostError(t *testing.T) {
 }
 
 func TestDatasetTemplateRunWithoutBind(t *testing.T) {
+	dialectProvider := datasetapi.GetDialectProvider()
+	formatProvider := datasetapi.GetFormatProvider()
+
 	template := DatasetTemplate{
 		Template: datasetapi.Template{
 			Key:           "demo",
 			Version:       "1.0.0",
 			Title:         "Demo",
-			Dialect:       datasetapi.DialectSQL,
+			Dialect:       dialectProvider.SQL(),
 			Query:         "SELECT 1",
 			Columns:       []datasetapi.Column{{Name: "value", Type: "string"}},
-			OutputFormats: []datasetapi.Format{datasetapi.FormatJSON},
+			OutputFormats: []datasetapi.Format{formatProvider.JSON()},
 		},
 	}
 	if _, _, err := template.Run(context.Background(), map[string]any{}, DatasetScope{}, FormatJSON); err == nil || !strings.Contains(err.Error(), "not bound") {
@@ -347,7 +366,7 @@ func newValidationTemplate() DatasetTemplate {
 			Key:     "validation",
 			Version: "1.0.0",
 			Title:   "Validation",
-			Dialect: datasetapi.DialectSQL,
+			Dialect: dialectProvider.SQL(),
 			Query:   "SELECT 1",
 			Parameters: []datasetapi.Parameter{
 				{Name: "count", Type: "integer", Required: true},
@@ -356,7 +375,7 @@ func newValidationTemplate() DatasetTemplate {
 				{Name: "when", Type: "timestamp"},
 			},
 			Columns:       []datasetapi.Column{{Name: "value", Type: "string"}},
-			OutputFormats: []datasetapi.Format{datasetapi.FormatJSON},
+			OutputFormats: []datasetapi.Format{formatProvider.JSON()},
 			Binder: func(datasetapi.Environment) (datasetapi.Runner, error) {
 				return func(context.Context, datasetapi.RunRequest) (datasetapi.RunResult, error) {
 					return datasetapi.RunResult{}, nil

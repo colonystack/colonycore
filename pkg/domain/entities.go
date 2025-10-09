@@ -121,6 +121,7 @@ type Protocol struct {
 	Title       string `json:"title"`
 	Description string `json:"description"`
 	MaxSubjects int    `json:"max_subjects"`
+	Status      string `json:"status"`
 }
 
 // Project captures cost center allocations.

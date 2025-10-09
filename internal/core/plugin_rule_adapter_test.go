@@ -255,3 +255,198 @@ func TestEmptyViewHelpers(t *testing.T) {
 		t.Fatalf("expected nil protocol views slice")
 	}
 }
+
+func TestOrganismViewContextualAccessors(t *testing.T) {
+	domainOrganism := &domain.Organism{
+		Base: domain.Base{
+			ID:        "organism-1",
+			CreatedAt: time.Now(),
+			UpdatedAt: time.Now(),
+		},
+		Name:       "Test Organism",
+		Species:    "TestSpecies",
+		Line:       "TestLine",
+		Stage:      "adult",
+		Attributes: map[string]any{"test": "value"},
+	}
+
+	organismView := newOrganismView(*domainOrganism)
+
+	t.Run("GetCurrentStage returns contextual stage reference", func(t *testing.T) {
+		stageRef := organismView.GetCurrentStage()
+		if stageRef.String() != "adult" {
+			t.Errorf("Expected stage 'adult', got '%s'", stageRef.String())
+		}
+	})
+
+	t.Run("IsActive returns correct lifecycle state", func(t *testing.T) {
+		if !organismView.IsActive() {
+			t.Error("Adult organism should be active")
+		}
+	})
+
+	t.Run("IsRetired returns correct retirement state", func(t *testing.T) {
+		if organismView.IsRetired() {
+			t.Error("Adult organism should not be retired")
+		}
+	})
+
+	t.Run("IsDeceased returns correct death state", func(t *testing.T) {
+		if organismView.IsDeceased() {
+			t.Error("Adult organism should not be deceased")
+		}
+	})
+}
+
+func TestHousingUnitViewContextualAccessors(t *testing.T) {
+	domainHousing := &domain.HousingUnit{
+		Base: domain.Base{
+			ID:        "housing-1",
+			CreatedAt: time.Now(),
+			UpdatedAt: time.Now(),
+		},
+		Name:        "Test Tank",
+		Facility:    "Lab A",
+		Capacity:    10,
+		Environment: "aquatic",
+	}
+
+	housingView := newHousingUnitView(*domainHousing)
+
+	t.Run("GetEnvironmentType returns contextual environment reference", func(t *testing.T) {
+		envRef := housingView.GetEnvironmentType()
+		if envRef.String() != "aquatic" {
+			t.Errorf("Expected environment 'aquatic', got '%s'", envRef.String())
+		}
+	})
+
+	t.Run("IsAquaticEnvironment returns correct aquatic state", func(t *testing.T) {
+		if !housingView.IsAquaticEnvironment() {
+			t.Error("Aquatic housing should return true for IsAquaticEnvironment")
+		}
+	})
+
+	t.Run("IsHumidEnvironment returns correct humidity state", func(t *testing.T) {
+		// Aquatic environments are also considered humid
+		if !housingView.IsHumidEnvironment() {
+			t.Error("Aquatic housing should return true for IsHumidEnvironment")
+		}
+	})
+
+	t.Run("SupportsSpecies returns correct species compatibility", func(t *testing.T) {
+		if !housingView.SupportsSpecies("fish") {
+			t.Error("Aquatic housing should support fish")
+		}
+		if housingView.SupportsSpecies("bird") {
+			t.Error("Aquatic housing should not support bird")
+		}
+	})
+}
+
+func TestProtocolViewContextualAccessors(t *testing.T) {
+	domainProtocol := &domain.Protocol{
+		Base: domain.Base{
+			ID:        "protocol-1",
+			CreatedAt: time.Now(),
+			UpdatedAt: time.Now(),
+		},
+		Code:        "P001",
+		Title:       "Test Protocol",
+		Description: "Test description",
+		MaxSubjects: 10,
+		Status:      "active",
+	}
+
+	protocolView := newProtocolView(*domainProtocol)
+
+	t.Run("GetCurrentStatus returns contextual status reference", func(t *testing.T) {
+		statusRef := protocolView.GetCurrentStatus()
+		if statusRef.String() != "active" {
+			t.Errorf("Expected status 'active', got '%s'", statusRef.String())
+		}
+	})
+
+	t.Run("IsActiveProtocol returns correct active state", func(t *testing.T) {
+		if !protocolView.IsActiveProtocol() {
+			t.Error("Active protocol should return true for IsActiveProtocol")
+		}
+	})
+
+	t.Run("IsTerminalStatus returns correct terminal state", func(t *testing.T) {
+		if protocolView.IsTerminalStatus() {
+			t.Error("Active protocol should return false for IsTerminalStatus")
+		}
+	})
+
+	t.Run("CanAcceptNewSubjects returns correct capacity state", func(t *testing.T) {
+		if !protocolView.CanAcceptNewSubjects() {
+			t.Error("Active protocol with capacity should accept new subjects")
+		}
+	})
+}
+
+func TestRuleViewFindOrganism(t *testing.T) {
+	organisms := []domain.Organism{
+		{
+			Base: domain.Base{ID: "org1"},
+			Name: "Organism 1",
+		},
+		{
+			Base: domain.Base{ID: "org2"},
+			Name: "Organism 2",
+		},
+	}
+
+	domainView := stubDomainView{organisms: organisms}
+	ruleView := adaptRuleView(domainView)
+
+	t.Run("FindOrganism returns correct organism when found", func(t *testing.T) {
+		organism, found := ruleView.FindOrganism("org1")
+		if !found {
+			t.Error("Should find organism with ID 'org1'")
+		}
+		if organism.ID() != "org1" {
+			t.Errorf("Expected organism ID 'org1', got '%s'", organism.ID())
+		}
+	})
+
+	t.Run("FindOrganism returns false when not found", func(t *testing.T) {
+		_, found := ruleView.FindOrganism("nonexistent")
+		if found {
+			t.Error("Should not find organism with nonexistent ID")
+		}
+	})
+}
+
+func TestRuleViewFindHousing(t *testing.T) {
+	housings := []domain.HousingUnit{
+		{
+			Base: domain.Base{ID: "house1"},
+			Name: "Housing 1",
+		},
+		{
+			Base: domain.Base{ID: "house2"},
+			Name: "Housing 2",
+		},
+	}
+
+	domainView := stubDomainView{housing: housings}
+	ruleView := adaptRuleView(domainView)
+
+	t.Run("FindHousingUnit returns correct housing when found", func(t *testing.T) {
+		housing, found := ruleView.FindHousingUnit("house1")
+		if !found {
+			t.Error("Should find housing with ID 'house1'")
+		}
+		if housing.ID() != "house1" {
+			t.Errorf("Expected housing ID 'house1', got '%s'", housing.ID())
+		}
+	})
+
+	t.Run("FindHousingUnit returns false when not found", func(t *testing.T) {
+		_, found := ruleView.FindHousingUnit("nonexistent")
+		if found {
+			t.Error("Should not find housing with nonexistent ID")
+		}
+	})
+}

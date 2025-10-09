@@ -16,8 +16,10 @@ import (
 
 // Additional handler tests migrated from external package variant.
 func TestHandlerListTemplatesAndNewHandler(t *testing.T) {
+	dialectProvider := datasetapi.GetDialectProvider()
+	formatProvider := datasetapi.GetFormatProvider()
 	svc := core.NewInMemoryService(core.NewDefaultRulesEngine())
-	plugin := testDatasetPlugin{dataset: datasetapi.Template{Key: "list", Version: "1.0.0", Title: "List", Description: "list test", Dialect: datasetapi.DialectSQL, Query: "SELECT 1", Columns: []datasetapi.Column{{Name: "value", Type: "string"}}, OutputFormats: []datasetapi.Format{datasetapi.FormatJSON}, Binder: func(datasetapi.Environment) (datasetapi.Runner, error) {
+	plugin := testDatasetPlugin{dataset: datasetapi.Template{Key: "list", Version: "1.0.0", Title: "List", Description: "list test", Dialect: dialectProvider.SQL(), Query: "SELECT 1", Columns: []datasetapi.Column{{Name: "value", Type: "string"}}, OutputFormats: []datasetapi.Format{formatProvider.JSON()}, Binder: func(datasetapi.Environment) (datasetapi.Runner, error) {
 		return func(context.Context, datasetapi.RunRequest) (datasetapi.RunResult, error) {
 			return datasetapi.RunResult{}, nil
 		}, nil
@@ -38,7 +40,9 @@ func TestHandlerListTemplatesAndNewHandler(t *testing.T) {
 }
 
 func TestHandlerValidateSuccess(t *testing.T) {
-	template := datasetapi.Template{Key: "validate", Version: "1.0.0", Title: "Validate", Description: "validation", Dialect: datasetapi.DialectSQL, Query: "SELECT 1", Parameters: []datasetapi.Parameter{{Name: "stage", Type: "string", Enum: []string{"adult", "larva"}}}, Columns: []datasetapi.Column{{Name: "value", Type: "string"}}, OutputFormats: []datasetapi.Format{datasetapi.FormatJSON}, Binder: func(datasetapi.Environment) (datasetapi.Runner, error) {
+	dialectProvider := datasetapi.GetDialectProvider()
+	formatProvider := datasetapi.GetFormatProvider()
+	template := datasetapi.Template{Key: "validate", Version: "1.0.0", Title: "Validate", Description: "validation", Dialect: dialectProvider.SQL(), Query: "SELECT 1", Parameters: []datasetapi.Parameter{{Name: "stage", Type: "string", Enum: []string{"adult", "larva"}}}, Columns: []datasetapi.Column{{Name: "value", Type: "string"}}, OutputFormats: []datasetapi.Format{formatProvider.JSON()}, Binder: func(datasetapi.Environment) (datasetapi.Runner, error) {
 		return func(context.Context, datasetapi.RunRequest) (datasetapi.RunResult, error) {
 			return datasetapi.RunResult{}, nil
 		}, nil
@@ -62,9 +66,11 @@ func TestHandlerValidateSuccess(t *testing.T) {
 }
 
 func TestNegotiateFormatCSVHeader(t *testing.T) {
-	template := datasetapi.Template{Key: "csv", Version: "1.0.0", Title: "CSV", Description: "csv", Dialect: datasetapi.DialectSQL, Query: "SELECT 1", Columns: []datasetapi.Column{{Name: "value", Type: "string"}}, OutputFormats: []datasetapi.Format{datasetapi.FormatJSON, datasetapi.FormatCSV}, Binder: func(datasetapi.Environment) (datasetapi.Runner, error) {
+	dialectProvider := datasetapi.GetDialectProvider()
+	formatProvider := datasetapi.GetFormatProvider()
+	template := datasetapi.Template{Key: "csv", Version: "1.0.0", Title: "CSV", Description: "csv", Dialect: dialectProvider.SQL(), Query: "SELECT 1", Columns: []datasetapi.Column{{Name: "value", Type: "string"}}, OutputFormats: []datasetapi.Format{formatProvider.JSON(), formatProvider.CSV()}, Binder: func(datasetapi.Environment) (datasetapi.Runner, error) {
 		return func(context.Context, datasetapi.RunRequest) (datasetapi.RunResult, error) {
-			return datasetapi.RunResult{Rows: []datasetapi.Row{{"value": "ok"}}, Format: datasetapi.FormatJSON}, nil
+			return datasetapi.RunResult{Rows: []datasetapi.Row{{"value": "ok"}}, Format: formatProvider.JSON()}, nil
 		}, nil
 	}}
 	svc := core.NewInMemoryService(core.NewDefaultRulesEngine())
@@ -101,9 +107,11 @@ func TestNegotiateFormatCSVHeader(t *testing.T) {
 }
 
 func TestRunCSVUsesDescriptorColumns(t *testing.T) {
-	template := datasetapi.Template{Key: "empty", Version: "1.0.0", Title: "EmptySchema", Description: "empty schema", Dialect: datasetapi.DialectSQL, Query: "SELECT 1", Columns: []datasetapi.Column{{Name: "col", Type: "string"}}, OutputFormats: []datasetapi.Format{datasetapi.FormatJSON, datasetapi.FormatCSV}, Binder: func(datasetapi.Environment) (datasetapi.Runner, error) {
+	dialectProvider := datasetapi.GetDialectProvider()
+	formatProvider := datasetapi.GetFormatProvider()
+	template := datasetapi.Template{Key: "empty", Version: "1.0.0", Title: "EmptySchema", Description: "empty schema", Dialect: dialectProvider.SQL(), Query: "SELECT 1", Columns: []datasetapi.Column{{Name: "col", Type: "string"}}, OutputFormats: []datasetapi.Format{formatProvider.JSON(), formatProvider.CSV()}, Binder: func(datasetapi.Environment) (datasetapi.Runner, error) {
 		return func(context.Context, datasetapi.RunRequest) (datasetapi.RunResult, error) {
-			return datasetapi.RunResult{Rows: []datasetapi.Row{{"col": "alpha"}}, Format: datasetapi.FormatJSON}, nil
+			return datasetapi.RunResult{Rows: []datasetapi.Row{{"col": "alpha"}}, Format: formatProvider.JSON()}, nil
 		}, nil
 	}}
 	svc := core.NewInMemoryService(core.NewDefaultRulesEngine())
@@ -147,9 +155,11 @@ func TestMemoryAuditLogEntries(t *testing.T) {
 }
 
 func TestServeHTTPExportsLifecycle(t *testing.T) {
-	template := datasetapi.Template{Key: "lifecycle", Version: "1.0.0", Title: "Lifecycle", Description: "export lifecycle", Dialect: datasetapi.DialectSQL, Query: "SELECT 1", Columns: []datasetapi.Column{{Name: "value", Type: "string"}}, OutputFormats: []datasetapi.Format{datasetapi.FormatJSON}, Binder: func(datasetapi.Environment) (datasetapi.Runner, error) {
+	dialectProvider := datasetapi.GetDialectProvider()
+	formatProvider := datasetapi.GetFormatProvider()
+	template := datasetapi.Template{Key: "lifecycle", Version: "1.0.0", Title: "Lifecycle", Description: "export lifecycle", Dialect: dialectProvider.SQL(), Query: "SELECT 1", Columns: []datasetapi.Column{{Name: "value", Type: "string"}}, OutputFormats: []datasetapi.Format{formatProvider.JSON()}, Binder: func(datasetapi.Environment) (datasetapi.Runner, error) {
 		return func(context.Context, datasetapi.RunRequest) (datasetapi.RunResult, error) {
-			return datasetapi.RunResult{Rows: []datasetapi.Row{{"value": "ok"}}, Format: datasetapi.FormatJSON}, nil
+			return datasetapi.RunResult{Rows: []datasetapi.Row{{"value": "ok"}}, Format: formatProvider.JSON()}, nil
 		}, nil
 	}}
 	svc := core.NewInMemoryService(core.NewDefaultRulesEngine())

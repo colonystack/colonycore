@@ -11,13 +11,16 @@ import (
 const testAdultStage = "adult"
 
 func TestNewDatasetTemplateFromAPI(t *testing.T) {
+	dialectProvider := datasetapi.GetDialectProvider()
+	formatProvider := datasetapi.GetFormatProvider()
+
 	now := time.Date(2024, 1, 2, 3, 4, 5, 0, time.UTC)
 	apiTemplate := datasetapi.Template{
 		Key:         "demo",
 		Version:     "1.0.0",
 		Title:       "Demo",
 		Description: "demo",
-		Dialect:     datasetapi.DialectSQL,
+		Dialect:     dialectProvider.SQL(),
 		Query:       "SELECT 1",
 		Parameters: []datasetapi.Parameter{{
 			Name:        "stage",
@@ -37,7 +40,7 @@ func TestNewDatasetTemplateFromAPI(t *testing.T) {
 			Tags:            []string{"tag"},
 			Annotations:     map[string]string{"key": "val"},
 		},
-		OutputFormats: []datasetapi.Format{datasetapi.FormatJSON, datasetapi.FormatCSV},
+		OutputFormats: []datasetapi.Format{formatProvider.JSON(), formatProvider.CSV()},
 	}
 
 	apiTemplate.Binder = func(env datasetapi.Environment) (datasetapi.Runner, error) {
@@ -56,7 +59,7 @@ func TestNewDatasetTemplateFromAPI(t *testing.T) {
 				Rows:        []datasetapi.Row{{"value": 7}},
 				Metadata:    map[string]any{"note": "ok"},
 				GeneratedAt: env.Now(),
-				Format:      datasetapi.FormatCSV,
+				Format:      formatProvider.CSV(),
 			}, nil
 		}, nil
 	}
@@ -112,11 +115,11 @@ func TestDatasetTemplateRuntimeFacade(t *testing.T) {
 			Key:           "facade",
 			Version:       "1.0.0",
 			Title:         "Facade",
-			Dialect:       datasetapi.DialectSQL,
+			Dialect:       dialectProvider.SQL(),
 			Query:         "SELECT 1",
 			Parameters:    []datasetapi.Parameter{{Name: "limit", Type: "integer", Required: true}},
 			Columns:       []datasetapi.Column{{Name: "value", Type: "integer"}},
-			OutputFormats: []datasetapi.Format{datasetapi.FormatJSON},
+			OutputFormats: []datasetapi.Format{formatProvider.JSON()},
 		},
 	}
 	var capturedScope DatasetScope
@@ -127,7 +130,7 @@ func TestDatasetTemplateRuntimeFacade(t *testing.T) {
 				Schema:      req.Template.Columns,
 				Rows:        []datasetapi.Row{{"value": 42}},
 				GeneratedAt: time.Unix(0, 0).UTC(),
-				Format:      datasetapi.FormatJSON,
+				Format:      formatProvider.JSON(),
 			}, nil
 		}, nil
 	}
@@ -142,10 +145,10 @@ func TestDatasetTemplateRuntimeFacade(t *testing.T) {
 	if runtime.Descriptor().Slug == "" {
 		t.Fatalf("expected descriptor slug")
 	}
-	if !runtime.SupportsFormat(datasetapi.FormatJSON) {
+	if !runtime.SupportsFormat(formatProvider.JSON()) {
 		t.Fatalf("expected JSON support")
 	}
-	if runtime.SupportsFormat(datasetapi.FormatCSV) {
+	if runtime.SupportsFormat(formatProvider.CSV()) {
 		t.Fatalf("did not expect CSV support")
 	}
 
@@ -161,7 +164,7 @@ func TestDatasetTemplateRuntimeFacade(t *testing.T) {
 	}
 
 	scope := datasetapi.Scope{Requestor: "analyst", ProjectIDs: []string{"project"}}
-	result, paramErrs, err := runtime.Run(context.Background(), map[string]any{"limit": 1}, scope, datasetapi.FormatJSON)
+	result, paramErrs, err := runtime.Run(context.Background(), map[string]any{"limit": 1}, scope, formatProvider.JSON())
 	if err != nil {
 		t.Fatalf("runtime run: %v", err)
 	}

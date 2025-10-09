@@ -21,6 +21,9 @@ func (r pluginRuleStub) Evaluate(_ context.Context, _ pluginapi.RuleView, _ []pl
 }
 
 func TestPluginRegistryGuardsAndCopies(t *testing.T) {
+	dialectProvider := datasetapi.GetDialectProvider()
+	formatProvider := datasetapi.GetFormatProvider()
+
 	registry := NewPluginRegistry()
 
 	registry.RegisterRule(nil)
@@ -66,7 +69,7 @@ func TestPluginRegistryGuardsAndCopies(t *testing.T) {
 		Version:     "1.0.0",
 		Title:       "Demo",
 		Description: "Demo dataset",
-		Dialect:     datasetapi.DialectSQL,
+		Dialect:     dialectProvider.SQL(),
 		Query:       "SELECT 1",
 		Parameters: []datasetapi.Parameter{{
 			Name: "stage",
@@ -75,10 +78,10 @@ func TestPluginRegistryGuardsAndCopies(t *testing.T) {
 		}},
 		Columns:       []datasetapi.Column{{Name: "value", Type: "number", Unit: "count"}},
 		Metadata:      datasetapi.Metadata{Tags: []string{"demo"}, Annotations: map[string]string{"k": "v"}},
-		OutputFormats: []datasetapi.Format{datasetapi.FormatJSON},
+		OutputFormats: []datasetapi.Format{formatProvider.JSON()},
 		Binder: func(datasetapi.Environment) (datasetapi.Runner, error) {
 			return func(context.Context, datasetapi.RunRequest) (datasetapi.RunResult, error) {
-				return datasetapi.RunResult{Rows: []datasetapi.Row{{"value": 1}}, GeneratedAt: time.Now().UTC(), Format: datasetapi.FormatJSON}, nil
+				return datasetapi.RunResult{Rows: []datasetapi.Row{{"value": 1}}, GeneratedAt: time.Now().UTC(), Format: formatProvider.JSON()}, nil
 			}, nil
 		},
 	}

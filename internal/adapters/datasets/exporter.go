@@ -188,6 +188,8 @@ func (w *Worker) loop() {
 
 // EnqueueExport schedules an export job and returns the queued record.
 func (w *Worker) EnqueueExport(ctx context.Context, input ExportInput) (ExportRecord, error) {
+	formatProvider := datasetapi.GetFormatProvider()
+
 	if w.catalog == nil {
 		return ExportRecord{}, fmt.Errorf("export catalog not configured")
 	}
@@ -203,7 +205,7 @@ func (w *Worker) EnqueueExport(ctx context.Context, input ExportInput) (ExportRe
 
 	formats := input.Formats
 	if len(formats) == 0 {
-		formats = []datasetapi.Format{datasetapi.FormatJSON, datasetapi.FormatCSV}
+		formats = []datasetapi.Format{formatProvider.JSON(), formatProvider.CSV()}
 	}
 	uniqFormats := make([]datasetapi.Format, 0, len(formats))
 	seen := make(map[datasetapi.Format]struct{})
@@ -276,6 +278,8 @@ func (w *Worker) GetExport(id string) (ExportRecord, bool) {
 }
 
 func (w *Worker) process(task exportTask) {
+	formatProvider := datasetapi.GetFormatProvider()
+
 	record := w.snapshot(task.id)
 	if record == nil {
 		return
@@ -295,7 +299,7 @@ func (w *Worker) process(task exportTask) {
 		return
 	}
 
-	result, paramErrs, err := template.Run(w.ctx, cleaned, task.input.Scope, datasetapi.FormatJSON)
+	result, paramErrs, err := template.Run(w.ctx, cleaned, task.input.Scope, formatProvider.JSON())
 	if err != nil {
 		w.fail(task.id, fmt.Sprintf("dataset run failed: %v", err))
 		return
@@ -447,9 +451,11 @@ func (w *Worker) scopeFor(id string) datasetapi.Scope {
 }
 
 func (w *Worker) materialize(format datasetapi.Format, template datasetapi.TemplateRuntime, result datasetapi.RunResult) (renderedArtifact, error) {
+	formatProvider := datasetapi.GetFormatProvider()
+
 	descriptor := template.Descriptor()
 	switch format {
-	case datasetapi.FormatJSON:
+	case formatProvider.JSON():
 		payload, err := json.Marshal(result)
 		if err != nil {
 			return renderedArtifact{}, fmt.Errorf("marshal json: %w", err)
@@ -457,7 +463,7 @@ func (w *Worker) materialize(format datasetapi.Format, template datasetapi.Templ
 		return renderedArtifact{
 			Artifact: ExportArtifact{
 				ID:          newID(),
-				Format:      datasetapi.FormatJSON,
+				Format:      formatProvider.JSON(),
 				ContentType: "application/json",
 				SizeBytes:   int64(len(payload)),
 				Metadata: map[string]any{
@@ -467,7 +473,7 @@ func (w *Worker) materialize(format datasetapi.Format, template datasetapi.Templ
 			},
 			Payload: payload,
 		}, nil
-	case datasetapi.FormatCSV:
+	case formatProvider.CSV():
 		buf := &bytes.Buffer{}
 		writer := csv.NewWriter(buf)
 		columns := result.Schema
@@ -498,7 +504,7 @@ func (w *Worker) materialize(format datasetapi.Format, template datasetapi.Templ
 		return renderedArtifact{
 			Artifact: ExportArtifact{
 				ID:          newID(),
-				Format:      datasetapi.FormatCSV,
+				Format:      formatProvider.CSV(),
 				ContentType: "text/csv",
 				SizeBytes:   int64(len(payload)),
 				Metadata: map[string]any{
@@ -508,12 +514,12 @@ func (w *Worker) materialize(format datasetapi.Format, template datasetapi.Templ
 			},
 			Payload: payload,
 		}, nil
-	case datasetapi.FormatHTML:
+	case formatProvider.HTML():
 		payload := buildHTML(descriptor, result)
 		return renderedArtifact{
 			Artifact: ExportArtifact{
 				ID:          newID(),
-				Format:      datasetapi.FormatHTML,
+				Format:      formatProvider.HTML(),
 				ContentType: "text/html",
 				SizeBytes:   int64(len(payload)),
 				Metadata:    map[string]any{"rows": len(result.Rows)},
@@ -521,7 +527,7 @@ func (w *Worker) materialize(format datasetapi.Format, template datasetapi.Templ
 			},
 			Payload: payload,
 		}, nil
-	case datasetapi.FormatParquet:
+	case formatProvider.Parquet():
 		payload, err := json.Marshal(result.Rows)
 		if err != nil {
 			return renderedArtifact{}, fmt.Errorf("marshall parquet surrogate: %w", err)
@@ -529,7 +535,7 @@ func (w *Worker) materialize(format datasetapi.Format, template datasetapi.Templ
 		return renderedArtifact{
 			Artifact: ExportArtifact{
 				ID:          newID(),
-				Format:      datasetapi.FormatParquet,
+				Format:      formatProvider.Parquet(),
 				ContentType: "application/octet-stream",
 				SizeBytes:   int64(len(payload)),
 				Metadata: map[string]any{
@@ -540,7 +546,7 @@ func (w *Worker) materialize(format datasetapi.Format, template datasetapi.Templ
 			},
 			Payload: payload,
 		}, nil
-	case datasetapi.FormatPNG:
+	case formatProvider.PNG():
 		payload, err := buildPNG(result)
 		if err != nil {
 			return renderedArtifact{}, err
@@ -548,7 +554,7 @@ func (w *Worker) materialize(format datasetapi.Format, template datasetapi.Templ
 		return renderedArtifact{
 			Artifact: ExportArtifact{
 				ID:          newID(),
-				Format:      datasetapi.FormatPNG,
+				Format:      formatProvider.PNG(),
 				ContentType: "image/png",
 				SizeBytes:   int64(len(payload)),
 				Metadata:    map[string]any{"rows": len(result.Rows)},

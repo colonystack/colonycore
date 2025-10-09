@@ -10,9 +10,11 @@ import (
 )
 
 func TestWorkerMaterializePNGParquet(t *testing.T) {
-	tmpl := datasetapi.Template{Key: "allfmts", Version: "1.0.0", Title: "All Formats", Description: "cover png/parquet", Dialect: datasetapi.DialectSQL, Query: "SELECT 1", Columns: []datasetapi.Column{{Name: "value", Type: "string"}}, OutputFormats: []datasetapi.Format{datasetapi.FormatJSON, datasetapi.FormatCSV, datasetapi.FormatHTML, datasetapi.FormatPNG, datasetapi.FormatParquet}, Binder: func(datasetapi.Environment) (datasetapi.Runner, error) {
+	dialectProvider := datasetapi.GetDialectProvider()
+	formatProvider := datasetapi.GetFormatProvider()
+	tmpl := datasetapi.Template{Key: "allfmts", Version: "1.0.0", Title: "All Formats", Description: "cover png/parquet", Dialect: dialectProvider.SQL(), Query: "SELECT 1", Columns: []datasetapi.Column{{Name: "value", Type: "string"}}, OutputFormats: []datasetapi.Format{formatProvider.JSON(), formatProvider.CSV(), formatProvider.HTML(), formatProvider.PNG(), formatProvider.Parquet()}, Binder: func(datasetapi.Environment) (datasetapi.Runner, error) {
 		return func(context.Context, datasetapi.RunRequest) (datasetapi.RunResult, error) {
-			return datasetapi.RunResult{Rows: []datasetapi.Row{{"value": "alpha"}}, Format: datasetapi.FormatJSON}, nil
+			return datasetapi.RunResult{Rows: []datasetapi.Row{{"value": "alpha"}}, Format: formatProvider.JSON()}, nil
 		}, nil
 	}}
 	svc := core.NewInMemoryService(core.NewDefaultRulesEngine())
@@ -24,7 +26,7 @@ func TestWorkerMaterializePNGParquet(t *testing.T) {
 	worker.Start()
 	t.Cleanup(func() { _ = worker.Stop(context.Background()) })
 	slug := svc.DatasetTemplates()[0].Slug
-	formats := []datasetapi.Format{datasetapi.FormatJSON, datasetapi.FormatPNG, datasetapi.FormatParquet}
+	formats := []datasetapi.Format{formatProvider.JSON(), formatProvider.PNG(), formatProvider.Parquet()}
 	rec, err := worker.EnqueueExport(context.Background(), ExportInput{TemplateSlug: slug, RequestedBy: "tester", Formats: formats})
 	if err != nil {
 		t.Fatalf("enqueue: %v", err)

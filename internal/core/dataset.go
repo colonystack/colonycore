@@ -38,24 +38,26 @@ type (
 	DatasetTemplateDescriptor = datasetapi.TemplateDescriptor
 )
 
-const (
+var (
+	dialectProvider = datasetapi.GetDialectProvider()
 	// DatasetDialectSQL exposes datasetapi.DialectSQL via the core package.
-	DatasetDialectSQL DatasetDialect = datasetapi.DialectSQL
+	DatasetDialectSQL DatasetDialect = dialectProvider.SQL()
 	// DatasetDialectDSL exposes datasetapi.DialectDSL via the core package.
-	DatasetDialectDSL DatasetDialect = datasetapi.DialectDSL
+	DatasetDialectDSL DatasetDialect = dialectProvider.DSL()
 )
 
-const (
+var (
+	formatProvider = datasetapi.GetFormatProvider()
 	// FormatJSON exposes datasetapi.FormatJSON via the core package.
-	FormatJSON DatasetFormat = datasetapi.FormatJSON
+	FormatJSON DatasetFormat = formatProvider.JSON()
 	// FormatCSV exposes datasetapi.FormatCSV via the core package.
-	FormatCSV DatasetFormat = datasetapi.FormatCSV
+	FormatCSV DatasetFormat = formatProvider.CSV()
 	// FormatParquet exposes datasetapi.FormatParquet via the core package.
-	FormatParquet DatasetFormat = datasetapi.FormatParquet
+	FormatParquet DatasetFormat = formatProvider.Parquet()
 	// FormatPNG exposes datasetapi.FormatPNG via the core package.
-	FormatPNG DatasetFormat = datasetapi.FormatPNG
+	FormatPNG DatasetFormat = formatProvider.PNG()
 	// FormatHTML exposes datasetapi.FormatHTML via the core package.
-	FormatHTML DatasetFormat = datasetapi.FormatHTML
+	FormatHTML DatasetFormat = formatProvider.HTML()
 )
 
 // DatasetEnvironment provides runtime dependencies to binders within the core layer.

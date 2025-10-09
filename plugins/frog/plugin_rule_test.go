@@ -98,6 +98,37 @@ func (stubHousing) Facility() string      { return "" }
 func (stubHousing) Capacity() int         { return 0 }
 func (h stubHousing) Environment() string { return h.environment }
 
+// Contextual environment accessors
+func (h stubHousing) GetEnvironmentType() pluginapi.EnvironmentTypeRef {
+	ctx := pluginapi.NewHousingContext()
+	switch h.environment {
+	case "aquatic":
+		return ctx.Aquatic()
+	case "humid":
+		return ctx.Humid()
+	case "dry":
+		return ctx.Terrestrial()
+	default:
+		return ctx.Terrestrial()
+	}
+}
+
+func (h stubHousing) IsAquaticEnvironment() bool {
+	return h.GetEnvironmentType().IsAquatic()
+}
+
+func (h stubHousing) IsHumidEnvironment() bool {
+	return h.GetEnvironmentType().IsHumid()
+}
+
+func (h stubHousing) SupportsSpecies(species string) bool {
+	envType := h.GetEnvironmentType()
+	if species == "frog" {
+		return envType.IsAquatic() || envType.IsHumid()
+	}
+	return true // Default support for test
+}
+
 // TestFrogPluginRegisterAndRuleEvaluation covers plugin registration and rule violation generation.
 func TestFrogPluginRegisterAndRuleEvaluation(t *testing.T) {
 	var reg fakeRegistry

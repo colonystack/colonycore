@@ -73,6 +73,7 @@ func cloneParams(in map[string]any) map[string]any {
 }
 
 func buildRuntimeTemplate() *stubRuntime {
+	formatProvider := datasetapi.GetFormatProvider()
 	runtime := newStubRuntime(
 		"frog",
 		"snap",
@@ -80,7 +81,7 @@ func buildRuntimeTemplate() *stubRuntime {
 		"Snap",
 		"snap dataset",
 		[]datasetapi.Column{{Name: "value", Type: "integer"}},
-		[]datasetapi.Format{datasetapi.FormatJSON, datasetapi.FormatCSV, datasetapi.FormatHTML, datasetapi.FormatParquet, datasetapi.FormatPNG},
+		[]datasetapi.Format{formatProvider.JSON(), formatProvider.CSV(), formatProvider.HTML(), formatProvider.Parquet(), formatProvider.PNG()},
 	)
 	runtime.validateFn = func(params map[string]any) (map[string]any, []datasetapi.ParameterError) {
 		if params == nil {
@@ -104,13 +105,14 @@ func buildRuntimeTemplate() *stubRuntime {
 			Schema:      append([]datasetapi.Column(nil), runtime.desc.Columns...),
 			Rows:        []datasetapi.Row{{"value": 42}},
 			GeneratedAt: time.Unix(0, 0).UTC(),
-			Format:      datasetapi.FormatJSON,
+			Format:      formatProvider.JSON(),
 		}, nil, nil
 	}
 	return runtime
 }
 
 func buildFailRuntime() *stubRuntime {
+	formatProvider := datasetapi.GetFormatProvider()
 	runtime := newStubRuntime(
 		"frog",
 		"fail",
@@ -118,7 +120,7 @@ func buildFailRuntime() *stubRuntime {
 		"Fail",
 		"fail dataset",
 		[]datasetapi.Column{{Name: "value", Type: "integer"}},
-		[]datasetapi.Format{datasetapi.FormatJSON},
+		[]datasetapi.Format{formatProvider.JSON()},
 	)
 	runtime.runFn = func(context.Context, map[string]any, datasetapi.Scope, datasetapi.Format) (datasetapi.RunResult, []datasetapi.ParameterError, error) {
 		return datasetapi.RunResult{}, nil, fmt.Errorf("boom run")
@@ -127,6 +129,7 @@ func buildFailRuntime() *stubRuntime {
 }
 
 func buildBadJSONRuntime() *stubRuntime {
+	formatProvider := datasetapi.GetFormatProvider()
 	runtime := newStubRuntime(
 		"frog",
 		"badjson",
@@ -134,14 +137,14 @@ func buildBadJSONRuntime() *stubRuntime {
 		"Bad JSON",
 		"bad json dataset",
 		[]datasetapi.Column{{Name: "value", Type: "string"}},
-		[]datasetapi.Format{datasetapi.FormatJSON},
+		[]datasetapi.Format{formatProvider.JSON()},
 	)
 	runtime.runFn = func(context.Context, map[string]any, datasetapi.Scope, datasetapi.Format) (datasetapi.RunResult, []datasetapi.ParameterError, error) {
 		return datasetapi.RunResult{
 			Schema:      append([]datasetapi.Column(nil), runtime.desc.Columns...),
 			Rows:        []datasetapi.Row{{"value": make(chan int)}},
 			GeneratedAt: time.Unix(0, 0).UTC(),
-			Format:      datasetapi.FormatJSON,
+			Format:      formatProvider.JSON(),
 		}, nil, nil
 	}
 	return runtime
@@ -188,6 +191,7 @@ type memAudit struct{ entries []AuditEntry }
 func (m *memAudit) Record(_ context.Context, e AuditEntry) { m.entries = append(m.entries, e) }
 
 func TestWorkerSuccessAcrossFormats(t *testing.T) {
+	formatProvider := datasetapi.GetFormatProvider()
 	tpl := buildRuntimeTemplate()
 	catalog := fakeCatalog{tpl: tpl}
 	store := NewMemoryObjectStore()
@@ -199,11 +203,11 @@ func TestWorkerSuccessAcrossFormats(t *testing.T) {
 	rec, err := w.EnqueueExport(context.Background(), ExportInput{
 		TemplateSlug: tpl.Descriptor().Slug,
 		Formats: []datasetapi.Format{
-			datasetapi.FormatJSON,
-			datasetapi.FormatCSV,
-			datasetapi.FormatHTML,
-			datasetapi.FormatParquet,
-			datasetapi.FormatPNG,
+			formatProvider.JSON(),
+			formatProvider.CSV(),
+			formatProvider.HTML(),
+			formatProvider.Parquet(),
+			formatProvider.PNG(),
 		},
 		RequestedBy: "tester",
 	})
@@ -232,6 +236,7 @@ func TestWorkerSuccessAcrossFormats(t *testing.T) {
 }
 
 func TestWorkerParameterValidationFailure(t *testing.T) {
+	formatProvider := datasetapi.GetFormatProvider()
 	tpl := buildRuntimeTemplate()
 	catalog := fakeCatalog{tpl: tpl}
 	w := NewWorker(catalog, nil, nil)
@@ -240,7 +245,7 @@ func TestWorkerParameterValidationFailure(t *testing.T) {
 
 	rec, err := w.EnqueueExport(context.Background(), ExportInput{
 		TemplateSlug: tpl.Descriptor().Slug,
-		Formats:      []datasetapi.Format{datasetapi.FormatJSON},
+		Formats:      []datasetapi.Format{formatProvider.JSON()},
 		Parameters:   map[string]any{"limit": "not-int"},
 	})
 	if err != nil {
@@ -275,12 +280,13 @@ func TestWorkerUnsupportedFormat(t *testing.T) {
 }
 
 func TestWorkerTemplateNotFound(t *testing.T) {
+	formatProvider := datasetapi.GetFormatProvider()
 	catalog := fakeCatalog{tpl: buildRuntimeTemplate()}
 	w := NewWorker(catalog, nil, nil)
 	w.Start()
 	defer func() { _ = w.Stop(context.Background()) }()
 
-	_, err := w.EnqueueExport(context.Background(), ExportInput{TemplateSlug: "missing/slug@1", Formats: []datasetapi.Format{datasetapi.FormatJSON}})
+	_, err := w.EnqueueExport(context.Background(), ExportInput{TemplateSlug: "missing/slug@1", Formats: []datasetapi.Format{formatProvider.JSON()}})
 	if err == nil {
 		t.Fatalf("expected not found error")
 	}
@@ -297,13 +303,14 @@ func TestMaterializeUnsupportedFormat(t *testing.T) {
 }
 
 func TestWorkerRunFailure(t *testing.T) {
+	formatProvider := datasetapi.GetFormatProvider()
 	tpl := buildFailRuntime()
 	catalog := fakeCatalog{tpl: tpl}
 	w := NewWorker(catalog, nil, nil)
 	w.Start()
 	defer func() { _ = w.Stop(context.Background()) }()
 
-	rec, err := w.EnqueueExport(context.Background(), ExportInput{TemplateSlug: tpl.Descriptor().Slug, Formats: []datasetapi.Format{datasetapi.FormatJSON}})
+	rec, err := w.EnqueueExport(context.Background(), ExportInput{TemplateSlug: tpl.Descriptor().Slug, Formats: []datasetapi.Format{formatProvider.JSON()}})
 	if err != nil {
 		t.Fatalf("enqueue: %v", err)
 	}
@@ -323,25 +330,27 @@ func TestWorkerRunFailure(t *testing.T) {
 }
 
 func TestWorkerQueueFull(t *testing.T) {
+	formatProvider := datasetapi.GetFormatProvider()
 	tpl := buildRuntimeTemplate()
 	catalog := fakeCatalog{tpl: tpl}
 	w := NewWorker(catalog, nil, nil)
 	w.queue = make(chan exportTask, 1)
 	w.queue <- exportTask{id: "pre", input: ExportInput{TemplateSlug: tpl.Descriptor().Slug}}
 
-	if _, err := w.EnqueueExport(context.Background(), ExportInput{TemplateSlug: tpl.Descriptor().Slug, Formats: []datasetapi.Format{datasetapi.FormatJSON}}); err == nil || !strings.Contains(err.Error(), "queue full") {
+	if _, err := w.EnqueueExport(context.Background(), ExportInput{TemplateSlug: tpl.Descriptor().Slug, Formats: []datasetapi.Format{formatProvider.JSON()}}); err == nil || !strings.Contains(err.Error(), "queue full") {
 		t.Fatalf("expected queue full error, got %v", err)
 	}
 }
 
 func TestWorkerProcessTemplateMissingSecondPass(t *testing.T) {
+	formatProvider := datasetapi.GetFormatProvider()
 	tpl := buildRuntimeTemplate()
 	cat := &transientCatalog{tpl: tpl}
 	w := NewWorker(cat, nil, nil)
 	w.Start()
 	defer func() { _ = w.Stop(context.Background()) }()
 
-	rec, err := w.EnqueueExport(context.Background(), ExportInput{TemplateSlug: tpl.Descriptor().Slug, Formats: []datasetapi.Format{datasetapi.FormatJSON}})
+	rec, err := w.EnqueueExport(context.Background(), ExportInput{TemplateSlug: tpl.Descriptor().Slug, Formats: []datasetapi.Format{formatProvider.JSON()}})
 	if err != nil {
 		t.Fatalf("enqueue: %v", err)
 	}
@@ -367,12 +376,13 @@ func TestWorkerProcessTemplateMissingSecondPass(t *testing.T) {
 }
 
 func TestWorkerStoreArtifactFailure(t *testing.T) {
+	formatProvider := datasetapi.GetFormatProvider()
 	tpl := buildRuntimeTemplate()
 	w := NewWorker(fakeCatalog{tpl: tpl}, errorStore{}, nil)
 	w.Start()
 	defer func() { _ = w.Stop(context.Background()) }()
 
-	rec, err := w.EnqueueExport(context.Background(), ExportInput{TemplateSlug: tpl.Descriptor().Slug, Formats: []datasetapi.Format{datasetapi.FormatJSON}})
+	rec, err := w.EnqueueExport(context.Background(), ExportInput{TemplateSlug: tpl.Descriptor().Slug, Formats: []datasetapi.Format{formatProvider.JSON()}})
 	if err != nil {
 		t.Fatalf("enqueue: %v", err)
 	}
@@ -405,12 +415,13 @@ func TestWorkerProcessMissingRecordBranch(_ *testing.T) {
 }
 
 func TestWorkerMaterializeJSONMarshalError(t *testing.T) {
+	formatProvider := datasetapi.GetFormatProvider()
 	tpl := buildBadJSONRuntime()
 	w := NewWorker(fakeCatalog{tpl: tpl}, nil, nil)
 	w.Start()
 	defer func() { _ = w.Stop(context.Background()) }()
 
-	rec, err := w.EnqueueExport(context.Background(), ExportInput{TemplateSlug: tpl.Descriptor().Slug, Formats: []datasetapi.Format{datasetapi.FormatJSON}})
+	rec, err := w.EnqueueExport(context.Background(), ExportInput{TemplateSlug: tpl.Descriptor().Slug, Formats: []datasetapi.Format{formatProvider.JSON()}})
 	if err != nil {
 		t.Fatalf("enqueue: %v", err)
 	}

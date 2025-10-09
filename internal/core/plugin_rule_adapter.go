@@ -8,6 +8,10 @@ import (
 	"colonycore/pkg/pluginapi"
 )
 
+const (
+	stageAdult = "adult"
+)
+
 func adaptPluginRule(rule pluginapi.Rule) domain.Rule {
 	if rule == nil {
 		return nil
@@ -148,7 +152,7 @@ func (o organismView) GetCurrentStage() pluginapi.LifecycleStageRef {
 		return stages.Larva()
 	case "juvenile":
 		return stages.Juvenile()
-	case "adult":
+	case stageAdult:
 		return stages.Adult()
 	case "retired":
 		return stages.Retired()
@@ -195,12 +199,55 @@ func (h housingUnitView) Facility() string    { return h.facility }
 func (h housingUnitView) Capacity() int       { return h.capacity }
 func (h housingUnitView) Environment() string { return h.environment }
 
+// Contextual environment accessors
+func (h housingUnitView) GetEnvironmentType() pluginapi.EnvironmentTypeRef {
+	ctx := pluginapi.NewHousingContext()
+	switch h.environment {
+	case "aquatic":
+		return ctx.Aquatic()
+	case "terrestrial":
+		return ctx.Terrestrial()
+	case "arboreal":
+		return ctx.Arboreal()
+	case "humid":
+		return ctx.Humid()
+	default:
+		// Default to terrestrial for unknown environments
+		return ctx.Terrestrial()
+	}
+}
+
+func (h housingUnitView) IsAquaticEnvironment() bool {
+	return h.GetEnvironmentType().IsAquatic()
+}
+
+func (h housingUnitView) IsHumidEnvironment() bool {
+	return h.GetEnvironmentType().IsHumid()
+}
+
+func (h housingUnitView) SupportsSpecies(species string) bool {
+	envType := h.GetEnvironmentType()
+
+	// Basic species-environment compatibility logic
+	if species == "frog" || species == "amphibian" {
+		return envType.IsAquatic() || envType.IsHumid()
+	}
+
+	if species == "fish" {
+		return envType.IsAquatic()
+	}
+
+	// Default: terrestrial animals can live in terrestrial environments
+	return !envType.IsAquatic() || envType.String() == "terrestrial"
+}
+
 type protocolView struct {
 	baseView
 	code        string
 	title       string
 	description string
 	maxSubjects int
+	status      string
 }
 
 func newProtocolView(protocol domain.Protocol) protocolView {
@@ -210,6 +257,7 @@ func newProtocolView(protocol domain.Protocol) protocolView {
 		title:       protocol.Title,
 		description: protocol.Description,
 		maxSubjects: protocol.MaxSubjects,
+		status:      protocol.Status,
 	}
 }
 
@@ -217,6 +265,38 @@ func (p protocolView) Code() string        { return p.code }
 func (p protocolView) Title() string       { return p.title }
 func (p protocolView) Description() string { return p.description }
 func (p protocolView) MaxSubjects() int    { return p.maxSubjects }
+
+// Contextual status accessors
+func (p protocolView) GetCurrentStatus() pluginapi.ProtocolStatusRef {
+	ctx := pluginapi.NewProtocolContext()
+	switch p.status {
+	case "draft":
+		return ctx.Draft()
+	case "active":
+		return ctx.Active()
+	case "suspended":
+		return ctx.Suspended()
+	case "completed":
+		return ctx.Completed()
+	case "cancelled":
+		return ctx.Cancelled()
+	default:
+		// Default to draft for unknown statuses
+		return ctx.Draft()
+	}
+}
+
+func (p protocolView) IsActiveProtocol() bool {
+	return p.GetCurrentStatus().IsActive()
+}
+
+func (p protocolView) IsTerminalStatus() bool {
+	return p.GetCurrentStatus().IsTerminal()
+}
+
+func (p protocolView) CanAcceptNewSubjects() bool {
+	return p.GetCurrentStatus().IsActive() && p.maxSubjects > 0
+}
 
 func newOrganismViews(orgs []domain.Organism) []pluginapi.OrganismView {
 	if len(orgs) == 0 {

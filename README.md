@@ -88,14 +88,48 @@ If the environment variable `COLONYCORE_STORAGE_DRIVER` is unset, the code will 
   `clients/R/dataset_client.R` (httr-based) to illustrate reproducing exports from external runtimes.
 
 ## Plugin Development
-ColonyCore follows hexagonal architecture principles with pure interface-based plugin APIs:
+ColonyCore enforces hexagonal architecture through comprehensive contextual accessor patterns:
 
-- **Contextual Access**: Use `pluginapi.NewEntityContext()`, `NewActionContext()`, `NewSeverityContext()`, and `NewLifecycleStageContext()` instead of raw constants
-- **Builder Patterns**: Create violations and changes via fluent builders: `NewViolationBuilder().WithRule("name").BuildWarning()`
-- **Semantic Queries**: Use organism view methods like `IsActive()`, `IsRetired()` instead of direct stage comparisons
-- **Reference Pattern**: All domain values are accessed via opaque references (e.g., `EntityTypeRef`, `SeverityRef`) that prevent direct manipulation
+### Core Principles
+- **No Raw Constants**: Access domain values via context providers, never raw constants
+- **Contextual Interfaces**: Use `pluginapi.NewEntityContext()`, `NewActionContext()`, `NewSeverityContext()`, `NewLifecycleStageContext()`, `NewHousingContext()`, `NewProtocolContext()`
+- **Semantic References**: All contexts return opaque reference types with semantic methods
+- **Builder Patterns**: Create violations via fluent builders: `NewViolationBuilder().WithEntityRef(entityContext.Organism()).BuildWarning()`
 
-See the `plugins/frog` reference implementation for patterns and ADR-0009 for stability guarantees.
+### Updated Patterns (v0.2.0)
+- **Environment Contexts**: Use `housingContext.Aquatic().IsAquatic()` instead of string comparisons
+- **Status Contexts**: Use `protocolContext.Active().IsActive()` instead of raw status checks  
+- **Facade Contextual Methods**: Call `organism.GetCurrentStage().IsActive()` for lifecycle queries
+- **Provider Interfaces**: Access formats via `datasetapi.GetFormatProvider().JSON()` instead of constants
+
+### Example Usage
+```go
+// Contextual environment checking
+housingCtx := pluginapi.NewHousingContext()
+if housing.GetEnvironmentType().Equals(housingCtx.Aquatic()) {
+    // Handle aquatic environment
+}
+
+// Contextual lifecycle checking  
+if organism.IsActive() && !organism.IsRetired() {
+    // Process active organism
+}
+
+// Provider-based format access
+formatProvider := datasetapi.GetFormatProvider()
+template.OutputFormats = []datasetapi.Format{
+    formatProvider.JSON(),
+    formatProvider.CSV(),
+}
+```
+
+### Migration Guide
+The contextual accessor pattern is enforced via:
+- **Compile-time**: Provider interfaces replace raw constants
+- **Runtime Tests**: Integration tests validate pattern compliance
+- **AST Analysis**: Anti-pattern detection scans for forbidden raw constant usage
+
+See the `plugins/frog` reference implementation for complete patterns and ADR-0009 for stability guarantees.
 
 ## Testing
 - `make test` runs the race-enabled Go test suite and enforces the configured coverage threshold.

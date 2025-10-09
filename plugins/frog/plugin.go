@@ -12,7 +12,10 @@ import (
 	"colonycore/pkg/pluginapi"
 )
 
-const frogHabitatRuleName = "frog_habitat_warning"
+const (
+	frogHabitatRuleName = "frog_habitat_warning"
+	pluginName          = "frog"
+)
 
 // Plugin implements the frog reference module described in the RFC.
 type Plugin struct{}
@@ -23,7 +26,7 @@ func New() Plugin {
 }
 
 // Name returns the plugin identifier.
-func (Plugin) Name() string { return "frog" }
+func (Plugin) Name() string { return pluginName }
 
 // Version returns the plugin semantic version.
 func (Plugin) Version() string { return "0.1.0" }
@@ -53,12 +56,15 @@ func (Plugin) Register(registry pluginapi.Registry) error {
 
 	registry.RegisterRule(frogHabitatRule{})
 
+	dialectProvider := datasetapi.GetDialectProvider()
+	formatProvider := datasetapi.GetFormatProvider()
+
 	if err := registry.RegisterDatasetTemplate(datasetapi.Template{
 		Key:         "frog_population_snapshot",
 		Version:     "0.1.0",
 		Title:       "Frog Population Snapshot",
 		Description: "Lists frog organisms with lifecycle, housing, and project context scoped to the caller's RBAC filters.",
-		Dialect:     datasetapi.DialectDSL,
+		Dialect:     dialectProvider.DSL(),
 		Query: `REPORT frog_population_snapshot
 SELECT organism_id, organism_name, species, lifecycle_stage, project_id, protocol_id, housing_id, updated_at
 FROM organisms
@@ -114,11 +120,11 @@ WHERE species ILIKE 'frog%'`,
 			},
 		},
 		OutputFormats: []datasetapi.Format{
-			datasetapi.FormatJSON,
-			datasetapi.FormatCSV,
-			datasetapi.FormatParquet,
-			datasetapi.FormatHTML,
-			datasetapi.FormatPNG,
+			formatProvider.JSON(),
+			formatProvider.CSV(),
+			formatProvider.Parquet(),
+			formatProvider.HTML(),
+			formatProvider.PNG(),
 		},
 		Binder: frogPopulationBinder,
 	}); err != nil {
@@ -246,12 +252,13 @@ func frogPopulationBinder(env datasetapi.Environment) (datasetapi.Runner, error)
 		if asOfTime != nil {
 			metadata["as_of"] = asOfTime.UTC()
 		}
+		formatProvider := datasetapi.GetFormatProvider()
 		return datasetapi.RunResult{
 			Schema:      req.Template.Columns,
 			Rows:        rows,
 			Metadata:    metadata,
 			GeneratedAt: now(),
-			Format:      datasetapi.FormatJSON,
+			Format:      formatProvider.JSON(),
 		}, nil
 	}, nil
 }

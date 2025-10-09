@@ -1,6 +1,6 @@
 # RFC: ColonyCore Base Module
 
-- Status: Draft (updated to reference ADR-0007 storage baseline, ADR-0008 object storage contract, ADR-0009 plugin interface stability & semver policy)
+- Status: Draft (updated to reference ADR-0007 storage baseline, ADR-0008 object storage contract, ADR-0009 plugin interface stability & semver policy, ADR-0010 contextual accessor pattern implementation)
 - Created: 2025-09-21
 - Authors: Tobias Harnickell
 - Stakeholders: Tobias Harnickell
@@ -86,18 +86,25 @@ States: `scheduled → in-progress → completed` with optional `cancelled`.
 
 ## 6. Plugin Architecture & Extension Contracts
 ### 6.1 Capability Interfaces
-| Interface | Responsibility |
-| --- | --- |
-| `LifecycleRules` | Map age, time, and metrics to the canonical lifecycle states and expose transition validation. |
-| `BreedingPlanner` | Recommend pairings, detect kinship conflicts, and project timelines. |
-| `PhenotypeSchema` | Provide JSON Schema fragments for species-specific observation fields. |
-| `GenotypingRules` | Validate marker sets, allele plausibility, and inheritance warnings. |
-| `HusbandrySchedule` | Emit task templates (feeding, tank changes) with recurrence rules. |
-| `BodyMetrics` | Define measurement units, normal ranges, and conversion logic. |
-| `EnvironmentalNeeds` | Specify acceptable ranges for temperature, humidity, pH, etc. |
-| `EuthanasiaMethods` | Enumerate allowable methods with compliance references. |
-| `AgeStageMapper` | Convert chronological age and morphometrics to stage labels. |
-| `ComplianceChecks` | Add species-specific hard/soft validation hooks for workflows. |
+| Interface | Responsibility | Contextual Access Pattern |
+| --- | --- | --- |
+| `LifecycleRules` | Map age, time, and metrics to the canonical lifecycle states and expose transition validation. | `organism.GetCurrentStage().IsActive()`, `stageCtx.Adult().IsActive()` |
+| `BreedingPlanner` | Recommend pairings, detect kinship conflicts, and project timelines. | `organism.IsActive() && !organism.IsRetired()` |
+| `PhenotypeSchema` | Provide JSON Schema fragments for species-specific observation fields. | `organism.Attributes()` with contextual validation |
+| `GenotypingRules` | Validate marker sets, allele plausibility, and inheritance warnings. | Organism lineage with contextual stage checking |
+| `HusbandrySchedule` | Emit task templates (feeding, tank changes) with recurrence rules. | `housing.GetEnvironmentType().IsAquatic()`, `housing.SupportsSpecies("frog")` |
+| `BodyMetrics` | Define measurement units, normal ranges, and conversion logic. | Stage-specific calculations via `GetCurrentStage()` |
+| `EnvironmentalNeeds` | Specify acceptable ranges for temperature, humidity, pH, etc. | `housingCtx.Aquatic().IsHumid()`, contextual environment matching |
+| `EuthanasiaMethods` | Enumerate allowable methods with compliance references. | `protocol.IsActiveProtocol()`, contextual compliance checking |
+| `AgeStageMapper` | Convert chronological age and morphometrics to stage labels. | `stageCtx.Juvenile().String()` for stage mapping |
+| `ComplianceChecks` | Add species-specific hard/soft validation hooks for workflows. | `protocol.CanAcceptNewSubjects()`, contextual capacity checks |
+
+**Contextual Accessor Enforcement**: All plugin interfaces must use the contextual accessor pattern (ADR-0010) instead of raw constant access. This includes:
+- Environment checking via `housing.GetEnvironmentType()` methods
+- Lifecycle stage queries via `organism.GetCurrentStage()` methods  
+- Protocol status validation via `protocol.GetCurrentStatus()` methods
+- Entity and action references via context providers (e.g., `NewEntityContext().Organism()`)
+- Provider interfaces for formats and dialects (e.g., `GetFormatProvider().JSON()`)
 
 ### 6.2 Data Extension Points
 - Species modules register JSON Schema fragments to extend Organism, Procedure, Observation, and Sample payloads. Each fragment is versioned and traceable.

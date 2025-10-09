@@ -15,12 +15,14 @@ func (s stringerValue) String() string { return s.value }
 
 func TestNewHostTemplateAndRuntime(t *testing.T) {
 	now := time.Date(2025, 1, 2, 3, 4, 5, 0, time.UTC)
+	dialectProvider := GetDialectProvider()
+	formatProvider := GetFormatProvider()
 	tpl := Template{
 		Key:         "demo",
 		Version:     "1.0.0",
 		Title:       "Demo",
 		Description: "demo",
-		Dialect:     DialectSQL,
+		Dialect:     dialectProvider.SQL(),
 		Query:       "SELECT 1",
 		Parameters: []Parameter{{
 			Name:        "limit",
@@ -40,7 +42,7 @@ func TestNewHostTemplateAndRuntime(t *testing.T) {
 			Tags:            []string{"tag"},
 			Annotations:     map[string]string{"k": "v"},
 		},
-		OutputFormats: []Format{FormatJSON, FormatCSV},
+		OutputFormats: []Format{formatProvider.JSON(), formatProvider.CSV()},
 	}
 
 	tpl.Binder = func(env Environment) (Runner, error) {
@@ -61,7 +63,7 @@ func TestNewHostTemplateAndRuntime(t *testing.T) {
 					"note": "ok",
 				},
 				GeneratedAt: env.Now(),
-				Format:      FormatCSV,
+				Format:      formatProvider.CSV(),
 			}, nil
 		}, nil
 	}
@@ -73,7 +75,7 @@ func TestNewHostTemplateAndRuntime(t *testing.T) {
 	if host.Slug() != "frog/demo@1.0.0" {
 		t.Fatalf("unexpected slug: %s", host.Slug())
 	}
-	if !host.SupportsFormat(FormatJSON) || host.SupportsFormat(FormatPNG) {
+	if !host.SupportsFormat(formatProvider.JSON()) || host.SupportsFormat(formatProvider.PNG()) {
 		t.Fatalf("unexpected format support")
 	}
 
@@ -91,14 +93,14 @@ func TestNewHostTemplateAndRuntime(t *testing.T) {
 	}
 
 	scope := Scope{Requestor: "analyst", ProjectIDs: []string{"project"}}
-	result, paramErrs, err := host.Run(context.Background(), map[string]any{"limit": 5}, scope, FormatJSON)
+	result, paramErrs, err := host.Run(context.Background(), map[string]any{"limit": 5}, scope, formatProvider.JSON())
 	if err != nil {
 		t.Fatalf("Run: %v", err)
 	}
 	if len(paramErrs) != 0 {
 		t.Fatalf("unexpected parameter errors: %+v", paramErrs)
 	}
-	if result.Format != FormatJSON {
+	if result.Format != formatProvider.JSON() {
 		t.Fatalf("expected JSON format, got %s", result.Format)
 	}
 	if len(result.Rows) != 1 || result.Rows[0]["value"].(int) != 7 {
@@ -110,12 +112,15 @@ func TestNewHostTemplateAndRuntime(t *testing.T) {
 
 	helper := host
 	// Ensure TemplateRuntime interface is satisfied by rerunning via helper copy.
-	if _, _, err := helper.Run(context.Background(), map[string]any{"limit": 5}, scope, FormatJSON); err != nil {
+	if _, _, err := helper.Run(context.Background(), map[string]any{"limit": 5}, scope, formatProvider.JSON()); err != nil {
 		t.Fatalf("helper run: %v", err)
 	}
 }
 
 func TestNewHostTemplateValidationErrors(t *testing.T) {
+	dialectProvider := GetDialectProvider()
+	formatProvider := GetFormatProvider()
+
 	cases := []struct {
 		name string
 		mut  func(*Template)
@@ -134,10 +139,10 @@ func TestNewHostTemplateValidationErrors(t *testing.T) {
 		Key:           "k",
 		Version:       "1",
 		Title:         "t",
-		Dialect:       DialectSQL,
+		Dialect:       dialectProvider.SQL(),
 		Query:         "select 1",
 		Columns:       []Column{{Name: "c", Type: "string"}},
-		OutputFormats: []Format{FormatJSON},
+		OutputFormats: []Format{formatProvider.JSON()},
 		Binder:        func(Environment) (Runner, error) { return nil, nil },
 	}
 
@@ -151,14 +156,17 @@ func TestNewHostTemplateValidationErrors(t *testing.T) {
 }
 
 func TestHostTemplateBindErrors(t *testing.T) {
+	dialectProvider := GetDialectProvider()
+	formatProvider := GetFormatProvider()
+
 	tpl := Template{
 		Key:           "k",
 		Version:       "1",
 		Title:         "t",
-		Dialect:       DialectSQL,
+		Dialect:       dialectProvider.SQL(),
 		Query:         "select 1",
 		Columns:       []Column{{Name: "c", Type: "string"}},
-		OutputFormats: []Format{FormatJSON},
+		OutputFormats: []Format{formatProvider.JSON()},
 		Binder:        func(Environment) (Runner, error) { return nil, nil },
 	}
 	host, err := NewHostTemplate("plugin", tpl)
@@ -180,14 +188,17 @@ func TestHostTemplateBindErrors(t *testing.T) {
 }
 
 func TestValidateParametersErrors(t *testing.T) {
+	dialectProvider := GetDialectProvider()
+	formatProvider := GetFormatProvider()
+
 	tpl := Template{
 		Key:           "k",
 		Version:       "1",
 		Title:         "t",
-		Dialect:       DialectSQL,
+		Dialect:       dialectProvider.SQL(),
 		Query:         "select 1",
 		Columns:       []Column{{Name: "c", Type: "string"}},
-		OutputFormats: []Format{FormatJSON},
+		OutputFormats: []Format{formatProvider.JSON()},
 		Parameters: []Parameter{
 			{Name: "stage", Type: "string", Enum: []string{"adult", "larva"}},
 			{Name: "limit", Type: "integer", Required: true},
@@ -204,7 +215,7 @@ func TestValidateParametersErrors(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewHostTemplate: %v", err)
 	}
-	if host.SupportsFormat(FormatPNG) {
+	if host.SupportsFormat(formatProvider.PNG()) {
 		t.Fatalf("expected PNG to be unsupported")
 	}
 
@@ -246,8 +257,10 @@ func TestValidateParametersErrors(t *testing.T) {
 	}
 
 	// Exercise run to ensure cleaned parameters accepted.
-	host.runtime = func(context.Context, RunRequest) (RunResult, error) { return RunResult{Format: FormatJSON}, nil }
-	if _, _, err := host.Run(context.Background(), cleaned, scope, FormatJSON); err != nil {
+	host.runtime = func(context.Context, RunRequest) (RunResult, error) {
+		return RunResult{Format: formatProvider.JSON()}, nil
+	}
+	if _, _, err := host.Run(context.Background(), cleaned, scope, formatProvider.JSON()); err != nil {
 		t.Fatalf("run with cleaned params failed: %v", err)
 	}
 }
@@ -282,16 +295,19 @@ func TestSlugAndCloneHelpers(t *testing.T) {
 		t.Fatalf("unexpected slug with plugin: %s", slug)
 	}
 
+	dialectProvider := GetDialectProvider()
+	formatProvider := GetFormatProvider()
+
 	tpl := Template{
 		Key:           "clone",
 		Version:       "1",
 		Title:         "Clone",
-		Dialect:       DialectSQL,
+		Dialect:       dialectProvider.SQL(),
 		Query:         "select 1",
 		Parameters:    []Parameter{{Name: "enum", Type: "string", Enum: []string{"a"}}},
 		Columns:       []Column{{Name: "c", Type: "string"}},
 		Metadata:      Metadata{Tags: []string{"t"}, Annotations: map[string]string{"k": "v"}},
-		OutputFormats: []Format{FormatJSON},
+		OutputFormats: []Format{formatProvider.JSON()},
 	}
 	clone := cloneTemplate(tpl)
 	clone.Parameters[0].Enum[0] = mutatedLiteral
@@ -322,14 +338,17 @@ func TestSlugAndCloneHelpers(t *testing.T) {
 }
 
 func TestHostTemplateAccessors(t *testing.T) {
+	dialectProvider := GetDialectProvider()
+	formatProvider := GetFormatProvider()
+
 	tpl := Template{
 		Key:           "key",
 		Version:       "1",
 		Title:         "title",
-		Dialect:       DialectSQL,
+		Dialect:       dialectProvider.SQL(),
 		Query:         "select 1",
 		Columns:       []Column{{Name: "c", Type: "string"}},
-		OutputFormats: []Format{FormatJSON},
+		OutputFormats: []Format{formatProvider.JSON()},
 		Binder: func(Environment) (Runner, error) {
 			return func(context.Context, RunRequest) (RunResult, error) { return RunResult{}, nil }, nil
 		},
@@ -349,14 +368,17 @@ func TestHostTemplateAccessors(t *testing.T) {
 }
 
 func TestHostTemplateRunRequiresBind(t *testing.T) {
+	dialectProvider := GetDialectProvider()
+	formatProvider := GetFormatProvider()
+
 	tpl := Template{
 		Key:           "k",
 		Version:       "1",
 		Title:         "t",
-		Dialect:       DialectSQL,
+		Dialect:       dialectProvider.SQL(),
 		Query:         "select 1",
 		Columns:       []Column{{Name: "c", Type: "string"}},
-		OutputFormats: []Format{FormatJSON},
+		OutputFormats: []Format{formatProvider.JSON()},
 		Parameters:    []Parameter{{Name: "p", Type: "string"}},
 		Binder: func(Environment) (Runner, error) {
 			return func(context.Context, RunRequest) (RunResult, error) { return RunResult{}, nil }, nil
@@ -366,7 +388,7 @@ func TestHostTemplateRunRequiresBind(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewHostTemplate: %v", err)
 	}
-	if _, _, err := host.Run(context.Background(), nil, Scope{}, FormatJSON); err == nil {
+	if _, _, err := host.Run(context.Background(), nil, Scope{}, formatProvider.JSON()); err == nil {
 		t.Fatalf("expected run to fail when not bound")
 	}
 }
@@ -376,7 +398,8 @@ func TestValidateTemplateDetailedErrors(t *testing.T) {
 	if err := validateTemplate(bad); err == nil {
 		t.Fatalf("expected validation failure for empty template")
 	}
-	bad = Template{Key: "k", Version: "1", Title: "t", Query: "select 1", Columns: []Column{{Name: "c", Type: "string"}}, OutputFormats: []Format{FormatJSON}, Binder: func(Environment) (Runner, error) { return nil, nil }}
+	formatProvider := GetFormatProvider()
+	bad = Template{Key: "k", Version: "1", Title: "t", Query: "select 1", Columns: []Column{{Name: "c", Type: "string"}}, OutputFormats: []Format{formatProvider.JSON()}, Binder: func(Environment) (Runner, error) { return nil, nil }}
 	bad.Dialect = Dialect("graphql")
 	if err := validateTemplate(bad); err == nil || !strings.Contains(err.Error(), "unsupported") {
 		t.Fatalf("expected unsupported dialect error, got %v", err)

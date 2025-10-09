@@ -34,6 +34,8 @@ func TestWorkerEnqueueBlankSlug(t *testing.T) {
 }
 
 func TestWorkerEnqueueDuplicateFormatsAndQueueFull(t *testing.T) {
+	formatProvider := datasetapi.GetFormatProvider()
+
 	svc := core.NewInMemoryService(core.NewDefaultRulesEngine())
 	meta, err := svc.InstallPlugin(frog.New())
 	if err != nil {
@@ -42,12 +44,12 @@ func TestWorkerEnqueueDuplicateFormatsAndQueueFull(t *testing.T) {
 	slug := meta.Datasets[0].Slug
 	w := NewWorker(svc, nil, nil) // do NOT start worker so queue fills
 
-	rec, err := w.EnqueueExport(context.Background(), ExportInput{TemplateSlug: slug, Formats: []datasetapi.Format{datasetapi.FormatJSON, datasetapi.FormatJSON, datasetapi.FormatCSV}})
+	rec, err := w.EnqueueExport(context.Background(), ExportInput{TemplateSlug: slug, Formats: []datasetapi.Format{formatProvider.JSON(), formatProvider.JSON(), formatProvider.CSV()}})
 	if err != nil {
 		t.Fatalf("enqueue: %v", err)
 	}
 	// expect de-duplicated formats preserving first appearances order
-	if len(rec.Formats) != 2 || rec.Formats[0] != datasetapi.FormatJSON || rec.Formats[1] != datasetapi.FormatCSV {
+	if len(rec.Formats) != 2 || rec.Formats[0] != formatProvider.JSON() || rec.Formats[1] != formatProvider.CSV() {
 		t.Fatalf("unexpected formats after dedup: %#v", rec.Formats)
 	}
 
@@ -124,16 +126,18 @@ func TestHandlerRunAcceptHeaderNegotiation(t *testing.T) {
 }
 
 func TestHandlerRunInternalError(t *testing.T) {
+	formatProvider := datasetapi.GetFormatProvider()
+	dialectProvider := datasetapi.GetDialectProvider()
 	failing := core.DatasetTemplate{
 		Plugin: "frog",
 		Template: datasetapi.Template{
 			Key:           "failing2",
 			Version:       "1.0.0",
 			Title:         "Failing2",
-			Dialect:       datasetapi.DialectSQL,
+			Dialect:       dialectProvider.SQL(),
 			Query:         "SELECT 1",
 			Columns:       []datasetapi.Column{{Name: "v", Type: "string"}},
-			OutputFormats: []datasetapi.Format{datasetapi.FormatJSON},
+			OutputFormats: []datasetapi.Format{formatProvider.JSON()},
 		},
 	}
 	failing.RunnerForTests(func(context.Context, core.DatasetRunRequest) (core.DatasetRunResult, error) {

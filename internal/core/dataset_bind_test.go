@@ -10,15 +10,18 @@ import (
 )
 
 func TestDatasetTemplateBindErrorVariants(t *testing.T) {
+	dialectProvider := datasetapi.GetDialectProvider()
+	formatProvider := datasetapi.GetFormatProvider()
+
 	tmpl := DatasetTemplate{
 		Template: datasetapi.Template{
 			Key:           "k",
 			Version:       "v1",
 			Title:         "t",
-			Dialect:       datasetapi.DialectSQL,
+			Dialect:       dialectProvider.SQL(),
 			Query:         "select 1",
 			Columns:       []datasetapi.Column{{Name: "c", Type: "string"}},
-			OutputFormats: []datasetapi.Format{datasetapi.FormatJSON},
+			OutputFormats: []datasetapi.Format{formatProvider.JSON()},
 		},
 	}
 	if err := tmpl.bind(DatasetEnvironment{}); err == nil {
@@ -39,22 +42,25 @@ func TestDatasetTemplateBindErrorVariants(t *testing.T) {
 }
 
 func TestDatasetTemplateBindAndRun(t *testing.T) {
+	dialectProvider := datasetapi.GetDialectProvider()
+	formatProvider := datasetapi.GetFormatProvider()
+
 	called := false
 	tmpl := DatasetTemplate{
 		Template: datasetapi.Template{
 			Key:           "k",
 			Version:       "v1",
 			Title:         "t",
-			Dialect:       datasetapi.DialectSQL,
+			Dialect:       dialectProvider.SQL(),
 			Query:         "select 1",
 			Columns:       []datasetapi.Column{{Name: "c", Type: "string"}},
-			OutputFormats: []datasetapi.Format{datasetapi.FormatJSON},
+			OutputFormats: []datasetapi.Format{formatProvider.JSON()},
 		},
 	}
 	tmpl.Binder = func(datasetapi.Environment) (datasetapi.Runner, error) {
 		return func(context.Context, datasetapi.RunRequest) (datasetapi.RunResult, error) {
 			called = true
-			return datasetapi.RunResult{Rows: []datasetapi.Row{{"c": 1}}, GeneratedAt: time.Now().UTC(), Format: datasetapi.FormatJSON}, nil
+			return datasetapi.RunResult{Rows: []datasetapi.Row{{"c": 1}}, GeneratedAt: time.Now().UTC(), Format: formatProvider.JSON()}, nil
 		}, nil
 	}
 	if err := tmpl.bind(DatasetEnvironment{}); err != nil {

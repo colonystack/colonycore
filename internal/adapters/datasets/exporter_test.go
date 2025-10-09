@@ -12,6 +12,7 @@ import (
 )
 
 func TestWorkerProcessesExport(t *testing.T) {
+	formatProvider := datasetapi.GetFormatProvider()
 	svc := core.NewInMemoryService(core.NewDefaultRulesEngine())
 	meta, err := svc.InstallPlugin(frog.New())
 	if err != nil {
@@ -35,7 +36,7 @@ func TestWorkerProcessesExport(t *testing.T) {
 		t.Fatalf("create organism: %v", err)
 	}
 
-	record, err := worker.EnqueueExport(ctx, ExportInput{TemplateSlug: descriptor.Slug, Parameters: map[string]any{"include_retired": true}, Formats: []datasetapi.Format{datasetapi.FormatJSON}, Scope: datasetapi.Scope{ProjectIDs: []string{project.ID}, Requestor: "worker@colonycore"}, RequestedBy: "worker@colonycore"})
+	record, err := worker.EnqueueExport(ctx, ExportInput{TemplateSlug: descriptor.Slug, Parameters: map[string]any{"include_retired": true}, Formats: []datasetapi.Format{formatProvider.JSON()}, Scope: datasetapi.Scope{ProjectIDs: []string{project.ID}, Requestor: "worker@colonycore"}, RequestedBy: "worker@colonycore"})
 	if err != nil {
 		t.Fatalf("enqueue export: %v", err)
 	}

@@ -105,6 +105,27 @@ func checkRawConstantUsage(file *ast.File) []string {
 		"ActionCreate":      "Use actionContext.Create() instead",
 		"ActionUpdate":      "Use actionContext.Update() instead",
 		"ActionDelete":      "Use actionContext.Delete() instead",
+
+		// Housing environment constants
+		"EnvironmentAquatic":     "Use housingContext.Aquatic() instead",
+		"EnvironmentTerrestrial": "Use housingContext.Terrestrial() instead",
+		"EnvironmentArboreal":    "Use housingContext.Arboreal() instead",
+		"EnvironmentHumid":       "Use housingContext.Humid() instead",
+
+		// Protocol status constants
+		"ProtocolDraft":     "Use protocolContext.Draft() instead",
+		"ProtocolActive":    "Use protocolContext.Active() instead",
+		"ProtocolSuspended": "Use protocolContext.Suspended() instead",
+		"ProtocolCompleted": "Use protocolContext.Completed() instead",
+		"ProtocolCancelled": "Use protocolContext.Cancelled() instead",
+
+		// Lifecycle stage constants (raw access)
+		"StagePlanned":  "Use lifecycleContext.Planned() instead",
+		"StageLarva":    "Use lifecycleContext.Larva() instead",
+		"StageJuvenile": "Use lifecycleContext.Juvenile() instead",
+		"StageAdult":    "Use lifecycleContext.Adult() instead",
+		"StageRetired":  "Use lifecycleContext.Retired() instead",
+		"StageDeceased": "Use lifecycleContext.Deceased() instead",
 	}
 
 	ast.Inspect(file, func(n ast.Node) bool {

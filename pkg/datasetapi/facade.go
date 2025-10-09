@@ -6,7 +6,15 @@ package datasetapi
 import (
 	"context"
 	"encoding/json"
+	"strings"
 	"time"
+)
+
+const (
+	// Procedure status constants
+	statusInProgress = "in_progress"
+	statusCompleted  = "completed"
+	statusCancelled  = "cancelled"
 )
 
 // TransactionView offers read-only access to a snapshot of core entities for
@@ -115,6 +123,7 @@ type ProtocolData struct {
 	Title       string
 	Description string
 	MaxSubjects int
+	Status      string
 }
 
 // ProjectData describes the fields required to construct a Project facade.
@@ -168,6 +177,12 @@ type HousingUnit interface {
 	Facility() string
 	Capacity() int
 	Environment() string
+
+	// Contextual environment accessors
+	GetEnvironmentType() EnvironmentTypeRef
+	IsAquaticEnvironment() bool
+	IsHumidEnvironment() bool
+	SupportsSpecies(species string) bool
 }
 
 // BreedingUnit exposes read-only breeding metadata to dataset plugins.
@@ -194,6 +209,12 @@ type Procedure interface {
 	ProtocolID() string
 	CohortID() (string, bool)
 	OrganismIDs() []string
+
+	// Contextual status accessors
+	GetCurrentStatus() ProcedureStatusRef
+	IsActiveProcedure() bool
+	IsTerminalStatus() bool
+	IsSuccessful() bool
 }
 
 // Protocol exposes read-only protocol metadata to dataset plugins.
@@ -205,6 +226,12 @@ type Protocol interface {
 	Title() string
 	Description() string
 	MaxSubjects() int
+
+	// Contextual status accessors
+	GetCurrentStatus() ProtocolStatusRef
+	IsActiveProtocol() bool
+	IsTerminalStatus() bool
+	CanAcceptNewSubjects() bool
 }
 
 // Project exposes read-only project metadata to dataset plugins.
@@ -431,6 +458,49 @@ func (h housingUnit) Facility() string    { return h.facility }
 func (h housingUnit) Capacity() int       { return h.capacity }
 func (h housingUnit) Environment() string { return h.environment }
 
+// Contextual environment accessors
+func (h housingUnit) GetEnvironmentType() EnvironmentTypeRef {
+	ctx := NewHousingContext()
+	switch strings.ToLower(h.environment) {
+	case "aquatic":
+		return ctx.Aquatic()
+	case "terrestrial":
+		return ctx.Terrestrial()
+	case "arboreal":
+		return ctx.Arboreal()
+	case "humid":
+		return ctx.Humid()
+	default:
+		// Default to terrestrial for unknown environments
+		return ctx.Terrestrial()
+	}
+}
+
+func (h housingUnit) IsAquaticEnvironment() bool {
+	return h.GetEnvironmentType().IsAquatic()
+}
+
+func (h housingUnit) IsHumidEnvironment() bool {
+	return h.GetEnvironmentType().IsHumid()
+}
+
+func (h housingUnit) SupportsSpecies(species string) bool {
+	speciesLower := strings.ToLower(species)
+	envType := h.GetEnvironmentType()
+
+	// Basic species-environment compatibility logic
+	if strings.Contains(speciesLower, "frog") || strings.Contains(speciesLower, "amphibian") {
+		return envType.IsAquatic() || envType.IsHumid()
+	}
+
+	if strings.Contains(speciesLower, "fish") {
+		return envType.IsAquatic()
+	}
+
+	// Default: terrestrial animals can live in terrestrial environments
+	return !envType.IsAquatic() || envType.String() == "terrestrial"
+}
+
 func (h housingUnit) MarshalJSON() ([]byte, error) {
 	type housingJSON struct {
 		ID          string    `json:"id"`
@@ -549,6 +619,38 @@ func (p procedure) OrganismIDs() []string {
 	return cloneStringSlice(p.organismIDs)
 }
 
+// Contextual status accessors
+func (p procedure) GetCurrentStatus() ProcedureStatusRef {
+	ctx := NewProcedureContext()
+	switch strings.ToLower(p.status) {
+	case "scheduled":
+		return ctx.Scheduled()
+	case statusInProgress, "inprogress", "running":
+		return ctx.InProgress()
+	case statusCompleted, "done":
+		return ctx.Completed()
+	case statusCancelled:
+		return ctx.Cancelled()
+	case "failed", "error":
+		return ctx.Failed()
+	default:
+		// Default to scheduled for unknown statuses
+		return ctx.Scheduled()
+	}
+}
+
+func (p procedure) IsActiveProcedure() bool {
+	return p.GetCurrentStatus().IsActive()
+}
+
+func (p procedure) IsTerminalStatus() bool {
+	return p.GetCurrentStatus().IsTerminal()
+}
+
+func (p procedure) IsSuccessful() bool {
+	return p.GetCurrentStatus().IsSuccessful()
+}
+
 func (p procedure) MarshalJSON() ([]byte, error) {
 	type procedureJSON struct {
 		ID          string    `json:"id"`
@@ -580,6 +682,7 @@ type protocol struct {
 	title       string
 	description string
 	maxSubjects int
+	status      string
 }
 
 // NewProtocol constructs a read-only Protocol facade.
@@ -590,6 +693,7 @@ func NewProtocol(data ProtocolData) Protocol {
 		title:       data.Title,
 		description: data.Description,
 		maxSubjects: data.MaxSubjects,
+		status:      data.Status,
 	}
 }
 
@@ -597,6 +701,38 @@ func (p protocol) Code() string        { return p.code }
 func (p protocol) Title() string       { return p.title }
 func (p protocol) Description() string { return p.description }
 func (p protocol) MaxSubjects() int    { return p.maxSubjects }
+
+// Contextual status accessors
+func (p protocol) GetCurrentStatus() ProtocolStatusRef {
+	ctx := NewProtocolContext()
+	switch strings.ToLower(p.status) {
+	case "draft":
+		return ctx.Draft()
+	case "active":
+		return ctx.Active()
+	case "suspended", "paused":
+		return ctx.Suspended()
+	case "completed", "done":
+		return ctx.Completed()
+	case "cancelled":
+		return ctx.Cancelled()
+	default:
+		// Default to draft for unknown statuses
+		return ctx.Draft()
+	}
+}
+
+func (p protocol) IsActiveProtocol() bool {
+	return p.GetCurrentStatus().IsActive()
+}
+
+func (p protocol) IsTerminalStatus() bool {
+	return p.GetCurrentStatus().IsTerminal()
+}
+
+func (p protocol) CanAcceptNewSubjects() bool {
+	return p.GetCurrentStatus().IsActive() && p.maxSubjects > 0
+}
 
 func (p protocol) MarshalJSON() ([]byte, error) {
 	type protocolJSON struct {
@@ -607,6 +743,7 @@ func (p protocol) MarshalJSON() ([]byte, error) {
 		Title       string    `json:"title"`
 		Description string    `json:"description"`
 		MaxSubjects int       `json:"max_subjects"`
+		Status      string    `json:"status"`
 	}
 	return json.Marshal(protocolJSON{
 		ID:          p.ID(),
@@ -616,6 +753,7 @@ func (p protocol) MarshalJSON() ([]byte, error) {
 		Title:       p.title,
 		Description: p.description,
 		MaxSubjects: p.maxSubjects,
+		Status:      p.status,
 	})
 }
 

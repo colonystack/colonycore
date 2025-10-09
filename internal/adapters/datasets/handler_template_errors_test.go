@@ -16,15 +16,17 @@ import (
 
 // buildSimpleTemplate returns a minimal bound template.
 func buildSimpleTemplate() core.DatasetTemplate {
+	dialectProvider := datasetapi.GetDialectProvider()
+	formatProvider := datasetapi.GetFormatProvider()
 	tmpl := core.DatasetTemplate{
 		Template: datasetapi.Template{
 			Key:           "k",
 			Version:       "1",
 			Title:         "T",
-			Dialect:       datasetapi.DialectSQL,
+			Dialect:       dialectProvider.SQL(),
 			Query:         "SELECT 1",
 			Columns:       []datasetapi.Column{{Name: "v", Type: "string"}},
-			OutputFormats: []datasetapi.Format{datasetapi.FormatJSON},
+			OutputFormats: []datasetapi.Format{formatProvider.JSON()},
 		},
 	}
 	core.BindTemplateForTests(&tmpl, func(_ context.Context, _ core.DatasetRunRequest) (core.DatasetRunResult, error) {

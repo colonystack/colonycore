@@ -8,8 +8,11 @@ import (
 )
 
 func TestPluginRegistryRegisterDatasetTemplateDuplicate(t *testing.T) {
+	dialectProvider := datasetapi.GetDialectProvider()
+	formatProvider := datasetapi.GetFormatProvider()
+
 	r := NewPluginRegistry()
-	tmpl := datasetapi.Template{Key: "k", Version: "1", Title: "T", Dialect: datasetapi.DialectSQL, Query: "SELECT 1", Columns: []datasetapi.Column{{Name: "c", Type: "string"}}, OutputFormats: []datasetapi.Format{datasetapi.FormatJSON}, Binder: func(datasetapi.Environment) (datasetapi.Runner, error) {
+	tmpl := datasetapi.Template{Key: "k", Version: "1", Title: "T", Dialect: dialectProvider.SQL(), Query: "SELECT 1", Columns: []datasetapi.Column{{Name: "c", Type: "string"}}, OutputFormats: []datasetapi.Format{formatProvider.JSON()}, Binder: func(datasetapi.Environment) (datasetapi.Runner, error) {
 		return func(_ context.Context, _ datasetapi.RunRequest) (datasetapi.RunResult, error) {
 			return datasetapi.RunResult{}, nil
 		}, nil

@@ -18,5 +18,21 @@ type Plugin interface {
 	Register(Registry) error
 }
 
-// Version is the semantic version of the plugin host API supported.
-const Version = "v1"
+// VersionProvider defines the interface for providing API version information.
+type VersionProvider interface {
+	// APIVersion returns the semantic version of the plugin host API supported.
+	APIVersion() string
+}
+
+// DefaultVersionProvider provides the default version implementation.
+type DefaultVersionProvider struct{}
+
+// APIVersion returns the current API version.
+func (DefaultVersionProvider) APIVersion() string {
+	return "v1"
+}
+
+// GetVersionProvider returns the default version provider instance.
+func GetVersionProvider() VersionProvider {
+	return DefaultVersionProvider{}
+}

@@ -36,6 +36,12 @@ type HousingUnitView interface {
 	Facility() string
 	Capacity() int
 	Environment() string
+
+	// Contextual environment accessors
+	GetEnvironmentType() EnvironmentTypeRef
+	IsAquaticEnvironment() bool
+	IsHumidEnvironment() bool
+	SupportsSpecies(species string) bool
 }
 
 // ProtocolView is a read-only projection of a protocol record.
@@ -45,4 +51,10 @@ type ProtocolView interface {
 	Title() string
 	Description() string
 	MaxSubjects() int
+
+	// Contextual status accessors
+	GetCurrentStatus() ProtocolStatusRef
+	IsActiveProtocol() bool
+	IsTerminalStatus() bool
+	CanAcceptNewSubjects() bool
 }

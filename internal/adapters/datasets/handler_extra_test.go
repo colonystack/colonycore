@@ -138,16 +138,18 @@ func TestHandlerRunCSV(t *testing.T) {
 }
 
 func buildTemplate() core.DatasetTemplate {
+	dialectProvider := datasetapi.GetDialectProvider()
+	formatProvider := datasetapi.GetFormatProvider()
 	tpl := core.DatasetTemplate{
 		Plugin: "frog",
 		Template: datasetapi.Template{
 			Key:           "fixture",
 			Version:       "1",
 			Title:         "Fixture",
-			Dialect:       datasetapi.DialectSQL,
+			Dialect:       dialectProvider.SQL(),
 			Query:         "SELECT 1",
 			Columns:       []datasetapi.Column{{Name: "value", Type: "string"}},
-			OutputFormats: []datasetapi.Format{datasetapi.FormatJSON, datasetapi.FormatCSV},
+			OutputFormats: []datasetapi.Format{formatProvider.JSON(), formatProvider.CSV()},
 		},
 	}
 	core.BindTemplateForTests(&tpl, func(_ context.Context, _ core.DatasetRunRequest) (core.DatasetRunResult, error) {

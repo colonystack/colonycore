@@ -314,6 +314,7 @@ func TestServiceAssignInvalidReferences(t *testing.T) {
 }
 
 func TestServiceClockAndLoggerOptions(t *testing.T) {
+	formatProvider := datasetapi.GetFormatProvider()
 	engine := core.NewRulesEngine()
 	store := clocklessStore{inner: core.NewMemoryStore(engine)}
 	freeze := time.Date(2024, 4, 20, 12, 34, 56, 0, time.UTC)
@@ -331,7 +332,7 @@ func TestServiceClockAndLoggerOptions(t *testing.T) {
 	if !ok {
 		t.Fatalf("resolve dataset template: %v", templates[0])
 	}
-	result, errs, err := template.Run(context.Background(), nil, datasetapi.Scope{}, datasetapi.FormatJSON)
+	result, errs, err := template.Run(context.Background(), nil, datasetapi.Scope{}, formatProvider.JSON())
 	if err != nil {
 		t.Fatalf("run dataset: %v", err)
 	}
@@ -413,14 +414,16 @@ func (testClockPlugin) Name() string    { return "clock" }
 func (testClockPlugin) Version() string { return "v1" }
 
 func (testClockPlugin) Register(registry pluginapi.Registry) error {
+	dialectProvider := datasetapi.GetDialectProvider()
+	formatProvider := datasetapi.GetFormatProvider()
 	return registry.RegisterDatasetTemplate(datasetapi.Template{
 		Key:           "now",
 		Version:       "v1",
 		Title:         "Now",
 		Description:   "returns the current time",
-		Dialect:       datasetapi.DialectSQL,
+		Dialect:       dialectProvider.SQL(),
 		Query:         "SELECT now()",
-		OutputFormats: []datasetapi.Format{datasetapi.FormatJSON},
+		OutputFormats: []datasetapi.Format{formatProvider.JSON()},
 		Columns:       []datasetapi.Column{{Name: "now", Type: "timestamp"}},
 		Binder: func(env datasetapi.Environment) (datasetapi.Runner, error) {
 			return func(_ context.Context, req datasetapi.RunRequest) (datasetapi.RunResult, error) {
@@ -433,7 +436,7 @@ func (testClockPlugin) Register(registry pluginapi.Registry) error {
 					Schema:      req.Template.Columns,
 					Rows:        []datasetapi.Row{{"now": timestamp}},
 					GeneratedAt: timestamp,
-					Format:      datasetapi.FormatJSON,
+					Format:      formatProvider.JSON(),
 				}, nil
 			}, nil
 		},

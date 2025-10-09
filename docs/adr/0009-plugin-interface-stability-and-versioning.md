@@ -39,12 +39,13 @@ Initial classification:
 
 Stable
 - Interfaces: `Plugin`, `Registry`, `Rule`, `RuleView`, `OrganismView`, `HousingUnitView`, `ProtocolView`, `BaseView`
-- Contextual Access Interfaces: `EntityContext`, `ActionContext`, `SeverityContext`, `LifecycleStageContext`
-- Reference Interfaces: `EntityTypeRef`, `ActionRef`, `SeverityRef`, `LifecycleStageRef`
+- Contextual Access Interfaces: `EntityContext`, `ActionContext`, `SeverityContext`, `LifecycleStageContext`, `HousingContext`, `ProtocolContext`
+- Reference Interfaces: `EntityTypeRef`, `ActionRef`, `SeverityRef`, `LifecycleStageRef`, `EnvironmentTypeRef`, `ProtocolStatusRef`
 - Data/Value Types: `Change`, `Violation`, `Result`
 - Builder Types: `ChangeBuilder`, `ViolationBuilder`, `ResultBuilder`
-- Functions / Constructors: `NewChange`, `NewViolation`, `NewResult`, `NewEntityContext`, `NewActionContext`, `NewSeverityContext`, `NewLifecycleStageContext`
-- Constant: `Version`
+- Functions / Constructors: `NewChange`, `NewViolation`, `NewResult`, `NewEntityContext`, `NewActionContext`, `NewSeverityContext`, `NewLifecycleStageContext`, `NewHousingContext`, `NewProtocolContext`
+- Provider Interfaces: `VersionProvider`, `GetVersionProvider()`
+- Contextual Facade Methods: All `GetCurrent*()`, `Is*()`, `Can*()`, and `Supports*()` methods on view interfaces
 
 Experimental
 - None at inception (future additions MUST be explicitly labeled if not yet stable).
@@ -93,10 +94,33 @@ Until we reach host 1.0, `pluginapi.Version` remains `v1` to indicate initial co
 - Making previously synchronous calls asynchronous or vice versa (behaviorally observable timing contracts) without compatibility shims.
 
 ### Testing & Enforcement
-We introduce (follow-up task) an automated API surface check:
-- A generated symbol list (using `go list -json` + `go doc`) committed under `internal/ci/pluginapi.snapshot`.
-- CI job compares snapshot against new build; if breaking changes are detected without version bump rationale, build fails.
-- Lint rule to enforce presence of `Experimental:` or `Deprecated:` prefixes where expected.
+We implement automated API surface checks and pattern enforcement:
+- **API Surface Snapshots**: Generated symbol lists committed under `internal/ci/datasetapi.snapshot` and `internal/ci/pluginapi.snapshot`
+- **CI Surface Drift Detection**: Jobs compare snapshots against current build; breaking changes without version bump rationale fail the build
+- **Contextual Pattern Enforcement**: Integration tests validate that all view interfaces implement contextual accessors and that raw constants are not used in plugin implementations
+- **Anti-Pattern Detection**: AST-based scanning detects forbidden raw constant usage in plugin code
+- **Provider Interface Validation**: Tests ensure provider interfaces (DialectProvider, FormatProvider, VersionProvider) are properly implemented and accessible
+
+### Contextual Accessor Pattern
+The plugin API enforces a contextual accessor pattern that promotes hexagonal architecture:
+
+**Principles:**
+- **No Raw Constants**: Plugins must not access raw domain constants directly
+- **Contextual Interfaces**: All domain concepts are accessed via context providers (e.g., `NewHousingContext()`, `NewProtocolContext()`)
+- **Opaque References**: Context methods return opaque reference types (e.g., `EnvironmentTypeRef`, `ProtocolStatusRef`) with semantic methods
+- **Semantic Queries**: View interfaces provide contextual methods like `IsActive()`, `CanAcceptNewSubjects()` instead of raw field access
+
+**Implementation:**
+- Context providers replace raw constants: `NewHousingContext().Aquatic()` instead of `EnvironmentAquatic`
+- Reference types provide semantic methods: `envRef.IsAquatic()` instead of string comparisons
+- View interfaces offer contextual accessors: `organism.GetCurrentStage()` returns `LifecycleStageRef`
+- Builder patterns support fluent violation creation: `NewViolationBuilder().WithEntityRef(entityContext.Organism())`
+
+**Benefits:**
+- **Decoupling**: Plugins are isolated from internal constant definitions
+- **Evolution**: Internal representations can change without breaking plugins
+- **Expressiveness**: Semantic methods make plugin code more readable and maintainable
+- **Type Safety**: Opaque references prevent incorrect comparisons and assignments
 
 ### Documentation
 `README.md` (or dedicated `docs/plugins.md`) will link to this ADR. Each exported type in `pkg/pluginapi` must have a top-level comment clarifying stability expectations if non-default (Experimental/Deprecated).

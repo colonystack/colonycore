@@ -10,28 +10,81 @@ import (
 // Dialect identifies the query language a template uses.
 type Dialect string
 
-const (
-	// DialectSQL is the standard SQL dialect.
-	DialectSQL Dialect = "sql"
-	// DialectDSL is the custom domain-specific language dialect.
-	DialectDSL Dialect = "dsl"
-)
+// DialectProvider defines the interface for providing dialect constants.
+type DialectProvider interface {
+	// SQL returns the standard SQL dialect identifier.
+	SQL() Dialect
+	// DSL returns the custom domain-specific language dialect identifier.
+	DSL() Dialect
+}
+
+// DefaultDialectProvider provides the default dialect implementation.
+type DefaultDialectProvider struct{}
+
+// SQL returns the standard SQL dialect.
+func (DefaultDialectProvider) SQL() Dialect {
+	return "sql"
+}
+
+// DSL returns the custom domain-specific language dialect.
+func (DefaultDialectProvider) DSL() Dialect {
+	return "dsl"
+}
+
+// GetDialectProvider returns the default dialect provider instance.
+func GetDialectProvider() DialectProvider {
+	return DefaultDialectProvider{}
+}
 
 // Format identifies an output encoding for a dataset result.
 type Format string
 
-const (
-	// FormatJSON is JSON document output.
-	FormatJSON Format = "json"
-	// FormatCSV is comma separated values output.
-	FormatCSV Format = "csv"
-	// FormatParquet is columnar Parquet output.
-	FormatParquet Format = "parquet"
-	// FormatPNG is PNG image output.
-	FormatPNG Format = "png"
-	// FormatHTML is rendered HTML output.
-	FormatHTML Format = "html"
-)
+// FormatProvider defines the interface for providing format constants.
+type FormatProvider interface {
+	// JSON returns the JSON document output format.
+	JSON() Format
+	// CSV returns the comma separated values output format.
+	CSV() Format
+	// Parquet returns the columnar Parquet output format.
+	Parquet() Format
+	// PNG returns the PNG image output format.
+	PNG() Format
+	// HTML returns the rendered HTML output format.
+	HTML() Format
+}
+
+// DefaultFormatProvider provides the default format implementation.
+type DefaultFormatProvider struct{}
+
+// JSON returns the JSON document output format.
+func (DefaultFormatProvider) JSON() Format {
+	return "json"
+}
+
+// CSV returns the comma separated values output format.
+func (DefaultFormatProvider) CSV() Format {
+	return "csv"
+}
+
+// Parquet returns the columnar Parquet output format.
+func (DefaultFormatProvider) Parquet() Format {
+	return "parquet"
+}
+
+// PNG returns the PNG image output format.
+func (DefaultFormatProvider) PNG() Format {
+	return "png"
+}
+
+// HTML returns the rendered HTML output format.
+func (DefaultFormatProvider) HTML() Format {
+	return "html"
+}
+
+// GetFormatProvider returns the default format provider instance.
+func GetFormatProvider() FormatProvider {
+	return DefaultFormatProvider{}
+}
 
 // Scope defines requestor identity and authorization context.
 type Scope struct {

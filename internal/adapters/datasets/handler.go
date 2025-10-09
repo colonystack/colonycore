@@ -219,6 +219,8 @@ type exportRequest struct {
 }
 
 func (h *Handler) handleRun(w http.ResponseWriter, r *http.Request, template datasetapi.TemplateRuntime) {
+	formatProvider := datasetapi.GetFormatProvider()
+
 	var req runRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil && err.Error() != "EOF" {
 		writeError(w, http.StatusBadRequest, "invalid run request payload")
@@ -272,7 +274,7 @@ func (h *Handler) handleRun(w http.ResponseWriter, r *http.Request, template dat
 	}
 
 	switch selectedFormat {
-	case datasetapi.FormatCSV:
+	case formatProvider.CSV():
 		streamCSV(w, descriptor, result)
 	default:
 		writeJSON(w, http.StatusOK, runResponse{
@@ -285,6 +287,8 @@ func (h *Handler) handleRun(w http.ResponseWriter, r *http.Request, template dat
 }
 
 func (h *Handler) handleExportCreate(w http.ResponseWriter, r *http.Request) {
+	formatProvider := datasetapi.GetFormatProvider()
+
 	var req exportRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil && err.Error() != "EOF" {
 		writeError(w, http.StatusBadRequest, "invalid export request payload")
@@ -304,15 +308,15 @@ func (h *Handler) handleExportCreate(w http.ResponseWriter, r *http.Request) {
 	for _, f := range req.Formats {
 		switch strings.ToLower(strings.TrimSpace(f)) {
 		case "json":
-			formats = append(formats, datasetapi.FormatJSON)
+			formats = append(formats, formatProvider.JSON())
 		case "csv":
-			formats = append(formats, datasetapi.FormatCSV)
+			formats = append(formats, formatProvider.CSV())
 		case "parquet":
-			formats = append(formats, datasetapi.FormatParquet)
+			formats = append(formats, formatProvider.Parquet())
 		case "png":
-			formats = append(formats, datasetapi.FormatPNG)
+			formats = append(formats, formatProvider.PNG())
 		case "html":
-			formats = append(formats, datasetapi.FormatHTML)
+			formats = append(formats, formatProvider.HTML())
 		default:
 			writeError(w, http.StatusBadRequest, "unsupported export format")
 			return
@@ -358,17 +362,19 @@ func firstNonEmpty(values ...string) string {
 }
 
 func negotiateFormat(r *http.Request, supported []datasetapi.Format) string {
+	formatProvider := datasetapi.GetFormatProvider()
+
 	wanted := strings.ToLower(r.URL.Query().Get("format"))
 	if wanted == "" {
 		accept := r.Header.Get("Accept")
 		if strings.Contains(accept, "text/csv") {
-			wanted = string(datasetapi.FormatCSV)
+			wanted = string(formatProvider.CSV())
 		} else {
-			wanted = string(datasetapi.FormatJSON)
+			wanted = string(formatProvider.JSON())
 		}
 	}
 	switch datasetapi.Format(wanted) {
-	case datasetapi.FormatCSV, datasetapi.FormatJSON:
+	case formatProvider.CSV(), formatProvider.JSON():
 		for _, candidate := range supported {
 			if string(candidate) == wanted {
 				return wanted

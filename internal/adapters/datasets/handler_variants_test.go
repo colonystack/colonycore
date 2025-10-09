@@ -12,6 +12,8 @@ import (
 )
 
 func TestHandlerExportsVariants(t *testing.T) {
+	dialectProvider := datasetapi.GetDialectProvider()
+	formatProvider := datasetapi.GetFormatProvider()
 	svc := core.NewInMemoryService(core.NewDefaultRulesEngine())
 	hNoSched := NewHandler(svc)
 	getReq := httptest.NewRequest(http.MethodGet, "/api/v1/datasets/exports", nil)
@@ -28,7 +30,7 @@ func TestHandlerExportsVariants(t *testing.T) {
 	if getRec2.Code != http.StatusMethodNotAllowed {
 		t.Fatalf("expected 405, got %d", getRec2.Code)
 	}
-	if _, err := svc.InstallPlugin(testDatasetPlugin{dataset: datasetapi.Template{Key: "expv", Version: "1.0.0", Title: "E", Description: "E", Dialect: datasetapi.DialectSQL, Query: "SELECT 1", Columns: []datasetapi.Column{{Name: "v", Type: "string"}}, OutputFormats: []datasetapi.Format{datasetapi.FormatJSON}, Binder: func(datasetapi.Environment) (datasetapi.Runner, error) {
+	if _, err := svc.InstallPlugin(testDatasetPlugin{dataset: datasetapi.Template{Key: "expv", Version: "1.0.0", Title: "E", Description: "E", Dialect: dialectProvider.SQL(), Query: "SELECT 1", Columns: []datasetapi.Column{{Name: "v", Type: "string"}}, OutputFormats: []datasetapi.Format{formatProvider.JSON()}, Binder: func(datasetapi.Environment) (datasetapi.Runner, error) {
 		return func(context.Context, datasetapi.RunRequest) (datasetapi.RunResult, error) {
 			return datasetapi.RunResult{}, nil
 		}, nil
@@ -45,9 +47,11 @@ func TestHandlerExportsVariants(t *testing.T) {
 }
 
 func TestTemplateVariants(t *testing.T) {
-	template := datasetapi.Template{Key: "variants", Version: "1.0.0", Title: "Variants", Description: "variants", Dialect: datasetapi.DialectSQL, Query: "SELECT 1", Columns: []datasetapi.Column{{Name: "value", Type: "string"}}, OutputFormats: []datasetapi.Format{datasetapi.FormatJSON}, Binder: func(datasetapi.Environment) (datasetapi.Runner, error) {
+	dialectProvider := datasetapi.GetDialectProvider()
+	formatProvider := datasetapi.GetFormatProvider()
+	template := datasetapi.Template{Key: "variants", Version: "1.0.0", Title: "Variants", Description: "variants", Dialect: dialectProvider.SQL(), Query: "SELECT 1", Columns: []datasetapi.Column{{Name: "value", Type: "string"}}, OutputFormats: []datasetapi.Format{formatProvider.JSON()}, Binder: func(datasetapi.Environment) (datasetapi.Runner, error) {
 		return func(context.Context, datasetapi.RunRequest) (datasetapi.RunResult, error) {
-			return datasetapi.RunResult{Rows: []datasetapi.Row{{"value": "ok"}}, Format: datasetapi.FormatJSON}, nil
+			return datasetapi.RunResult{Rows: []datasetapi.Row{{"value": "ok"}}, Format: formatProvider.JSON()}, nil
 		}, nil
 	}}
 	svc := core.NewInMemoryService(core.NewDefaultRulesEngine())

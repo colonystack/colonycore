@@ -53,7 +53,7 @@ func TestServiceInstallPluginDuplicateDatasetSlug(t *testing.T) {
 	}
 	// register function that registers same dataset twice to trigger duplicate dataset template registration error inside registry
 	regFuncDuplicate := func(reg *PluginRegistry) error {
-		tmpl := datasetapi.Template{Key: "k", Version: "1", Title: "T", Dialect: datasetapi.DialectSQL, Query: "SELECT 1", Columns: []datasetapi.Column{{Name: "c", Type: "string"}}, OutputFormats: []datasetapi.Format{datasetapi.FormatJSON}, Binder: binder}
+		tmpl := datasetapi.Template{Key: "k", Version: "1", Title: "T", Dialect: dialectProvider.SQL(), Query: "SELECT 1", Columns: []datasetapi.Column{{Name: "c", Type: "string"}}, OutputFormats: []datasetapi.Format{formatProvider.JSON()}, Binder: binder}
 		if err := reg.RegisterDatasetTemplate(tmpl); err != nil {
 			return err
 		}

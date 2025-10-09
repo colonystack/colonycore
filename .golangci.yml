@@ -77,6 +77,7 @@ linters:
             - "!**/internal/blob/architecture_test.go"
             - "!**/pkg/datasetapi/alias_guard_test.go"
             - "!**/pkg/datasetapi/serialization_guard_test.go"
+            - "!**/pkg/datasetapi/api_snapshot_test.go"
             - "!**/pkg/pluginapi/alias_guard_test.go"
             - "!**/pkg/pluginapi/api_snapshot_extra_test.go"
             - "!**/pkg/pluginapi/api_snapshot_test.go"
@@ -85,6 +86,9 @@ linters:
             - "!**/pkg/pluginapi/architecture_guard_test.go"
             - "!**/pkg/pluginapi/plugin_antipattern_test.go"
             - "!**/pkg/pluginapi/breaking_change_enforcement_test.go"
+            - "!**/pkg/pluginapi/contextual_accessor_enforcement_test.go"
+            - "!**/pkg/datasetapi/contextual_accessor_enforcement_test.go"
+            - "!**/internal/integration/contextual_pattern_enforcement_test.go"
           allow:
             - bytes
             - colonycore
@@ -121,6 +125,7 @@ linters:
             - "**/internal/blob/architecture_test.go"
             - "**/pkg/datasetapi/alias_guard_test.go"
             - "**/pkg/datasetapi/serialization_guard_test.go"
+            - "**/pkg/datasetapi/api_snapshot_test.go"
             - "**/pkg/pluginapi/alias_guard_test.go"
             - "**/pkg/pluginapi/api_snapshot_extra_test.go"
             - "**/pkg/pluginapi/api_snapshot_test.go"
@@ -129,6 +134,9 @@ linters:
             - "**/pkg/pluginapi/architecture_guard_test.go"
             - "**/pkg/pluginapi/plugin_antipattern_test.go"
             - "**/pkg/pluginapi/breaking_change_enforcement_test.go"
+            - "**/pkg/pluginapi/contextual_accessor_enforcement_test.go"
+            - "**/pkg/datasetapi/contextual_accessor_enforcement_test.go"
+            - "**/internal/integration/contextual_pattern_enforcement_test.go"
           allow:
             - bytes
             - colonycore
@@ -145,6 +153,7 @@ linters:
             - os
             - path/filepath
             - reflect
+            - regexp
             - runtime
             - sort
             - strings

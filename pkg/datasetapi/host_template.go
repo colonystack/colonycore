@@ -164,7 +164,8 @@ func validateTemplate(tpl Template) error {
 	if tpl.Binder == nil {
 		return errors.New("datasetapi: dataset template binder required")
 	}
-	if tpl.Dialect != DialectSQL && tpl.Dialect != DialectDSL {
+	dialectProvider := GetDialectProvider()
+	if tpl.Dialect != dialectProvider.SQL() && tpl.Dialect != dialectProvider.DSL() {
 		return fmt.Errorf("datasetapi: unsupported dataset dialect %q", tpl.Dialect)
 	}
 	return nil
