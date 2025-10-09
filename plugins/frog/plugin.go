@@ -153,8 +153,8 @@ func (frogHabitatRule) Evaluate(_ context.Context, view pluginapi.RuleView, _ []
 		if !ok {
 			continue
 		}
-		env := strings.ToLower(housing.Environment())
-		if strings.Contains(env, "aquatic") || strings.Contains(env, "humid") {
+		// Use contextual accessors instead of raw string comparisons
+		if housing.IsAquaticEnvironment() || housing.IsHumidEnvironment() {
 			continue
 		}
 

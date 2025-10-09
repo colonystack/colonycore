@@ -134,6 +134,14 @@ func validateNoRawConstantAccessInPlugins(t *testing.T, baseDir string) {
 		regexp.MustCompile(`\bEntityHousingUnit\b`),
 		regexp.MustCompile(`\bSeverityWarn\b`),
 		regexp.MustCompile(`\bSeverityBlock\b`),
+
+		// Enhanced anti-pattern detection
+		regexp.MustCompile(`strings\.Contains\([^,]+\.Environment\(\)`),         // Detects strings.Contains(housing.Environment(), ...)
+		regexp.MustCompile(`strings\.ToLower\([^,]+\.Environment\(\)`),          // Detects strings.ToLower(housing.Environment())
+		regexp.MustCompile(`[^,]+\.Environment\(\)\s*==`),                       // Detects housing.Environment() == "..."
+		regexp.MustCompile(`[^,]+\.Stage\(\)\s*==`),                             // Detects organism.Stage() == "..."
+		regexp.MustCompile(`"(aquatic|humid|terrestrial)"`),                     // Raw string literals for environments
+		regexp.MustCompile(`"(planned|larva|juvenile|adult|retired|deceased)"`), // Raw string literals for stages
 	}
 
 	// Scan plugins directory

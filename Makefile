@@ -23,9 +23,20 @@ registry-check:
 
 lint:
 	@$(MAKE) --no-print-directory go-lint
+	@$(MAKE) --no-print-directory validate-plugin-patterns
 	@$(MAKE) --no-print-directory python-lint
 	@$(MAKE) --no-print-directory r-lint
 	@echo "Lint suite finished successfully"
+
+validate-plugin-patterns:
+	@echo "==> Validating plugin hexagonal architecture patterns"
+	@for plugin_dir in plugins/*/; do \
+		if [ -d "$$plugin_dir" ] && find "$$plugin_dir" -name '*.go' ! -name '*_test.go' | grep -q .; then \
+			echo "Validating plugin: $$plugin_dir"; \
+			go run scripts/validate_plugin_patterns.go "$$plugin_dir"; \
+		fi; \
+	done
+	@echo "validate-plugin-patterns: OK"
 
 go-lint:
 	@echo "==> Go lint"

@@ -45,6 +45,7 @@ linters:
             - errors
             - flag
             - fmt
+            - go/ast
             - go/parser
             - go/token
             - github.com/aws/aws-sdk-go-v2/aws
@@ -59,6 +60,7 @@ linters:
             - os
             - os/exec
             - path/filepath
+            - regexp
             - sort
             - strconv
             - strings
