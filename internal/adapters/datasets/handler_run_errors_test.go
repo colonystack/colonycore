@@ -7,14 +7,15 @@ import (
 	"testing"
 
 	"colonycore/internal/core"
+	"colonycore/pkg/datasetapi"
 )
 
 // TestHandleRunNotAcceptable requests unsupported format to trigger 406.
 func TestHandleRunNotAcceptable(t *testing.T) {
 	tpl := buildTemplate()
-	tpl.OutputFormats = []core.DatasetFormat{core.FormatJSON} // no CSV support
-	core.BindTemplateForTests(&tpl, func(context.Context, core.DatasetRunRequest) (core.DatasetRunResult, error) {
-		return core.DatasetRunResult{}, nil
+	tpl.OutputFormats = []datasetapi.Format{core.FormatJSON} // no CSV support
+	core.BindTemplateForTests(&tpl, func(context.Context, datasetapi.RunRequest) (datasetapi.RunResult, error) {
+		return datasetapi.RunResult{}, nil
 	})
 	h := NewHandler(testCatalog{tpl: tpl})
 	d := tpl.Descriptor()

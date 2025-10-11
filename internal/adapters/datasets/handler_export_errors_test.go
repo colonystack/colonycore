@@ -40,7 +40,7 @@ func TestHandleExportCreateErrorBranches(t *testing.T) {
 // TestHandleExportCreateDedupFormats ensures duplicate formats accepted and deduplicated.
 func TestHandleExportCreateDedupFormats(t *testing.T) {
 	tpl := buildTemplate()
-	tpl.OutputFormats = []core.DatasetFormat{core.FormatJSON, core.FormatCSV}
+	tpl.OutputFormats = []datasetapi.Format{core.FormatJSON, core.FormatCSV}
 	cat := testCatalog{tpl: tpl}
 	wkr := NewWorker(cat, NewMemoryObjectStore(), &memAudit{})
 	wkr.Start()
@@ -92,7 +92,7 @@ func TestHandleValidateInvalidJSON(t *testing.T) {
 // TestHandleRunParameterValidationError triggers parameter type coercion failure path.
 func TestHandleRunParameterValidationError(t *testing.T) {
 	tpl := buildTemplate()
-	tpl.OutputFormats = []core.DatasetFormat{core.FormatJSON}
+	tpl.OutputFormats = []datasetapi.Format{core.FormatJSON}
 	h := NewHandler(testCatalog{tpl: tpl})
 	d := tpl.Descriptor()
 	body := `{"parameters":{"limit":"not-number"}}`

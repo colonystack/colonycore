@@ -11,53 +11,26 @@ import (
 	"colonycore/pkg/domain"
 )
 
-type (
-	// DatasetDialect mirrors datasetapi.Dialect for legacy core consumers.
-	DatasetDialect = datasetapi.Dialect
-	// DatasetFormat mirrors datasetapi.Format for legacy core consumers.
-	DatasetFormat = datasetapi.Format
-	// DatasetScope mirrors datasetapi.Scope for legacy core consumers.
-	DatasetScope = datasetapi.Scope
-	// DatasetParameter mirrors datasetapi.Parameter for legacy core consumers.
-	DatasetParameter = datasetapi.Parameter
-	// DatasetColumn mirrors datasetapi.Column for legacy core consumers.
-	DatasetColumn = datasetapi.Column
-	// DatasetTemplateMetadata mirrors datasetapi.Metadata for legacy core consumers.
-	DatasetTemplateMetadata = datasetapi.Metadata
-	// DatasetBinder mirrors datasetapi.Binder for legacy core consumers.
-	DatasetBinder = datasetapi.Binder
-	// DatasetRunner mirrors datasetapi.Runner for legacy core consumers.
-	DatasetRunner = datasetapi.Runner
-	// DatasetRunRequest mirrors datasetapi.RunRequest for legacy core consumers.
-	DatasetRunRequest = datasetapi.RunRequest
-	// DatasetRunResult mirrors datasetapi.RunResult for legacy core consumers.
-	DatasetRunResult = datasetapi.RunResult
-	// DatasetParameterError mirrors datasetapi.ParameterError for legacy core consumers.
-	DatasetParameterError = datasetapi.ParameterError
-	// DatasetTemplateDescriptor mirrors datasetapi.TemplateDescriptor for legacy core consumers.
-	DatasetTemplateDescriptor = datasetapi.TemplateDescriptor
-)
-
 var (
 	dialectProvider = datasetapi.GetDialectProvider()
 	// DatasetDialectSQL exposes datasetapi.DialectSQL via the core package.
-	DatasetDialectSQL DatasetDialect = dialectProvider.SQL()
+	DatasetDialectSQL = dialectProvider.SQL()
 	// DatasetDialectDSL exposes datasetapi.DialectDSL via the core package.
-	DatasetDialectDSL DatasetDialect = dialectProvider.DSL()
+	DatasetDialectDSL = dialectProvider.DSL()
 )
 
 var (
 	formatProvider = datasetapi.GetFormatProvider()
 	// FormatJSON exposes datasetapi.FormatJSON via the core package.
-	FormatJSON DatasetFormat = formatProvider.JSON()
+	FormatJSON = formatProvider.JSON()
 	// FormatCSV exposes datasetapi.FormatCSV via the core package.
-	FormatCSV DatasetFormat = formatProvider.CSV()
+	FormatCSV = formatProvider.CSV()
 	// FormatParquet exposes datasetapi.FormatParquet via the core package.
-	FormatParquet DatasetFormat = formatProvider.Parquet()
+	FormatParquet = formatProvider.Parquet()
 	// FormatPNG exposes datasetapi.FormatPNG via the core package.
-	FormatPNG DatasetFormat = formatProvider.PNG()
+	FormatPNG = formatProvider.PNG()
 	// FormatHTML exposes datasetapi.FormatHTML via the core package.
-	FormatHTML DatasetFormat = formatProvider.HTML()
+	FormatHTML = formatProvider.HTML()
 )
 
 // DatasetEnvironment provides runtime dependencies to binders within the core layer.
@@ -76,11 +49,11 @@ type DatasetTemplate struct {
 }
 
 // Descriptor produces a descriptor snapshot for the template, cloning metadata to guard against mutation.
-func (t DatasetTemplate) Descriptor() DatasetTemplateDescriptor {
+func (t DatasetTemplate) Descriptor() datasetapi.TemplateDescriptor {
 	if host, err := t.hostOrNew(); err == nil {
 		return host.Descriptor()
 	}
-	return DatasetTemplateDescriptor{
+	return datasetapi.TemplateDescriptor{
 		Plugin:        t.Plugin,
 		Key:           t.Key,
 		Version:       t.Version,
@@ -97,7 +70,7 @@ func (t DatasetTemplate) Descriptor() DatasetTemplateDescriptor {
 }
 
 // SupportsFormat reports whether the template declares the requested format.
-func (t DatasetTemplate) SupportsFormat(format DatasetFormat) bool {
+func (t DatasetTemplate) SupportsFormat(format datasetapi.Format) bool {
 	if t.host != nil {
 		return t.host.SupportsFormat(format)
 	}
@@ -110,19 +83,19 @@ func (t DatasetTemplate) SupportsFormat(format DatasetFormat) bool {
 }
 
 // ValidateParameters validates supplied parameters against the template definition.
-func (t DatasetTemplate) ValidateParameters(params map[string]any) (map[string]any, []DatasetParameterError) {
+func (t DatasetTemplate) ValidateParameters(params map[string]any) (map[string]any, []datasetapi.ParameterError) {
 	host, err := t.hostOrNew()
 	if err != nil {
-		return nil, []DatasetParameterError{{Name: "", Message: err.Error()}}
+		return nil, []datasetapi.ParameterError{{Name: "", Message: err.Error()}}
 	}
 	return host.ValidateParameters(params)
 }
 
 // Run executes the dataset template using the bound runner after validating parameters.
-func (t DatasetTemplate) Run(ctx context.Context, params map[string]any, scope DatasetScope, format DatasetFormat) (DatasetRunResult, []DatasetParameterError, error) {
+func (t DatasetTemplate) Run(ctx context.Context, params map[string]any, scope datasetapi.Scope, format datasetapi.Format) (datasetapi.RunResult, []datasetapi.ParameterError, error) {
 	host, err := t.boundHost()
 	if err != nil {
-		return DatasetRunResult{}, nil, err
+		return datasetapi.RunResult{}, nil, err
 	}
 	return host.Run(ctx, params, scope, format)
 }
@@ -178,11 +151,11 @@ func datasetSlug(plugin, key, version string) string {
 	return fmt.Sprintf("%s/%s@%s", plugin, keyPart, versionPart)
 }
 
-func cloneParameters(params []DatasetParameter) []DatasetParameter {
+func cloneParameters(params []datasetapi.Parameter) []datasetapi.Parameter {
 	if len(params) == 0 {
 		return nil
 	}
-	cloned := make([]DatasetParameter, len(params))
+	cloned := make([]datasetapi.Parameter, len(params))
 	copy(cloned, params)
 	for i := range cloned {
 		if len(cloned[i].Enum) > 0 {
@@ -192,16 +165,16 @@ func cloneParameters(params []DatasetParameter) []DatasetParameter {
 	return cloned
 }
 
-func cloneColumns(columns []DatasetColumn) []DatasetColumn {
+func cloneColumns(columns []datasetapi.Column) []datasetapi.Column {
 	if len(columns) == 0 {
 		return nil
 	}
-	cloned := make([]DatasetColumn, len(columns))
+	cloned := make([]datasetapi.Column, len(columns))
 	copy(cloned, columns)
 	return cloned
 }
 
-func cloneMetadata(metadata DatasetTemplateMetadata) DatasetTemplateMetadata {
+func cloneMetadata(metadata datasetapi.Metadata) datasetapi.Metadata {
 	cloned := metadata
 	if len(metadata.Tags) > 0 {
 		cloned.Tags = append([]string(nil), metadata.Tags...)
@@ -215,11 +188,11 @@ func cloneMetadata(metadata DatasetTemplateMetadata) DatasetTemplateMetadata {
 	return cloned
 }
 
-func cloneFormats(formats []DatasetFormat) []DatasetFormat {
+func cloneFormats(formats []datasetapi.Format) []datasetapi.Format {
 	if len(formats) == 0 {
 		return nil
 	}
-	cloned := make([]DatasetFormat, len(formats))
+	cloned := make([]datasetapi.Format, len(formats))
 	copy(cloned, formats)
 	return cloned
 }

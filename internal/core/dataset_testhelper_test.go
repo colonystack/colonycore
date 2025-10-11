@@ -30,8 +30,8 @@ func TestDatasetTestHelpers(t *testing.T) {
 			},
 		}
 
-		runner := func(_ context.Context, _ DatasetRunRequest) (DatasetRunResult, error) {
-			return DatasetRunResult{}, nil
+		runner := func(_ context.Context, _ datasetapi.RunRequest) (datasetapi.RunResult, error) {
+			return datasetapi.RunResult{}, nil
 		}
 
 		// Should not panic
@@ -40,7 +40,7 @@ func TestDatasetTestHelpers(t *testing.T) {
 				t.Errorf("BindTemplateForTests panicked: %v", r)
 			}
 		}()
-		BindTemplateForTests(template, DatasetRunner(runner))
+		BindTemplateForTests(template, datasetapi.Runner(runner))
 
 		// Template should now have a binder
 		if template.Binder == nil {
@@ -68,8 +68,8 @@ func TestDatasetTestHelpers(t *testing.T) {
 			},
 		}
 
-		runner := func(_ context.Context, _ DatasetRunRequest) (DatasetRunResult, error) {
-			return DatasetRunResult{}, nil
+		runner := func(_ context.Context, _ datasetapi.RunRequest) (datasetapi.RunResult, error) {
+			return datasetapi.RunResult{}, nil
 		}
 
 		// Should not panic
@@ -96,10 +96,10 @@ func TestDatasetTestHelpers(t *testing.T) {
 		}
 
 		// Bind the template first like the other helpers do
-		runner := func(_ context.Context, _ DatasetRunRequest) (DatasetRunResult, error) {
-			return DatasetRunResult{}, nil
+		runner := func(_ context.Context, _ datasetapi.RunRequest) (datasetapi.RunResult, error) {
+			return datasetapi.RunResult{}, nil
 		}
-		BindTemplateForTests(&template, DatasetRunner(runner))
+		BindTemplateForTests(&template, datasetapi.Runner(runner))
 
 		runtime := DatasetTemplateRuntimeForTests(template)
 		if runtime == nil {

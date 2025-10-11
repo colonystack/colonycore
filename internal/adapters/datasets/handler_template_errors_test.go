@@ -29,8 +29,8 @@ func buildSimpleTemplate() core.DatasetTemplate {
 			OutputFormats: []datasetapi.Format{formatProvider.JSON()},
 		},
 	}
-	core.BindTemplateForTests(&tmpl, func(_ context.Context, _ core.DatasetRunRequest) (core.DatasetRunResult, error) {
-		return core.DatasetRunResult{Rows: []datasetapi.Row{{"v": "x"}}, Schema: tmpl.Columns, GeneratedAt: time.Unix(0, 0).UTC()}, nil
+	core.BindTemplateForTests(&tmpl, func(_ context.Context, _ datasetapi.RunRequest) (datasetapi.RunResult, error) {
+		return datasetapi.RunResult{Rows: []datasetapi.Row{{"v": "x"}}, Schema: tmpl.Columns, GeneratedAt: time.Unix(0, 0).UTC()}, nil
 	})
 	return tmpl
 }

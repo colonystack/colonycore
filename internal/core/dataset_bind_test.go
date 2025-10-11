@@ -66,7 +66,7 @@ func TestDatasetTemplateBindAndRun(t *testing.T) {
 	if err := tmpl.bind(DatasetEnvironment{}); err != nil {
 		t.Fatalf("bind failed: %v", err)
 	}
-	res, paramErrs, err := tmpl.Run(context.Background(), map[string]any{}, DatasetScope{}, FormatJSON)
+	res, paramErrs, err := tmpl.Run(context.Background(), map[string]any{}, datasetapi.Scope{}, FormatJSON)
 	if err != nil || len(paramErrs) != 0 {
 		t.Fatalf("run unexpected errors: %v %v", err, paramErrs)
 	}

@@ -117,7 +117,7 @@ func TestHandlerExportsLifecycle(t *testing.T) {
 func TestHandlerRunCSV(t *testing.T) {
 	tpl := buildTemplate()
 	// restrict formats to JSON+CSV so negotiation picks CSV via query param
-	tpl.OutputFormats = []core.DatasetFormat{core.FormatJSON, core.FormatCSV}
+	tpl.OutputFormats = []datasetapi.Format{core.FormatJSON, core.FormatCSV}
 	h := NewHandler(testCatalog{tpl: tpl})
 	// run endpoint path: /api/v1/datasets/templates/{plugin}/{key}/{version}/run?format=csv
 	d := tpl.Descriptor()
@@ -152,8 +152,8 @@ func buildTemplate() core.DatasetTemplate {
 			OutputFormats: []datasetapi.Format{formatProvider.JSON(), formatProvider.CSV()},
 		},
 	}
-	core.BindTemplateForTests(&tpl, func(_ context.Context, _ core.DatasetRunRequest) (core.DatasetRunResult, error) {
-		return core.DatasetRunResult{
+	core.BindTemplateForTests(&tpl, func(_ context.Context, _ datasetapi.RunRequest) (datasetapi.RunResult, error) {
+		return datasetapi.RunResult{
 			Schema:      tpl.Columns,
 			Rows:        []datasetapi.Row{{"value": "ok"}},
 			GeneratedAt: time.Unix(0, 0).UTC(),

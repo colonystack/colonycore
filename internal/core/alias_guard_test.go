@@ -30,11 +30,6 @@ func TestNoTypeAliases(t *testing.T) {
 				if !ts.Assign.IsValid() {
 					continue
 				}
-				if sel, ok := ts.Type.(*ast.SelectorExpr); ok {
-					if ident, ok := sel.X.(*ast.Ident); ok && ident.Name == "datasetapi" {
-						continue
-					}
-				}
 				pos := pkg.Fset.Position(ts.Pos())
 				aliases = append(aliases, fmt.Sprintf("%s:%d type %s", filepath.Base(pos.Filename), pos.Line, ts.Name.Name))
 			}

@@ -108,5 +108,5 @@ type PluginMetadata struct {
 	Name     string
 	Version  string
 	Schemas  map[string]map[string]any
-	Datasets []DatasetTemplateDescriptor
+	Datasets []datasetapi.TemplateDescriptor
 }

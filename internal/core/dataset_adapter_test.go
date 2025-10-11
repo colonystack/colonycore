@@ -82,7 +82,7 @@ func TestNewDatasetTemplateFromAPI(t *testing.T) {
 	}
 
 	params := map[string]any{"stage": testAdultStage}
-	scope := DatasetScope{Requestor: "analyst", ProjectIDs: []string{"project"}}
+	scope := datasetapi.Scope{Requestor: "analyst", ProjectIDs: []string{"project"}}
 	result, paramErrs, err := converted.Run(context.Background(), params, scope, FormatJSON)
 	if err != nil {
 		t.Fatalf("run converted template: %v", err)
@@ -122,7 +122,7 @@ func TestDatasetTemplateRuntimeFacade(t *testing.T) {
 			OutputFormats: []datasetapi.Format{formatProvider.JSON()},
 		},
 	}
-	var capturedScope DatasetScope
+	var capturedScope datasetapi.Scope
 	template.Binder = func(datasetapi.Environment) (datasetapi.Runner, error) {
 		return func(_ context.Context, req datasetapi.RunRequest) (datasetapi.RunResult, error) {
 			capturedScope = req.Scope

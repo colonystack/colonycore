@@ -10,7 +10,7 @@ import (
 // BindTemplateForTests attaches a runner to the template for use in cross-package tests.
 // It is intentionally exported only for test scenarios; production code should
 // rely on plugin registration and internal binding logic.
-func BindTemplateForTests(t *DatasetTemplate, runner DatasetRunner) {
+func BindTemplateForTests(t *DatasetTemplate, runner datasetapi.Runner) {
 	if t == nil {
 		return
 	}
@@ -23,11 +23,11 @@ func BindTemplateForTests(t *DatasetTemplate, runner DatasetRunner) {
 }
 
 // RunnerForTests is an internal helper to allow external test helper packages to bind runners without exposing dataset internals broadly.
-func (t *DatasetTemplate) RunnerForTests(r func(context.Context, DatasetRunRequest) (DatasetRunResult, error)) {
+func (t *DatasetTemplate) RunnerForTests(r func(context.Context, datasetapi.RunRequest) (datasetapi.RunResult, error)) {
 	if t == nil {
 		return
 	}
-	BindTemplateForTests(t, DatasetRunner(r))
+	BindTemplateForTests(t, datasetapi.Runner(r))
 }
 
 // DatasetTemplateRuntimeForTests adapts a DatasetTemplate into the dataset API runtime facade for external tests.

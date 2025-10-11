@@ -339,7 +339,7 @@ func (s *Service) RegisteredPlugins() []PluginMetadata {
 	for _, meta := range s.plugins {
 		copyMeta := meta
 		if len(meta.Datasets) > 0 {
-			copyMeta.Datasets = append([]DatasetTemplateDescriptor(nil), meta.Datasets...)
+			copyMeta.Datasets = append([]datasetapi.TemplateDescriptor(nil), meta.Datasets...)
 		}
 		if len(meta.Schemas) > 0 {
 			schemaCopy := make(map[string]map[string]any, len(meta.Schemas))

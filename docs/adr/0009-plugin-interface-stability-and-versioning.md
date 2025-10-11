@@ -50,6 +50,25 @@ Stable
 Experimental
 - None at inception (future additions MUST be explicitly labeled if not yet stable).
 
+### Minimal Capability Surface (RFC-0001 Alignment)
+
+RFC-0001 §6 establishes the minimal capability set that every first-party species plugin must expose. The table below documents that contract within this ADR to keep the stability policy and the capability surface co-located. Any additions or removals require an RFC update and a corresponding revision of this section.
+
+| Interface | Responsibility | Contextual Access Requirement |
+| --- | --- | --- |
+| `LifecycleRules` | Map age, time, and metrics to canonical lifecycle states and enforce transitions. | `organism.GetCurrentStage()` and `stageCtx.Adult()` |
+| `BreedingPlanner` | Recommend pairings, detect kinship conflicts, and project breeding timelines. | `organism.IsActive()` and contextual retirement checks |
+| `PhenotypeSchema` | Provide JSON Schema fragments for species-specific observation fields. | `organism.Attributes()` guarded by contextual validation |
+| `GenotypingRules` | Validate marker sets, allele plausibility, and inheritance warnings. | Lineage access via contextual stage references |
+| `HusbandrySchedule` | Emit task templates (feeding, water changes) with recurrence rules. | `housing.GetEnvironmentType()` helpers and `SupportsSpecies()` |
+| `BodyMetrics` | Define measurement units, normal ranges, and conversions. | Stage-dependent calculations through `GetCurrentStage()` |
+| `EnvironmentalNeeds` | Specify acceptable environmental ranges (temperature, humidity, pH, etc.). | `housingCtx.Aquatic()` and related environment accessors |
+| `EuthanasiaMethods` | Enumerate allowable methods with compliance references. | `protocol.IsActiveProtocol()` context checks |
+| `AgeStageMapper` | Convert chronological age and morphometrics to stage labels. | `stageCtx.Juvenile().String()` and related helpers |
+| `ComplianceChecks` | Inject species-specific validation hooks for workflows. | `protocol.CanAcceptNewSubjects()` and severity contexts |
+
+Plugins MUST implement the contextual accessor pattern described in ADR-0010 when satisfying these interfaces. The `Plugin` and `Registry` handshake remains the entry point for registering implementations, and the stability guarantees in this ADR apply equally to the capability contracts above. Deviations (e.g., introducing a new capability) demand prior approval through the RFC process to preserve compatibility expectations for plugin authors.
+
 ### Semantic Versioning Rules (Host Perspective)
 Let host version be H = MAJOR.MINOR.PATCH. (This is the overall module version; the plugin API version constant may advance at different cadence but SHOULD remain in lockstep for simplicity during 0.x).
 

@@ -71,7 +71,7 @@ func TestDatasetTemplateRunSuccess(t *testing.T) {
 	}
 
 	params := map[string]any{"limit": "25"}
-	scope := DatasetScope{Requestor: "analyst"}
+	scope := datasetapi.Scope{Requestor: "analyst"}
 	result, paramErrs, err := template.Run(context.Background(), params, scope, formatProvider.CSV())
 	if err != nil {
 		t.Fatalf("run template: %v", err)
@@ -127,7 +127,7 @@ func TestDatasetTemplateRunParameterErrors(t *testing.T) {
 	}
 
 	params := map[string]any{"unexpected": true}
-	result, paramErrs, err := template.Run(context.Background(), params, DatasetScope{}, formatProvider.JSON())
+	result, paramErrs, err := template.Run(context.Background(), params, datasetapi.Scope{}, formatProvider.JSON())
 	if err != nil {
 		t.Fatalf("run template: %v", err)
 	}
@@ -349,7 +349,7 @@ func TestDatasetTemplateRunWithoutBind(t *testing.T) {
 			OutputFormats: []datasetapi.Format{formatProvider.JSON()},
 		},
 	}
-	if _, _, err := template.Run(context.Background(), map[string]any{}, DatasetScope{}, FormatJSON); err == nil || !strings.Contains(err.Error(), "not bound") {
+	if _, _, err := template.Run(context.Background(), map[string]any{}, datasetapi.Scope{}, FormatJSON); err == nil || !strings.Contains(err.Error(), "not bound") {
 		t.Fatalf("expected not bound error, got %v", err)
 	}
 }

@@ -140,8 +140,8 @@ func TestHandlerRunInternalError(t *testing.T) {
 			OutputFormats: []datasetapi.Format{formatProvider.JSON()},
 		},
 	}
-	failing.RunnerForTests(func(context.Context, core.DatasetRunRequest) (core.DatasetRunResult, error) {
-		return core.DatasetRunResult{}, fmt.Errorf("boom")
+	failing.RunnerForTests(func(context.Context, datasetapi.RunRequest) (datasetapi.RunResult, error) {
+		return datasetapi.RunResult{}, fmt.Errorf("boom")
 	})
 	fc := fakeCatalog{tpl: core.DatasetTemplateRuntimeForTests(failing)}
 	h := NewHandler(fc)
