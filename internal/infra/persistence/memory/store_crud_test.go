@@ -189,26 +189,27 @@ func TestMemoryStoreCRUDAndQueries(t *testing.T) {
 		if _, err := tx.UpdateHousingUnit("missing", func(*domain.HousingUnit) error { return nil }); err == nil {
 			return fmt.Errorf("expected missing housing update error")
 		}
+		const updatedDesc = "updated"
 		if _, err := tx.UpdateProject(projectID, func(p *domain.Project) error {
-			p.Description = "updated"
+			p.Description = updatedDesc
 			return nil
 		}); err != nil {
 			return err
 		}
 		if _, err := tx.UpdateProtocol(protocolID, func(p *domain.Protocol) error {
-			p.Description = "updated"
+			p.Description = updatedDesc
 			return nil
 		}); err != nil {
 			return err
 		}
 		if _, err := tx.UpdateCohort(cohortID, func(c *domain.Cohort) error {
-			c.Purpose = "updated"
+			c.Purpose = updatedDesc
 			return nil
 		}); err != nil {
 			return err
 		}
 		if _, err := tx.UpdateBreedingUnit(breedingID, func(b *domain.BreedingUnit) error {
-			b.Strategy = "updated"
+			b.Strategy = updatedDesc
 			b.FemaleIDs = append(b.FemaleIDs, organismBID)
 			return nil
 		}); err != nil {
@@ -386,6 +387,6 @@ type staticRule struct {
 
 func (r staticRule) Name() string { return r.name }
 
-func (r staticRule) Evaluate(ctx context.Context, view domain.RuleView, changes []domain.Change) (domain.Result, error) {
+func (r staticRule) Evaluate(_ context.Context, _ domain.RuleView, _ []domain.Change) (domain.Result, error) {
 	return domain.Result{Violations: []domain.Violation{{Rule: r.name, Severity: r.severity}}}, nil
 }

@@ -1,0 +1,12 @@
+Rules:
+  - SelectorRegexp: "^colonycore/"
+    AllowedPrefixes:
+      - "colonycore/internal/infra/blob"
+      - "colonycore/internal/blob"
+      - "colonycore/pkg/domain"
+InverseRules:
+  - SelectorRegexp: "^colonycore/"
+    AllowedPrefixes:
+      - "colonycore/internal/infra/blob"
+      - "colonycore/internal/blob"
+      - "colonycore/internal/core"

@@ -3,6 +3,8 @@ package core
 import (
 	"context"
 	"testing"
+
+	"colonycore/pkg/domain"
 )
 
 // TestSQLiteStore_PersistError forces an error in persist by closing the DB before a transaction commit.
@@ -15,7 +17,7 @@ func TestSQLiteStore_PersistError(t *testing.T) {
 	}
 	// Close underlying DB to induce error on persist
 	_ = store.DB().Close()
-	_, err = store.RunInTransaction(context.Background(), func(tx Transaction) error { return nil })
+	_, err = store.RunInTransaction(context.Background(), func(_ domain.Transaction) error { return nil })
 	if err == nil {
 		// expect error because persist should fail with closed db
 		// This covers the branch where persist returns error.

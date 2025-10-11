@@ -5,40 +5,68 @@ import (
 	"errors"
 	"testing"
 	"time"
+
+	"colonycore/pkg/datasetapi"
 )
 
-func TestDatasetTemplateBindErrorVariants(t *testing.T) { // renamed to avoid collision
-	// nil binder
-	var tmpl DatasetTemplate
+func TestDatasetTemplateBindErrorVariants(t *testing.T) {
+	dialectProvider := datasetapi.GetDialectProvider()
+	formatProvider := datasetapi.GetFormatProvider()
+
+	tmpl := DatasetTemplate{
+		Template: datasetapi.Template{
+			Key:           "k",
+			Version:       "v1",
+			Title:         "t",
+			Dialect:       dialectProvider.SQL(),
+			Query:         "select 1",
+			Columns:       []datasetapi.Column{{Name: "c", Type: "string"}},
+			OutputFormats: []datasetapi.Format{formatProvider.JSON()},
+		},
+	}
 	if err := tmpl.bind(DatasetEnvironment{}); err == nil {
 		t.Fatalf("expected error for nil binder")
 	}
-	// binder returns error
-	tmpl = DatasetTemplate{Key: "k", Version: "v1", Title: "t", Dialect: DatasetDialectSQL, Query: "select 1", Columns: []DatasetColumn{{Name: "c", Type: "string"}}, OutputFormats: []DatasetFormat{FormatJSON}, Binder: func(DatasetEnvironment) (DatasetRunner, error) {
+
+	tmpl.Binder = func(datasetapi.Environment) (datasetapi.Runner, error) {
 		return nil, errors.New("boom")
-	}}
+	}
 	if err := tmpl.bind(DatasetEnvironment{}); err == nil {
 		t.Fatalf("expected binder error")
 	}
-	// binder returns nil runner
-	tmpl.Binder = func(DatasetEnvironment) (DatasetRunner, error) { return nil, nil }
+
+	tmpl.Binder = func(datasetapi.Environment) (datasetapi.Runner, error) { return nil, nil }
 	if err := tmpl.bind(DatasetEnvironment{}); err == nil {
 		t.Fatalf("expected error for nil runner")
 	}
 }
 
-func TestDatasetTemplateBindAndRun2(t *testing.T) { // renamed to avoid collision
+func TestDatasetTemplateBindAndRun(t *testing.T) {
+	dialectProvider := datasetapi.GetDialectProvider()
+	formatProvider := datasetapi.GetFormatProvider()
+
 	called := false
-	tmpl := DatasetTemplate{Key: "k", Version: "v1", Title: "t", Dialect: DatasetDialectSQL, Query: "select 1", Columns: []DatasetColumn{{Name: "c", Type: "string"}}, OutputFormats: []DatasetFormat{FormatJSON}, Binder: func(DatasetEnvironment) (DatasetRunner, error) {
-		return func(ctx context.Context, req DatasetRunRequest) (DatasetRunResult, error) {
+	tmpl := DatasetTemplate{
+		Template: datasetapi.Template{
+			Key:           "k",
+			Version:       "v1",
+			Title:         "t",
+			Dialect:       dialectProvider.SQL(),
+			Query:         "select 1",
+			Columns:       []datasetapi.Column{{Name: "c", Type: "string"}},
+			OutputFormats: []datasetapi.Format{formatProvider.JSON()},
+		},
+	}
+	tmpl.Binder = func(datasetapi.Environment) (datasetapi.Runner, error) {
+		return func(context.Context, datasetapi.RunRequest) (datasetapi.RunResult, error) {
 			called = true
-			return DatasetRunResult{Rows: []map[string]any{{"c": 1}}, GeneratedAt: time.Now()}, nil
+			return datasetapi.RunResult{Rows: []datasetapi.Row{{"c": 1}}, GeneratedAt: time.Now().UTC(), Format: formatProvider.JSON()}, nil
 		}, nil
-	}}
+	}
 	if err := tmpl.bind(DatasetEnvironment{}); err != nil {
 		t.Fatalf("bind failed: %v", err)
 	}
-	res, paramErrs, err := tmpl.Run(context.Background(), map[string]any{}, DatasetScope{}, FormatJSON)
+	res, paramErrs, err := tmpl.Run(context.Background(), map[string]any{}, datasetapi.Scope{}, FormatJSON)
 	if err != nil || len(paramErrs) != 0 {
 		t.Fatalf("run unexpected errors: %v %v", err, paramErrs)
 	}
@@ -53,16 +81,24 @@ func TestDatasetTemplateBindAndRun2(t *testing.T) { // renamed to avoid collisio
 	}
 }
 
-func TestDatasetTemplateCollectionLessBranches(t *testing.T) { // renamed
-	coll := DatasetTemplateCollection{
+func TestDatasetSortTemplateDescriptors(t *testing.T) {
+	descriptors := []datasetapi.TemplateDescriptor{
 		{Plugin: "p", Key: "a", Version: "2"},
 		{Plugin: "p", Key: "a", Version: "1"},
 		{Plugin: "p", Key: "b", Version: "1"},
 		{Plugin: "q", Key: "a", Version: "1"},
 	}
-	if !coll.Less(0, 2) && !coll.Less(1, 0) && !coll.Less(0, 3) {
-		if !coll.Less(1, 0) {
-			t.Fatalf("Less comparator did not behave as expected")
-		}
+	descriptors[0].Slug = "p/a@2"
+	descriptors[1].Slug = "p/a@1"
+	descriptors[2].Slug = "p/b@1"
+	descriptors[3].Slug = "q/a@1"
+
+	datasetapi.SortTemplateDescriptors(descriptors)
+
+	if descriptors[0].Key != "a" || descriptors[0].Version != "1" {
+		t.Fatalf("unexpected sort order: %+v", descriptors)
+	}
+	if descriptors[1].Key != "a" || descriptors[1].Version != "2" {
+		t.Fatalf("expected frog/a@2 second, got %+v", descriptors)
 	}
 }

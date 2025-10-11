@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"testing"
 	"time"
+
+	"colonycore/pkg/domain"
 )
 
 func TestMemoryStoreCRUDAndQueries(t *testing.T) {
@@ -22,24 +24,24 @@ func TestMemoryStoreCRUDAndQueries(t *testing.T) {
 		organismBID string
 	)
 
-	if _, err := store.RunInTransaction(ctx, func(tx Transaction) error {
-		if _, err := tx.CreateHousingUnit(HousingUnit{Name: "Invalid", Facility: "Lab", Capacity: 0}); err == nil {
+	if _, err := store.RunInTransaction(ctx, func(tx domain.Transaction) error {
+		if _, err := tx.CreateHousingUnit(domain.HousingUnit{Name: "Invalid", Facility: "Lab", Capacity: 0}); err == nil {
 			return fmt.Errorf("expected capacity validation error")
 		}
 
-		project, err := tx.CreateProject(Project{Code: "PRJ-1", Title: "Project"})
+		project, err := tx.CreateProject(domain.Project{Code: "PRJ-1", Title: "Project"})
 		if err != nil {
 			return err
 		}
 		projectID = project.ID
 
-		protocol, err := tx.CreateProtocol(Protocol{Code: "PROT-1", Title: "Protocol", MaxSubjects: 5})
+		protocol, err := tx.CreateProtocol(domain.Protocol{Code: "PROT-1", Title: "Protocol", MaxSubjects: 5})
 		if err != nil {
 			return err
 		}
 		protocolID = protocol.ID
 
-		housing, err := tx.CreateHousingUnit(HousingUnit{Name: "Tank", Facility: "Lab", Capacity: 2, Environment: "arid"})
+		housing, err := tx.CreateHousingUnit(domain.HousingUnit{Name: "Tank", Facility: "Lab", Capacity: 2, Environment: "arid"})
 		if err != nil {
 			return err
 		}
@@ -49,7 +51,7 @@ func TestMemoryStoreCRUDAndQueries(t *testing.T) {
 		housingPtr := housingID
 		protocolPtr := protocolID
 
-		cohort, err := tx.CreateCohort(Cohort{Name: "Cohort", Purpose: "Observation", ProjectID: &projectPtr, HousingID: &housingPtr, ProtocolID: &protocolPtr})
+		cohort, err := tx.CreateCohort(domain.Cohort{Name: "Cohort", Purpose: "Observation", ProjectID: &projectPtr, HousingID: &housingPtr, ProtocolID: &protocolPtr})
 		if err != nil {
 			return err
 		}
@@ -58,10 +60,10 @@ func TestMemoryStoreCRUDAndQueries(t *testing.T) {
 		cohortPtr := cohortID
 
 		attrs := map[string]any{"skin_color_index": 5}
-		organismA, err := tx.CreateOrganism(Organism{
+		organismA, err := tx.CreateOrganism(domain.Organism{
 			Name:       "Alpha",
 			Species:    "Test Frog",
-			Stage:      StageJuvenile,
+			Stage:      domain.StageJuvenile,
 			ProjectID:  &projectPtr,
 			ProtocolID: &protocolPtr,
 			CohortID:   &cohortPtr,
@@ -75,10 +77,10 @@ func TestMemoryStoreCRUDAndQueries(t *testing.T) {
 
 		attrs["skin_color_index"] = 9
 
-		organismB, err := tx.CreateOrganism(Organism{
+		organismB, err := tx.CreateOrganism(domain.Organism{
 			Name:     "Beta",
 			Species:  "Test Toad",
-			Stage:    StageAdult,
+			Stage:    domain.StageAdult,
 			CohortID: &cohortPtr,
 		})
 		if err != nil {
@@ -86,11 +88,11 @@ func TestMemoryStoreCRUDAndQueries(t *testing.T) {
 		}
 		organismBID = organismB.ID
 
-		if _, err := tx.CreateOrganism(Organism{Base: Base{ID: organismAID}, Name: "Duplicate"}); err == nil {
+		if _, err := tx.CreateOrganism(domain.Organism{Base: domain.Base{ID: organismAID}, Name: "Duplicate"}); err == nil {
 			return fmt.Errorf("expected duplicate organism error")
 		}
 
-		breeding, err := tx.CreateBreedingUnit(BreedingUnit{
+		breeding, err := tx.CreateBreedingUnit(domain.BreedingUnit{
 			Name:       "Pair",
 			Strategy:   "pair",
 			HousingID:  &housingPtr,
@@ -103,7 +105,7 @@ func TestMemoryStoreCRUDAndQueries(t *testing.T) {
 		}
 		breedingID = breeding.ID
 
-		procedure, err := tx.CreateProcedure(Procedure{
+		procedure, err := tx.CreateProcedure(domain.Procedure{
 			Name:        "Check",
 			Status:      "scheduled",
 			ScheduledAt: time.Now().Add(time.Minute),
@@ -168,52 +170,53 @@ func TestMemoryStoreCRUDAndQueries(t *testing.T) {
 		t.Fatalf("expected environment to remain arid, got %s", stored.Environment)
 	}
 
-	if _, err := store.RunInTransaction(ctx, func(tx Transaction) error {
-		if _, err := tx.UpdateOrganism("missing", func(*Organism) error { return nil }); err == nil {
+	if _, err := store.RunInTransaction(ctx, func(tx domain.Transaction) error {
+		if _, err := tx.UpdateOrganism("missing", func(*domain.Organism) error { return nil }); err == nil {
 			return fmt.Errorf("expected update error for missing organism")
 		}
-		if _, err := tx.UpdateHousingUnit(housingID, func(h *HousingUnit) error {
+		if _, err := tx.UpdateHousingUnit(housingID, func(h *domain.HousingUnit) error {
 			h.Capacity = 0
 			return nil
 		}); err == nil {
 			return fmt.Errorf("expected housing capacity validation on update")
 		}
-		if _, err := tx.UpdateHousingUnit("missing", func(*HousingUnit) error { return nil }); err == nil {
+		if _, err := tx.UpdateHousingUnit("missing", func(*domain.HousingUnit) error { return nil }); err == nil {
 			return fmt.Errorf("expected missing housing update error")
 		}
-		if _, err := tx.UpdateProject(projectID, func(p *Project) error {
-			p.Description = "updated"
+		const updatedDesc = "updated"
+		if _, err := tx.UpdateProject(projectID, func(p *domain.Project) error {
+			p.Description = updatedDesc
 			return nil
 		}); err != nil {
 			return err
 		}
-		if _, err := tx.UpdateProtocol(protocolID, func(p *Protocol) error {
-			p.Description = "updated"
+		if _, err := tx.UpdateProtocol(protocolID, func(p *domain.Protocol) error {
+			p.Description = updatedDesc
 			return nil
 		}); err != nil {
 			return err
 		}
-		if _, err := tx.UpdateCohort(cohortID, func(c *Cohort) error {
-			c.Purpose = "updated"
+		if _, err := tx.UpdateCohort(cohortID, func(c *domain.Cohort) error {
+			c.Purpose = updatedDesc
 			return nil
 		}); err != nil {
 			return err
 		}
-		if _, err := tx.UpdateBreedingUnit(breedingID, func(b *BreedingUnit) error {
-			b.Strategy = "updated"
+		if _, err := tx.UpdateBreedingUnit(breedingID, func(b *domain.BreedingUnit) error {
+			b.Strategy = updatedDesc
 			b.FemaleIDs = append(b.FemaleIDs, organismBID)
 			return nil
 		}); err != nil {
 			return err
 		}
-		if _, err := tx.UpdateProcedure(procedureID, func(p *Procedure) error {
+		if _, err := tx.UpdateProcedure(procedureID, func(p *domain.Procedure) error {
 			p.Status = "completed"
 			return nil
 		}); err != nil {
 			return err
 		}
-		if _, err := tx.UpdateOrganism(organismBID, func(o *Organism) error {
-			o.Stage = StageRetired
+		if _, err := tx.UpdateOrganism(organismBID, func(o *domain.Organism) error {
+			o.Stage = domain.StageRetired
 			return nil
 		}); err != nil {
 			return err
@@ -225,11 +228,11 @@ func TestMemoryStoreCRUDAndQueries(t *testing.T) {
 
 	if updated, ok := store.GetOrganism(organismBID); !ok {
 		t.Fatalf("expected organism %s", organismBID)
-	} else if updated.Stage != StageRetired {
+	} else if updated.Stage != domain.StageRetired {
 		t.Fatalf("expected stage to be retired, got %s", updated.Stage)
 	}
 
-	if _, err := store.RunInTransaction(ctx, func(tx Transaction) error {
+	if _, err := store.RunInTransaction(ctx, func(tx domain.Transaction) error {
 		if err := tx.DeleteProcedure(procedureID); err != nil {
 			return err
 		}
@@ -288,16 +291,16 @@ func TestMemoryStoreCRUDAndQueries(t *testing.T) {
 func TestMemoryStoreViewReadOnly(t *testing.T) {
 	store := NewMemoryStore(nil)
 	ctx := context.Background()
-	var housing HousingUnit
-	if _, err := store.RunInTransaction(ctx, func(tx Transaction) error {
+	var housing domain.HousingUnit
+	if _, err := store.RunInTransaction(ctx, func(tx domain.Transaction) error {
 		var err error
-		housing, err = tx.CreateHousingUnit(HousingUnit{Name: "Tank", Facility: "Lab", Capacity: 1})
+		housing, err = tx.CreateHousingUnit(domain.HousingUnit{Name: "Tank", Facility: "Lab", Capacity: 1})
 		return err
 	}); err != nil {
 		t.Fatalf("create housing: %v", err)
 	}
 
-	if err := store.View(ctx, func(view TransactionView) error {
+	if err := store.View(ctx, func(view domain.TransactionView) error {
 		units := view.ListHousingUnits()
 		if len(units) != 1 {
 			t.Fatalf("expected single housing unit, got %d", len(units))
@@ -314,17 +317,17 @@ func TestMemoryStoreViewReadOnly(t *testing.T) {
 func TestUpdateHousingUnitValidation(t *testing.T) {
 	store := NewMemoryStore(nil)
 	ctx := context.Background()
-	var housing HousingUnit
-	if _, err := store.RunInTransaction(ctx, func(tx Transaction) error {
+	var housing domain.HousingUnit
+	if _, err := store.RunInTransaction(ctx, func(tx domain.Transaction) error {
 		var err error
-		housing, err = tx.CreateHousingUnit(HousingUnit{Name: "Validated", Facility: "Lab", Capacity: 2})
+		housing, err = tx.CreateHousingUnit(domain.HousingUnit{Name: "Validated", Facility: "Lab", Capacity: 2})
 		return err
 	}); err != nil {
 		t.Fatalf("create housing: %v", err)
 	}
 
-	_, err := store.RunInTransaction(ctx, func(tx Transaction) error {
-		_, err := tx.UpdateHousingUnit(housing.ID, func(h *HousingUnit) error {
+	_, err := store.RunInTransaction(ctx, func(tx domain.Transaction) error {
+		_, err := tx.UpdateHousingUnit(housing.ID, func(h *domain.HousingUnit) error {
 			h.Capacity = 0
 			return nil
 		})
@@ -336,16 +339,16 @@ func TestUpdateHousingUnitValidation(t *testing.T) {
 }
 
 func TestResultMergeAndBlocking(t *testing.T) {
-	res := Result{}
-	res.Merge(Result{Violations: []Violation{{Rule: "warn", Severity: SeverityWarn}}})
+	res := domain.Result{}
+	res.Merge(domain.Result{Violations: []domain.Violation{{Rule: "warn", Severity: domain.SeverityWarn}}})
 	if res.HasBlocking() {
 		t.Fatalf("expected no blocking violations yet")
 	}
-	res.Merge(Result{Violations: []Violation{{Rule: "block", Severity: SeverityBlock}}})
+	res.Merge(domain.Result{Violations: []domain.Violation{{Rule: "block", Severity: domain.SeverityBlock}}})
 	if !res.HasBlocking() {
 		t.Fatalf("expected blocking violation")
 	}
-	err := RuleViolationError{Result: res}
+	err := domain.RuleViolationError{Result: res}
 	if err.Error() == "" {
 		t.Fatalf("expected error string")
 	}
@@ -353,14 +356,14 @@ func TestResultMergeAndBlocking(t *testing.T) {
 
 func TestRulesEngineAggregates(t *testing.T) {
 	engine := NewRulesEngine()
-	engine.Register(staticRule{"warn", SeverityWarn})
-	engine.Register(staticRule{"block", SeverityBlock})
+	engine.Register(staticRule{"warn", domain.SeverityWarn})
+	engine.Register(staticRule{"block", domain.SeverityBlock})
 
 	store := NewMemoryStore(engine)
 	ctx := context.Background()
 
-	res, err := store.RunInTransaction(ctx, func(tx Transaction) error {
-		_, err := tx.CreateProject(Project{Code: "P", Title: "Project"})
+	res, err := store.RunInTransaction(ctx, func(tx domain.Transaction) error {
+		_, err := tx.CreateProject(domain.Project{Code: "P", Title: "Project"})
 		return err
 	})
 	if err == nil {
@@ -373,11 +376,11 @@ func TestRulesEngineAggregates(t *testing.T) {
 
 type staticRule struct {
 	name     string
-	severity Severity
+	severity domain.Severity
 }
 
 func (r staticRule) Name() string { return r.name }
 
-func (r staticRule) Evaluate(ctx context.Context, view RuleView, changes []Change) (Result, error) {
-	return Result{Violations: []Violation{{Rule: r.name, Severity: r.severity}}}, nil
+func (r staticRule) Evaluate(_ context.Context, _ domain.RuleView, _ []domain.Change) (domain.Result, error) {
+	return domain.Result{Violations: []domain.Violation{{Rule: r.name, Severity: r.severity}}}, nil
 }

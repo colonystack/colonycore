@@ -1,3 +1,4 @@
+// Package s3 implements an S3-compatible blob Store using AWS SDK v2.
 package s3
 
 import (
@@ -95,8 +96,10 @@ func OpenFromEnv(ctx context.Context) (*Store, error) {
 	return New(ctx, cfg)
 }
 
+// Driver returns the blob driver identifier.
 func (s *Store) Driver() core.Driver { return core.DriverS3 }
 
+// Put uploads a new object; fails if already exists.
 func (s *Store) Put(ctx context.Context, key string, r io.Reader, opts core.PutOptions) (core.Info, error) {
 	input := &s3.PutObjectInput{Bucket: &s.bucket, Key: &key, Body: r}
 	if opts.ContentType != "" {
@@ -116,6 +119,7 @@ func (s *Store) Put(ctx context.Context, key string, r io.Reader, opts core.PutO
 	return s.Head(ctx, key)
 }
 
+// Get fetches object content and metadata.
 func (s *Store) Get(ctx context.Context, key string) (core.Info, io.ReadCloser, error) {
 	out, err := s.client.GetObject(ctx, &s3.GetObjectInput{Bucket: &s.bucket, Key: &key})
 	if err != nil {
@@ -129,6 +133,7 @@ func (s *Store) Get(ctx context.Context, key string) (core.Info, io.ReadCloser, 
 	return info, out.Body, nil
 }
 
+// Head retrieves object metadata only.
 func (s *Store) Head(ctx context.Context, key string) (core.Info, error) {
 	out, err := s.client.HeadObject(ctx, &s3.HeadObjectInput{Bucket: &s.bucket, Key: &key})
 	if err != nil {
@@ -141,6 +146,7 @@ func (s *Store) Head(ctx context.Context, key string) (core.Info, error) {
 	return s.fromHead(key, size, out.ContentType, out.ETag, out.Metadata, out.LastModified), nil
 }
 
+// Delete removes an object (best-effort assumes existence if no error).
 func (s *Store) Delete(ctx context.Context, key string) (bool, error) {
 	_, err := s.client.DeleteObject(ctx, &s3.DeleteObjectInput{Bucket: &s.bucket, Key: &key})
 	if err != nil {
@@ -150,6 +156,7 @@ func (s *Store) Delete(ctx context.Context, key string) (bool, error) {
 	return true, nil
 }
 
+// List enumerates objects under prefix.
 func (s *Store) List(ctx context.Context, prefix string) ([]core.Info, error) {
 	var infos []core.Info
 	var token *string
@@ -175,6 +182,7 @@ func (s *Store) List(ctx context.Context, prefix string) ([]core.Info, error) {
 	return infos, nil
 }
 
+// PresignURL returns a time-limited GET URL for the object key.
 func (s *Store) PresignURL(ctx context.Context, key string, opts core.SignedURLOptions) (string, error) {
 	method := strings.ToUpper(opts.Method)
 	if method == "" {

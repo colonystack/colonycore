@@ -3,7 +3,9 @@
 ColonyCore is an extensible base module for laboratory colony management. It couples a rules-driven core domain service with pluggable species modules and tooling to validate the project registry.
 
 ## Project layout
-- `internal/core/` contains the domain model, services, stores, and shared rules engine primitives.
+- `pkg/domain/` contains the pure domain model (entities, value objects, rule contracts) without infrastructure dependencies.
+- `internal/core/` contains application services, orchestration logic, rules engine integration, and use-case level coordination.
+- `internal/infra/persistence/sqlite/` houses the in-memory transactional store and SQLite snapshot-backed persistent implementation (migrated from the legacy `internal/persistence/sqlite/` path now removed).
 - `plugins/` hosts externally consumable plugins (for example `plugins/frog`) that register species-specific schemas and rules.
 - `cmd/registry-check/` provides the CLI used to validate `docs/rfc/registry.yaml` against the expected structure.
 - `docs/` captures design history (`docs/adr/`), planning RFCs (`docs/rfc/`), operational annexes (`docs/annex/`), and machine-readable schemas (`docs/schema/`).
@@ -84,6 +86,50 @@ If the environment variable `COLONYCORE_STORAGE_DRIVER` is unset, the code will 
   stores signed artifacts in the managed object store, and serves export status via `/api/v1/datasets/exports`.
 - Sample analyst clients are provided in `clients/python/dataset_client.py` (requests-based) and
   `clients/R/dataset_client.R` (httr-based) to illustrate reproducing exports from external runtimes.
+
+## Plugin Development
+ColonyCore enforces hexagonal architecture through comprehensive contextual accessor patterns:
+
+### Core Principles
+- **No Raw Constants**: Access domain values via context providers, never raw constants
+- **Contextual Interfaces**: Use `pluginapi.NewEntityContext()`, `NewActionContext()`, `NewSeverityContext()`, `NewLifecycleStageContext()`, `NewHousingContext()`, `NewProtocolContext()`
+- **Semantic References**: All contexts return opaque reference types with semantic methods
+- **Builder Patterns**: Create violations via fluent builders: `NewViolationBuilder().WithEntityRef(entityContext.Organism()).BuildWarning()`
+
+### Updated Patterns (v0.2.0)
+- **Environment Contexts**: Use `housingContext.Aquatic().IsAquatic()` instead of string comparisons
+- **Status Contexts**: Use `protocolContext.Active().IsActive()` instead of raw status checks  
+- **Facade Contextual Methods**: Call `organism.GetCurrentStage().IsActive()` for lifecycle queries
+- **Provider Interfaces**: Access formats via `datasetapi.GetFormatProvider().JSON()` instead of constants
+
+### Example Usage
+```go
+// Contextual environment checking
+housingCtx := pluginapi.NewHousingContext()
+if housing.GetEnvironmentType().Equals(housingCtx.Aquatic()) {
+    // Handle aquatic environment
+}
+
+// Contextual lifecycle checking  
+if organism.IsActive() && !organism.IsRetired() {
+    // Process active organism
+}
+
+// Provider-based format access
+formatProvider := datasetapi.GetFormatProvider()
+template.OutputFormats = []datasetapi.Format{
+    formatProvider.JSON(),
+    formatProvider.CSV(),
+}
+```
+
+### Migration Guide
+The contextual accessor pattern is enforced via:
+- **Compile-time**: Provider interfaces replace raw constants
+- **Runtime Tests**: Integration tests validate pattern compliance
+- **AST Analysis**: Anti-pattern detection scans for forbidden raw constant usage
+
+See the `plugins/frog` reference implementation for complete patterns and ADR-0009 for stability guarantees.
 
 ## Testing
 - `make test` runs the race-enabled Go test suite and enforces the configured coverage threshold.

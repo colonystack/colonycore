@@ -1,17 +1,18 @@
-package datasets_test
+package datasets
 
 import (
 	"context"
 	"testing"
 	"time"
 
-	"colonycore/internal/adapters/datasets"
 	"colonycore/internal/core"
-	domain "colonycore/pkg/domain"
+	"colonycore/pkg/datasetapi"
+	"colonycore/pkg/domain"
 	"colonycore/plugins/frog"
 )
 
 func TestWorkerProcessesExport(t *testing.T) {
+	formatProvider := datasetapi.GetFormatProvider()
 	svc := core.NewInMemoryService(core.NewDefaultRulesEngine())
 	meta, err := svc.InstallPlugin(frog.New())
 	if err != nil {
@@ -19,13 +20,11 @@ func TestWorkerProcessesExport(t *testing.T) {
 	}
 	descriptor := meta.Datasets[0]
 
-	store := datasets.NewMemoryObjectStore()
-	audit := &datasets.MemoryAuditLog{}
-	worker := datasets.NewWorker(svc, store, audit)
+	store := NewMemoryObjectStore()
+	audit := &MemoryAuditLog{}
+	worker := NewWorker(svc, store, audit)
 	worker.Start()
-	t.Cleanup(func() {
-		_ = worker.Stop(context.Background())
-	})
+	t.Cleanup(func() { _ = worker.Stop(context.Background()) })
 
 	ctx := context.Background()
 	project, _, err := svc.CreateProject(ctx, domain.Project{Code: "PRJ-WORK", Title: "Worker"})
@@ -37,30 +36,24 @@ func TestWorkerProcessesExport(t *testing.T) {
 		t.Fatalf("create organism: %v", err)
 	}
 
-	record, err := worker.EnqueueExport(ctx, datasets.ExportInput{
-		TemplateSlug: descriptor.Slug,
-		Parameters:   map[string]any{"include_retired": true},
-		Formats:      []core.DatasetFormat{core.FormatJSON},
-		Scope:        core.DatasetScope{ProjectIDs: []string{project.ID}, Requestor: "worker@colonycore"},
-		RequestedBy:  "worker@colonycore",
-	})
+	record, err := worker.EnqueueExport(ctx, ExportInput{TemplateSlug: descriptor.Slug, Parameters: map[string]any{"include_retired": true}, Formats: []datasetapi.Format{formatProvider.JSON()}, Scope: datasetapi.Scope{ProjectIDs: []string{project.ID}, Requestor: "worker@colonycore"}, RequestedBy: "worker@colonycore"})
 	if err != nil {
 		t.Fatalf("enqueue export: %v", err)
 	}
-	if record.Status != datasets.ExportStatusQueued {
+	if record.Status != ExportStatusQueued {
 		t.Fatalf("expected queued status, got %s", record.Status)
 	}
 
 	deadline := time.Now().Add(2 * time.Second)
 	for {
 		current, _ := worker.GetExport(record.ID)
-		if current.Status == datasets.ExportStatusSucceeded {
+		if current.Status == ExportStatusSucceeded {
 			if len(current.Artifacts) == 0 {
 				t.Fatalf("expected artifacts on completion")
 			}
 			break
 		}
-		if current.Status == datasets.ExportStatusFailed {
+		if current.Status == ExportStatusFailed {
 			t.Fatalf("export failed: %s", current.Error)
 		}
 		if time.Now().After(deadline) {
@@ -68,7 +61,6 @@ func TestWorkerProcessesExport(t *testing.T) {
 		}
 		time.Sleep(20 * time.Millisecond)
 	}
-
 	if len(store.Objects()) == 0 {
 		t.Fatalf("expected object store to contain artifacts")
 	}
@@ -84,14 +76,9 @@ func TestWorkerRejectsUnsupportedFormat(t *testing.T) {
 		t.Fatalf("install plugin: %v", err)
 	}
 	descriptor := meta.Datasets[0]
-
-	worker := datasets.NewWorker(svc, datasets.NewMemoryObjectStore(), &datasets.MemoryAuditLog{})
+	worker := NewWorker(svc, NewMemoryObjectStore(), &MemoryAuditLog{})
 	ctx := context.Background()
-
-	_, err = worker.EnqueueExport(ctx, datasets.ExportInput{
-		TemplateSlug: descriptor.Slug,
-		Formats:      []core.DatasetFormat{core.DatasetFormat("xml")},
-	})
+	_, err = worker.EnqueueExport(ctx, ExportInput{TemplateSlug: descriptor.Slug, Formats: []datasetapi.Format{datasetapi.Format("xml")}})
 	if err == nil {
 		t.Fatalf("expected error for unsupported format")
 	}

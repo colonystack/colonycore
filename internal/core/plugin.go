@@ -5,15 +5,13 @@ import (
 	"sort"
 
 	"colonycore/pkg/datasetapi"
+	"colonycore/pkg/domain"
 	"colonycore/pkg/pluginapi"
 )
 
-// Plugin describes a species module or extension that contributes rules and schema.
-type Plugin = pluginapi.Plugin
-
 // PluginRegistry accumulates plugin contributions during registration.
 type PluginRegistry struct {
-	rules    []Rule
+	rules    []domain.Rule
 	schemas  map[string]map[string]any
 	datasets map[string]DatasetTemplate
 }
@@ -29,11 +27,15 @@ func NewPluginRegistry() *PluginRegistry {
 }
 
 // RegisterRule adds an in-transaction rule contributed by the plugin.
-func (r *PluginRegistry) RegisterRule(rule Rule) {
+func (r *PluginRegistry) RegisterRule(rule pluginapi.Rule) {
 	if rule == nil {
 		return
 	}
-	r.rules = append(r.rules, rule)
+	adapted := adaptPluginRule(rule)
+	if adapted == nil {
+		return
+	}
+	r.rules = append(r.rules, adapted)
 }
 
 // RegisterSchema stores a JSON Schema fragment for an entity type.
@@ -63,8 +65,8 @@ func (r *PluginRegistry) RegisterDatasetTemplate(template datasetapi.Template) e
 }
 
 // Rules returns a copy of registered rules.
-func (r *PluginRegistry) Rules() []Rule {
-	out := make([]Rule, len(r.rules))
+func (r *PluginRegistry) Rules() []domain.Rule {
+	out := make([]domain.Rule, len(r.rules))
 	copy(out, r.rules)
 	return out
 }
@@ -86,12 +88,11 @@ func (r *PluginRegistry) Schemas() map[string]map[string]any {
 func (r *PluginRegistry) DatasetTemplates() []DatasetTemplate {
 	out := make([]DatasetTemplate, 0, len(r.datasets))
 	for _, template := range r.datasets {
-		copy := template
-		copy.Parameters = cloneParameters(template.Parameters)
-		copy.Columns = cloneColumns(template.Columns)
-		copy.Metadata = cloneMetadata(template.Metadata)
-		copy.OutputFormats = append([]DatasetFormat(nil), template.OutputFormats...)
-		out = append(out, copy)
+		// clone to prevent external mutation of internal templates
+		tmplCopy := template
+		tmplCopy.Template = cloneTemplate(template.Template)
+		tmplCopy.host = nil
+		out = append(out, tmplCopy)
 	}
 	sort.Slice(out, func(i, j int) bool {
 		if out[i].Key == out[j].Key {
@@ -107,5 +108,5 @@ type PluginMetadata struct {
 	Name     string
 	Version  string
 	Schemas  map[string]map[string]any
-	Datasets []DatasetTemplateDescriptor
+	Datasets []datasetapi.TemplateDescriptor
 }

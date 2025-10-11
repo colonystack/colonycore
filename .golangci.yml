@@ -1,0 +1,191 @@
+version: "2"
+
+run:
+  timeout: 5m
+  issues-exit-code: 1
+  tests: true
+
+linters:
+  default: none
+  enable:
+    - depguard       # Enforce allowed/denied imports (project policy)
+    - govet          # Core vet checks
+    - staticcheck    # Advanced static analysis
+    - errcheck       # Ensure errors are handled
+    - ineffassign    # Detect ineffectual assignments
+    - unused         # Unused vars/funcs/types
+    - revive         # Style and best practices
+    - misspell       # Spelling
+    - goconst        # Repeated literal detection
+    - gocyclo        # Cyclomatic complexity
+    - gosec          # Security checks (may require tuning later)
+  settings:
+    errcheck:
+      check-type-assertions: false
+      check-blank: false
+    gocyclo:
+      min-complexity: 65
+    depguard:
+      rules:
+        Main:
+          files:
+            - $all
+            - "!$test"
+          allow:
+            - bufio
+            - bytes
+            - colonycore
+            - context
+            - crypto/rand
+            - crypto/sha256
+            - database/sql
+            - encoding/csv
+            - encoding/hex
+            - encoding/json
+            - errors
+            - flag
+            - fmt
+            - go/ast
+            - go/parser
+            - go/token
+            - github.com/aws/aws-sdk-go-v2/aws
+            - github.com/aws/aws-sdk-go-v2/config
+            - github.com/aws/aws-sdk-go-v2/credentials
+            - github.com/aws/aws-sdk-go-v2/service/s3
+            - image
+            - io
+            - modernc.org/sqlite
+            - net/http
+            - net/url
+            - os
+            - os/exec
+            - path/filepath
+            - regexp
+            - sort
+            - strconv
+            - strings
+            - sync
+            - testing
+            - time
+          deny:
+            - pkg: github.com/pkg/errors
+              desc: Use standard library errors instead
+        Test:
+          files:
+            - $test
+            - "!**/internal/core/persistence_contract_test.go"
+            - "!**/internal/core/service_contract_test.go"
+            - "!**/internal/core/alias_guard_test.go"
+            - "!**/internal/blob/architecture_test.go"
+            - "!**/pkg/datasetapi/alias_guard_test.go"
+            - "!**/pkg/datasetapi/serialization_guard_test.go"
+            - "!**/pkg/datasetapi/api_snapshot_test.go"
+            - "!**/pkg/pluginapi/alias_guard_test.go"
+            - "!**/pkg/pluginapi/api_snapshot_extra_test.go"
+            - "!**/pkg/pluginapi/api_snapshot_test.go"
+            - "!**/pkg/pluginapi/exposure_architecture_test.go"
+            - "!**/pkg/pluginapi/interface_contract_test.go"
+            - "!**/pkg/pluginapi/architecture_guard_test.go"
+            - "!**/pkg/pluginapi/plugin_antipattern_test.go"
+            - "!**/pkg/pluginapi/breaking_change_enforcement_test.go"
+            - "!**/pkg/pluginapi/contextual_accessor_enforcement_test.go"
+            - "!**/pkg/datasetapi/contextual_accessor_enforcement_test.go"
+            - "!**/internal/integration/contextual_pattern_enforcement_test.go"
+          allow:
+            - bytes
+            - colonycore
+            - context
+            - flag
+            - encoding/csv
+            - encoding/json
+            - errors
+            - fmt
+            - github.com/aws/aws-sdk-go-v2/aws
+            - github.com/aws/aws-sdk-go-v2/config
+            - github.com/aws/aws-sdk-go-v2/credentials
+            - github.com/aws/aws-sdk-go-v2/service/s3
+            - go/build
+            - runtime
+            - io
+            - net/http
+            - net/http/httptest
+            - os
+            - path/filepath
+            - sort
+            - strconv
+            - strings
+            - testing
+            - time
+          deny:
+            - pkg: github.com/pkg/errors
+              desc: Use standard library errors instead
+        Reflection:
+          files:
+            - "**/internal/core/persistence_contract_test.go"
+            - "**/internal/core/service_contract_test.go"
+            - "**/internal/core/alias_guard_test.go"
+            - "**/internal/blob/architecture_test.go"
+            - "**/pkg/datasetapi/alias_guard_test.go"
+            - "**/pkg/datasetapi/serialization_guard_test.go"
+            - "**/pkg/datasetapi/api_snapshot_test.go"
+            - "**/pkg/pluginapi/alias_guard_test.go"
+            - "**/pkg/pluginapi/api_snapshot_extra_test.go"
+            - "**/pkg/pluginapi/api_snapshot_test.go"
+            - "**/pkg/pluginapi/exposure_architecture_test.go"
+            - "**/pkg/pluginapi/interface_contract_test.go"
+            - "**/pkg/pluginapi/architecture_guard_test.go"
+            - "**/pkg/pluginapi/plugin_antipattern_test.go"
+            - "**/pkg/pluginapi/breaking_change_enforcement_test.go"
+            - "**/pkg/pluginapi/contextual_accessor_enforcement_test.go"
+            - "**/pkg/datasetapi/contextual_accessor_enforcement_test.go"
+            - "**/internal/integration/contextual_pattern_enforcement_test.go"
+          allow:
+            - bytes
+            - colonycore
+            - context
+            - flag
+            - go/ast
+            - go/parser
+            - go/token
+            - go/types
+            - encoding/json
+            - errors
+            - fmt
+            - golang.org/x/tools/go/packages
+            - os
+            - path/filepath
+            - reflect
+            - regexp
+            - runtime
+            - sort
+            - strings
+            - sync
+            - testing
+            - time
+          deny:
+            - pkg: github.com/pkg/errors
+              desc: Use standard library errors instead
+        BlobInfraIsolation:
+          files:
+            - $all
+            - "!**/internal/blob/filesystem.go"
+            - "!**/internal/blob/memory.go"
+            - "!**/internal/blob/s3.go"
+          deny:
+            - pkg: colonycore/internal/infra/blob/fs
+              desc: Use blob.NewFilesystem or blob.Open instead of importing infra/fs
+            - pkg: colonycore/internal/infra/blob/memory
+              desc: Use blob.NewMemory instead of importing infra/memory
+            - pkg: colonycore/internal/infra/blob/s3
+              desc: Use blob.NewS3/OpenFromEnv instead of importing infra/s3
+        BlobInfraWrappers:
+          files:
+            - "**/internal/blob/filesystem.go"
+            - "**/internal/blob/memory.go"
+            - "**/internal/blob/s3.go"
+          allow:
+            - colonycore/internal/infra/blob/fs
+            - colonycore/internal/infra/blob/memory
+            - colonycore/internal/infra/blob/s3
+            - colonycore
+            - context

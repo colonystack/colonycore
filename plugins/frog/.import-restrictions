@@ -1,0 +1,21 @@
+Rules:
+  - SelectorRegexp: "^colonycore/"
+    AllowedPrefixes:
+      - "colonycore/plugins/frog"
+      - "colonycore/pkg/pluginapi"
+      - "colonycore/pkg/datasetapi"
+  # Hexagonal Architecture: Plugins must only use pluginapi, never domain internals
+  - SelectorRegexp: "^colonycore/pkg/domain"
+    ForbiddenPrefixes:
+      - "colonycore/pkg/domain"
+  - SelectorRegexp: "^colonycore/internal/"
+    ForbiddenPrefixes:
+      - "colonycore/internal/"
+InverseRules:
+  - SelectorRegexp: "^colonycore/"
+    AllowedPrefixes:
+      - "colonycore/plugins/frog"
+      - "colonycore/internal/core"
+      - "colonycore/internal/adapters/datasets"
+      - "colonycore/pkg/pluginapi"
+      - "colonycore/pkg/datasetapi"

@@ -19,3 +19,9 @@ ColonyCore exposes APIs, schemas, and plugin contracts that must evolve without 
 - Establishes clear expectations for external integrators and regulatory auditors regarding change management.
 - Requires continuous telemetry to track usage of deprecated features and enforce removal thresholds.
 - Encourages early communication and documentation overhead for every breaking change proposal.
+
+## Related ADRs
+- ADR-0005: Plugin Packaging & Distribution (packaging implications for versioning & deprecation windows)
+- ADR-0007: Storage Baseline (impacts schema migration cadence)
+- ADR-0008: Object Storage Contract (adds new API surface governed by this policy)
+- ADR-0009: Plugin Interface Stability & Semantic Versioning Policy (specialization of this ADR for plugin host boundary)

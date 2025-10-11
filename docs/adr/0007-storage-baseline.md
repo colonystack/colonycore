@@ -7,7 +7,7 @@
 - Context: Initially ColonyCore only supported an in-memory `MemoryStore`, limiting durability and multi-process usage. A minimal persistent option was required for local development and early adopters without committing prematurely to a full relational schema and migration surface.
 
 ## Decision
-Adopt an embedded SQLite-backed store (`SQLiteStore`) as the default persistent driver for local development. It reuses existing transactional logic in `MemoryStore` and after each successful transaction snapshots the entire in-memory state into a single SQLite table (`state`) containing JSON blobs per entity bucket. Provide an environment-based factory (`OpenPersistentStore`) selecting among `memory`, `sqlite`, or `postgres` drivers. Introduce a placeholder `PostgresStore` that currently delegates to `MemoryStore` and returns a not-implemented error, reserving the configuration contract for future high-concurrency deployments.
+Adopt an embedded SQLite-backed store (internally `sqlite.Store`, exposed through the convenience constructor `core.NewSQLiteStore`) as the default persistent driver for local development. It reuses existing transactional logic in `MemoryStore` and after each successful transaction snapshots the entire in-memory state into a single SQLite table (`state`) containing JSON blobs per entity bucket. Provide an environment-based factory (`OpenPersistentStore`) selecting among `memory`, `sqlite`, or `postgres` drivers. Introduce a placeholder `PostgresStore` that currently delegates to `MemoryStore` and returns a not-implemented error, reserving the configuration contract for future high-concurrency deployments.
 
 ## Rationale
 1. **Speed of implementation**: Snapshotting leverages existing concurrency control and rule evaluation paths with minimal code.
@@ -41,9 +41,9 @@ Adopt an embedded SQLite-backed store (`SQLiteStore`) as the default persistent 
 3. **BoltDB / Badger**: SQLite chosen for ubiquity, ecosystem maturity, and SQL inspection/debuggability.
 
 ## Implementation Notes
-- `SQLiteStore` lives in `internal/core/sqlite_store.go`.
+- The concrete implementation type is `sqlite.Store` in `internal/infra/persistence/sqlite` (migrated from the deprecated `internal/persistence/sqlite` path); the public helper `core.NewSQLiteStore` returns that type while preserving the historical constructor name for backwards compatibility and readability in calling code.
 - Env vars: `COLONYCORE_STORAGE_DRIVER`, `COLONYCORE_SQLITE_PATH`, `COLONYCORE_POSTGRES_DSN`.
-- Test coverage via `sqlite_store_test.go` ensures snapshot reload semantics.
+- Test coverage via `internal/core/sqlite_store_test.go` and `internal/infra/persistence/sqlite/store_test.go` ensures snapshot reload semantics.
 
 ## Status & Follow-Up
 Accepted for v0.1.0 baseline. Postgres driver implementation tracked as a follow-up (will supersede placeholder). Metrics & delta persistence targeted post initial adopter feedback.

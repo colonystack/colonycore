@@ -3,6 +3,7 @@ package core_test
 import (
 	"colonycore/internal/core"
 	"colonycore/pkg/datasetapi"
+	"colonycore/pkg/domain"
 	"colonycore/pkg/pluginapi"
 	"colonycore/plugins/frog"
 	"context"
@@ -18,7 +19,7 @@ func TestHousingCapacityRuleBlocksOverCapacity(t *testing.T) {
 	svc := core.NewInMemoryService(core.NewDefaultRulesEngine())
 	ctx := context.Background()
 
-	housing, res, err := svc.CreateHousingUnit(ctx, core.HousingUnit{Name: "Tank A", Facility: "Greenhouse", Capacity: 1})
+	housing, res, err := svc.CreateHousingUnit(ctx, domain.HousingUnit{Name: "Tank A", Facility: "Greenhouse", Capacity: 1})
 	if err != nil {
 		t.Fatalf("create housing: %v", err)
 	}
@@ -26,7 +27,7 @@ func TestHousingCapacityRuleBlocksOverCapacity(t *testing.T) {
 		t.Fatalf("unexpected violations: %+v", res.Violations)
 	}
 
-	frogA, res, err := svc.CreateOrganism(ctx, core.Organism{Name: "Frog A", Species: "Lithobates", Stage: core.StageJuvenile})
+	frogA, res, err := svc.CreateOrganism(ctx, domain.Organism{Name: "Frog A", Species: "Lithobates", Stage: domain.StageJuvenile})
 	if err != nil {
 		t.Fatalf("create organism A: %v", err)
 	}
@@ -34,7 +35,7 @@ func TestHousingCapacityRuleBlocksOverCapacity(t *testing.T) {
 		t.Fatalf("unexpected violations for organism A: %+v", res.Violations)
 	}
 
-	frogB, res, err := svc.CreateOrganism(ctx, core.Organism{Name: "Frog B", Species: "Lithobates", Stage: core.StageJuvenile})
+	frogB, res, err := svc.CreateOrganism(ctx, domain.Organism{Name: "Frog B", Species: "Lithobates", Stage: domain.StageJuvenile})
 	if err != nil {
 		t.Fatalf("create organism B: %v", err)
 	}
@@ -52,7 +53,7 @@ func TestHousingCapacityRuleBlocksOverCapacity(t *testing.T) {
 	if err == nil {
 		t.Fatalf("expected error when exceeding housing capacity")
 	}
-	var violationErr core.RuleViolationError
+	var violationErr domain.RuleViolationError
 	if !AsRuleViolation(err, &violationErr) {
 		t.Fatalf("expected rule violation error, got %T", err)
 	}
@@ -68,7 +69,7 @@ func TestProtocolSubjectCapBlocksOverage(t *testing.T) {
 	svc := core.NewInMemoryService(core.NewDefaultRulesEngine())
 	ctx := context.Background()
 
-	project, _, err := svc.CreateProject(ctx, core.Project{Code: "PRJ-1", Title: "Regeneration"})
+	project, _, err := svc.CreateProject(ctx, domain.Project{Code: "PRJ-1", Title: "Regeneration"})
 	if err != nil {
 		t.Fatalf("create project: %v", err)
 	}
@@ -76,7 +77,7 @@ func TestProtocolSubjectCapBlocksOverage(t *testing.T) {
 		t.Fatalf("expected project ID to be set")
 	}
 
-	protocol, res, err := svc.CreateProtocol(ctx, core.Protocol{Code: "PROTO-1", Title: "Tadpole Study", MaxSubjects: 1})
+	protocol, res, err := svc.CreateProtocol(ctx, domain.Protocol{Code: "PROTO-1", Title: "Tadpole Study", MaxSubjects: 1})
 	if err != nil {
 		t.Fatalf("create protocol: %v", err)
 	}
@@ -84,11 +85,11 @@ func TestProtocolSubjectCapBlocksOverage(t *testing.T) {
 		t.Fatalf("unexpected violations on protocol create: %+v", res.Violations)
 	}
 
-	frogA, _, err := svc.CreateOrganism(ctx, core.Organism{Name: "Frog A", Species: "Lithobates", ProjectID: &project.ID})
+	frogA, _, err := svc.CreateOrganism(ctx, domain.Organism{Name: "Frog A", Species: "Lithobates", ProjectID: &project.ID})
 	if err != nil {
 		t.Fatalf("create organism A: %v", err)
 	}
-	frogB, _, err := svc.CreateOrganism(ctx, core.Organism{Name: "Frog B", Species: "Lithobates", ProjectID: &project.ID})
+	frogB, _, err := svc.CreateOrganism(ctx, domain.Organism{Name: "Frog B", Species: "Lithobates", ProjectID: &project.ID})
 	if err != nil {
 		t.Fatalf("create organism B: %v", err)
 	}
@@ -103,7 +104,7 @@ func TestProtocolSubjectCapBlocksOverage(t *testing.T) {
 	if err == nil {
 		t.Fatalf("expected error when exceeding protocol subjects")
 	}
-	var violationErr core.RuleViolationError
+	var violationErr domain.RuleViolationError
 	if !AsRuleViolation(err, &violationErr) {
 		t.Fatalf("expected rule violation error, got %T", err)
 	}
@@ -139,12 +140,12 @@ func TestFrogPluginRegistersSchemasAndRules(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	housing, _, err := svc.CreateHousingUnit(ctx, core.HousingUnit{Name: "Dry Terrarium", Facility: "Lab", Capacity: 2, Environment: "arid"})
+	housing, _, err := svc.CreateHousingUnit(ctx, domain.HousingUnit{Name: "Dry Terrarium", Facility: "Lab", Capacity: 2, Environment: "arid"})
 	if err != nil {
 		t.Fatalf("create housing: %v", err)
 	}
 
-	frogA, _, err := svc.CreateOrganism(ctx, core.Organism{Name: "DryFrog", Species: "Poison Frog"})
+	frogA, _, err := svc.CreateOrganism(ctx, domain.Organism{Name: "DryFrog", Species: "Poison Frog"})
 	if err != nil {
 		t.Fatalf("create organism: %v", err)
 	}
@@ -157,7 +158,7 @@ func TestFrogPluginRegistersSchemasAndRules(t *testing.T) {
 		t.Fatalf("expected single warning violation, got %+v", res.Violations)
 	}
 	violation := res.Violations[0]
-	if violation.Severity != core.SeverityWarn || violation.Rule != "frog_habitat_warning" {
+	if violation.Severity != domain.SeverityWarn || violation.Rule != "frog_habitat_warning" {
 		t.Fatalf("unexpected violation: %+v", violation)
 	}
 	if len(svc.RegisteredPlugins()) != 1 {
@@ -169,15 +170,15 @@ func TestServiceExtendedCRUD(t *testing.T) {
 	svc := core.NewInMemoryService(core.NewDefaultRulesEngine())
 	ctx := context.Background()
 
-	project, _, err := svc.CreateProject(ctx, core.Project{Code: "PRJ-EXT", Title: "Extended"})
+	project, _, err := svc.CreateProject(ctx, domain.Project{Code: "PRJ-EXT", Title: "Extended"})
 	if err != nil {
 		t.Fatalf("create project: %v", err)
 	}
-	protocol, _, err := svc.CreateProtocol(ctx, core.Protocol{Code: "PROT-EXT", Title: "Extended Protocol", MaxSubjects: 10})
+	protocol, _, err := svc.CreateProtocol(ctx, domain.Protocol{Code: "PROT-EXT", Title: "Extended Protocol", MaxSubjects: 10})
 	if err != nil {
 		t.Fatalf("create protocol: %v", err)
 	}
-	housing, _, err := svc.CreateHousingUnit(ctx, core.HousingUnit{Name: "Humid", Facility: "Lab", Capacity: 4, Environment: "humid"})
+	housing, _, err := svc.CreateHousingUnit(ctx, domain.HousingUnit{Name: "Humid", Facility: "Lab", Capacity: 4, Environment: "humid"})
 	if err != nil {
 		t.Fatalf("create housing: %v", err)
 	}
@@ -186,22 +187,22 @@ func TestServiceExtendedCRUD(t *testing.T) {
 	protID := protocol.ID
 	housingID := housing.ID
 
-	cohort, _, err := svc.CreateCohort(ctx, core.Cohort{Name: "Cohort", Purpose: "Study", ProjectID: &projID, HousingID: &housingID, ProtocolID: &protID})
+	cohort, _, err := svc.CreateCohort(ctx, domain.Cohort{Name: "Cohort", Purpose: "Study", ProjectID: &projID, HousingID: &housingID, ProtocolID: &protID})
 	if err != nil {
 		t.Fatalf("create cohort: %v", err)
 	}
 
 	cohortID := cohort.ID
-	organismA, _, err := svc.CreateOrganism(ctx, core.Organism{Name: "SpecimenA", Species: "Lithobates", Stage: core.StageJuvenile, CohortID: &cohortID})
+	organismA, _, err := svc.CreateOrganism(ctx, domain.Organism{Name: "SpecimenA", Species: "Lithobates", Stage: domain.StageJuvenile, CohortID: &cohortID})
 	if err != nil {
 		t.Fatalf("create organismA: %v", err)
 	}
-	organismB, _, err := svc.CreateOrganism(ctx, core.Organism{Name: "SpecimenB", Species: "Lithobates", Stage: core.StageAdult, CohortID: &cohortID})
+	organismB, _, err := svc.CreateOrganism(ctx, domain.Organism{Name: "SpecimenB", Species: "Lithobates", Stage: domain.StageAdult, CohortID: &cohortID})
 	if err != nil {
 		t.Fatalf("create organismB: %v", err)
 	}
 
-	updated, res, err := svc.UpdateOrganism(ctx, organismA.ID, func(o *core.Organism) error {
+	updated, res, err := svc.UpdateOrganism(ctx, organismA.ID, func(o *domain.Organism) error {
 		o.Line = "LineA"
 		return nil
 	})
@@ -215,7 +216,7 @@ func TestServiceExtendedCRUD(t *testing.T) {
 		t.Fatalf("expected line to update, got %s", updated.Line)
 	}
 
-	breeding, _, err := svc.CreateBreedingUnit(ctx, core.BreedingUnit{
+	breeding, _, err := svc.CreateBreedingUnit(ctx, domain.BreedingUnit{
 		Name:       "Pair",
 		Strategy:   "pair",
 		HousingID:  &housingID,
@@ -230,7 +231,7 @@ func TestServiceExtendedCRUD(t *testing.T) {
 		t.Fatalf("expected breeding unit to have name")
 	}
 
-	procedure, _, err := svc.CreateProcedure(ctx, core.Procedure{
+	procedure, _, err := svc.CreateProcedure(ctx, domain.Procedure{
 		Name:        "Procedure",
 		Status:      "scheduled",
 		ScheduledAt: time.Now().Add(time.Minute),
@@ -241,7 +242,7 @@ func TestServiceExtendedCRUD(t *testing.T) {
 		t.Fatalf("create procedure: %v", err)
 	}
 
-	if _, res, err := svc.UpdateProcedure(ctx, procedure.ID, func(p *core.Procedure) error {
+	if _, res, err := svc.UpdateProcedure(ctx, procedure.ID, func(p *domain.Procedure) error {
 		p.Status = "completed"
 		return nil
 	}); err != nil {
@@ -267,11 +268,11 @@ func TestServiceConstructorAndStore(t *testing.T) {
 }
 
 // AsRuleViolation unwraps errors into a RuleViolationError when possible.
-func AsRuleViolation(err error, target *core.RuleViolationError) bool {
+func AsRuleViolation(err error, target *domain.RuleViolationError) bool {
 	if err == nil {
 		return false
 	}
-	var rv core.RuleViolationError
+	var rv domain.RuleViolationError
 	if errors.As(err, &rv) {
 		*target = rv
 		return true
@@ -296,23 +297,24 @@ func TestInstallPluginValidations(t *testing.T) {
 func TestServiceAssignInvalidReferences(t *testing.T) {
 	svc := core.NewInMemoryService(core.NewDefaultRulesEngine())
 	ctx := context.Background()
-	organism, _, err := svc.CreateOrganism(ctx, core.Organism{Name: "Lonely", Species: "Frog"})
+	organism, _, err := svc.CreateOrganism(ctx, domain.Organism{Name: "Lonely", Species: "Frog"})
 	if err != nil {
 		t.Fatalf("create organism: %v", err)
 	}
 	if _, _, err := svc.AssignOrganismHousing(ctx, organism.ID, "missing"); err == nil {
 		t.Fatalf("expected housing assignment error")
-	} else if !strings.Contains(err.Error(), string(core.EntityHousingUnit)) {
+	} else if !strings.Contains(err.Error(), string(domain.EntityHousingUnit)) {
 		t.Fatalf("unexpected housing error: %v", err)
 	}
 	if _, _, err := svc.AssignOrganismProtocol(ctx, organism.ID, "missing"); err == nil {
 		t.Fatalf("expected protocol assignment error")
-	} else if !strings.Contains(err.Error(), string(core.EntityProtocol)) {
+	} else if !strings.Contains(err.Error(), string(domain.EntityProtocol)) {
 		t.Fatalf("unexpected protocol error: %v", err)
 	}
 }
 
 func TestServiceClockAndLoggerOptions(t *testing.T) {
+	formatProvider := datasetapi.GetFormatProvider()
 	engine := core.NewRulesEngine()
 	store := clocklessStore{inner: core.NewMemoryStore(engine)}
 	freeze := time.Date(2024, 4, 20, 12, 34, 56, 0, time.UTC)
@@ -330,7 +332,7 @@ func TestServiceClockAndLoggerOptions(t *testing.T) {
 	if !ok {
 		t.Fatalf("resolve dataset template: %v", templates[0])
 	}
-	result, errs, err := template.Run(context.Background(), nil, core.DatasetScope{}, core.FormatJSON)
+	result, errs, err := template.Run(context.Background(), nil, datasetapi.Scope{}, formatProvider.JSON())
 	if err != nil {
 		t.Fatalf("run dataset: %v", err)
 	}
@@ -358,51 +360,51 @@ type clocklessStore struct {
 	inner *memory.Store
 }
 
-func (s clocklessStore) RunInTransaction(ctx context.Context, fn func(core.Transaction) error) (core.Result, error) {
+func (s clocklessStore) RunInTransaction(ctx context.Context, fn func(domain.Transaction) error) (domain.Result, error) {
 	return s.inner.RunInTransaction(ctx, fn)
 }
 
-func (s clocklessStore) View(ctx context.Context, fn func(core.TransactionView) error) error {
+func (s clocklessStore) View(ctx context.Context, fn func(domain.TransactionView) error) error {
 	return s.inner.View(ctx, fn)
 }
 
-func (s clocklessStore) GetOrganism(id string) (core.Organism, bool) {
+func (s clocklessStore) GetOrganism(id string) (domain.Organism, bool) {
 	return s.inner.GetOrganism(id)
 }
 
-func (s clocklessStore) ListOrganisms() []core.Organism {
+func (s clocklessStore) ListOrganisms() []domain.Organism {
 	return s.inner.ListOrganisms()
 }
 
-func (s clocklessStore) GetHousingUnit(id string) (core.HousingUnit, bool) {
+func (s clocklessStore) GetHousingUnit(id string) (domain.HousingUnit, bool) {
 	return s.inner.GetHousingUnit(id)
 }
 
-func (s clocklessStore) ListHousingUnits() []core.HousingUnit {
+func (s clocklessStore) ListHousingUnits() []domain.HousingUnit {
 	return s.inner.ListHousingUnits()
 }
 
-func (s clocklessStore) ListCohorts() []core.Cohort {
+func (s clocklessStore) ListCohorts() []domain.Cohort {
 	return s.inner.ListCohorts()
 }
 
-func (s clocklessStore) ListProtocols() []core.Protocol {
+func (s clocklessStore) ListProtocols() []domain.Protocol {
 	return s.inner.ListProtocols()
 }
 
-func (s clocklessStore) ListProjects() []core.Project {
+func (s clocklessStore) ListProjects() []domain.Project {
 	return s.inner.ListProjects()
 }
 
-func (s clocklessStore) ListBreedingUnits() []core.BreedingUnit {
+func (s clocklessStore) ListBreedingUnits() []domain.BreedingUnit {
 	return s.inner.ListBreedingUnits()
 }
 
-func (s clocklessStore) ListProcedures() []core.Procedure {
+func (s clocklessStore) ListProcedures() []domain.Procedure {
 	return s.inner.ListProcedures()
 }
 
-func (s clocklessStore) RulesEngine() *core.RulesEngine {
+func (s clocklessStore) RulesEngine() *domain.RulesEngine {
 	return s.inner.RulesEngine()
 }
 
@@ -412,17 +414,19 @@ func (testClockPlugin) Name() string    { return "clock" }
 func (testClockPlugin) Version() string { return "v1" }
 
 func (testClockPlugin) Register(registry pluginapi.Registry) error {
+	dialectProvider := datasetapi.GetDialectProvider()
+	formatProvider := datasetapi.GetFormatProvider()
 	return registry.RegisterDatasetTemplate(datasetapi.Template{
 		Key:           "now",
 		Version:       "v1",
 		Title:         "Now",
 		Description:   "returns the current time",
-		Dialect:       datasetapi.DialectSQL,
+		Dialect:       dialectProvider.SQL(),
 		Query:         "SELECT now()",
-		OutputFormats: []datasetapi.Format{datasetapi.FormatJSON},
+		OutputFormats: []datasetapi.Format{formatProvider.JSON()},
 		Columns:       []datasetapi.Column{{Name: "now", Type: "timestamp"}},
 		Binder: func(env datasetapi.Environment) (datasetapi.Runner, error) {
-			return func(ctx context.Context, req datasetapi.RunRequest) (datasetapi.RunResult, error) {
+			return func(_ context.Context, req datasetapi.RunRequest) (datasetapi.RunResult, error) {
 				now := env.Now
 				if now == nil {
 					now = func() time.Time { return time.Now().UTC() }
@@ -430,9 +434,9 @@ func (testClockPlugin) Register(registry pluginapi.Registry) error {
 				timestamp := now().UTC()
 				return datasetapi.RunResult{
 					Schema:      req.Template.Columns,
-					Rows:        []map[string]any{{"now": timestamp}},
+					Rows:        []datasetapi.Row{{"now": timestamp}},
 					GeneratedAt: timestamp,
-					Format:      datasetapi.FormatJSON,
+					Format:      formatProvider.JSON(),
 				}, nil
 			}, nil
 		},

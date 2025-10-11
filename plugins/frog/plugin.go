@@ -1,17 +1,23 @@
+// Package frog implements a reference plugin providing frog-specific schema
+// extensions, rules, and example dataset templates for demonstration purposes.
 package frog
 
 import (
-	"colonycore/pkg/datasetapi"
-	"colonycore/pkg/pluginapi"
 	"context"
 	"fmt"
 	"strings"
 	"time"
 
-	domain "colonycore/pkg/domain"
+	"colonycore/pkg/datasetapi"
+	"colonycore/pkg/pluginapi"
 )
 
-// Plugin implements the frog reference module described in the RFC (stubbed for the PoC).
+const (
+	frogHabitatRuleName = "frog_habitat_warning"
+	pluginName          = "frog"
+)
+
+// Plugin implements the frog reference module described in the RFC.
 type Plugin struct{}
 
 // New constructs a frog plugin instance.
@@ -20,7 +26,7 @@ func New() Plugin {
 }
 
 // Name returns the plugin identifier.
-func (Plugin) Name() string { return "frog" }
+func (Plugin) Name() string { return pluginName }
 
 // Version returns the plugin semantic version.
 func (Plugin) Version() string { return "0.1.0" }
@@ -50,12 +56,15 @@ func (Plugin) Register(registry pluginapi.Registry) error {
 
 	registry.RegisterRule(frogHabitatRule{})
 
+	dialectProvider := datasetapi.GetDialectProvider()
+	formatProvider := datasetapi.GetFormatProvider()
+
 	if err := registry.RegisterDatasetTemplate(datasetapi.Template{
 		Key:         "frog_population_snapshot",
 		Version:     "0.1.0",
 		Title:       "Frog Population Snapshot",
 		Description: "Lists frog organisms with lifecycle, housing, and project context scoped to the caller's RBAC filters.",
-		Dialect:     datasetapi.DialectDSL,
+		Dialect:     dialectProvider.DSL(),
 		Query: `REPORT frog_population_snapshot
 SELECT organism_id, organism_name, species, lifecycle_stage, project_id, protocol_id, housing_id, updated_at
 FROM organisms
@@ -65,14 +74,17 @@ WHERE species ILIKE 'frog%'`,
 				Name:        "stage",
 				Type:        "string",
 				Description: "Optional lifecycle stage filter using canonical stage identifiers.",
-				Enum: []string{
-					string(domain.StagePlanned),
-					string(domain.StageLarva),
-					string(domain.StageJuvenile),
-					string(domain.StageAdult),
-					string(domain.StageRetired),
-					string(domain.StageDeceased),
-				},
+				Enum: func() []string {
+					stages := datasetapi.NewLifecycleStageContext()
+					return []string{
+						stages.Planned().String(),
+						stages.Larva().String(),
+						stages.Juvenile().String(),
+						stages.Adult().String(),
+						stages.Retired().String(),
+						stages.Deceased().String(),
+					}
+				}(),
 			},
 			{
 				Name:        "as_of",
@@ -108,11 +120,11 @@ WHERE species ILIKE 'frog%'`,
 			},
 		},
 		OutputFormats: []datasetapi.Format{
-			datasetapi.FormatJSON,
-			datasetapi.FormatCSV,
-			datasetapi.FormatParquet,
-			datasetapi.FormatHTML,
-			datasetapi.FormatPNG,
+			formatProvider.JSON(),
+			formatProvider.CSV(),
+			formatProvider.Parquet(),
+			formatProvider.HTML(),
+			formatProvider.PNG(),
 		},
 		Binder: frogPopulationBinder,
 	}); err != nil {
@@ -123,33 +135,42 @@ WHERE species ILIKE 'frog%'`,
 
 type frogHabitatRule struct{}
 
-func (frogHabitatRule) Name() string { return "frog_habitat_warning" }
+func (frogHabitatRule) Name() string { return frogHabitatRuleName }
 
-func (frogHabitatRule) Evaluate(ctx context.Context, view domain.RuleView, changes []domain.Change) (domain.Result, error) {
-	var result domain.Result
+func (frogHabitatRule) Evaluate(_ context.Context, view pluginapi.RuleView, _ []pluginapi.Change) (pluginapi.Result, error) {
+	var result pluginapi.Result
+
 	for _, organism := range view.ListOrganisms() {
-		specie := strings.ToLower(organism.Species)
+		specie := strings.ToLower(organism.Species())
 		if !strings.Contains(specie, "frog") {
 			continue
 		}
-		if organism.HousingID == nil {
-			continue
-		}
-		housing, ok := view.FindHousingUnit(*organism.HousingID)
+		housingID, ok := organism.HousingID()
 		if !ok {
 			continue
 		}
-		env := strings.ToLower(housing.Environment)
-		if strings.Contains(env, "aquatic") || strings.Contains(env, "humid") {
+		housing, ok := view.FindHousingUnit(housingID)
+		if !ok {
 			continue
 		}
-		result.Violations = append(result.Violations, domain.Violation{
-			Rule:     "frog_habitat_warning",
-			Severity: domain.SeverityWarn,
-			Message:  "frog assigned to non-aquatic/non-humid housing",
-			Entity:   domain.EntityOrganism,
-			EntityID: organism.ID,
-		})
+		// Use contextual accessors instead of raw string comparisons
+		if housing.IsAquaticEnvironment() || housing.IsHumidEnvironment() {
+			continue
+		}
+
+		entities := pluginapi.NewEntityContext()
+
+		violation, err := pluginapi.NewViolationBuilder().
+			WithRule(frogHabitatRuleName).
+			WithMessage("frog assigned to non-aquatic/non-humid housing").
+			WithEntity(entities.Organism()).
+			WithEntityID(organism.ID()).
+			BuildWarning()
+		if err != nil {
+			return pluginapi.Result{}, fmt.Errorf("failed to build violation: %w", err)
+		}
+
+		result = result.AddViolation(violation)
 	}
 	return result, nil
 }
@@ -163,7 +184,7 @@ func frogPopulationBinder(env datasetapi.Environment) (datasetapi.Runner, error)
 		now = func() time.Time { return time.Now().UTC() }
 	}
 	return func(ctx context.Context, req datasetapi.RunRequest) (datasetapi.RunResult, error) {
-		var rows []map[string]any
+		var rows []datasetapi.Row
 		stageFilter, _ := req.Parameters["stage"].(string)
 		includeRetired, _ := req.Parameters["include_retired"].(bool)
 		var asOfTime *time.Time
@@ -171,40 +192,42 @@ func frogPopulationBinder(env datasetapi.Environment) (datasetapi.Runner, error)
 			t := ts
 			asOfTime = &t
 		}
-		err := env.Store.View(ctx, func(view domain.TransactionView) error {
+		err := env.Store.View(ctx, func(view datasetapi.TransactionView) error {
 			for _, organism := range view.ListOrganisms() {
-				species := strings.ToLower(organism.Species)
+				species := strings.ToLower(organism.Species())
 				if !strings.Contains(species, "frog") {
 					continue
 				}
-				if stageFilter != "" && string(organism.Stage) != stageFilter {
+				if stageFilter != "" && organism.GetCurrentStage().String() != stageFilter {
 					continue
 				}
-				if stageFilter == "" && !includeRetired && organism.Stage == domain.StageRetired {
+				if stageFilter == "" && !includeRetired && organism.IsRetired() {
 					continue
 				}
-				if asOfTime != nil && organism.UpdatedAt.After(*asOfTime) {
+				if asOfTime != nil && organism.UpdatedAt().After(*asOfTime) {
 					continue
 				}
 				if len(req.Scope.ProjectIDs) > 0 {
-					if organism.ProjectID == nil || !contains(req.Scope.ProjectIDs, *organism.ProjectID) {
+					projectID, ok := organism.ProjectID()
+					if !ok || !contains(req.Scope.ProjectIDs, projectID) {
 						continue
 					}
 				}
 				if len(req.Scope.ProtocolIDs) > 0 {
-					if organism.ProtocolID == nil || !contains(req.Scope.ProtocolIDs, *organism.ProtocolID) {
+					protocolID, ok := organism.ProtocolID()
+					if !ok || !contains(req.Scope.ProtocolIDs, protocolID) {
 						continue
 					}
 				}
-				row := map[string]any{
-					"organism_id":     organism.ID,
-					"organism_name":   organism.Name,
-					"species":         organism.Species,
-					"lifecycle_stage": string(organism.Stage),
-					"project_id":      valueOrNil(organism.ProjectID),
-					"protocol_id":     valueOrNil(organism.ProtocolID),
-					"housing_id":      valueOrNil(organism.HousingID),
-					"updated_at":      organism.UpdatedAt.UTC(),
+				row := datasetapi.Row{
+					"organism_id":     organism.ID(),
+					"organism_name":   organism.Name(),
+					"species":         organism.Species(),
+					"lifecycle_stage": organism.GetCurrentStage().String(),
+					"project_id":      valueOrNil(organism.ProjectID()),
+					"protocol_id":     valueOrNil(organism.ProtocolID()),
+					"housing_id":      valueOrNil(organism.HousingID()),
+					"updated_at":      organism.UpdatedAt().UTC(),
 				}
 				rows = append(rows, row)
 			}
@@ -229,12 +252,13 @@ func frogPopulationBinder(env datasetapi.Environment) (datasetapi.Runner, error)
 		if asOfTime != nil {
 			metadata["as_of"] = asOfTime.UTC()
 		}
+		formatProvider := datasetapi.GetFormatProvider()
 		return datasetapi.RunResult{
 			Schema:      req.Template.Columns,
 			Rows:        rows,
 			Metadata:    metadata,
 			GeneratedAt: now(),
-			Format:      datasetapi.FormatJSON,
+			Format:      formatProvider.JSON(),
 		}, nil
 	}, nil
 }
@@ -248,9 +272,9 @@ func contains(list []string, target string) bool {
 	return false
 }
 
-func valueOrNil(ptr *string) any {
-	if ptr == nil {
+func valueOrNil(value string, ok bool) any {
+	if !ok {
 		return nil
 	}
-	return *ptr
+	return value
 }

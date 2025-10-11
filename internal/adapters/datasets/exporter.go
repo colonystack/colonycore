@@ -1,3 +1,5 @@
+// Package datasets provides dataset export scheduling and artifact management
+// adapters used internally by the colonycore service.
 package datasets
 
 import (
@@ -15,55 +17,60 @@ import (
 	"sync"
 	"time"
 
-	"colonycore/internal/core"
+	"colonycore/pkg/datasetapi"
 )
 
 // ExportStatus describes the lifecycle stage of an export request.
 type ExportStatus string
 
+// Possible export lifecycle statuses.
 const (
-	ExportStatusQueued    ExportStatus = "queued"
-	ExportStatusRunning   ExportStatus = "running"
+	// ExportStatusQueued indicates the export request is queued for processing.
+	ExportStatusQueued ExportStatus = "queued"
+	// ExportStatusRunning indicates the worker is currently generating artifacts.
+	ExportStatusRunning ExportStatus = "running"
+	// ExportStatusSucceeded indicates all requested artifacts were generated successfully.
 	ExportStatusSucceeded ExportStatus = "succeeded"
-	ExportStatusFailed    ExportStatus = "failed"
+	// ExportStatusFailed indicates the export terminated with an error.
+	ExportStatusFailed ExportStatus = "failed"
 )
 
 // ExportArtifact captures a stored dataset artifact.
 type ExportArtifact struct {
-	ID          string             `json:"id"`
-	Format      core.DatasetFormat `json:"format"`
-	ContentType string             `json:"content_type"`
-	SizeBytes   int64              `json:"size_bytes"`
-	URL         string             `json:"url"`
-	Metadata    map[string]any     `json:"metadata,omitempty"`
-	CreatedAt   time.Time          `json:"created_at"`
+	ID          string            `json:"id"`
+	Format      datasetapi.Format `json:"format"`
+	ContentType string            `json:"content_type"`
+	SizeBytes   int64             `json:"size_bytes"`
+	URL         string            `json:"url"`
+	Metadata    map[string]any    `json:"metadata,omitempty"`
+	CreatedAt   time.Time         `json:"created_at"`
 }
 
 // ExportRecord tracks an export request and resulting artifacts.
 type ExportRecord struct {
-	ID          string                         `json:"id"`
-	Template    core.DatasetTemplateDescriptor `json:"template"`
-	Scope       core.DatasetScope              `json:"scope"`
-	Parameters  map[string]any                 `json:"parameters"`
-	Formats     []core.DatasetFormat           `json:"formats"`
-	Status      ExportStatus                   `json:"status"`
-	Error       string                         `json:"error,omitempty"`
-	Artifacts   []ExportArtifact               `json:"artifacts,omitempty"`
-	RequestedBy string                         `json:"requested_by"`
-	Reason      string                         `json:"reason,omitempty"`
-	ProjectID   string                         `json:"project_id,omitempty"`
-	ProtocolID  string                         `json:"protocol_id,omitempty"`
-	CreatedAt   time.Time                      `json:"created_at"`
-	UpdatedAt   time.Time                      `json:"updated_at"`
-	CompletedAt *time.Time                     `json:"completed_at,omitempty"`
+	ID          string                        `json:"id"`
+	Template    datasetapi.TemplateDescriptor `json:"template"`
+	Scope       datasetapi.Scope              `json:"scope"`
+	Parameters  map[string]any                `json:"parameters"`
+	Formats     []datasetapi.Format           `json:"formats"`
+	Status      ExportStatus                  `json:"status"`
+	Error       string                        `json:"error,omitempty"`
+	Artifacts   []ExportArtifact              `json:"artifacts,omitempty"`
+	RequestedBy string                        `json:"requested_by"`
+	Reason      string                        `json:"reason,omitempty"`
+	ProjectID   string                        `json:"project_id,omitempty"`
+	ProtocolID  string                        `json:"protocol_id,omitempty"`
+	CreatedAt   time.Time                     `json:"created_at"`
+	UpdatedAt   time.Time                     `json:"updated_at"`
+	CompletedAt *time.Time                    `json:"completed_at,omitempty"`
 }
 
 // ExportInput represents an enqueue request for the worker.
 type ExportInput struct {
 	TemplateSlug string
 	Parameters   map[string]any
-	Formats      []core.DatasetFormat
-	Scope        core.DatasetScope
+	Formats      []datasetapi.Format
+	Scope        datasetapi.Scope
 	RequestedBy  string
 	ProjectID    string
 	ProtocolID   string
@@ -95,15 +102,15 @@ type AuditLogger interface {
 
 // AuditEntry captures audit trail metadata for exports.
 type AuditEntry struct {
-	ID         string            `json:"id"`
-	Action     string            `json:"action"`
-	Actor      string            `json:"actor"`
-	Template   string            `json:"template"`
-	Status     ExportStatus      `json:"status"`
-	Scope      core.DatasetScope `json:"scope"`
-	Reason     string            `json:"reason,omitempty"`
-	Metadata   map[string]any    `json:"metadata,omitempty"`
-	OccurredAt time.Time         `json:"occurred_at"`
+	ID         string           `json:"id"`
+	Action     string           `json:"action"`
+	Actor      string           `json:"actor"`
+	Template   string           `json:"template"`
+	Status     ExportStatus     `json:"status"`
+	Scope      datasetapi.Scope `json:"scope"`
+	Reason     string           `json:"reason,omitempty"`
+	Metadata   map[string]any   `json:"metadata,omitempty"`
+	OccurredAt time.Time        `json:"occurred_at"`
 }
 
 // Worker executes dataset exports asynchronously.
@@ -181,6 +188,8 @@ func (w *Worker) loop() {
 
 // EnqueueExport schedules an export job and returns the queued record.
 func (w *Worker) EnqueueExport(ctx context.Context, input ExportInput) (ExportRecord, error) {
+	formatProvider := datasetapi.GetFormatProvider()
+
 	if w.catalog == nil {
 		return ExportRecord{}, fmt.Errorf("export catalog not configured")
 	}
@@ -196,10 +205,10 @@ func (w *Worker) EnqueueExport(ctx context.Context, input ExportInput) (ExportRe
 
 	formats := input.Formats
 	if len(formats) == 0 {
-		formats = []core.DatasetFormat{core.FormatJSON, core.FormatCSV}
+		formats = []datasetapi.Format{formatProvider.JSON(), formatProvider.CSV()}
 	}
-	uniqFormats := make([]core.DatasetFormat, 0, len(formats))
-	seen := make(map[core.DatasetFormat]struct{})
+	uniqFormats := make([]datasetapi.Format, 0, len(formats))
+	seen := make(map[datasetapi.Format]struct{})
 	for _, format := range formats {
 		if _, duplicate := seen[format]; duplicate {
 			continue
@@ -269,6 +278,8 @@ func (w *Worker) GetExport(id string) (ExportRecord, bool) {
 }
 
 func (w *Worker) process(task exportTask) {
+	formatProvider := datasetapi.GetFormatProvider()
+
 	record := w.snapshot(task.id)
 	if record == nil {
 		return
@@ -288,7 +299,7 @@ func (w *Worker) process(task exportTask) {
 		return
 	}
 
-	result, paramErrs, err := template.Run(w.ctx, cleaned, task.input.Scope, core.FormatJSON)
+	result, paramErrs, err := template.Run(w.ctx, cleaned, task.input.Scope, formatProvider.JSON())
 	if err != nil {
 		w.fail(task.id, fmt.Sprintf("dataset run failed: %v", err))
 		return
@@ -430,18 +441,21 @@ func (w *Worker) templateFor(id string) string {
 	return ""
 }
 
-func (w *Worker) scopeFor(id string) core.DatasetScope {
+func (w *Worker) scopeFor(id string) datasetapi.Scope {
 	w.mu.RLock()
 	defer w.mu.RUnlock()
 	if record, ok := w.jobs[id]; ok {
 		return record.Scope
 	}
-	return core.DatasetScope{}
+	return datasetapi.Scope{}
 }
 
-func (w *Worker) materialize(format core.DatasetFormat, template core.DatasetTemplate, result core.DatasetRunResult) (renderedArtifact, error) {
+func (w *Worker) materialize(format datasetapi.Format, template datasetapi.TemplateRuntime, result datasetapi.RunResult) (renderedArtifact, error) {
+	formatProvider := datasetapi.GetFormatProvider()
+
+	descriptor := template.Descriptor()
 	switch format {
-	case core.FormatJSON:
+	case formatProvider.JSON():
 		payload, err := json.Marshal(result)
 		if err != nil {
 			return renderedArtifact{}, fmt.Errorf("marshal json: %w", err)
@@ -449,7 +463,7 @@ func (w *Worker) materialize(format core.DatasetFormat, template core.DatasetTem
 		return renderedArtifact{
 			Artifact: ExportArtifact{
 				ID:          newID(),
-				Format:      core.FormatJSON,
+				Format:      formatProvider.JSON(),
 				ContentType: "application/json",
 				SizeBytes:   int64(len(payload)),
 				Metadata: map[string]any{
@@ -459,12 +473,12 @@ func (w *Worker) materialize(format core.DatasetFormat, template core.DatasetTem
 			},
 			Payload: payload,
 		}, nil
-	case core.FormatCSV:
+	case formatProvider.CSV():
 		buf := &bytes.Buffer{}
 		writer := csv.NewWriter(buf)
 		columns := result.Schema
 		if len(columns) == 0 {
-			columns = template.Descriptor().Columns
+			columns = descriptor.Columns
 		}
 		headers := make([]string, len(columns))
 		for i, column := range columns {
@@ -490,7 +504,7 @@ func (w *Worker) materialize(format core.DatasetFormat, template core.DatasetTem
 		return renderedArtifact{
 			Artifact: ExportArtifact{
 				ID:          newID(),
-				Format:      core.FormatCSV,
+				Format:      formatProvider.CSV(),
 				ContentType: "text/csv",
 				SizeBytes:   int64(len(payload)),
 				Metadata: map[string]any{
@@ -500,12 +514,12 @@ func (w *Worker) materialize(format core.DatasetFormat, template core.DatasetTem
 			},
 			Payload: payload,
 		}, nil
-	case core.FormatHTML:
-		payload := buildHTML(template, result)
+	case formatProvider.HTML():
+		payload := buildHTML(descriptor, result)
 		return renderedArtifact{
 			Artifact: ExportArtifact{
 				ID:          newID(),
-				Format:      core.FormatHTML,
+				Format:      formatProvider.HTML(),
 				ContentType: "text/html",
 				SizeBytes:   int64(len(payload)),
 				Metadata:    map[string]any{"rows": len(result.Rows)},
@@ -513,7 +527,7 @@ func (w *Worker) materialize(format core.DatasetFormat, template core.DatasetTem
 			},
 			Payload: payload,
 		}, nil
-	case core.FormatParquet:
+	case formatProvider.Parquet():
 		payload, err := json.Marshal(result.Rows)
 		if err != nil {
 			return renderedArtifact{}, fmt.Errorf("marshall parquet surrogate: %w", err)
@@ -521,7 +535,7 @@ func (w *Worker) materialize(format core.DatasetFormat, template core.DatasetTem
 		return renderedArtifact{
 			Artifact: ExportArtifact{
 				ID:          newID(),
-				Format:      core.FormatParquet,
+				Format:      formatProvider.Parquet(),
 				ContentType: "application/octet-stream",
 				SizeBytes:   int64(len(payload)),
 				Metadata: map[string]any{
@@ -532,7 +546,7 @@ func (w *Worker) materialize(format core.DatasetFormat, template core.DatasetTem
 			},
 			Payload: payload,
 		}, nil
-	case core.FormatPNG:
+	case formatProvider.PNG():
 		payload, err := buildPNG(result)
 		if err != nil {
 			return renderedArtifact{}, err
@@ -540,7 +554,7 @@ func (w *Worker) materialize(format core.DatasetFormat, template core.DatasetTem
 		return renderedArtifact{
 			Artifact: ExportArtifact{
 				ID:          newID(),
-				Format:      core.FormatPNG,
+				Format:      formatProvider.PNG(),
 				ContentType: "image/png",
 				SizeBytes:   int64(len(payload)),
 				Metadata:    map[string]any{"rows": len(result.Rows)},
@@ -553,14 +567,14 @@ func (w *Worker) materialize(format core.DatasetFormat, template core.DatasetTem
 	}
 }
 
-func buildHTML(template core.DatasetTemplate, result core.DatasetRunResult) []byte {
+func buildHTML(descriptor datasetapi.TemplateDescriptor, result datasetapi.RunResult) []byte {
 	columns := result.Schema
 	if len(columns) == 0 {
-		columns = template.Descriptor().Columns
+		columns = descriptor.Columns
 	}
 	buf := &strings.Builder{}
 	buf.WriteString("<!DOCTYPE html><html><head><meta charset=\"utf-8\"><title>")
-	buf.WriteString(template.Title)
+	buf.WriteString(descriptor.Title)
 	buf.WriteString("</title></head><body><table>")
 	buf.WriteString("<thead><tr>")
 	for _, column := range columns {
@@ -582,7 +596,7 @@ func buildHTML(template core.DatasetTemplate, result core.DatasetRunResult) []by
 	return []byte(buf.String())
 }
 
-func buildPNG(result core.DatasetRunResult) ([]byte, error) {
+func buildPNG(result datasetapi.RunResult) ([]byte, error) {
 	width := 400
 	height := 200
 	img := image.NewRGBA(image.Rect(0, 0, width, height))
@@ -632,7 +646,7 @@ func mergeMetadata(base map[string]any, extra map[string]any) map[string]any {
 func (r ExportRecord) copy() ExportRecord {
 	dup := r
 	dup.Parameters = cloneMap(r.Parameters)
-	dup.Formats = append([]core.DatasetFormat(nil), r.Formats...)
+	dup.Formats = append([]datasetapi.Format(nil), r.Formats...)
 	if len(r.Artifacts) > 0 {
 		dup.Artifacts = append([]ExportArtifact(nil), r.Artifacts...)
 	}
@@ -675,7 +689,7 @@ func NewMemoryObjectStore() *MemoryObjectStore {
 }
 
 // Put stores payload metadata and returns a signed URL for retrieval.
-func (s *MemoryObjectStore) Put(ctx context.Context, key string, payload []byte, contentType string, metadata map[string]any) (ExportArtifact, error) {
+func (s *MemoryObjectStore) Put(_ context.Context, key string, payload []byte, contentType string, metadata map[string]any) (ExportArtifact, error) {
 	now := time.Now().UTC()
 	s.mu.Lock()
 	if _, exists := s.objects[key]; exists {
@@ -698,7 +712,8 @@ func (s *MemoryObjectStore) Put(ctx context.Context, key string, payload []byte,
 	return artifact, nil
 }
 
-func (s *MemoryObjectStore) Get(ctx context.Context, key string) (ExportArtifact, []byte, error) {
+// Get retrieves an object payload and its metadata; returns error if key not found.
+func (s *MemoryObjectStore) Get(_ context.Context, key string) (ExportArtifact, []byte, error) {
 	s.mu.RLock()
 	obj, ok := s.objects[key]
 	s.mu.RUnlock()
@@ -714,7 +729,8 @@ func (s *MemoryObjectStore) Get(ctx context.Context, key string) (ExportArtifact
 	return artCopy, payloadCopy, nil
 }
 
-func (s *MemoryObjectStore) Delete(ctx context.Context, key string) (bool, error) {
+// Delete removes an object if it exists returning whether it was present.
+func (s *MemoryObjectStore) Delete(_ context.Context, key string) (bool, error) {
 	s.mu.Lock()
 	_, existed := s.objects[key]
 	if existed {
@@ -724,7 +740,8 @@ func (s *MemoryObjectStore) Delete(ctx context.Context, key string) (bool, error
 	return existed, nil
 }
 
-func (s *MemoryObjectStore) List(ctx context.Context, prefix string) ([]ExportArtifact, error) {
+// List returns artifacts whose IDs share the provided prefix (or all when prefix empty).
+func (s *MemoryObjectStore) List(_ context.Context, prefix string) ([]ExportArtifact, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	out := make([]ExportArtifact, 0, len(s.objects))
@@ -762,7 +779,7 @@ type MemoryAuditLog struct {
 }
 
 // Record stores an audit entry.
-func (l *MemoryAuditLog) Record(ctx context.Context, entry AuditEntry) {
+func (l *MemoryAuditLog) Record(_ context.Context, entry AuditEntry) {
 	l.mu.Lock()
 	l.entries = append(l.entries, entry)
 	l.mu.Unlock()
