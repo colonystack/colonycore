@@ -400,6 +400,7 @@ func cloneAttributes(attrs map[string]any) map[string]any {
 //   - []any
 //   - []string
 //   - []map[string]any
+//
 // Primitive values and unrecognized types are returned as-is. Cycles are not
 // supported (the domain model is expected to be acyclic for attributes).
 func deepCloneAttribute(v any) any {
