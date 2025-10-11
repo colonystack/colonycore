@@ -134,7 +134,9 @@ import-boss:
 import-boss-install:
 	@echo "Installing import-boss to $(IMPORT_BOSS_BIN) via go build"
 	@mkdir -p $(dir $(IMPORT_BOSS_BIN))
-	@GOCACHE=$(GOCACHE) go build -o $(IMPORT_BOSS_BIN) k8s.io/gengo/examples/import-boss
+	@GOCACHE=$(GOCACHE) go get k8s.io/gengo/examples/import-boss
+	@GOCACHE=$(GOCACHE) go build k8s.io/gengo/examples/import-boss
+	@GOCACHE=$(GOCACHE) go mod tidy
 
 python-lint:
 	@echo "==> Python lint"
