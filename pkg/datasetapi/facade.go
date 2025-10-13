@@ -89,7 +89,7 @@ type CohortData struct {
 type HousingUnitData struct {
 	Base        BaseData
 	Name        string
-	Facility    string
+	FacilityID  string
 	Capacity    int
 	Environment string
 }
@@ -179,7 +179,7 @@ type HousingUnit interface {
 	CreatedAt() time.Time
 	UpdatedAt() time.Time
 	Name() string
-	Facility() string
+	FacilityID() string
 	Capacity() int
 	Environment() string
 
@@ -475,7 +475,7 @@ func (c cohort) MarshalJSON() ([]byte, error) {
 type housingUnit struct {
 	base
 	name        string
-	facility    string
+	facilityID  string
 	capacity    int
 	environment string
 }
@@ -485,14 +485,14 @@ func NewHousingUnit(data HousingUnitData) HousingUnit {
 	return housingUnit{
 		base:        newBase(data.Base),
 		name:        data.Name,
-		facility:    data.Facility,
+		facilityID:  data.FacilityID,
 		capacity:    data.Capacity,
 		environment: data.Environment,
 	}
 }
 
 func (h housingUnit) Name() string        { return h.name }
-func (h housingUnit) Facility() string    { return h.facility }
+func (h housingUnit) FacilityID() string  { return h.facilityID }
 func (h housingUnit) Capacity() int       { return h.capacity }
 func (h housingUnit) Environment() string { return h.environment }
 
@@ -545,7 +545,7 @@ func (h housingUnit) MarshalJSON() ([]byte, error) {
 		CreatedAt   time.Time `json:"created_at"`
 		UpdatedAt   time.Time `json:"updated_at"`
 		Name        string    `json:"name"`
-		Facility    string    `json:"facility"`
+		FacilityID  string    `json:"facility_id"`
 		Capacity    int       `json:"capacity"`
 		Environment string    `json:"environment"`
 	}
@@ -554,7 +554,7 @@ func (h housingUnit) MarshalJSON() ([]byte, error) {
 		CreatedAt:   h.CreatedAt(),
 		UpdatedAt:   h.UpdatedAt(),
 		Name:        h.name,
-		Facility:    h.facility,
+		FacilityID:  h.facilityID,
 		Capacity:    h.capacity,
 		Environment: h.environment,
 	})

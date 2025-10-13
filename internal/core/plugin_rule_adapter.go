@@ -179,7 +179,7 @@ func (o organismView) IsDeceased() bool {
 type housingUnitView struct {
 	baseView
 	name        string
-	facility    string
+	facilityID  string
 	capacity    int
 	environment string
 }
@@ -188,14 +188,14 @@ func newHousingUnitView(unit domain.HousingUnit) housingUnitView {
 	return housingUnitView{
 		baseView:    newBaseView(unit.Base),
 		name:        unit.Name,
-		facility:    unit.Facility,
+		facilityID:  unit.FacilityID,
 		capacity:    unit.Capacity,
 		environment: unit.Environment,
 	}
 }
 
 func (h housingUnitView) Name() string        { return h.name }
-func (h housingUnitView) Facility() string    { return h.facility }
+func (h housingUnitView) FacilityID() string  { return h.facilityID }
 func (h housingUnitView) Capacity() int       { return h.capacity }
 func (h housingUnitView) Environment() string { return h.environment }
 

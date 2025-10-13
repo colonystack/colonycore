@@ -94,7 +94,7 @@ func (h stubHousing) ID() string          { return h.id }
 func (stubHousing) CreatedAt() time.Time  { return time.Time{} }
 func (stubHousing) UpdatedAt() time.Time  { return time.Time{} }
 func (stubHousing) Name() string          { return "" }
-func (stubHousing) Facility() string      { return "" }
+func (stubHousing) FacilityID() string    { return "" }
 func (stubHousing) Capacity() int         { return 0 }
 func (h stubHousing) Environment() string { return h.environment }
 

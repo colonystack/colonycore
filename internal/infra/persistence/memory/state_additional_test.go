@@ -20,7 +20,7 @@ func TestSnapshotAllEntities(t *testing.T) {
 			return err
 		}
 		// Create housing
-		h, err := tx.CreateHousingUnit(domain.HousingUnit{Name: "H1", Facility: "Lab", Capacity: 2})
+		h, err := tx.CreateHousingUnit(domain.HousingUnit{Name: "H1", FacilityID: "Lab", Capacity: 2})
 		if err != nil {
 			return err
 		}

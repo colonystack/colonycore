@@ -60,7 +60,7 @@ type OrganismFixtureConfig struct {
 type HousingUnitFixtureConfig struct {
 	BaseFixture
 	Name        string
-	Facility    string
+	FacilityID  string
 	Capacity    int
 	Environment string
 }
@@ -112,7 +112,7 @@ func HousingUnit(cfg HousingUnitFixtureConfig) datasetapi.HousingUnit {
 	domainUnit := domain.HousingUnit{
 		Base:        cfg.baseDomain(),
 		Name:        cfg.Name,
-		Facility:    cfg.Facility,
+		FacilityID:  cfg.FacilityID,
 		Capacity:    cfg.Capacity,
 		Environment: cfg.Environment,
 	}
@@ -120,7 +120,7 @@ func HousingUnit(cfg HousingUnitFixtureConfig) datasetapi.HousingUnit {
 	return datasetapi.NewHousingUnit(datasetapi.HousingUnitData{
 		Base:        baseDataFromDomain(domainUnit.Base),
 		Name:        domainUnit.Name,
-		Facility:    domainUnit.Facility,
+		FacilityID:  domainUnit.FacilityID,
 		Capacity:    domainUnit.Capacity,
 		Environment: domainUnit.Environment,
 	})

@@ -207,7 +207,7 @@ func TestProtocolProjectCohortFacades(t *testing.T) {
 	housing := NewHousingUnit(HousingUnitData{
 		Base:        BaseData{ID: "housing", CreatedAt: now},
 		Name:        "Habitat",
-		Facility:    "Facility",
+		FacilityID:  "Facility",
 		Capacity:    3,
 		Environment: "humid",
 	})
