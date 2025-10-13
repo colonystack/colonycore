@@ -152,11 +152,17 @@ func TestDatasetPersistentStoreAdapter(t *testing.T) {
 type fakePersistentStore struct {
 	organisms     []domain.Organism
 	housingUnits  []domain.HousingUnit
+	facilities    []domain.Facility
 	protocols     []domain.Protocol
 	projects      []domain.Project
 	cohorts       []domain.Cohort
 	breedingUnits []domain.BreedingUnit
 	procedures    []domain.Procedure
+	treatments    []domain.Treatment
+	observations  []domain.Observation
+	samples       []domain.Sample
+	permits       []domain.Permit
+	supplyItems   []domain.SupplyItem
 	viewCalled    bool
 }
 
@@ -198,12 +204,50 @@ func (f *fakePersistentStore) ListHousingUnits() []domain.HousingUnit {
 	return append([]domain.HousingUnit(nil), f.housingUnits...)
 }
 
+func (f *fakePersistentStore) GetFacility(id string) (domain.Facility, bool) {
+	for _, fac := range f.facilities {
+		if fac.ID == id {
+			return fac, true
+		}
+	}
+	return domain.Facility{}, false
+}
+
+func (f *fakePersistentStore) ListFacilities() []domain.Facility {
+	return append([]domain.Facility(nil), f.facilities...)
+}
+
 func (f *fakePersistentStore) ListCohorts() []domain.Cohort {
 	return append([]domain.Cohort(nil), f.cohorts...)
 }
 
 func (f *fakePersistentStore) ListProtocols() []domain.Protocol {
 	return append([]domain.Protocol(nil), f.protocols...)
+}
+
+func (f *fakePersistentStore) ListTreatments() []domain.Treatment {
+	return append([]domain.Treatment(nil), f.treatments...)
+}
+
+func (f *fakePersistentStore) ListObservations() []domain.Observation {
+	return append([]domain.Observation(nil), f.observations...)
+}
+
+func (f *fakePersistentStore) ListSamples() []domain.Sample {
+	return append([]domain.Sample(nil), f.samples...)
+}
+
+func (f *fakePersistentStore) GetPermit(id string) (domain.Permit, bool) {
+	for _, permit := range f.permits {
+		if permit.ID == id {
+			return permit, true
+		}
+	}
+	return domain.Permit{}, false
+}
+
+func (f *fakePersistentStore) ListPermits() []domain.Permit {
+	return append([]domain.Permit(nil), f.permits...)
 }
 
 func (f *fakePersistentStore) ListProjects() []domain.Project {
@@ -218,6 +262,10 @@ func (f *fakePersistentStore) ListProcedures() []domain.Procedure {
 	return append([]domain.Procedure(nil), f.procedures...)
 }
 
+func (f *fakePersistentStore) ListSupplyItems() []domain.SupplyItem {
+	return append([]domain.SupplyItem(nil), f.supplyItems...)
+}
+
 type fakeTransactionView struct {
 	store *fakePersistentStore
 }
@@ -226,7 +274,22 @@ func (v fakeTransactionView) ListOrganisms() []domain.Organism { return v.store.
 func (v fakeTransactionView) ListHousingUnits() []domain.HousingUnit {
 	return v.store.ListHousingUnits()
 }
+func (v fakeTransactionView) ListFacilities() []domain.Facility {
+	return v.store.ListFacilities()
+}
 func (v fakeTransactionView) ListProtocols() []domain.Protocol { return v.store.ListProtocols() }
+func (v fakeTransactionView) ListTreatments() []domain.Treatment {
+	return v.store.ListTreatments()
+}
+func (v fakeTransactionView) ListObservations() []domain.Observation {
+	return v.store.ListObservations()
+}
+func (v fakeTransactionView) ListSamples() []domain.Sample   { return v.store.ListSamples() }
+func (v fakeTransactionView) ListPermits() []domain.Permit   { return v.store.ListPermits() }
+func (v fakeTransactionView) ListProjects() []domain.Project { return v.store.ListProjects() }
+func (v fakeTransactionView) ListSupplyItems() []domain.SupplyItem {
+	return v.store.ListSupplyItems()
+}
 
 func (v fakeTransactionView) FindOrganism(id string) (domain.Organism, bool) {
 	return v.store.GetOrganism(id)
@@ -234,4 +297,48 @@ func (v fakeTransactionView) FindOrganism(id string) (domain.Organism, bool) {
 
 func (v fakeTransactionView) FindHousingUnit(id string) (domain.HousingUnit, bool) {
 	return v.store.GetHousingUnit(id)
+}
+
+func (v fakeTransactionView) FindFacility(id string) (domain.Facility, bool) {
+	return v.store.GetFacility(id)
+}
+
+func (v fakeTransactionView) FindTreatment(id string) (domain.Treatment, bool) {
+	for _, t := range v.store.treatments {
+		if t.ID == id {
+			return t, true
+		}
+	}
+	return domain.Treatment{}, false
+}
+
+func (v fakeTransactionView) FindObservation(id string) (domain.Observation, bool) {
+	for _, o := range v.store.observations {
+		if o.ID == id {
+			return o, true
+		}
+	}
+	return domain.Observation{}, false
+}
+
+func (v fakeTransactionView) FindSample(id string) (domain.Sample, bool) {
+	for _, s := range v.store.samples {
+		if s.ID == id {
+			return s, true
+		}
+	}
+	return domain.Sample{}, false
+}
+
+func (v fakeTransactionView) FindPermit(id string) (domain.Permit, bool) {
+	return v.store.GetPermit(id)
+}
+
+func (v fakeTransactionView) FindSupplyItem(id string) (domain.SupplyItem, bool) {
+	for _, s := range v.store.supplyItems {
+		if s.ID == id {
+			return s, true
+		}
+	}
+	return domain.SupplyItem{}, false
 }
