@@ -60,6 +60,7 @@ func TestMemStoreCRUDReduced(t *testing.T) {
 	store := newMemStore(nil)
 	ctx := context.Background()
 	var projectID string
+	const updatedDesc = "updated"
 	if _, err := store.RunInTransaction(ctx, func(tx domain.Transaction) error {
 		proj, err := tx.CreateProject(domain.Project{Code: "PRJ", Title: "Project"})
 		if err != nil {
@@ -77,7 +78,10 @@ func TestMemStoreCRUDReduced(t *testing.T) {
 		t.Fatalf("expected 1 project, got %d", got)
 	}
 	if _, err := store.RunInTransaction(ctx, func(tx domain.Transaction) error {
-		if _, err := tx.UpdateProject(projectID, func(p *domain.Project) error { p.Description = "updated"; return nil }); err != nil {
+		if _, err := tx.UpdateProject(projectID, func(p *domain.Project) error {
+			p.Description = updatedDesc
+			return nil
+		}); err != nil {
 			return err
 		}
 		return tx.DeleteProject(projectID)

@@ -20,17 +20,25 @@ func runTx(t *testing.T, store *memStore, fn func(tx domain.Transaction) error) 
 	return res
 }
 
-func TestMemStore_FullCRUDAndErrors(t *testing.T) {
+func TestMemStore_FullCRUDAndErrors(t *testing.T) { //nolint:gocyclo // exhaustive scenario coverage in a single integration-style test
 	store := newMemStore(nil)
 	ctx := context.Background()
 
-	var orgA, orgB domain.Organism
-	var cohort domain.Cohort
-	var housing domain.HousingUnit
-	var breeding domain.BreedingUnit
-	var protocol domain.Protocol
-	var procedure domain.Procedure
-	var project domain.Project
+	var (
+		orgA, orgB  domain.Organism
+		cohort      domain.Cohort
+		housing     domain.HousingUnit
+		breeding    domain.BreedingUnit
+		protocol    domain.Protocol
+		procedure   domain.Procedure
+		treatment   domain.Treatment
+		observation domain.Observation
+		sample      domain.Sample
+		permit      domain.Permit
+		facility    domain.Facility
+		supply      domain.SupplyItem
+		project     domain.Project
+	)
 
 	// Create all entities
 	runTx(t, store, func(tx domain.Transaction) error {
@@ -39,28 +47,169 @@ func TestMemStore_FullCRUDAndErrors(t *testing.T) {
 		orgA, orgB = o1, o2
 		c, _ := tx.CreateCohort(domain.Cohort{Name: "C1", Purpose: "testing"})
 		cohort = c
-		h, _ := tx.CreateHousingUnit(domain.HousingUnit{Name: "H1", Capacity: 2, Environment: "dry", FacilityID: "F"})
+		pj, _ := tx.CreateProject(domain.Project{Code: "PRJ1", Title: "Proj"})
+		project = pj
+		f, _ := tx.CreateFacility(domain.Facility{
+			Name:                 "Vivarium",
+			Zone:                 "Zone-A",
+			AccessPolicy:         "badge",
+			EnvironmentBaselines: map[string]any{"temperature": "22C"},
+			ProjectIDs:           []string{project.ID},
+		})
+		facility = f
+		h, _ := tx.CreateHousingUnit(domain.HousingUnit{Name: "H1", Capacity: 2, Environment: "dry", FacilityID: facility.ID})
 		housing = h
+		_, _ = tx.UpdateFacility(facility.ID, func(fc *domain.Facility) error {
+			fc.HousingUnitIDs = append(fc.HousingUnitIDs, housing.ID)
+			return nil
+		})
 		b, _ := tx.CreateBreedingUnit(domain.BreedingUnit{Name: "B1", FemaleIDs: []string{o1.ID}, MaleIDs: []string{o2.ID}})
 		breeding = b
 		p, _ := tx.CreateProtocol(domain.Protocol{Code: "P1", Title: "Proto", MaxSubjects: 10})
 		protocol = p
-		pj, _ := tx.CreateProject(domain.Project{Code: "PRJ1", Title: "Proj"})
-		project = pj
 		pr, _ := tx.CreateProcedure(domain.Procedure{Name: "Proc", Status: "scheduled", ProtocolID: protocol.ID, OrganismIDs: []string{o1.ID}, ScheduledAt: time.Now().UTC()})
 		procedure = pr
+		t, _ := tx.CreateTreatment(domain.Treatment{Name: "Dose", ProcedureID: procedure.ID, OrganismIDs: []string{o1.ID}, CohortIDs: []string{cohort.ID}, DosagePlan: "10mg"})
+		treatment = t
+		now := time.Now().UTC()
+		ob, _ := tx.CreateObservation(domain.Observation{ProcedureID: &procedure.ID, OrganismID: &o1.ID, RecordedAt: now, Observer: "tech", Data: map[string]any{"score": 5}})
+		observation = ob
+		custody := []domain.SampleCustodyEvent{{Actor: "tech", Location: "bench", Timestamp: now}}
+		sa, _ := tx.CreateSample(domain.Sample{
+			Identifier:      "S1",
+			SourceType:      "blood",
+			OrganismID:      &o1.ID,
+			FacilityID:      facility.ID,
+			CollectedAt:     now,
+			Status:          "stored",
+			StorageLocation: "freezer",
+			AssayType:       "PCR",
+			ChainOfCustody:  custody,
+			Attributes:      map[string]any{"volume_ml": 1.0},
+		})
+		sample = sa
+		per, _ := tx.CreatePermit(domain.Permit{
+			PermitNumber:      "PER-1",
+			Authority:         "Agency",
+			ValidFrom:         now.Add(-time.Hour),
+			ValidUntil:        now.Add(time.Hour),
+			AllowedActivities: []string{"collect"},
+			FacilityIDs:       []string{facility.ID},
+			ProtocolIDs:       []string{protocol.ID},
+			Notes:             "issue",
+		})
+		permit = per
+		expiry := time.Now().Add(48 * time.Hour)
+		s, _ := tx.CreateSupplyItem(domain.SupplyItem{
+			SKU:            "SKU1",
+			Name:           "Feed",
+			Description:    "daily feed",
+			QuantityOnHand: 50,
+			Unit:           "grams",
+			LotNumber:      "LOT-1",
+			ExpiresAt:      &expiry,
+			FacilityIDs:    []string{facility.ID},
+			ProjectIDs:     []string{project.ID},
+			ReorderLevel:   10,
+			Attributes:     map[string]any{"supplier": "Acme"},
+		})
+		supply = s
+		if _, ok := tx.FindFacility(facility.ID); !ok {
+			return fmt.Errorf("expected facility lookup success")
+		}
+		if _, ok := tx.FindTreatment(treatment.ID); !ok {
+			return fmt.Errorf("expected treatment lookup success")
+		}
+		if _, ok := tx.FindTreatment("missing-treatment"); ok {
+			return fmt.Errorf("unexpected treatment lookup success")
+		}
+		if _, ok := tx.FindObservation(observation.ID); !ok {
+			return fmt.Errorf("expected observation lookup success")
+		}
+		if _, ok := tx.FindObservation("missing-observation"); ok {
+			return fmt.Errorf("unexpected observation lookup success")
+		}
+		if _, ok := tx.FindSample(sample.ID); !ok {
+			return fmt.Errorf("expected sample lookup success")
+		}
+		if _, ok := tx.FindSample("missing-sample"); ok {
+			return fmt.Errorf("unexpected sample lookup success")
+		}
+		if _, ok := tx.FindPermit(permit.ID); !ok {
+			return fmt.Errorf("expected permit lookup success")
+		}
+		if _, ok := tx.FindPermit("missing-permit"); ok {
+			return fmt.Errorf("unexpected permit lookup success")
+		}
+		if _, ok := tx.FindSupplyItem(supply.ID); !ok {
+			return fmt.Errorf("expected supply item lookup success")
+		}
+		if _, ok := tx.FindSupplyItem("missing-supply"); ok {
+			return fmt.Errorf("unexpected supply lookup success")
+		}
 		return nil
 	})
 
-	// Direct getters to cover GetOrganism/GetHousingUnit and ListProtocols
+	// Direct getters to cover new accessors
 	if got, ok := store.GetOrganism(orgA.ID); !ok || got.Name != "Alpha" {
 		t.Fatalf("GetOrganism mismatch")
 	}
 	if got, ok := store.GetHousingUnit(housing.ID); !ok || got.Name != "H1" {
 		t.Fatalf("GetHousingUnit mismatch")
 	}
-	if len(store.ListProtocols()) != 1 {
-		t.Fatalf("expected 1 protocol")
+	if _, ok := store.GetFacility(facility.ID); !ok {
+		t.Fatalf("expected facility getter success")
+	}
+	if _, ok := store.GetPermit(permit.ID); !ok {
+		t.Fatalf("expected permit getter success")
+	}
+	if len(store.ListProtocols()) != 1 || len(store.ListTreatments()) != 1 || len(store.ListObservations()) != 1 || len(store.ListSamples()) != 1 || len(store.ListFacilities()) != 1 || len(store.ListSupplyItems()) != 1 || len(store.ListPermits()) != 1 || len(store.ListProjects()) != 1 {
+		t.Fatalf("unexpected list counts")
+	}
+
+	if err := store.View(ctx, func(view domain.TransactionView) error {
+		if len(view.ListFacilities()) != 1 || len(view.ListTreatments()) != 1 || len(view.ListObservations()) != 1 || len(view.ListSamples()) != 1 || len(view.ListSupplyItems()) != 1 || len(view.ListPermits()) != 1 || len(view.ListProjects()) != 1 {
+			return fmt.Errorf("unexpected view list counts")
+		}
+		if _, ok := view.FindFacility(facility.ID); !ok {
+			return errors.New("facility not found in view")
+		}
+		if _, ok := view.FindFacility("missing"); ok {
+			return errors.New("unexpected facility lookup success")
+		}
+		if _, ok := view.FindTreatment(treatment.ID); !ok {
+			return errors.New("treatment not found in view")
+		}
+		if _, ok := view.FindTreatment("missing"); ok {
+			return errors.New("unexpected treatment lookup success")
+		}
+		if _, ok := view.FindObservation(observation.ID); !ok {
+			return errors.New("observation not found in view")
+		}
+		if _, ok := view.FindObservation("missing"); ok {
+			return errors.New("unexpected observation lookup success")
+		}
+		if _, ok := view.FindSample(sample.ID); !ok {
+			return errors.New("sample not found in view")
+		}
+		if _, ok := view.FindSample("missing"); ok {
+			return errors.New("unexpected sample lookup success")
+		}
+		if _, ok := view.FindPermit(permit.ID); !ok {
+			return errors.New("permit not found in view")
+		}
+		if _, ok := view.FindPermit("missing"); ok {
+			return errors.New("unexpected permit lookup success")
+		}
+		if _, ok := view.FindSupplyItem(supply.ID); !ok {
+			return errors.New("supply not found in view")
+		}
+		if _, ok := view.FindSupplyItem("missing"); ok {
+			return errors.New("unexpected supply lookup success")
+		}
+		return nil
+	}); err != nil {
+		t.Fatalf("view validation: %v", err)
 	}
 
 	// Duplicate create errors
@@ -94,12 +243,25 @@ func TestMemStore_FullCRUDAndErrors(t *testing.T) {
 		_, _ = tx.UpdateProtocol(protocol.ID, func(p *domain.Protocol) error { p.Description = "desc"; return nil })
 		_, _ = tx.UpdateProcedure(procedure.ID, func(p *domain.Procedure) error { p.Status = "complete"; return nil })
 		_, _ = tx.UpdateProject(project.ID, func(p *domain.Project) error { p.Description = "d"; return nil })
+		_, _ = tx.UpdateFacility(facility.ID, func(f *domain.Facility) error {
+			f.AccessPolicy = "training"
+			f.EnvironmentBaselines["humidity"] = "55%"
+			return nil
+		})
+		_, _ = tx.UpdateTreatment(treatment.ID, func(t *domain.Treatment) error {
+			t.AdministrationLog = append(t.AdministrationLog, "follow-up")
+			return nil
+		})
+		_, _ = tx.UpdateObservation(observation.ID, func(o *domain.Observation) error { o.Notes = "checked"; o.Data["score"] = 6; return nil })
+		_, _ = tx.UpdateSample(sample.ID, func(s *domain.Sample) error { s.Status = "consumed"; return nil })
+		_, _ = tx.UpdatePermit(permit.ID, func(p *domain.Permit) error { p.Notes = "updated"; return nil })
+		_, _ = tx.UpdateSupplyItem(supply.ID, func(s *domain.SupplyItem) error { s.QuantityOnHand = 40; return nil })
 		return nil
 	})
 
 	// Snapshot export/import consistency
 	snap := store.ExportState()
-	if len(snap.Organisms) != 2 || len(snap.Housing) != 1 || len(snap.Breeding) != 1 || len(snap.Procedures) != 1 {
+	if len(snap.Organisms) != 2 || len(snap.Housing) != 1 || len(snap.Breeding) != 1 || len(snap.Procedures) != 1 || len(snap.Treatments) != 1 || len(snap.Samples) != 1 || len(snap.Facilities) != 1 {
 		t.Fatalf("unexpected snapshot counts: %+v", snap)
 	}
 	store.ImportState(Snapshot{})
@@ -119,7 +281,13 @@ func TestMemStore_FullCRUDAndErrors(t *testing.T) {
 		_ = tx.DeleteProcedure(procedure.ID)
 		_ = tx.DeleteProtocol(protocol.ID)
 		_ = tx.DeleteBreedingUnit(breeding.ID)
+		_ = tx.DeleteTreatment(treatment.ID)
+		_ = tx.DeleteObservation(observation.ID)
+		_ = tx.DeleteSample(sample.ID)
+		_ = tx.DeletePermit(permit.ID)
+		_ = tx.DeleteSupplyItem(supply.ID)
 		_ = tx.DeleteHousingUnit(housing.ID)
+		_ = tx.DeleteFacility(facility.ID)
 		_ = tx.DeleteCohort(cohort.ID)
 		_ = tx.DeleteOrganism(orgB.ID)
 		return nil
@@ -133,11 +301,29 @@ func TestMemStore_FullCRUDAndErrors(t *testing.T) {
 	if len(store.ListHousingUnits()) != 0 {
 		t.Fatalf("expected no housing units left")
 	}
+	if len(store.ListFacilities()) != 0 {
+		t.Fatalf("expected no facilities left")
+	}
 	if len(store.ListBreedingUnits()) != 0 {
 		t.Fatalf("expected no breeding units left")
 	}
 	if len(store.ListProcedures()) != 0 {
 		t.Fatalf("expected no procedures left")
+	}
+	if len(store.ListTreatments()) != 0 {
+		t.Fatalf("expected no treatments left")
+	}
+	if len(store.ListObservations()) != 0 {
+		t.Fatalf("expected no observations left")
+	}
+	if len(store.ListSamples()) != 0 {
+		t.Fatalf("expected no samples left")
+	}
+	if len(store.ListPermits()) != 0 {
+		t.Fatalf("expected no permits left")
+	}
+	if len(store.ListSupplyItems()) != 0 {
+		t.Fatalf("expected no supplies left")
 	}
 }
 

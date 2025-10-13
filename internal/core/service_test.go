@@ -384,12 +384,40 @@ func (s clocklessStore) ListHousingUnits() []domain.HousingUnit {
 	return s.inner.ListHousingUnits()
 }
 
+func (s clocklessStore) GetFacility(id string) (domain.Facility, bool) {
+	return s.inner.GetFacility(id)
+}
+
+func (s clocklessStore) ListFacilities() []domain.Facility {
+	return s.inner.ListFacilities()
+}
+
 func (s clocklessStore) ListCohorts() []domain.Cohort {
 	return s.inner.ListCohorts()
 }
 
 func (s clocklessStore) ListProtocols() []domain.Protocol {
 	return s.inner.ListProtocols()
+}
+
+func (s clocklessStore) ListTreatments() []domain.Treatment {
+	return s.inner.ListTreatments()
+}
+
+func (s clocklessStore) ListObservations() []domain.Observation {
+	return s.inner.ListObservations()
+}
+
+func (s clocklessStore) ListSamples() []domain.Sample {
+	return s.inner.ListSamples()
+}
+
+func (s clocklessStore) GetPermit(id string) (domain.Permit, bool) {
+	return s.inner.GetPermit(id)
+}
+
+func (s clocklessStore) ListPermits() []domain.Permit {
+	return s.inner.ListPermits()
 }
 
 func (s clocklessStore) ListProjects() []domain.Project {
@@ -402,6 +430,10 @@ func (s clocklessStore) ListBreedingUnits() []domain.BreedingUnit {
 
 func (s clocklessStore) ListProcedures() []domain.Procedure {
 	return s.inner.ListProcedures()
+}
+
+func (s clocklessStore) ListSupplyItems() []domain.SupplyItem {
+	return s.inner.ListSupplyItems()
 }
 
 func (s clocklessStore) RulesEngine() *domain.RulesEngine {
