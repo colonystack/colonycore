@@ -15,14 +15,26 @@ const (
 	EntityCohort EntityType = "cohort"
 	// EntityHousingUnit identifies a housing unit record.
 	EntityHousingUnit EntityType = "housing_unit"
+	// EntityFacility identifies a facility record.
+	EntityFacility EntityType = "facility"
 	// EntityBreeding identifies a breeding unit record.
 	EntityBreeding EntityType = "breeding_unit"
 	// EntityProcedure identifies a procedure record.
 	EntityProcedure EntityType = "procedure"
+	// EntityTreatment identifies a treatment record.
+	EntityTreatment EntityType = "treatment"
+	// EntityObservation identifies an observation record.
+	EntityObservation EntityType = "observation"
+	// EntitySample identifies a sample record.
+	EntitySample EntityType = "sample"
 	// EntityProtocol identifies a protocol record.
 	EntityProtocol EntityType = "protocol"
 	// EntityProject identifies a project record.
 	EntityProject EntityType = "project"
+	// EntityPermit identifies a permit record.
+	EntityPermit EntityType = "permit"
+	// EntitySupplyItem identifies a supply item record.
+	EntitySupplyItem EntityType = "supply_item"
 )
 
 // LifecycleStage represents the canonical organism lifecycle states described in the RFC.
@@ -92,6 +104,16 @@ type HousingUnit struct {
 	Environment string `json:"environment"`
 }
 
+// Facility aggregates housing units with shared biosecurity controls.
+type Facility struct {
+	Base
+	Name                 string         `json:"name"`
+	Zone                 string         `json:"zone"`
+	AccessPolicy         string         `json:"access_policy"`
+	EnvironmentBaselines map[string]any `json:"environment_baselines"`
+	ProjectIDs           []string       `json:"project_ids"`
+}
+
 // BreedingUnit tracks configured pairings or groups intended for reproduction.
 type BreedingUnit struct {
 	Base
@@ -114,6 +136,54 @@ type Procedure struct {
 	OrganismIDs []string  `json:"organism_ids"`
 }
 
+// Treatment captures therapeutic interventions and their outcomes.
+type Treatment struct {
+	Base
+	Name              string   `json:"name"`
+	ProcedureID       string   `json:"procedure_id"`
+	OrganismIDs       []string `json:"organism_ids"`
+	CohortIDs         []string `json:"cohort_ids"`
+	DosagePlan        string   `json:"dosage_plan"`
+	AdministrationLog []string `json:"administration_log"`
+	AdverseEvents     []string `json:"adverse_events"`
+}
+
+// Observation records structured or free-form notes captured during workflows.
+type Observation struct {
+	Base
+	ProcedureID *string        `json:"procedure_id"`
+	OrganismID  *string        `json:"organism_id"`
+	CohortID    *string        `json:"cohort_id"`
+	RecordedAt  time.Time      `json:"recorded_at"`
+	Observer    string         `json:"observer"`
+	Data        map[string]any `json:"data"`
+	Notes       string         `json:"notes"`
+}
+
+// Sample tracks material derived from organisms or cohorts.
+type Sample struct {
+	Base
+	Identifier      string               `json:"identifier"`
+	SourceType      string               `json:"source_type"`
+	OrganismID      *string              `json:"organism_id"`
+	CohortID        *string              `json:"cohort_id"`
+	FacilityID      string               `json:"facility_id"`
+	CollectedAt     time.Time            `json:"collected_at"`
+	Status          string               `json:"status"`
+	StorageLocation string               `json:"storage_location"`
+	AssayType       string               `json:"assay_type"`
+	ChainOfCustody  []SampleCustodyEvent `json:"chain_of_custody"`
+	Attributes      map[string]any       `json:"attributes"`
+}
+
+// SampleCustodyEvent logs a change in possession or storage for a sample.
+type SampleCustodyEvent struct {
+	Actor     string    `json:"actor"`
+	Location  string    `json:"location"`
+	Timestamp time.Time `json:"timestamp"`
+	Notes     string    `json:"notes"`
+}
+
 // Protocol represents compliance agreements.
 type Protocol struct {
 	Base
@@ -124,12 +194,41 @@ type Protocol struct {
 	Status      string `json:"status"`
 }
 
+// Permit represents external authorizations needed for compliance.
+type Permit struct {
+	Base
+	PermitNumber      string    `json:"permit_number"`
+	Authority         string    `json:"authority"`
+	ValidFrom         time.Time `json:"valid_from"`
+	ValidUntil        time.Time `json:"valid_until"`
+	AllowedActivities []string  `json:"allowed_activities"`
+	FacilityIDs       []string  `json:"facility_ids"`
+	ProtocolIDs       []string  `json:"protocol_ids"`
+	Notes             string    `json:"notes"`
+}
+
 // Project captures cost center allocations.
 type Project struct {
 	Base
 	Code        string `json:"code"`
 	Title       string `json:"title"`
 	Description string `json:"description"`
+}
+
+// SupplyItem models inventory resources consumed by projects or facilities.
+type SupplyItem struct {
+	Base
+	SKU            string         `json:"sku"`
+	Name           string         `json:"name"`
+	Description    string         `json:"description"`
+	QuantityOnHand int            `json:"quantity_on_hand"`
+	Unit           string         `json:"unit"`
+	LotNumber      string         `json:"lot_number"`
+	ExpiresAt      *time.Time     `json:"expires_at"`
+	FacilityIDs    []string       `json:"facility_ids"`
+	ProjectIDs     []string       `json:"project_ids"`
+	ReorderLevel   int            `json:"reorder_level"`
+	Attributes     map[string]any `json:"attributes"`
 }
 
 // Change describes a mutation applied to an entity during a transaction.
