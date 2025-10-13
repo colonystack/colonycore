@@ -75,7 +75,7 @@ func TestIntegrationSmoke(t *testing.T) {
 			store := cv.open(t)
 			svc := core.NewService(store)
 			// Write one housing unit and one organism referencing it.
-			created, res, err := svc.CreateHousingUnit(ctx, domain.HousingUnit{Name: "Tank", Facility: "Lab", Capacity: 1})
+			created, res, err := svc.CreateHousingUnit(ctx, domain.HousingUnit{Name: "Tank", FacilityID: "Lab", Capacity: 1})
 			if err != nil {
 				t.Fatalf("create housing: %v", err)
 			}

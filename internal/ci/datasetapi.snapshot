@@ -44,7 +44,7 @@ TYPE Format (string)
 TYPE FormatProvider interface { CSV() colonycore/pkg/datasetapi.Format HTML() colonycore/pkg/datasetapi.Format JSON() colonycore/pkg/datasetapi.Format PNG() colonycore/pkg/datasetapi.Format Parquet() colonycore/pkg/datasetapi.Format }
 TYPE HostTemplate struct { unexported }
 TYPE HousingContext interface { Aquatic() colonycore/pkg/datasetapi.EnvironmentTypeRef Arboreal() colonycore/pkg/datasetapi.EnvironmentTypeRef Humid() colonycore/pkg/datasetapi.EnvironmentTypeRef Terrestrial() colonycore/pkg/datasetapi.EnvironmentTypeRef }
-TYPE HousingUnit interface { Capacity() int CreatedAt() time.Time Environment() string Facility() string GetEnvironmentType() colonycore/pkg/datasetapi.EnvironmentTypeRef ID() string IsAquaticEnvironment() bool IsHumidEnvironment() bool Name() string SupportsSpecies(string) bool UpdatedAt() time.Time }
+TYPE HousingUnit interface { Capacity() int CreatedAt() time.Time Environment() string FacilityID() string GetEnvironmentType() colonycore/pkg/datasetapi.EnvironmentTypeRef ID() string IsAquaticEnvironment() bool IsHumidEnvironment() bool Name() string SupportsSpecies(string) bool UpdatedAt() time.Time }
 TYPE HousingUnitData struct { unexported }
 TYPE LifecycleStage (string)
 TYPE LifecycleStageContext interface { Adult() colonycore/pkg/datasetapi.LifecycleStageRef Deceased() colonycore/pkg/datasetapi.LifecycleStageRef Juvenile() colonycore/pkg/datasetapi.LifecycleStageRef Larva() colonycore/pkg/datasetapi.LifecycleStageRef Planned() colonycore/pkg/datasetapi.LifecycleStageRef Retired() colonycore/pkg/datasetapi.LifecycleStageRef }

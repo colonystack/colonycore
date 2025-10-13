@@ -33,7 +33,7 @@ type OrganismView interface {
 type HousingUnitView interface {
 	BaseView
 	Name() string
-	Facility() string
+	FacilityID() string
 	Capacity() int
 	Environment() string
 

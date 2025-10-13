@@ -19,7 +19,7 @@ func TestHousingCapacityRuleBlocksOverCapacity(t *testing.T) {
 	svc := core.NewInMemoryService(core.NewDefaultRulesEngine())
 	ctx := context.Background()
 
-	housing, res, err := svc.CreateHousingUnit(ctx, domain.HousingUnit{Name: "Tank A", Facility: "Greenhouse", Capacity: 1})
+	housing, res, err := svc.CreateHousingUnit(ctx, domain.HousingUnit{Name: "Tank A", FacilityID: "Greenhouse", Capacity: 1})
 	if err != nil {
 		t.Fatalf("create housing: %v", err)
 	}
@@ -140,7 +140,7 @@ func TestFrogPluginRegistersSchemasAndRules(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	housing, _, err := svc.CreateHousingUnit(ctx, domain.HousingUnit{Name: "Dry Terrarium", Facility: "Lab", Capacity: 2, Environment: "arid"})
+	housing, _, err := svc.CreateHousingUnit(ctx, domain.HousingUnit{Name: "Dry Terrarium", FacilityID: "Lab", Capacity: 2, Environment: "arid"})
 	if err != nil {
 		t.Fatalf("create housing: %v", err)
 	}
@@ -178,7 +178,7 @@ func TestServiceExtendedCRUD(t *testing.T) {
 	if err != nil {
 		t.Fatalf("create protocol: %v", err)
 	}
-	housing, _, err := svc.CreateHousingUnit(ctx, domain.HousingUnit{Name: "Humid", Facility: "Lab", Capacity: 4, Environment: "humid"})
+	housing, _, err := svc.CreateHousingUnit(ctx, domain.HousingUnit{Name: "Humid", FacilityID: "Lab", Capacity: 4, Environment: "humid"})
 	if err != nil {
 		t.Fatalf("create housing: %v", err)
 	}

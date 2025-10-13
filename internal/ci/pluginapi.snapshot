@@ -30,7 +30,7 @@ TYPE EntityType (string)
 TYPE EntityTypeRef interface { Equals(colonycore/pkg/pluginapi.EntityTypeRef) bool IsCore() bool String() string Value() colonycore/pkg/pluginapi.EntityType }
 TYPE EnvironmentTypeRef interface { Equals(colonycore/pkg/pluginapi.EnvironmentTypeRef) bool IsAquatic() bool IsHumid() bool String() string }
 TYPE HousingContext interface { Aquatic() colonycore/pkg/pluginapi.EnvironmentTypeRef Arboreal() colonycore/pkg/pluginapi.EnvironmentTypeRef Humid() colonycore/pkg/pluginapi.EnvironmentTypeRef Terrestrial() colonycore/pkg/pluginapi.EnvironmentTypeRef }
-TYPE HousingUnitView interface { Capacity() int CreatedAt() time.Time Environment() string Facility() string GetEnvironmentType() colonycore/pkg/pluginapi.EnvironmentTypeRef ID() string IsAquaticEnvironment() bool IsHumidEnvironment() bool Name() string SupportsSpecies(string) bool UpdatedAt() time.Time }
+TYPE HousingUnitView interface { Capacity() int CreatedAt() time.Time Environment() string FacilityID() string GetEnvironmentType() colonycore/pkg/pluginapi.EnvironmentTypeRef ID() string IsAquaticEnvironment() bool IsHumidEnvironment() bool Name() string SupportsSpecies(string) bool UpdatedAt() time.Time }
 TYPE LifecycleStage (string)
 TYPE LifecycleStageContext interface { Adult() colonycore/pkg/pluginapi.LifecycleStageRef Deceased() colonycore/pkg/pluginapi.LifecycleStageRef Juvenile() colonycore/pkg/pluginapi.LifecycleStageRef Larva() colonycore/pkg/pluginapi.LifecycleStageRef Planned() colonycore/pkg/pluginapi.LifecycleStageRef Retired() colonycore/pkg/pluginapi.LifecycleStageRef }
 TYPE LifecycleStageRef interface { Equals(colonycore/pkg/pluginapi.LifecycleStageRef) bool IsActive() bool String() string Value() colonycore/pkg/pluginapi.LifecycleStage }

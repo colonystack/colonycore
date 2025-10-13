@@ -39,7 +39,7 @@ func TestMemStore_FullCRUDAndErrors(t *testing.T) {
 		orgA, orgB = o1, o2
 		c, _ := tx.CreateCohort(domain.Cohort{Name: "C1", Purpose: "testing"})
 		cohort = c
-		h, _ := tx.CreateHousingUnit(domain.HousingUnit{Name: "H1", Capacity: 2, Environment: "dry", Facility: "F"})
+		h, _ := tx.CreateHousingUnit(domain.HousingUnit{Name: "H1", Capacity: 2, Environment: "dry", FacilityID: "F"})
 		housing = h
 		b, _ := tx.CreateBreedingUnit(domain.BreedingUnit{Name: "B1", FemaleIDs: []string{o1.ID}, MaleIDs: []string{o2.ID}})
 		breeding = b
@@ -224,7 +224,7 @@ func TestMemStore_TransactionViewFinds(t *testing.T) {
 	var housing domain.HousingUnit
 	var protocol domain.Protocol
 	runTx(t, store, func(tx domain.Transaction) error {
-		h, err := tx.CreateHousingUnit(domain.HousingUnit{Name: "T-H", Capacity: 1, Environment: "e", Facility: "F"})
+		h, err := tx.CreateHousingUnit(domain.HousingUnit{Name: "T-H", Capacity: 1, Environment: "e", FacilityID: "F"})
 		if err != nil {
 			return err
 		}

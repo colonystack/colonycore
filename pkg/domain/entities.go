@@ -99,7 +99,7 @@ type Cohort struct {
 type HousingUnit struct {
 	Base
 	Name        string `json:"name"`
-	Facility    string `json:"facility"`
+	FacilityID  string `json:"facility_id"`
 	Capacity    int    `json:"capacity"`
 	Environment string `json:"environment"`
 }
@@ -111,6 +111,7 @@ type Facility struct {
 	Zone                 string         `json:"zone"`
 	AccessPolicy         string         `json:"access_policy"`
 	EnvironmentBaselines map[string]any `json:"environment_baselines"`
+	HousingUnitIDs       []string       `json:"housing_unit_ids"`
 	ProjectIDs           []string       `json:"project_ids"`
 }
 
@@ -210,9 +211,10 @@ type Permit struct {
 // Project captures cost center allocations.
 type Project struct {
 	Base
-	Code        string `json:"code"`
-	Title       string `json:"title"`
-	Description string `json:"description"`
+	Code        string   `json:"code"`
+	Title       string   `json:"title"`
+	Description string   `json:"description"`
+	FacilityIDs []string `json:"facility_ids"`
 }
 
 // SupplyItem models inventory resources consumed by projects or facilities.

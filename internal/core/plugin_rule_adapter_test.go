@@ -210,7 +210,7 @@ func TestHousingAndProtocolViews(t *testing.T) {
 	domainUnit := domain.HousingUnit{
 		Base:        domain.Base{ID: "HU", CreatedAt: createdAt, UpdatedAt: updatedAt},
 		Name:        "Tank",
-		Facility:    "North",
+		FacilityID:  "North",
 		Capacity:    12,
 		Environment: "humid",
 	}
@@ -221,8 +221,8 @@ func TestHousingAndProtocolViews(t *testing.T) {
 	if got := unitView.Environment(); got != domainUnit.Environment {
 		t.Fatalf("unexpected housing environment: %s", got)
 	}
-	if unitView.Facility() != domainUnit.Facility || unitView.Capacity() != domainUnit.Capacity {
-		t.Fatalf("unexpected housing facility/capacity: %s %d", unitView.Facility(), unitView.Capacity())
+	if unitView.FacilityID() != domainUnit.FacilityID || unitView.Capacity() != domainUnit.Capacity {
+		t.Fatalf("unexpected housing facility/capacity: %s %d", unitView.FacilityID(), unitView.Capacity())
 	}
 
 	domainProtocol := domain.Protocol{
@@ -306,7 +306,7 @@ func TestHousingUnitViewContextualAccessors(t *testing.T) {
 			UpdatedAt: time.Now(),
 		},
 		Name:        "Test Tank",
-		Facility:    "Lab A",
+		FacilityID:  "Lab A",
 		Capacity:    10,
 		Environment: "aquatic",
 	}

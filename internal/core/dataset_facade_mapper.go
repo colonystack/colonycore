@@ -43,7 +43,7 @@ func facadeHousingUnitFromDomain(unit domain.HousingUnit) datasetapi.HousingUnit
 	return datasetapi.NewHousingUnit(datasetapi.HousingUnitData{
 		Base:        baseDataFromDomain(unit.Base),
 		Name:        unit.Name,
-		Facility:    unit.Facility,
+		FacilityID:  unit.FacilityID,
 		Capacity:    unit.Capacity,
 		Environment: unit.Environment,
 	})

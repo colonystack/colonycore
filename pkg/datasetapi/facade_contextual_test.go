@@ -160,18 +160,18 @@ func TestHousingUnitContextualAccessors(t *testing.T) {
 		}
 	})
 
-	t.Run("Name and Facility accessors work", func(t *testing.T) {
+	t.Run("Name and FacilityID accessors work", func(t *testing.T) {
 		housing := NewHousingUnit(HousingUnitData{
-			Base:     BaseData{ID: "housing1"},
-			Name:     "Test Tank",
-			Facility: "Lab A",
+			Base:       BaseData{ID: "housing1"},
+			Name:       "Test Tank",
+			FacilityID: "Lab A",
 		})
 
 		if housing.Name() != "Test Tank" {
 			t.Errorf("Expected name 'Test Tank', got '%s'", housing.Name())
 		}
-		if housing.Facility() != "Lab A" {
-			t.Errorf("Expected facility 'Lab A', got '%s'", housing.Facility())
+		if housing.FacilityID() != "Lab A" {
+			t.Errorf("Expected facility ID 'Lab A', got '%s'", housing.FacilityID())
 		}
 	})
 }

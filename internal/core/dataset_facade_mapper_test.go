@@ -71,7 +71,7 @@ func TestFacadeOrganismFromDomainCopiesData(t *testing.T) {
 func TestFacadeCollectionsCloneSlices(t *testing.T) {
 	now := time.Now()
 	cohortID := testCohortID
-	housing := domain.HousingUnit{Base: domain.Base{ID: "H"}, Name: "Hab", Facility: "F", Capacity: 3, Environment: "wet"}
+	housing := domain.HousingUnit{Base: domain.Base{ID: "H"}, Name: "Hab", FacilityID: "F", Capacity: 3, Environment: "wet"}
 	protocol := domain.Protocol{Base: domain.Base{ID: "P"}, Code: "C", Title: "T", Description: "D", MaxSubjects: 5}
 	project := domain.Project{Base: domain.Base{ID: "PR"}, Code: "CC", Title: "Title", Description: "Desc"}
 	cohort := domain.Cohort{Base: domain.Base{ID: "C"}, Name: "Group", Purpose: "Study", ProjectID: &cohortID, HousingID: &cohortID, ProtocolID: &cohortID}

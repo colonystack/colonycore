@@ -25,7 +25,7 @@ func TestMemoryStoreCRUDAndQueries(t *testing.T) {
 	)
 
 	if _, err := store.RunInTransaction(ctx, func(tx domain.Transaction) error {
-		if _, err := tx.CreateHousingUnit(domain.HousingUnit{Name: "Invalid", Facility: "Lab", Capacity: 0}); err == nil {
+		if _, err := tx.CreateHousingUnit(domain.HousingUnit{Name: "Invalid", FacilityID: "Lab", Capacity: 0}); err == nil {
 			return fmt.Errorf("expected capacity validation error")
 		}
 
@@ -41,7 +41,7 @@ func TestMemoryStoreCRUDAndQueries(t *testing.T) {
 		}
 		protocolID = protocol.ID
 
-		housing, err := tx.CreateHousingUnit(domain.HousingUnit{Name: "Tank", Facility: "Lab", Capacity: 2, Environment: "arid"})
+		housing, err := tx.CreateHousingUnit(domain.HousingUnit{Name: "Tank", FacilityID: "Lab", Capacity: 2, Environment: "arid"})
 		if err != nil {
 			return err
 		}
@@ -294,7 +294,7 @@ func TestMemoryStoreViewReadOnly(t *testing.T) {
 	var housing domain.HousingUnit
 	if _, err := store.RunInTransaction(ctx, func(tx domain.Transaction) error {
 		var err error
-		housing, err = tx.CreateHousingUnit(domain.HousingUnit{Name: "Tank", Facility: "Lab", Capacity: 1})
+		housing, err = tx.CreateHousingUnit(domain.HousingUnit{Name: "Tank", FacilityID: "Lab", Capacity: 1})
 		return err
 	}); err != nil {
 		t.Fatalf("create housing: %v", err)
@@ -320,7 +320,7 @@ func TestUpdateHousingUnitValidation(t *testing.T) {
 	var housing domain.HousingUnit
 	if _, err := store.RunInTransaction(ctx, func(tx domain.Transaction) error {
 		var err error
-		housing, err = tx.CreateHousingUnit(domain.HousingUnit{Name: "Validated", Facility: "Lab", Capacity: 2})
+		housing, err = tx.CreateHousingUnit(domain.HousingUnit{Name: "Validated", FacilityID: "Lab", Capacity: 2})
 		return err
 	}); err != nil {
 		t.Fatalf("create housing: %v", err)
