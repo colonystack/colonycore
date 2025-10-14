@@ -50,7 +50,21 @@ func NewStore(path string, engine *RulesEngine) (*Store, error) {
 	return s, nil
 }
 
-var sqliteBuckets = []string{"organisms", "cohorts", "housing", "breeding", "procedures", "protocols", "projects"}
+var sqliteBuckets = []string{
+	"organisms",
+	"cohorts",
+	"housing",
+	"facilities",
+	"breeding",
+	"procedures",
+	"treatments",
+	"observations",
+	"samples",
+	"protocols",
+	"permits",
+	"projects",
+	"supplies",
+}
 
 func (s *Store) load() error {
 	rows, err := s.db.Query(`SELECT bucket, payload FROM state`)
@@ -88,6 +102,10 @@ func (s *Store) load() error {
 			if err := json.Unmarshal(r.payload, &snapshot.Housing); err != nil {
 				return fmt.Errorf("decode housing: %w", err)
 			}
+		case "facilities":
+			if err := json.Unmarshal(r.payload, &snapshot.Facilities); err != nil {
+				return fmt.Errorf("decode facilities: %w", err)
+			}
 		case "breeding":
 			if err := json.Unmarshal(r.payload, &snapshot.Breeding); err != nil {
 				return fmt.Errorf("decode breeding: %w", err)
@@ -96,13 +114,33 @@ func (s *Store) load() error {
 			if err := json.Unmarshal(r.payload, &snapshot.Procedures); err != nil {
 				return fmt.Errorf("decode procedures: %w", err)
 			}
+		case "treatments":
+			if err := json.Unmarshal(r.payload, &snapshot.Treatments); err != nil {
+				return fmt.Errorf("decode treatments: %w", err)
+			}
+		case "observations":
+			if err := json.Unmarshal(r.payload, &snapshot.Observations); err != nil {
+				return fmt.Errorf("decode observations: %w", err)
+			}
+		case "samples":
+			if err := json.Unmarshal(r.payload, &snapshot.Samples); err != nil {
+				return fmt.Errorf("decode samples: %w", err)
+			}
 		case "protocols":
 			if err := json.Unmarshal(r.payload, &snapshot.Protocols); err != nil {
 				return fmt.Errorf("decode protocols: %w", err)
 			}
+		case "permits":
+			if err := json.Unmarshal(r.payload, &snapshot.Permits); err != nil {
+				return fmt.Errorf("decode permits: %w", err)
+			}
 		case "projects":
 			if err := json.Unmarshal(r.payload, &snapshot.Projects); err != nil {
 				return fmt.Errorf("decode projects: %w", err)
+			}
+		case "supplies":
+			if err := json.Unmarshal(r.payload, &snapshot.Supplies); err != nil {
+				return fmt.Errorf("decode supplies: %w", err)
 			}
 		}
 	}
@@ -132,14 +170,26 @@ func (s *Store) persist() (retErr error) {
 			data, err = json.Marshal(snapshot.Cohorts)
 		case "housing":
 			data, err = json.Marshal(snapshot.Housing)
+		case "facilities":
+			data, err = json.Marshal(snapshot.Facilities)
 		case "breeding":
 			data, err = json.Marshal(snapshot.Breeding)
 		case "procedures":
 			data, err = json.Marshal(snapshot.Procedures)
+		case "treatments":
+			data, err = json.Marshal(snapshot.Treatments)
+		case "observations":
+			data, err = json.Marshal(snapshot.Observations)
+		case "samples":
+			data, err = json.Marshal(snapshot.Samples)
 		case "protocols":
 			data, err = json.Marshal(snapshot.Protocols)
+		case "permits":
+			data, err = json.Marshal(snapshot.Permits)
 		case "projects":
 			data, err = json.Marshal(snapshot.Projects)
+		case "supplies":
+			data, err = json.Marshal(snapshot.Supplies)
 		}
 		if err != nil {
 			retErr = err

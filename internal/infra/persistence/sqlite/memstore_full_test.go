@@ -351,14 +351,179 @@ func TestSQLiteStore_Persist_Reload_Full(t *testing.T) {
 	if err != nil {
 		t.Skipf("sqlite unavailable: %v", err)
 	}
-	runTx(t, store.memStore, func(tx domain.Transaction) error {
-		_, _ = tx.CreateOrganism(domain.Organism{Name: "Persisted"})
+	ctx := context.Background()
+	var (
+		projectID     string
+		facilityID    string
+		housingID     string
+		cohortID      string
+		protocolID    string
+		procedureID   string
+		organismID    string
+		treatmentID   string
+		observationID string
+		sampleID      string
+		permitID      string
+		supplyID      string
+	)
+	now := time.Now().UTC()
+	if _, err := store.RunInTransaction(ctx, func(tx domain.Transaction) error {
+		project, err := tx.CreateProject(domain.Project{Code: "C", Title: "T"})
+		if err != nil {
+			return err
+		}
+		projectID = project.ID
+
+		facility, err := tx.CreateFacility(domain.Facility{
+			Name:                 "Vivarium",
+			Zone:                 "Zone-A",
+			AccessPolicy:         "badge",
+			EnvironmentBaselines: map[string]any{"temperature": "22C"},
+			ProjectIDs:           []string{project.ID},
+		})
+		if err != nil {
+			return err
+		}
+		facilityID = facility.ID
+
+		housing, err := tx.CreateHousingUnit(domain.HousingUnit{Name: "Tank", Capacity: 2, Environment: "arid", FacilityID: facility.ID})
+		if err != nil {
+			return err
+		}
+		housingID = housing.ID
+		if _, err := tx.UpdateFacility(facility.ID, func(f *domain.Facility) error {
+			f.HousingUnitIDs = append(f.HousingUnitIDs, housing.ID)
+			return nil
+		}); err != nil {
+			return err
+		}
+
+		protocol, err := tx.CreateProtocol(domain.Protocol{Code: "P-1", Title: "Protocol", MaxSubjects: 5})
+		if err != nil {
+			return err
+		}
+		protocolID = protocol.ID
+
+		housingPtr := housingID
+		protocolPtr := protocolID
+		projectPtr := projectID
+		cohort, err := tx.CreateCohort(domain.Cohort{
+			Name:       "C-1",
+			Purpose:    "baseline",
+			ProjectID:  &projectPtr,
+			HousingID:  &housingPtr,
+			ProtocolID: &protocolPtr,
+		})
+		if err != nil {
+			return err
+		}
+		cohortID = cohort.ID
+
+		cohortPtr := cohortID
+		organism, err := tx.CreateOrganism(domain.Organism{
+			Name:       "Persisted",
+			Species:    "Test",
+			Stage:      domain.StageJuvenile,
+			CohortID:   &cohortPtr,
+			HousingID:  &housingPtr,
+			ProjectID:  &projectPtr,
+			ProtocolID: &protocolPtr,
+			Attributes: map[string]any{"tag": "alpha"},
+		})
+		if err != nil {
+			return err
+		}
+		organismID = organism.ID
+
+		procedure, err := tx.CreateProcedure(domain.Procedure{
+			Name:        "Procedure",
+			Status:      "scheduled",
+			ScheduledAt: now,
+			ProtocolID:  protocol.ID,
+			OrganismIDs: []string{organism.ID},
+		})
+		if err != nil {
+			return err
+		}
+		procedureID = procedure.ID
+
+		treatment, err := tx.CreateTreatment(domain.Treatment{
+			Name:        "Treatment",
+			ProcedureID: procedure.ID,
+			OrganismIDs: []string{organism.ID},
+			CohortIDs:   []string{cohort.ID},
+			DosagePlan:  "10mg/kg",
+		})
+		if err != nil {
+			return err
+		}
+		treatmentID = treatment.ID
+
+		observation, err := tx.CreateObservation(domain.Observation{
+			ProcedureID: &procedure.ID,
+			OrganismID:  &organism.ID,
+			RecordedAt:  now,
+			Observer:    "tech",
+			Data:        map[string]any{"score": 5},
+		})
+		if err != nil {
+			return err
+		}
+		observationID = observation.ID
+
+		custody := []domain.SampleCustodyEvent{{Actor: "tech", Location: "bench", Timestamp: now}}
+		sample, err := tx.CreateSample(domain.Sample{
+			Identifier:      "S-1",
+			SourceType:      "blood",
+			OrganismID:      &organism.ID,
+			FacilityID:      facility.ID,
+			CollectedAt:     now,
+			Status:          "stored",
+			StorageLocation: "freezer",
+			AssayType:       "PCR",
+			ChainOfCustody:  custody,
+			Attributes:      map[string]any{"volume_ml": 1.0},
+		})
+		if err != nil {
+			return err
+		}
+		sampleID = sample.ID
+
+		permit, err := tx.CreatePermit(domain.Permit{
+			PermitNumber:      "PER-1",
+			Authority:         "Agency",
+			ValidFrom:         now.Add(-time.Hour),
+			ValidUntil:        now.Add(time.Hour),
+			AllowedActivities: []string{"collect"},
+			FacilityIDs:       []string{facility.ID},
+			ProtocolIDs:       []string{protocol.ID},
+			Notes:             "initial issuance",
+		})
+		if err != nil {
+			return err
+		}
+		permitID = permit.ID
+
+		expiry := now.Add(24 * time.Hour)
+		supply, err := tx.CreateSupplyItem(domain.SupplyItem{
+			SKU:            "SKU-1",
+			Name:           "Diet Blocks",
+			Description:    "nutrient feed",
+			QuantityOnHand: 100,
+			Unit:           "grams",
+			LotNumber:      "LOT-1",
+			ExpiresAt:      &expiry,
+			FacilityIDs:    []string{facility.ID},
+			ProjectIDs:     []string{project.ID},
+			ReorderLevel:   25,
+			Attributes:     map[string]any{"supplier": "Acme"},
+		})
+		if err != nil {
+			return err
+		}
+		supplyID = supply.ID
+
 		return nil
-	})
-	// persist via RunInTransaction on outer store for coverage
-	if _, err := store.RunInTransaction(context.Background(), func(tx domain.Transaction) error {
-		_, e := tx.CreateProject(domain.Project{Code: "C", Title: "T"})
-		return e
 	}); err != nil {
 		t.Fatalf("outer tx: %v", err)
 	}
@@ -366,8 +531,58 @@ func TestSQLiteStore_Persist_Reload_Full(t *testing.T) {
 	if err != nil {
 		t.Fatalf("reload: %v", err)
 	}
-	if len(reloaded.ListOrganisms()) == 0 {
+	if len(reloaded.ListOrganisms()) != 1 {
 		t.Fatalf("expected organisms after reload")
+	}
+	if len(reloaded.ListFacilities()) != 1 || len(reloaded.ListHousingUnits()) != 1 || len(reloaded.ListCohorts()) != 1 {
+		t.Fatalf("expected facility, housing, cohort counts after reload")
+	}
+	if len(reloaded.ListTreatments()) != 1 || len(reloaded.ListObservations()) != 1 || len(reloaded.ListSamples()) != 1 {
+		t.Fatalf("expected treatment, observation, sample counts after reload")
+	}
+	if len(reloaded.ListPermits()) != 1 || len(reloaded.ListSupplyItems()) != 1 {
+		t.Fatalf("expected permit and supply counts after reload")
+	}
+	if cohorts := reloaded.ListCohorts(); len(cohorts) != 1 || cohorts[0].ID != cohortID {
+		t.Fatalf("expected cohort persisted")
+	}
+	if procs := reloaded.ListProcedures(); len(procs) != 1 || procs[0].ID != procedureID {
+		t.Fatalf("expected procedure persisted")
+	}
+	if protocols := reloaded.ListProtocols(); len(protocols) != 1 || protocols[0].ID != protocolID {
+		t.Fatalf("expected protocol persisted")
+	}
+	if supplies := reloaded.ListSupplyItems(); len(supplies) != 1 || supplies[0].ID != supplyID {
+		t.Fatalf("expected supply persisted")
+	}
+	if got, ok := reloaded.GetFacility(facilityID); !ok || got.AccessPolicy != "badge" {
+		t.Fatalf("expected facility persisted")
+	}
+	if got, ok := reloaded.GetHousingUnit(housingID); !ok || got.FacilityID != facilityID {
+		t.Fatalf("expected housing persisted")
+	}
+	if got, ok := reloaded.GetPermit(permitID); !ok || got.PermitNumber != "PER-1" {
+		t.Fatalf("expected permit persisted")
+	}
+	if got, ok := reloaded.GetOrganism(organismID); !ok || got.Attributes["tag"] != "alpha" {
+		t.Fatalf("expected organism attributes persisted")
+	}
+	if got := reloaded.ListProjects(); len(got) != 1 || got[0].ID != projectID {
+		t.Fatalf("expected project persisted")
+	}
+	if err := reloaded.View(ctx, func(view domain.TransactionView) error {
+		if sample, ok := view.FindSample(sampleID); !ok || sample.Status != "stored" {
+			return fmt.Errorf("expected sample persisted via view")
+		}
+		if treatment, ok := view.FindTreatment(treatmentID); !ok || treatment.DosagePlan != "10mg/kg" {
+			return fmt.Errorf("expected treatment persisted via view")
+		}
+		if observation, ok := view.FindObservation(observationID); !ok || observation.Observer != "tech" {
+			return fmt.Errorf("expected observation persisted via view")
+		}
+		return nil
+	}); err != nil {
+		t.Fatalf("view validation after reload: %v", err)
 	}
 	if reloaded.Path() != path {
 		t.Fatalf("expected path match")
