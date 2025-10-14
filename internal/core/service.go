@@ -142,6 +142,35 @@ func (s *Service) CreateProtocol(ctx context.Context, protocol domain.Protocol) 
 	return created, res, err
 }
 
+// CreateFacility persists facility metadata.
+func (s *Service) CreateFacility(ctx context.Context, facility domain.Facility) (domain.Facility, domain.Result, error) {
+	var created domain.Facility
+	res, err := s.run(ctx, "create_facility", func(tx domain.Transaction) error {
+		var innerErr error
+		created, innerErr = tx.CreateFacility(facility)
+		return innerErr
+	})
+	return created, res, err
+}
+
+// UpdateFacility mutates a facility record.
+func (s *Service) UpdateFacility(ctx context.Context, id string, mutator func(*domain.Facility) error) (domain.Facility, domain.Result, error) {
+	var updated domain.Facility
+	res, err := s.run(ctx, "update_facility", func(tx domain.Transaction) error {
+		var innerErr error
+		updated, innerErr = tx.UpdateFacility(id, mutator)
+		return innerErr
+	})
+	return updated, res, err
+}
+
+// DeleteFacility removes a facility.
+func (s *Service) DeleteFacility(ctx context.Context, id string) (domain.Result, error) {
+	return s.run(ctx, "delete_facility", func(tx domain.Transaction) error {
+		return tx.DeleteFacility(id)
+	})
+}
+
 // CreateHousingUnit persists housing metadata.
 func (s *Service) CreateHousingUnit(ctx context.Context, housing domain.HousingUnit) (domain.HousingUnit, domain.Result, error) {
 	var created domain.HousingUnit
@@ -264,6 +293,151 @@ func (s *Service) UpdateProcedure(ctx context.Context, id string, mutator func(*
 func (s *Service) DeleteProcedure(ctx context.Context, id string) (domain.Result, error) {
 	return s.run(ctx, "delete_procedure", func(tx domain.Transaction) error {
 		return tx.DeleteProcedure(id)
+	})
+}
+
+// CreateTreatment persists a treatment record.
+func (s *Service) CreateTreatment(ctx context.Context, treatment domain.Treatment) (domain.Treatment, domain.Result, error) {
+	var created domain.Treatment
+	res, err := s.run(ctx, "create_treatment", func(tx domain.Transaction) error {
+		var innerErr error
+		created, innerErr = tx.CreateTreatment(treatment)
+		return innerErr
+	})
+	return created, res, err
+}
+
+// UpdateTreatment mutates a treatment record.
+func (s *Service) UpdateTreatment(ctx context.Context, id string, mutator func(*domain.Treatment) error) (domain.Treatment, domain.Result, error) {
+	var updated domain.Treatment
+	res, err := s.run(ctx, "update_treatment", func(tx domain.Transaction) error {
+		var innerErr error
+		updated, innerErr = tx.UpdateTreatment(id, mutator)
+		return innerErr
+	})
+	return updated, res, err
+}
+
+// DeleteTreatment removes a treatment.
+func (s *Service) DeleteTreatment(ctx context.Context, id string) (domain.Result, error) {
+	return s.run(ctx, "delete_treatment", func(tx domain.Transaction) error {
+		return tx.DeleteTreatment(id)
+	})
+}
+
+// CreateObservation persists an observation.
+func (s *Service) CreateObservation(ctx context.Context, observation domain.Observation) (domain.Observation, domain.Result, error) {
+	var created domain.Observation
+	res, err := s.run(ctx, "create_observation", func(tx domain.Transaction) error {
+		var innerErr error
+		created, innerErr = tx.CreateObservation(observation)
+		return innerErr
+	})
+	return created, res, err
+}
+
+// UpdateObservation mutates an observation.
+func (s *Service) UpdateObservation(ctx context.Context, id string, mutator func(*domain.Observation) error) (domain.Observation, domain.Result, error) {
+	var updated domain.Observation
+	res, err := s.run(ctx, "update_observation", func(tx domain.Transaction) error {
+		var innerErr error
+		updated, innerErr = tx.UpdateObservation(id, mutator)
+		return innerErr
+	})
+	return updated, res, err
+}
+
+// DeleteObservation removes an observation.
+func (s *Service) DeleteObservation(ctx context.Context, id string) (domain.Result, error) {
+	return s.run(ctx, "delete_observation", func(tx domain.Transaction) error {
+		return tx.DeleteObservation(id)
+	})
+}
+
+// CreateSample persists a sample.
+func (s *Service) CreateSample(ctx context.Context, sample domain.Sample) (domain.Sample, domain.Result, error) {
+	var created domain.Sample
+	res, err := s.run(ctx, "create_sample", func(tx domain.Transaction) error {
+		var innerErr error
+		created, innerErr = tx.CreateSample(sample)
+		return innerErr
+	})
+	return created, res, err
+}
+
+// UpdateSample mutates a sample record.
+func (s *Service) UpdateSample(ctx context.Context, id string, mutator func(*domain.Sample) error) (domain.Sample, domain.Result, error) {
+	var updated domain.Sample
+	res, err := s.run(ctx, "update_sample", func(tx domain.Transaction) error {
+		var innerErr error
+		updated, innerErr = tx.UpdateSample(id, mutator)
+		return innerErr
+	})
+	return updated, res, err
+}
+
+// DeleteSample removes a sample.
+func (s *Service) DeleteSample(ctx context.Context, id string) (domain.Result, error) {
+	return s.run(ctx, "delete_sample", func(tx domain.Transaction) error {
+		return tx.DeleteSample(id)
+	})
+}
+
+// CreatePermit persists a permit.
+func (s *Service) CreatePermit(ctx context.Context, permit domain.Permit) (domain.Permit, domain.Result, error) {
+	var created domain.Permit
+	res, err := s.run(ctx, "create_permit", func(tx domain.Transaction) error {
+		var innerErr error
+		created, innerErr = tx.CreatePermit(permit)
+		return innerErr
+	})
+	return created, res, err
+}
+
+// UpdatePermit mutates a permit record.
+func (s *Service) UpdatePermit(ctx context.Context, id string, mutator func(*domain.Permit) error) (domain.Permit, domain.Result, error) {
+	var updated domain.Permit
+	res, err := s.run(ctx, "update_permit", func(tx domain.Transaction) error {
+		var innerErr error
+		updated, innerErr = tx.UpdatePermit(id, mutator)
+		return innerErr
+	})
+	return updated, res, err
+}
+
+// DeletePermit removes a permit.
+func (s *Service) DeletePermit(ctx context.Context, id string) (domain.Result, error) {
+	return s.run(ctx, "delete_permit", func(tx domain.Transaction) error {
+		return tx.DeletePermit(id)
+	})
+}
+
+// CreateSupplyItem persists a supply item record.
+func (s *Service) CreateSupplyItem(ctx context.Context, item domain.SupplyItem) (domain.SupplyItem, domain.Result, error) {
+	var created domain.SupplyItem
+	res, err := s.run(ctx, "create_supply_item", func(tx domain.Transaction) error {
+		var innerErr error
+		created, innerErr = tx.CreateSupplyItem(item)
+		return innerErr
+	})
+	return created, res, err
+}
+
+// UpdateSupplyItem mutates a supply item.
+func (s *Service) UpdateSupplyItem(ctx context.Context, id string, mutator func(*domain.SupplyItem) error) (domain.SupplyItem, domain.Result, error) {
+	var updated domain.SupplyItem
+	res, err := s.run(ctx, "update_supply_item", func(tx domain.Transaction) error {
+		var innerErr error
+		updated, innerErr = tx.UpdateSupplyItem(id, mutator)
+		return innerErr
+	})
+	return updated, res, err
+}
+
+// DeleteSupplyItem removes a supply item.
+func (s *Service) DeleteSupplyItem(ctx context.Context, id string) (domain.Result, error) {
+	return s.run(ctx, "delete_supply_item", func(tx domain.Transaction) error {
+		return tx.DeleteSupplyItem(id)
 	})
 }
 

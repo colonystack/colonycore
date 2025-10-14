@@ -259,11 +259,278 @@ func TestServiceExtendedCRUD(t *testing.T) {
 	}
 }
 
+func TestServiceEmitsChangesForNewEntities(t *testing.T) {
+	engine := core.NewRulesEngine()
+	collector := &collectingRule{}
+	engine.Register(collector)
+
+	svc := core.NewService(core.NewMemoryStore(engine))
+	ctx := context.Background()
+
+	facilityA, res, err := svc.CreateFacility(ctx, domain.Facility{Name: "Vivarium-A", Zone: "Zone-A", AccessPolicy: "badge"})
+	if err != nil {
+		t.Fatalf("create facility: %v", err)
+	}
+	assertNoViolations(t, res)
+	assertSingleChange(t, collector.take(), domain.EntityFacility, domain.ActionCreate)
+
+	if _, res, err := svc.UpdateFacility(ctx, facilityA.ID, func(f *domain.Facility) error {
+		f.Zone = "Zone-B"
+		return nil
+	}); err != nil {
+		t.Fatalf("update facility: %v", err)
+	} else {
+		assertNoViolations(t, res)
+	}
+	assertSingleChange(t, collector.take(), domain.EntityFacility, domain.ActionUpdate)
+
+	if res, err := svc.DeleteFacility(ctx, facilityA.ID); err != nil {
+		t.Fatalf("delete facility: %v", err)
+	} else {
+		assertNoViolations(t, res)
+	}
+	assertSingleChange(t, collector.take(), domain.EntityFacility, domain.ActionDelete)
+
+	facilityB, res, err := svc.CreateFacility(ctx, domain.Facility{Name: "Vivarium-B", Zone: "Zone-C", AccessPolicy: "pin"})
+	if err != nil {
+		t.Fatalf("create facility for dependencies: %v", err)
+	}
+	assertNoViolations(t, res)
+	assertSingleChange(t, collector.take(), domain.EntityFacility, domain.ActionCreate)
+
+	project, res, err := svc.CreateProject(ctx, domain.Project{Code: "PRJ-CHG", Title: "Change Tracking"})
+	if err != nil {
+		t.Fatalf("create project: %v", err)
+	}
+	assertNoViolations(t, res)
+	collector.take()
+
+	protocol, res, err := svc.CreateProtocol(ctx, domain.Protocol{Code: "PROTO-CHG", Title: "Change Proto", MaxSubjects: 5})
+	if err != nil {
+		t.Fatalf("create protocol: %v", err)
+	}
+	assertNoViolations(t, res)
+	collector.take()
+
+	organism, res, err := svc.CreateOrganism(ctx, domain.Organism{Name: "Specimen", Species: "Lithobates"})
+	if err != nil {
+		t.Fatalf("create organism: %v", err)
+	}
+	assertNoViolations(t, res)
+	collector.take()
+
+	procedure, res, err := svc.CreateProcedure(ctx, domain.Procedure{
+		Name:        "Proc",
+		Status:      "scheduled",
+		ProtocolID:  protocol.ID,
+		OrganismIDs: []string{organism.ID},
+		ScheduledAt: time.Now().UTC(),
+	})
+	if err != nil {
+		t.Fatalf("create procedure: %v", err)
+	}
+	assertNoViolations(t, res)
+	collector.take()
+
+	treatment, res, err := svc.CreateTreatment(ctx, domain.Treatment{
+		Name:        "Dose",
+		ProcedureID: procedure.ID,
+		OrganismIDs: []string{organism.ID},
+		DosagePlan:  "10mg",
+	})
+	if err != nil {
+		t.Fatalf("create treatment: %v", err)
+	}
+	assertNoViolations(t, res)
+	assertSingleChange(t, collector.take(), domain.EntityTreatment, domain.ActionCreate)
+
+	if _, res, err := svc.UpdateTreatment(ctx, treatment.ID, func(tmt *domain.Treatment) error {
+		tmt.DosagePlan = "20mg"
+		return nil
+	}); err != nil {
+		t.Fatalf("update treatment: %v", err)
+	} else {
+		assertNoViolations(t, res)
+	}
+	assertSingleChange(t, collector.take(), domain.EntityTreatment, domain.ActionUpdate)
+
+	if res, err := svc.DeleteTreatment(ctx, treatment.ID); err != nil {
+		t.Fatalf("delete treatment: %v", err)
+	} else {
+		assertNoViolations(t, res)
+	}
+	assertSingleChange(t, collector.take(), domain.EntityTreatment, domain.ActionDelete)
+
+	now := time.Now().UTC()
+	observation, res, err := svc.CreateObservation(ctx, domain.Observation{
+		ProcedureID: &procedure.ID,
+		OrganismID:  &organism.ID,
+		RecordedAt:  now,
+		Observer:    "tech",
+		Data:        map[string]any{"score": 5},
+	})
+	if err != nil {
+		t.Fatalf("create observation: %v", err)
+	}
+	assertNoViolations(t, res)
+	assertSingleChange(t, collector.take(), domain.EntityObservation, domain.ActionCreate)
+
+	if _, res, err := svc.UpdateObservation(ctx, observation.ID, func(obs *domain.Observation) error {
+		obs.Notes = "reviewed"
+		return nil
+	}); err != nil {
+		t.Fatalf("update observation: %v", err)
+	} else {
+		assertNoViolations(t, res)
+	}
+	assertSingleChange(t, collector.take(), domain.EntityObservation, domain.ActionUpdate)
+
+	if res, err := svc.DeleteObservation(ctx, observation.ID); err != nil {
+		t.Fatalf("delete observation: %v", err)
+	} else {
+		assertNoViolations(t, res)
+	}
+	assertSingleChange(t, collector.take(), domain.EntityObservation, domain.ActionDelete)
+
+	sample, res, err := svc.CreateSample(ctx, domain.Sample{
+		Identifier:      "S-1",
+		SourceType:      "blood",
+		OrganismID:      &organism.ID,
+		FacilityID:      facilityB.ID,
+		CollectedAt:     now,
+		Status:          "stored",
+		StorageLocation: "freezer-1",
+	})
+	if err != nil {
+		t.Fatalf("create sample: %v", err)
+	}
+	assertNoViolations(t, res)
+	assertSingleChange(t, collector.take(), domain.EntitySample, domain.ActionCreate)
+
+	if _, res, err := svc.UpdateSample(ctx, sample.ID, func(smp *domain.Sample) error {
+		smp.Status = "consumed"
+		return nil
+	}); err != nil {
+		t.Fatalf("update sample: %v", err)
+	} else {
+		assertNoViolations(t, res)
+	}
+	assertSingleChange(t, collector.take(), domain.EntitySample, domain.ActionUpdate)
+
+	if res, err := svc.DeleteSample(ctx, sample.ID); err != nil {
+		t.Fatalf("delete sample: %v", err)
+	} else {
+		assertNoViolations(t, res)
+	}
+	assertSingleChange(t, collector.take(), domain.EntitySample, domain.ActionDelete)
+
+	permit, res, err := svc.CreatePermit(ctx, domain.Permit{
+		PermitNumber:      "P-1",
+		Authority:         "Gov",
+		ValidFrom:         now.Add(-time.Hour),
+		ValidUntil:        now.Add(time.Hour),
+		AllowedActivities: []string{"collect"},
+		FacilityIDs:       []string{facilityB.ID},
+		ProtocolIDs:       []string{protocol.ID},
+	})
+	if err != nil {
+		t.Fatalf("create permit: %v", err)
+	}
+	assertNoViolations(t, res)
+	assertSingleChange(t, collector.take(), domain.EntityPermit, domain.ActionCreate)
+
+	if _, res, err := svc.UpdatePermit(ctx, permit.ID, func(pmt *domain.Permit) error {
+		pmt.Notes = "updated"
+		return nil
+	}); err != nil {
+		t.Fatalf("update permit: %v", err)
+	} else {
+		assertNoViolations(t, res)
+	}
+	assertSingleChange(t, collector.take(), domain.EntityPermit, domain.ActionUpdate)
+
+	if res, err := svc.DeletePermit(ctx, permit.ID); err != nil {
+		t.Fatalf("delete permit: %v", err)
+	} else {
+		assertNoViolations(t, res)
+	}
+	assertSingleChange(t, collector.take(), domain.EntityPermit, domain.ActionDelete)
+
+	supply, res, err := svc.CreateSupplyItem(ctx, domain.SupplyItem{
+		SKU:            "SKU-1",
+		Name:           "Feed",
+		Description:    "Standard feed",
+		QuantityOnHand: 10,
+		Unit:           "kg",
+		FacilityIDs:    []string{facilityB.ID},
+		ProjectIDs:     []string{project.ID},
+	})
+	if err != nil {
+		t.Fatalf("create supply item: %v", err)
+	}
+	assertNoViolations(t, res)
+	assertSingleChange(t, collector.take(), domain.EntitySupplyItem, domain.ActionCreate)
+
+	if _, res, err := svc.UpdateSupplyItem(ctx, supply.ID, func(item *domain.SupplyItem) error {
+		item.QuantityOnHand = 5
+		return nil
+	}); err != nil {
+		t.Fatalf("update supply item: %v", err)
+	} else {
+		assertNoViolations(t, res)
+	}
+	assertSingleChange(t, collector.take(), domain.EntitySupplyItem, domain.ActionUpdate)
+
+	if res, err := svc.DeleteSupplyItem(ctx, supply.ID); err != nil {
+		t.Fatalf("delete supply item: %v", err)
+	} else {
+		assertNoViolations(t, res)
+	}
+	assertSingleChange(t, collector.take(), domain.EntitySupplyItem, domain.ActionDelete)
+}
+
 func TestServiceConstructorAndStore(t *testing.T) {
 	store := core.NewMemoryStore(core.NewRulesEngine())
 	svc := core.NewService(store)
 	if svc.Store() != store {
 		t.Fatalf("expected Store to return provided memory store")
+	}
+}
+
+type collectingRule struct {
+	changes []domain.Change
+}
+
+func (r *collectingRule) Name() string { return "collecting_rule" }
+
+func (r *collectingRule) Evaluate(_ context.Context, _ domain.RuleView, changes []domain.Change) (domain.Result, error) {
+	r.changes = append([]domain.Change(nil), changes...)
+	return domain.Result{}, nil
+}
+
+func (r *collectingRule) take() []domain.Change {
+	out := append([]domain.Change(nil), r.changes...)
+	r.changes = nil
+	return out
+}
+
+func assertNoViolations(t *testing.T, res domain.Result) {
+	t.Helper()
+	if len(res.Violations) != 0 {
+		t.Fatalf("unexpected violations: %+v", res.Violations)
+	}
+}
+
+func assertSingleChange(t *testing.T, changes []domain.Change, entity domain.EntityType, action domain.Action) {
+	t.Helper()
+	if len(changes) != 1 {
+		t.Fatalf("expected single change, got %d", len(changes))
+	}
+	if changes[0].Entity != entity {
+		t.Fatalf("expected change entity %s, got %s", entity, changes[0].Entity)
+	}
+	if changes[0].Action != action {
+		t.Fatalf("expected change action %s, got %s", action, changes[0].Action)
 	}
 }
 
