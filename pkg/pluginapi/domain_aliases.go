@@ -42,10 +42,16 @@ const (
 	entityOrganism    EntityType = "organism"
 	entityCohort      EntityType = "cohort"
 	entityHousingUnit EntityType = "housing_unit"
+	entityFacility    EntityType = "facility"
 	entityBreeding    EntityType = "breeding_unit"
 	entityProcedure   EntityType = "procedure"
+	entityTreatment   EntityType = "treatment"
+	entityObservation EntityType = "observation"
+	entitySample      EntityType = "sample"
 	entityProtocol    EntityType = "protocol"
 	entityProject     EntityType = "project"
+	entityPermit      EntityType = "permit"
+	entitySupplyItem  EntityType = "supply_item"
 )
 
 // Action indicates the type of modification performed.

@@ -135,15 +135,24 @@ func TestContextualInterfaceSemantics(t *testing.T) {
 	actionCtx := NewActionContext()
 
 	// Test entity semantics
-	organism := entityCtx.Organism()
-	housing := entityCtx.Housing()
-	protocol := entityCtx.Protocol()
-
-	if !organism.IsCore() || !housing.IsCore() {
-		t.Error("Organism and Housing should be core entities")
+	coreEntities := []EntityTypeRef{
+		entityCtx.Organism(),
+		entityCtx.Housing(),
+		entityCtx.Facility(),
+		entityCtx.Protocol(),
+		entityCtx.Procedure(),
+		entityCtx.Treatment(),
+		entityCtx.Observation(),
+		entityCtx.Sample(),
+		entityCtx.Permit(),
+		entityCtx.Project(),
+		entityCtx.SupplyItem(),
 	}
-	if protocol.IsCore() {
-		t.Error("Protocol should not be core entity")
+
+	for _, entity := range coreEntities {
+		if !entity.IsCore() {
+			t.Errorf("Entity %s should be core", entity.String())
+		}
 	}
 
 	// Test severity semantics

@@ -89,22 +89,23 @@ func TestArchitectureInvariantsEnforcement(t *testing.T) {
 		actions := NewActionContext()
 
 		// Entity behavioral testing
-		organism := entities.Organism()
-		housing := entities.Housing()
-		protocol := entities.Protocol()
-
-		coreEntities := []EntityTypeRef{organism, housing}
-		nonCoreEntities := []EntityTypeRef{protocol}
+		coreEntities := []EntityTypeRef{
+			entities.Organism(),
+			entities.Housing(),
+			entities.Facility(),
+			entities.Protocol(),
+			entities.Procedure(),
+			entities.Treatment(),
+			entities.Observation(),
+			entities.Sample(),
+			entities.Permit(),
+			entities.Project(),
+			entities.SupplyItem(),
+		}
 
 		for _, entity := range coreEntities {
 			if !entity.IsCore() {
 				t.Errorf("Entity %s should be core", entity.String())
-			}
-		}
-
-		for _, entity := range nonCoreEntities {
-			if entity.IsCore() {
-				t.Errorf("Entity %s should not be core", entity.String())
 			}
 		}
 

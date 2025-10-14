@@ -9,6 +9,7 @@ import (
 )
 
 const testAdultStage = "adult"
+const demoTemplateKey = "demo"
 
 func TestNewDatasetTemplateFromAPI(t *testing.T) {
 	dialectProvider := datasetapi.GetDialectProvider()
@@ -16,10 +17,10 @@ func TestNewDatasetTemplateFromAPI(t *testing.T) {
 
 	now := time.Date(2024, 1, 2, 3, 4, 5, 0, time.UTC)
 	apiTemplate := datasetapi.Template{
-		Key:         "demo",
+		Key:         demoTemplateKey,
 		Version:     "1.0.0",
 		Title:       "Demo",
-		Description: "demo",
+		Description: demoTemplateKey,
 		Dialect:     dialectProvider.SQL(),
 		Query:       "SELECT 1",
 		Parameters: []datasetapi.Parameter{{
@@ -48,7 +49,7 @@ func TestNewDatasetTemplateFromAPI(t *testing.T) {
 			t.Fatalf("expected env.Now to be propagated")
 		}
 		return func(_ context.Context, req datasetapi.RunRequest) (datasetapi.RunResult, error) {
-			if req.Template.Key != "demo" {
+			if req.Template.Key != demoTemplateKey {
 				t.Fatalf("unexpected template key: %s", req.Template.Key)
 			}
 			if req.Scope.Requestor != "analyst" {

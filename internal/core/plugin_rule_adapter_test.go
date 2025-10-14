@@ -14,6 +14,13 @@ type capturingRule struct {
 	seenHousing      string
 	seenHousingCount int
 	seenProtocols    int
+	seenFacilities   int
+	seenTreatments   int
+	seenObservations int
+	seenSamples      int
+	seenPermits      int
+	seenProjects     int
+	seenSupplyItems  int
 	seenChanges      int
 }
 
@@ -31,6 +38,19 @@ func (r *capturingRule) Evaluate(_ context.Context, view pluginapi.RuleView, cha
 			r.seenHousing = housing.ID()
 		}
 		r.seenProtocols = len(view.ListProtocols())
+		r.seenFacilities = len(view.ListFacilities())
+		r.seenTreatments = len(view.ListTreatments())
+		r.seenObservations = len(view.ListObservations())
+		r.seenSamples = len(view.ListSamples())
+		r.seenPermits = len(view.ListPermits())
+		r.seenProjects = len(view.ListProjects())
+		r.seenSupplyItems = len(view.ListSupplyItems())
+		view.FindFacility("facility-1")
+		view.FindTreatment("treatment-1")
+		view.FindObservation("observation-1")
+		view.FindSample("sample-1")
+		view.FindPermit("permit-1")
+		view.FindSupplyItem("supply-1")
 	}
 	r.seenChanges = len(changes)
 	entities := pluginapi.NewEntityContext()
@@ -49,14 +69,28 @@ func (r *capturingRule) Evaluate(_ context.Context, view pluginapi.RuleView, cha
 }
 
 type stubDomainView struct {
-	organisms []domain.Organism
-	housing   []domain.HousingUnit
-	protocols []domain.Protocol
+	organisms    []domain.Organism
+	housing      []domain.HousingUnit
+	protocols    []domain.Protocol
+	facilities   []domain.Facility
+	treatments   []domain.Treatment
+	observations []domain.Observation
+	samples      []domain.Sample
+	permits      []domain.Permit
+	projects     []domain.Project
+	supply       []domain.SupplyItem
 }
 
 func (v stubDomainView) ListOrganisms() []domain.Organism       { return v.organisms }
 func (v stubDomainView) ListHousingUnits() []domain.HousingUnit { return v.housing }
 func (v stubDomainView) ListProtocols() []domain.Protocol       { return v.protocols }
+func (v stubDomainView) ListFacilities() []domain.Facility      { return v.facilities }
+func (v stubDomainView) ListTreatments() []domain.Treatment     { return v.treatments }
+func (v stubDomainView) ListObservations() []domain.Observation { return v.observations }
+func (v stubDomainView) ListSamples() []domain.Sample           { return v.samples }
+func (v stubDomainView) ListPermits() []domain.Permit           { return v.permits }
+func (v stubDomainView) ListProjects() []domain.Project         { return v.projects }
+func (v stubDomainView) ListSupplyItems() []domain.SupplyItem   { return v.supply }
 
 func (v stubDomainView) FindOrganism(id string) (domain.Organism, bool) {
 	for _, organism := range v.organisms {
@@ -76,14 +110,81 @@ func (v stubDomainView) FindHousingUnit(id string) (domain.HousingUnit, bool) {
 	return domain.HousingUnit{}, false
 }
 
+func (v stubDomainView) FindFacility(id string) (domain.Facility, bool) {
+	for _, facility := range v.facilities {
+		if facility.ID == id {
+			return facility, true
+		}
+	}
+	return domain.Facility{}, false
+}
+
+func (v stubDomainView) FindTreatment(id string) (domain.Treatment, bool) {
+	for _, treatment := range v.treatments {
+		if treatment.ID == id {
+			return treatment, true
+		}
+	}
+	return domain.Treatment{}, false
+}
+
+func (v stubDomainView) FindObservation(id string) (domain.Observation, bool) {
+	for _, observation := range v.observations {
+		if observation.ID == id {
+			return observation, true
+		}
+	}
+	return domain.Observation{}, false
+}
+
+func (v stubDomainView) FindSample(id string) (domain.Sample, bool) {
+	for _, sample := range v.samples {
+		if sample.ID == id {
+			return sample, true
+		}
+	}
+	return domain.Sample{}, false
+}
+
+func (v stubDomainView) FindPermit(id string) (domain.Permit, bool) {
+	for _, permit := range v.permits {
+		if permit.ID == id {
+			return permit, true
+		}
+	}
+	return domain.Permit{}, false
+}
+
+func (v stubDomainView) FindSupplyItem(id string) (domain.SupplyItem, bool) {
+	for _, item := range v.supply {
+		if item.ID == id {
+			return item, true
+		}
+	}
+	return domain.SupplyItem{}, false
+}
+
 func TestAdaptPluginRuleBridgesDomainInterfaces(t *testing.T) {
 	housingID := "housing-1"
 	organismID := "organism-1"
 	protocolID := "protocol-1"
+	facilityID := "facility-1"
+	treatmentID := "treatment-1"
+	observationID := "observation-1"
+	sampleID := "sample-1"
+	permitID := "permit-1"
+	supplyID := "supply-1"
 	view := stubDomainView{
-		organisms: []domain.Organism{{Base: domain.Base{ID: organismID}, HousingID: &housingID}},
-		housing:   []domain.HousingUnit{{Base: domain.Base{ID: housingID}}},
-		protocols: []domain.Protocol{{Base: domain.Base{ID: protocolID}}},
+		organisms:    []domain.Organism{{Base: domain.Base{ID: organismID}, HousingID: &housingID}},
+		housing:      []domain.HousingUnit{{Base: domain.Base{ID: housingID}}},
+		protocols:    []domain.Protocol{{Base: domain.Base{ID: protocolID}}},
+		facilities:   []domain.Facility{{Base: domain.Base{ID: facilityID}}},
+		treatments:   []domain.Treatment{{Base: domain.Base{ID: treatmentID}, ProcedureID: "proc"}},
+		observations: []domain.Observation{{Base: domain.Base{ID: observationID}}},
+		samples:      []domain.Sample{{Base: domain.Base{ID: sampleID}, FacilityID: facilityID}},
+		permits:      []domain.Permit{{Base: domain.Base{ID: permitID}}},
+		projects:     []domain.Project{{Base: domain.Base{ID: "project-1"}}},
+		supply:       []domain.SupplyItem{{Base: domain.Base{ID: supplyID}}},
 	}
 	rule := &capturingRule{}
 	adapted := adaptPluginRule(rule)
@@ -113,6 +214,27 @@ func TestAdaptPluginRuleBridgesDomainInterfaces(t *testing.T) {
 	if rule.seenProtocols != len(view.protocols) {
 		t.Fatalf("expected plugin rule to observe %d protocols, got %d", len(view.protocols), rule.seenProtocols)
 	}
+	if rule.seenFacilities != len(view.facilities) {
+		t.Fatalf("expected plugin rule to observe %d facilities, got %d", len(view.facilities), rule.seenFacilities)
+	}
+	if rule.seenTreatments != len(view.treatments) {
+		t.Fatalf("expected plugin rule to observe %d treatments, got %d", len(view.treatments), rule.seenTreatments)
+	}
+	if rule.seenObservations != len(view.observations) {
+		t.Fatalf("expected plugin rule to observe %d observations, got %d", len(view.observations), rule.seenObservations)
+	}
+	if rule.seenSamples != len(view.samples) {
+		t.Fatalf("expected plugin rule to observe %d samples, got %d", len(view.samples), rule.seenSamples)
+	}
+	if rule.seenPermits != len(view.permits) {
+		t.Fatalf("expected plugin rule to observe %d permits, got %d", len(view.permits), rule.seenPermits)
+	}
+	if rule.seenProjects != len(view.projects) {
+		t.Fatalf("expected plugin rule to observe %d projects, got %d", len(view.projects), rule.seenProjects)
+	}
+	if rule.seenSupplyItems != len(view.supply) {
+		t.Fatalf("expected plugin rule to observe %d supply items, got %d", len(view.supply), rule.seenSupplyItems)
+	}
 	if rule.seenChanges != len(changes) {
 		t.Fatalf("expected plugin rule to observe %d changes, got %d", len(changes), rule.seenChanges)
 	}
@@ -127,6 +249,155 @@ func (r *nilViewRule) Name() string { return "nil" }
 func (r *nilViewRule) Evaluate(_ context.Context, view pluginapi.RuleView, _ []pluginapi.Change) (pluginapi.Result, error) {
 	r.gotNil = view == nil
 	return pluginapi.Result{}, nil
+}
+
+func TestNewViewAccessors(t *testing.T) {
+	now := time.Now()
+	facility := newFacilityView(domain.Facility{
+		Base:                 domain.Base{ID: "facility", CreatedAt: now, UpdatedAt: now},
+		Name:                 "Facility",
+		Zone:                 "Quarantine Zone",
+		AccessPolicy:         "Restricted",
+		EnvironmentBaselines: map[string]any{"temp": 21},
+		HousingUnitIDs:       []string{"H1"},
+		ProjectIDs:           []string{"P1"},
+	})
+	if facility.Name() == "" || facility.Zone() == "" || facility.AccessPolicy() == "" {
+		t.Fatal("facility view should expose base fields")
+	}
+	if len(facility.HousingUnitIDs()) != 1 || len(facility.ProjectIDs()) != 1 {
+		t.Fatal("facility view should expose related ids")
+	}
+	if facility.EnvironmentBaselines()["temp"] != 21 {
+		t.Fatal("facility baselines should round-trip")
+	}
+	if !facility.GetZone().IsQuarantine() {
+		t.Fatal("facility zone contextual accessor should report quarantine")
+	}
+	if !facility.GetAccessPolicy().IsRestricted() {
+		t.Fatal("facility access policy should report restricted")
+	}
+
+	treatment := newTreatmentView(domain.Treatment{
+		Base:              domain.Base{ID: "treatment", CreatedAt: now},
+		Name:              "Treatment",
+		ProcedureID:       "proc",
+		OrganismIDs:       []string{"org"},
+		CohortIDs:         []string{"cohort"},
+		DosagePlan:        "dose plan",
+		AdministrationLog: []string{"dose"},
+		AdverseEvents:     []string{"note"},
+	})
+	if treatment.Name() == "" || treatment.ProcedureID() == "" {
+		t.Fatal("treatment view should expose base fields")
+	}
+	if len(treatment.OrganismIDs()) != 1 || len(treatment.CohortIDs()) != 1 {
+		t.Fatal("treatment view should expose related ids")
+	}
+	if treatment.DosagePlan() == "" {
+		t.Fatal("treatment should expose dosage plan")
+	}
+	if !treatment.HasAdverseEvents() || !treatment.IsCompleted() {
+		t.Fatal("treatment view helpers should reflect log state")
+	}
+
+	procID := "proc"
+	observation := newObservationView(domain.Observation{
+		Base:        domain.Base{ID: "observation", CreatedAt: now},
+		RecordedAt:  now,
+		Observer:    "tech",
+		ProcedureID: &procID,
+		Data:        map[string]any{"score": 1},
+		Notes:       "text",
+	})
+	if observation.Observer() == "" || observation.Notes() == "" {
+		t.Fatal("observation view should expose observer")
+	}
+	if _, ok := observation.ProcedureID(); !ok {
+		t.Fatal("observation should expose procedure id when set")
+	}
+	if !observation.GetDataShape().HasNarrativeNotes() {
+		t.Fatal("observation data shape should report narrative notes")
+	}
+
+	organID := "org"
+	sample := newSampleView(domain.Sample{
+		Base:            domain.Base{ID: "sample", CreatedAt: now},
+		Identifier:      "S1",
+		SourceType:      "organism",
+		OrganismID:      &organID,
+		FacilityID:      "facility",
+		CollectedAt:     now,
+		Status:          "stored",
+		StorageLocation: "freezer",
+		AssayType:       "assay",
+		Attributes:      map[string]any{"k": "v"},
+		ChainOfCustody: []domain.SampleCustodyEvent{{
+			Actor:     "tech",
+			Location:  "lab",
+			Timestamp: now,
+			Notes:     "note",
+		}},
+	})
+	if sample.Identifier() == "" || sample.AssayType() == "" || sample.StorageLocation() == "" {
+		t.Fatal("sample view should expose base fields")
+	}
+	if _, ok := sample.OrganismID(); !ok {
+		t.Fatal("sample should expose organism id when set")
+	}
+	if len(sample.ChainOfCustody()) != 1 {
+		t.Fatal("sample view should expose custody events")
+	}
+	if !sample.GetStatus().IsAvailable() || !sample.GetSource().IsOrganismDerived() {
+		t.Fatal("sample status contextual helper should report availability")
+	}
+
+	permit := newPermitView(domain.Permit{
+		Base:              domain.Base{ID: "permit", CreatedAt: now},
+		PermitNumber:      "PERMIT",
+		Authority:         "Gov",
+		ValidFrom:         now.Add(-time.Hour),
+		ValidUntil:        now.Add(time.Hour),
+		AllowedActivities: []string{"activity"},
+		FacilityIDs:       []string{"facility"},
+		ProtocolIDs:       []string{"protocol"},
+		Notes:             "note",
+	})
+	if permit.PermitNumber() == "" || permit.Authority() == "" || permit.Notes() == "" {
+		t.Fatal("permit view should expose base fields")
+	}
+	if len(permit.AllowedActivities()) != 1 || len(permit.FacilityIDs()) != 1 || len(permit.ProtocolIDs()) != 1 {
+		t.Fatal("permit view should expose related ids")
+	}
+	if !permit.IsActive(now) || permit.IsExpired(now.Add(-2*time.Hour)) {
+		t.Fatal("permit view should consider validity window active")
+	}
+
+	supply := newSupplyItemView(domain.SupplyItem{
+		Base:           domain.Base{ID: "supply", CreatedAt: now, UpdatedAt: now},
+		SKU:            "SKU",
+		Name:           "Feed",
+		Description:    "desc",
+		QuantityOnHand: 1,
+		Unit:           "kg",
+		LotNumber:      "LOT",
+		FacilityIDs:    []string{"facility"},
+		ProjectIDs:     []string{"project"},
+		ReorderLevel:   2,
+		Attributes:     map[string]any{"k": "v"},
+	})
+	if supply.SKU() == "" || supply.Name() == "" || supply.Description() == "" || supply.Unit() == "" || supply.LotNumber() == "" {
+		t.Fatal("supply view should expose base fields")
+	}
+	if len(supply.FacilityIDs()) != 1 || len(supply.ProjectIDs()) != 1 {
+		t.Fatal("supply view should expose related ids")
+	}
+	if !supply.RequiresReorder(now) {
+		t.Fatal("supply view should report reorder when quantity below threshold")
+	}
+	if supply.Attributes()["k"] != "v" {
+		t.Fatal("supply attributes should round-trip")
+	}
 }
 
 func TestAdaptPluginRuleHandlesNilInputs(t *testing.T) {

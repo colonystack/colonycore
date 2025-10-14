@@ -67,6 +67,7 @@ func facadeProtocolFromDomain(protocol domain.Protocol) datasetapi.Protocol {
 		Title:       protocol.Title,
 		Description: protocol.Description,
 		MaxSubjects: protocol.MaxSubjects,
+		Status:      protocol.Status,
 	})
 }
 
@@ -87,6 +88,7 @@ func facadeProjectFromDomain(project domain.Project) datasetapi.Project {
 		Code:        project.Code,
 		Title:       project.Title,
 		Description: project.Description,
+		FacilityIDs: project.FacilityIDs,
 	})
 }
 
@@ -165,6 +167,174 @@ func facadeProceduresFromDomain(procs []domain.Procedure) []datasetapi.Procedure
 	out := make([]datasetapi.Procedure, len(procs))
 	for i := range procs {
 		out[i] = facadeProcedureFromDomain(procs[i])
+	}
+	return out
+}
+
+func facadeFacilityFromDomain(facility domain.Facility) datasetapi.Facility {
+	return datasetapi.NewFacility(datasetapi.FacilityData{
+		Base:                 baseDataFromDomain(facility.Base),
+		Name:                 facility.Name,
+		Zone:                 facility.Zone,
+		AccessPolicy:         facility.AccessPolicy,
+		EnvironmentBaselines: facility.EnvironmentBaselines,
+		HousingUnitIDs:       facility.HousingUnitIDs,
+		ProjectIDs:           facility.ProjectIDs,
+	})
+}
+
+func facadeFacilitiesFromDomain(facilities []domain.Facility) []datasetapi.Facility {
+	if len(facilities) == 0 {
+		return nil
+	}
+	out := make([]datasetapi.Facility, len(facilities))
+	for i := range facilities {
+		out[i] = facadeFacilityFromDomain(facilities[i])
+	}
+	return out
+}
+
+func facadeTreatmentFromDomain(treatment domain.Treatment) datasetapi.Treatment {
+	return datasetapi.NewTreatment(datasetapi.TreatmentData{
+		Base:              baseDataFromDomain(treatment.Base),
+		Name:              treatment.Name,
+		ProcedureID:       treatment.ProcedureID,
+		OrganismIDs:       treatment.OrganismIDs,
+		CohortIDs:         treatment.CohortIDs,
+		DosagePlan:        treatment.DosagePlan,
+		AdministrationLog: treatment.AdministrationLog,
+		AdverseEvents:     treatment.AdverseEvents,
+	})
+}
+
+func facadeTreatmentsFromDomain(treatments []domain.Treatment) []datasetapi.Treatment {
+	if len(treatments) == 0 {
+		return nil
+	}
+	out := make([]datasetapi.Treatment, len(treatments))
+	for i := range treatments {
+		out[i] = facadeTreatmentFromDomain(treatments[i])
+	}
+	return out
+}
+
+func facadeObservationFromDomain(observation domain.Observation) datasetapi.Observation {
+	return datasetapi.NewObservation(datasetapi.ObservationData{
+		Base:        baseDataFromDomain(observation.Base),
+		ProcedureID: observation.ProcedureID,
+		OrganismID:  observation.OrganismID,
+		CohortID:    observation.CohortID,
+		RecordedAt:  observation.RecordedAt,
+		Observer:    observation.Observer,
+		Data:        observation.Data,
+		Notes:       observation.Notes,
+	})
+}
+
+func facadeObservationsFromDomain(observations []domain.Observation) []datasetapi.Observation {
+	if len(observations) == 0 {
+		return nil
+	}
+	out := make([]datasetapi.Observation, len(observations))
+	for i := range observations {
+		out[i] = facadeObservationFromDomain(observations[i])
+	}
+	return out
+}
+
+func facadeSampleFromDomain(sample domain.Sample) datasetapi.Sample {
+	return datasetapi.NewSample(datasetapi.SampleData{
+		Base:            baseDataFromDomain(sample.Base),
+		Identifier:      sample.Identifier,
+		SourceType:      sample.SourceType,
+		OrganismID:      sample.OrganismID,
+		CohortID:        sample.CohortID,
+		FacilityID:      sample.FacilityID,
+		CollectedAt:     sample.CollectedAt,
+		Status:          sample.Status,
+		StorageLocation: sample.StorageLocation,
+		AssayType:       sample.AssayType,
+		ChainOfCustody:  custodyEventsToData(sample.ChainOfCustody),
+		Attributes:      sample.Attributes,
+	})
+}
+
+func facadeSamplesFromDomain(samples []domain.Sample) []datasetapi.Sample {
+	if len(samples) == 0 {
+		return nil
+	}
+	out := make([]datasetapi.Sample, len(samples))
+	for i := range samples {
+		out[i] = facadeSampleFromDomain(samples[i])
+	}
+	return out
+}
+
+func facadePermitFromDomain(permit domain.Permit) datasetapi.Permit {
+	return datasetapi.NewPermit(datasetapi.PermitData{
+		Base:              baseDataFromDomain(permit.Base),
+		PermitNumber:      permit.PermitNumber,
+		Authority:         permit.Authority,
+		ValidFrom:         permit.ValidFrom,
+		ValidUntil:        permit.ValidUntil,
+		AllowedActivities: permit.AllowedActivities,
+		FacilityIDs:       permit.FacilityIDs,
+		ProtocolIDs:       permit.ProtocolIDs,
+		Notes:             permit.Notes,
+	})
+}
+
+func facadePermitsFromDomain(permits []domain.Permit) []datasetapi.Permit {
+	if len(permits) == 0 {
+		return nil
+	}
+	out := make([]datasetapi.Permit, len(permits))
+	for i := range permits {
+		out[i] = facadePermitFromDomain(permits[i])
+	}
+	return out
+}
+
+func facadeSupplyItemFromDomain(item domain.SupplyItem) datasetapi.SupplyItem {
+	return datasetapi.NewSupplyItem(datasetapi.SupplyItemData{
+		Base:           baseDataFromDomain(item.Base),
+		SKU:            item.SKU,
+		Name:           item.Name,
+		Description:    item.Description,
+		QuantityOnHand: item.QuantityOnHand,
+		Unit:           item.Unit,
+		LotNumber:      item.LotNumber,
+		ExpiresAt:      item.ExpiresAt,
+		FacilityIDs:    item.FacilityIDs,
+		ProjectIDs:     item.ProjectIDs,
+		ReorderLevel:   item.ReorderLevel,
+		Attributes:     item.Attributes,
+	})
+}
+
+func facadeSupplyItemsFromDomain(items []domain.SupplyItem) []datasetapi.SupplyItem {
+	if len(items) == 0 {
+		return nil
+	}
+	out := make([]datasetapi.SupplyItem, len(items))
+	for i := range items {
+		out[i] = facadeSupplyItemFromDomain(items[i])
+	}
+	return out
+}
+
+func custodyEventsToData(events []domain.SampleCustodyEvent) []datasetapi.SampleCustodyEventData {
+	if len(events) == 0 {
+		return nil
+	}
+	out := make([]datasetapi.SampleCustodyEventData, len(events))
+	for i, event := range events {
+		out[i] = datasetapi.SampleCustodyEventData{
+			Actor:     event.Actor,
+			Location:  event.Location,
+			Timestamp: event.Timestamp,
+			Notes:     event.Notes,
+		}
 	}
 	return out
 }

@@ -33,7 +33,14 @@ type fakeView struct {
 
 func (v fakeView) ListOrganisms() []pluginapi.OrganismView       { return v.organisms }
 func (v fakeView) ListHousingUnits() []pluginapi.HousingUnitView { return v.housing }
+func (fakeView) ListFacilities() []pluginapi.FacilityView        { return nil }
+func (fakeView) ListTreatments() []pluginapi.TreatmentView       { return nil }
+func (fakeView) ListObservations() []pluginapi.ObservationView   { return nil }
+func (fakeView) ListSamples() []pluginapi.SampleView             { return nil }
 func (v fakeView) ListProtocols() []pluginapi.ProtocolView       { return nil }
+func (fakeView) ListPermits() []pluginapi.PermitView             { return nil }
+func (fakeView) ListProjects() []pluginapi.ProjectView           { return nil }
+func (fakeView) ListSupplyItems() []pluginapi.SupplyItemView     { return nil }
 
 func (v fakeView) FindHousingUnit(id string) (pluginapi.HousingUnitView, bool) {
 	for _, h := range v.housing {
@@ -50,6 +57,30 @@ func (v fakeView) FindOrganism(id string) (pluginapi.OrganismView, bool) {
 			return o, true
 		}
 	}
+	return nil, false
+}
+
+func (fakeView) FindFacility(string) (pluginapi.FacilityView, bool) {
+	return nil, false
+}
+
+func (fakeView) FindTreatment(string) (pluginapi.TreatmentView, bool) {
+	return nil, false
+}
+
+func (fakeView) FindObservation(string) (pluginapi.ObservationView, bool) {
+	return nil, false
+}
+
+func (fakeView) FindSample(string) (pluginapi.SampleView, bool) {
+	return nil, false
+}
+
+func (fakeView) FindPermit(string) (pluginapi.PermitView, bool) {
+	return nil, false
+}
+
+func (fakeView) FindSupplyItem(string) (pluginapi.SupplyItemView, bool) {
 	return nil, false
 }
 

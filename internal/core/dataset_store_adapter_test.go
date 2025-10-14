@@ -9,6 +9,7 @@ import (
 	"colonycore/pkg/domain"
 )
 
+//nolint:gocyclo // This comprehensive integration test covers many entity types and has inherent complexity
 func TestDatasetPersistentStoreAdapter(t *testing.T) {
 	now := time.Date(2024, 7, 1, 8, 0, 0, 0, time.UTC)
 	const (
@@ -40,15 +41,27 @@ func TestDatasetPersistentStoreAdapter(t *testing.T) {
 	cohortEntity := domain.Cohort{Base: domain.Base{ID: cohortID}, Name: "Group", Purpose: "Study", ProjectID: &projectRef, HousingID: &housingRef, ProtocolID: &protocolRef}
 	breeding := domain.BreedingUnit{Base: domain.Base{ID: "breeding"}, Name: "Pair", Strategy: "pair", HousingID: &housingRef, ProtocolID: &protocolRef, FemaleIDs: []string{"f"}, MaleIDs: []string{"m"}}
 	procedure := domain.Procedure{Base: domain.Base{ID: "procedure"}, Name: "Proc", Status: "scheduled", ScheduledAt: now.Add(time.Hour), ProtocolID: protocolID, CohortID: &cohort, OrganismIDs: []string{organismID}}
+	facility := domain.Facility{Base: domain.Base{ID: "facility"}, Name: "Facility", Zone: "biosecure", AccessPolicy: "restricted", HousingUnitIDs: []string{housingID}}
+	treatment := domain.Treatment{Base: domain.Base{ID: "treatment"}, Name: "Treatment", ProcedureID: procedure.ID, OrganismIDs: []string{organismID}, AdministrationLog: []string{"dose1"}}
+	observation := domain.Observation{Base: domain.Base{ID: "observation"}, RecordedAt: now, Observer: "tech"}
+	sample := domain.Sample{Base: domain.Base{ID: "sample"}, Identifier: "S1", SourceType: "organism", FacilityID: facility.ID, CollectedAt: now, Status: "stored"}
+	permit := domain.Permit{Base: domain.Base{ID: "permit"}, PermitNumber: "PERMIT", Authority: "Gov", ValidFrom: now.Add(-24 * time.Hour), ValidUntil: now.Add(24 * time.Hour)}
+	supply := domain.SupplyItem{Base: domain.Base{ID: "supply"}, SKU: "SKU", Name: "Item", QuantityOnHand: 5, ReorderLevel: 1}
 
 	fake := &fakePersistentStore{
 		organisms:     []domain.Organism{organism},
 		housingUnits:  []domain.HousingUnit{unit},
+		facilities:    []domain.Facility{facility},
 		protocols:     []domain.Protocol{protocol},
 		projects:      []domain.Project{project},
 		cohorts:       []domain.Cohort{cohortEntity},
 		breedingUnits: []domain.BreedingUnit{breeding},
 		procedures:    []domain.Procedure{procedure},
+		treatments:    []domain.Treatment{treatment},
+		observations:  []domain.Observation{observation},
+		samples:       []domain.Sample{sample},
+		permits:       []domain.Permit{permit},
+		supplyItems:   []domain.SupplyItem{supply},
 	}
 	adapter := newDatasetPersistentStore(fake)
 	if adapter == nil {
@@ -65,6 +78,9 @@ func TestDatasetPersistentStoreAdapter(t *testing.T) {
 	if fake.organisms[0].Attributes["flag"].(bool) != true {
 		t.Fatalf("expected original organism attributes untouched")
 	}
+	if _, ok := adapter.GetOrganism("missing"); ok {
+		t.Fatalf("expected missing organism lookup to fail")
+	}
 
 	organisms := adapter.ListOrganisms()
 	if len(organisms) != 1 || organisms[0].ID() != organismID {
@@ -74,9 +90,48 @@ func TestDatasetPersistentStoreAdapter(t *testing.T) {
 	if housing, ok := adapter.GetHousingUnit(housingID); !ok || housing.ID() != housingID {
 		t.Fatalf("expected converted housing unit")
 	}
+	if _, ok := adapter.GetHousingUnit("missing"); ok {
+		t.Fatalf("expected missing housing to fail")
+	}
 	housingUnits := adapter.ListHousingUnits()
 	if len(housingUnits) != 1 || housingUnits[0].Environment() != unit.Environment {
 		t.Fatalf("expected converted housing slice")
+	}
+
+	if facilities := adapter.ListFacilities(); len(facilities) != 1 || facilities[0].Name() != facility.Name {
+		t.Fatalf("expected facility conversion")
+	}
+
+	if treatments := adapter.ListTreatments(); len(treatments) != 1 || treatments[0].Name() != treatment.Name {
+		t.Fatalf("expected treatment conversion")
+	}
+
+	if observations := adapter.ListObservations(); len(observations) != 1 || !observations[0].RecordedAt().Equal(observation.RecordedAt) {
+		t.Fatalf("expected observation conversion")
+	}
+
+	if samples := adapter.ListSamples(); len(samples) != 1 || samples[0].Identifier() != sample.Identifier {
+		t.Fatalf("expected sample conversion")
+	}
+
+	if permits := adapter.ListPermits(); len(permits) != 1 || permits[0].PermitNumber() != permit.PermitNumber {
+		t.Fatalf("expected permit conversion")
+	}
+
+	if supplyItems := adapter.ListSupplyItems(); len(supplyItems) != 1 || supplyItems[0].SKU() != supply.SKU {
+		t.Fatalf("expected supply conversion")
+	}
+	if facilityResult, ok := adapter.GetFacility(facility.ID); !ok || facilityResult.Name() != facility.Name {
+		t.Fatalf("expected facility lookup to convert")
+	}
+	if _, ok := adapter.GetFacility("missing"); ok {
+		t.Fatalf("expected missing facility lookup to fail")
+	}
+	if permitResult, ok := adapter.GetPermit(permit.ID); !ok || permitResult.PermitNumber() != permit.PermitNumber {
+		t.Fatalf("expected permit lookup to convert")
+	}
+	if _, ok := adapter.GetPermit("missing"); ok {
+		t.Fatalf("expected missing permit lookup to fail")
 	}
 
 	cohorts := adapter.ListCohorts()
@@ -123,6 +178,10 @@ func TestDatasetPersistentStoreAdapter(t *testing.T) {
 		if len(orgs) != 1 || orgs[0].ID() != organismID {
 			t.Fatalf("expected view organisms conversion")
 		}
+		orgResult, ok := view.FindOrganism(organismID)
+		if !ok || orgResult.ID() != organismID {
+			t.Fatalf("expected organism lookup to convert")
+		}
 		if _, ok := view.FindOrganism("missing"); ok {
 			t.Fatalf("expected missing organism lookup to fail")
 		}
@@ -130,11 +189,78 @@ func TestDatasetPersistentStoreAdapter(t *testing.T) {
 		if len(housingSlice) != 1 || housingSlice[0].ID() != housingID {
 			t.Fatalf("expected view housing conversion")
 		}
+		housingResult, ok := view.FindHousingUnit(housingID)
+		if !ok || housingResult.ID() != housingID {
+			t.Fatalf("expected housing lookup to convert")
+		}
 		if _, ok := view.FindHousingUnit("missing"); ok {
 			t.Fatalf("expected missing housing lookup to fail")
 		}
 		if len(view.ListProtocols()) != 1 {
 			t.Fatalf("expected view protocols conversion")
+		}
+		if len(view.ListFacilities()) != 1 {
+			t.Fatalf("expected view facilities conversion")
+		}
+		if len(view.ListTreatments()) != 1 {
+			t.Fatalf("expected view treatments conversion")
+		}
+		if len(view.ListObservations()) != 1 {
+			t.Fatalf("expected view observations conversion")
+		}
+		if len(view.ListSamples()) != 1 {
+			t.Fatalf("expected view samples conversion")
+		}
+		if len(view.ListPermits()) != 1 {
+			t.Fatalf("expected view permits conversion")
+		}
+		if len(view.ListSupplyItems()) != 1 {
+			t.Fatalf("expected view supply conversion")
+		}
+		if len(view.ListProjects()) != 1 || view.ListProjects()[0].Code() != project.Code {
+			t.Fatalf("expected view projects conversion")
+		}
+		if _, ok := view.FindFacility("missing"); ok {
+			t.Fatalf("expected missing facility lookup to fail")
+		}
+		if _, ok := view.FindTreatment("missing"); ok {
+			t.Fatalf("expected missing treatment lookup to fail")
+		}
+		if _, ok := view.FindObservation("missing"); ok {
+			t.Fatalf("expected missing observation lookup to fail")
+		}
+		if _, ok := view.FindSample("missing"); ok {
+			t.Fatalf("expected missing sample lookup to fail")
+		}
+		if _, ok := view.FindPermit("missing"); ok {
+			t.Fatalf("expected missing permit lookup to fail")
+		}
+		if _, ok := view.FindSupplyItem("missing"); ok {
+			t.Fatalf("expected missing supply lookup to fail")
+		}
+		foundFacility, ok := view.FindFacility(facility.ID)
+		if !ok || foundFacility.Name() != facility.Name {
+			t.Fatalf("expected facility lookup to convert")
+		}
+		foundTreatment, ok := view.FindTreatment(treatment.ID)
+		if !ok || foundTreatment.Name() != treatment.Name {
+			t.Fatalf("expected treatment lookup to convert")
+		}
+		foundObservation, ok := view.FindObservation(observation.ID)
+		if !ok || !foundObservation.RecordedAt().Equal(observation.RecordedAt) {
+			t.Fatalf("expected observation lookup to convert")
+		}
+		foundSample, ok := view.FindSample(sample.ID)
+		if !ok || foundSample.Identifier() != sample.Identifier {
+			t.Fatalf("expected sample lookup to convert")
+		}
+		foundPermit, ok := view.FindPermit(permit.ID)
+		if !ok || foundPermit.Authority() != permit.Authority {
+			t.Fatalf("expected permit lookup to convert")
+		}
+		foundSupply, ok := view.FindSupplyItem(supply.ID)
+		if !ok || foundSupply.Name() != supply.Name {
+			t.Fatalf("expected supply lookup to convert")
 		}
 		return nil
 	}); err != nil {
