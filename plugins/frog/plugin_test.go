@@ -54,7 +54,14 @@ func (s *stubView) ListHousingUnits() []datasetapi.HousingUnit {
 	return units
 }
 
-func (s *stubView) ListProtocols() []datasetapi.Protocol { return nil }
+func (s *stubView) ListProtocols() []datasetapi.Protocol       { return nil }
+func (s *stubView) ListFacilities() []datasetapi.Facility      { return nil }
+func (s *stubView) ListTreatments() []datasetapi.Treatment     { return nil }
+func (s *stubView) ListObservations() []datasetapi.Observation { return nil }
+func (s *stubView) ListSamples() []datasetapi.Sample           { return nil }
+func (s *stubView) ListPermits() []datasetapi.Permit           { return nil }
+func (s *stubView) ListProjects() []datasetapi.Project         { return nil }
+func (s *stubView) ListSupplyItems() []datasetapi.SupplyItem   { return nil }
 
 func (s *stubView) FindOrganism(id string) (datasetapi.Organism, bool) {
 	for _, org := range s.organisms {
@@ -70,6 +77,13 @@ func (s *stubView) FindHousingUnit(id string) (datasetapi.HousingUnit, bool) {
 	return unit, ok
 }
 
+func (s *stubView) FindFacility(string) (datasetapi.Facility, bool)       { return nil, false }
+func (s *stubView) FindTreatment(string) (datasetapi.Treatment, bool)     { return nil, false }
+func (s *stubView) FindObservation(string) (datasetapi.Observation, bool) { return nil, false }
+func (s *stubView) FindSample(string) (datasetapi.Sample, bool)           { return nil, false }
+func (s *stubView) FindPermit(string) (datasetapi.Permit, bool)           { return nil, false }
+func (s *stubView) FindSupplyItem(string) (datasetapi.SupplyItem, bool)   { return nil, false }
+
 type stubStore struct {
 	view datasetapi.TransactionView
 }
@@ -83,12 +97,20 @@ func (stubStore) ListOrganisms() []datasetapi.Organism           { return nil }
 func (stubStore) GetHousingUnit(string) (datasetapi.HousingUnit, bool) {
 	return nil, false
 }
-func (stubStore) ListHousingUnits() []datasetapi.HousingUnit   { return nil }
-func (stubStore) ListCohorts() []datasetapi.Cohort             { return nil }
-func (stubStore) ListProtocols() []datasetapi.Protocol         { return nil }
-func (stubStore) ListProjects() []datasetapi.Project           { return nil }
-func (stubStore) ListBreedingUnits() []datasetapi.BreedingUnit { return nil }
-func (stubStore) ListProcedures() []datasetapi.Procedure       { return nil }
+func (stubStore) ListHousingUnits() []datasetapi.HousingUnit     { return nil }
+func (stubStore) GetFacility(string) (datasetapi.Facility, bool) { return nil, false }
+func (stubStore) ListFacilities() []datasetapi.Facility          { return nil }
+func (stubStore) ListCohorts() []datasetapi.Cohort               { return nil }
+func (stubStore) ListTreatments() []datasetapi.Treatment         { return nil }
+func (stubStore) ListObservations() []datasetapi.Observation     { return nil }
+func (stubStore) ListSamples() []datasetapi.Sample               { return nil }
+func (stubStore) ListProtocols() []datasetapi.Protocol           { return nil }
+func (stubStore) GetPermit(string) (datasetapi.Permit, bool)     { return nil, false }
+func (stubStore) ListPermits() []datasetapi.Permit               { return nil }
+func (stubStore) ListProjects() []datasetapi.Project             { return nil }
+func (stubStore) ListBreedingUnits() []datasetapi.BreedingUnit   { return nil }
+func (stubStore) ListProcedures() []datasetapi.Procedure         { return nil }
+func (stubStore) ListSupplyItems() []datasetapi.SupplyItem       { return nil }
 
 func TestPluginRegistration(t *testing.T) {
 	plugin := New()

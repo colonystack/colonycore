@@ -9,16 +9,36 @@ func TestEntityContext(t *testing.T) {
 
 	organism := ctx.Organism()
 	housing := ctx.Housing()
+	facility := ctx.Facility()
 	protocol := ctx.Protocol()
+	procedure := ctx.Procedure()
+	treatment := ctx.Treatment()
+	observation := ctx.Observation()
+	sample := ctx.Sample()
+	permit := ctx.Permit()
+	project := ctx.Project()
+	supply := ctx.SupplyItem()
 
 	if organism.Equals(housing) {
 		t.Error("Organism and Housing should not be equal")
 	}
-	if housing.Equals(protocol) {
-		t.Error("Housing and Protocol should not be equal")
+	if housing.Equals(facility) {
+		t.Error("Housing and Facility should not be equal")
 	}
-	if protocol.Equals(organism) {
-		t.Error("Protocol and Organism should not be equal")
+	if facility.Equals(protocol) {
+		t.Error("Facility and Protocol should not be equal")
+	}
+	if protocol.Equals(procedure) {
+		t.Error("Protocol and Procedure should not be equal")
+	}
+	if treatment.Equals(observation) {
+		t.Error("Treatment and Observation should not be equal")
+	}
+	if sample.Equals(permit) {
+		t.Error("Sample and Permit should not be equal")
+	}
+	if project.Equals(supply) {
+		t.Error("Project and SupplyItem should not be equal")
 	}
 
 	if organism.String() == "" {
@@ -36,8 +56,32 @@ func TestEntityContext(t *testing.T) {
 	if !housing.IsCore() {
 		t.Error("Housing should be core entity")
 	}
-	if protocol.IsCore() {
-		t.Error("Protocol should not be core entity")
+	if !facility.IsCore() {
+		t.Error("Facility should be core entity")
+	}
+	if !protocol.IsCore() {
+		t.Error("Protocol should be core entity")
+	}
+	if !procedure.IsCore() {
+		t.Error("Procedure should be core entity")
+	}
+	if !treatment.IsCore() {
+		t.Error("Treatment should be core entity")
+	}
+	if !observation.IsCore() {
+		t.Error("Observation should be core entity")
+	}
+	if !sample.IsCore() {
+		t.Error("Sample should be core entity")
+	}
+	if !permit.IsCore() {
+		t.Error("Permit should be core entity")
+	}
+	if !project.IsCore() {
+		t.Error("Project should be core entity")
+	}
+	if !supply.IsCore() {
+		t.Error("Supply item should be core entity")
 	}
 }
 

@@ -54,9 +54,22 @@ type emptyView struct{}
 
 func (emptyView) ListOrganisms() []Organism                  { return nil }
 func (emptyView) ListHousingUnits() []HousingUnit            { return nil }
+func (emptyView) ListFacilities() []Facility                 { return nil }
+func (emptyView) ListTreatments() []Treatment                { return nil }
+func (emptyView) ListObservations() []Observation            { return nil }
+func (emptyView) ListSamples() []Sample                      { return nil }
 func (emptyView) ListProtocols() []Protocol                  { return nil }
+func (emptyView) ListPermits() []Permit                      { return nil }
+func (emptyView) ListProjects() []Project                    { return nil }
+func (emptyView) ListSupplyItems() []SupplyItem              { return nil }
 func (emptyView) FindOrganism(string) (Organism, bool)       { return Organism{}, false }
 func (emptyView) FindHousingUnit(string) (HousingUnit, bool) { return HousingUnit{}, false }
+func (emptyView) FindFacility(string) (Facility, bool)       { return Facility{}, false }
+func (emptyView) FindTreatment(string) (Treatment, bool)     { return Treatment{}, false }
+func (emptyView) FindObservation(string) (Observation, bool) { return Observation{}, false }
+func (emptyView) FindSample(string) (Sample, bool)           { return Sample{}, false }
+func (emptyView) FindPermit(string) (Permit, bool)           { return Permit{}, false }
+func (emptyView) FindSupplyItem(string) (SupplyItem, bool)   { return SupplyItem{}, false }
 
 func TestRulesEngineEvaluateError(t *testing.T) {
 	engine := NewRulesEngine()

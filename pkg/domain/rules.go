@@ -6,9 +6,22 @@ import "context"
 type RuleView interface {
 	ListOrganisms() []Organism
 	ListHousingUnits() []HousingUnit
+	ListFacilities() []Facility
+	ListTreatments() []Treatment
+	ListObservations() []Observation
+	ListSamples() []Sample
 	ListProtocols() []Protocol
+	ListPermits() []Permit
+	ListProjects() []Project
+	ListSupplyItems() []SupplyItem
 	FindOrganism(id string) (Organism, bool)
 	FindHousingUnit(id string) (HousingUnit, bool)
+	FindFacility(id string) (Facility, bool)
+	FindTreatment(id string) (Treatment, bool)
+	FindObservation(id string) (Observation, bool)
+	FindSample(id string) (Sample, bool)
+	FindPermit(id string) (Permit, bool)
+	FindSupplyItem(id string) (SupplyItem, bool)
 }
 
 // Rule defines an evaluation executed within a transaction boundary.

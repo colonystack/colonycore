@@ -2,6 +2,7 @@ package core
 
 import (
 	"context"
+	"strings"
 	"time"
 
 	"colonycore/pkg/domain"
@@ -54,8 +55,36 @@ func (a ruleViewAdapter) ListHousingUnits() []pluginapi.HousingUnitView {
 	return newHousingUnitViews(a.view.ListHousingUnits())
 }
 
+func (a ruleViewAdapter) ListFacilities() []pluginapi.FacilityView {
+	return newFacilityViews(a.view.ListFacilities())
+}
+
+func (a ruleViewAdapter) ListTreatments() []pluginapi.TreatmentView {
+	return newTreatmentViews(a.view.ListTreatments())
+}
+
+func (a ruleViewAdapter) ListObservations() []pluginapi.ObservationView {
+	return newObservationViews(a.view.ListObservations())
+}
+
+func (a ruleViewAdapter) ListSamples() []pluginapi.SampleView {
+	return newSampleViews(a.view.ListSamples())
+}
+
 func (a ruleViewAdapter) ListProtocols() []pluginapi.ProtocolView {
 	return newProtocolViews(a.view.ListProtocols())
+}
+
+func (a ruleViewAdapter) ListPermits() []pluginapi.PermitView {
+	return newPermitViews(a.view.ListPermits())
+}
+
+func (a ruleViewAdapter) ListProjects() []pluginapi.ProjectView {
+	return newProjectViews(a.view.ListProjects())
+}
+
+func (a ruleViewAdapter) ListSupplyItems() []pluginapi.SupplyItemView {
+	return newSupplyItemViews(a.view.ListSupplyItems())
 }
 
 func (a ruleViewAdapter) FindOrganism(id string) (pluginapi.OrganismView, bool) {
@@ -72,6 +101,54 @@ func (a ruleViewAdapter) FindHousingUnit(id string) (pluginapi.HousingUnitView, 
 		return nil, false
 	}
 	return newHousingUnitView(unit), true
+}
+
+func (a ruleViewAdapter) FindFacility(id string) (pluginapi.FacilityView, bool) {
+	facility, ok := a.view.FindFacility(id)
+	if !ok {
+		return nil, false
+	}
+	return newFacilityView(facility), true
+}
+
+func (a ruleViewAdapter) FindTreatment(id string) (pluginapi.TreatmentView, bool) {
+	treatment, ok := a.view.FindTreatment(id)
+	if !ok {
+		return nil, false
+	}
+	return newTreatmentView(treatment), true
+}
+
+func (a ruleViewAdapter) FindObservation(id string) (pluginapi.ObservationView, bool) {
+	observation, ok := a.view.FindObservation(id)
+	if !ok {
+		return nil, false
+	}
+	return newObservationView(observation), true
+}
+
+func (a ruleViewAdapter) FindSample(id string) (pluginapi.SampleView, bool) {
+	sample, ok := a.view.FindSample(id)
+	if !ok {
+		return nil, false
+	}
+	return newSampleView(sample), true
+}
+
+func (a ruleViewAdapter) FindPermit(id string) (pluginapi.PermitView, bool) {
+	permit, ok := a.view.FindPermit(id)
+	if !ok {
+		return nil, false
+	}
+	return newPermitView(permit), true
+}
+
+func (a ruleViewAdapter) FindSupplyItem(id string) (pluginapi.SupplyItemView, bool) {
+	item, ok := a.view.FindSupplyItem(id)
+	if !ok {
+		return nil, false
+	}
+	return newSupplyItemView(item), true
 }
 
 type baseView struct {
@@ -241,6 +318,272 @@ func (h housingUnitView) SupportsSpecies(species string) bool {
 	return !envType.IsAquatic() || envType.String() == "terrestrial"
 }
 
+type facilityView struct {
+	baseView
+	name                 string
+	zone                 string
+	accessPolicy         string
+	environmentBaselines map[string]any
+	housingUnitIDs       []string
+	projectIDs           []string
+}
+
+func newFacilityView(facility domain.Facility) facilityView {
+	return facilityView{
+		baseView:             newBaseView(facility.Base),
+		name:                 facility.Name,
+		zone:                 facility.Zone,
+		accessPolicy:         facility.AccessPolicy,
+		environmentBaselines: cloneAttributes(facility.EnvironmentBaselines),
+		housingUnitIDs:       cloneStringSlice(facility.HousingUnitIDs),
+		projectIDs:           cloneStringSlice(facility.ProjectIDs),
+	}
+}
+
+func (f facilityView) Name() string         { return f.name }
+func (f facilityView) Zone() string         { return f.zone }
+func (f facilityView) AccessPolicy() string { return f.accessPolicy }
+func (f facilityView) EnvironmentBaselines() map[string]any {
+	return cloneAttributes(f.environmentBaselines)
+}
+func (f facilityView) HousingUnitIDs() []string { return cloneStringSlice(f.housingUnitIDs) }
+func (f facilityView) ProjectIDs() []string     { return cloneStringSlice(f.projectIDs) }
+
+// Contextual zone & access policy accessors
+func (f facilityView) GetZone() pluginapi.FacilityZoneRef {
+	ctx := pluginapi.NewFacilityContext().Zones()
+	zone := strings.ToLower(strings.TrimSpace(f.zone))
+	switch {
+	case zone == "":
+		return ctx.General()
+	case strings.Contains(zone, "bio") || strings.Contains(zone, "bsl"):
+		return ctx.Biosecure()
+	case strings.Contains(zone, "quarantine") || strings.Contains(zone, "isolation"):
+		return ctx.Quarantine()
+	default:
+		return ctx.General()
+	}
+}
+
+func (f facilityView) GetAccessPolicy() pluginapi.FacilityAccessPolicyRef {
+	ctx := pluginapi.NewFacilityContext().AccessPolicies()
+	policy := strings.ToLower(strings.TrimSpace(f.accessPolicy))
+	switch {
+	case policy == "":
+		return ctx.Open()
+	case strings.Contains(policy, "restricted") || strings.Contains(policy, "secure"):
+		return ctx.Restricted()
+	case strings.Contains(policy, "staff"):
+		return ctx.StaffOnly()
+	default:
+		return ctx.Open()
+	}
+}
+
+func (f facilityView) SupportsHousingUnit(id string) bool {
+	for _, housingID := range f.housingUnitIDs {
+		if housingID == id {
+			return true
+		}
+	}
+	return false
+}
+
+type treatmentView struct {
+	baseView
+	name              string
+	procedureID       string
+	organismIDs       []string
+	cohortIDs         []string
+	dosagePlan        string
+	administrationLog []string
+	adverseEvents     []string
+}
+
+func newTreatmentView(treatment domain.Treatment) treatmentView {
+	return treatmentView{
+		baseView:          newBaseView(treatment.Base),
+		name:              treatment.Name,
+		procedureID:       treatment.ProcedureID,
+		organismIDs:       cloneStringSlice(treatment.OrganismIDs),
+		cohortIDs:         cloneStringSlice(treatment.CohortIDs),
+		dosagePlan:        treatment.DosagePlan,
+		administrationLog: cloneStringSlice(treatment.AdministrationLog),
+		adverseEvents:     cloneStringSlice(treatment.AdverseEvents),
+	}
+}
+
+func (t treatmentView) Name() string          { return t.name }
+func (t treatmentView) ProcedureID() string   { return t.procedureID }
+func (t treatmentView) OrganismIDs() []string { return cloneStringSlice(t.organismIDs) }
+func (t treatmentView) CohortIDs() []string   { return cloneStringSlice(t.cohortIDs) }
+func (t treatmentView) DosagePlan() string    { return t.dosagePlan }
+func (t treatmentView) AdministrationLog() []string {
+	return cloneStringSlice(t.administrationLog)
+}
+func (t treatmentView) AdverseEvents() []string {
+	return cloneStringSlice(t.adverseEvents)
+}
+
+// Contextual workflow accessors
+func (t treatmentView) GetCurrentStatus() pluginapi.TreatmentStatusRef {
+	return treatmentStatusFromLogs(t.administrationLog, t.adverseEvents)
+}
+
+func (t treatmentView) IsCompleted() bool {
+	status := t.GetCurrentStatus()
+	return status.IsCompleted() || status.IsFlagged()
+}
+
+func (t treatmentView) HasAdverseEvents() bool {
+	return len(t.adverseEvents) > 0
+}
+
+type observationView struct {
+	baseView
+	procedureID *string
+	organismID  *string
+	cohortID    *string
+	recordedAt  time.Time
+	observer    string
+	data        map[string]any
+	notes       string
+}
+
+func newObservationView(observation domain.Observation) observationView {
+	return observationView{
+		baseView:    newBaseView(observation.Base),
+		procedureID: cloneOptionalString(observation.ProcedureID),
+		organismID:  cloneOptionalString(observation.OrganismID),
+		cohortID:    cloneOptionalString(observation.CohortID),
+		recordedAt:  observation.RecordedAt,
+		observer:    observation.Observer,
+		data:        cloneAttributes(observation.Data),
+		notes:       observation.Notes,
+	}
+}
+
+func (o observationView) ProcedureID() (string, bool) {
+	return derefString(o.procedureID)
+}
+
+func (o observationView) OrganismID() (string, bool) {
+	return derefString(o.organismID)
+}
+
+func (o observationView) CohortID() (string, bool) {
+	return derefString(o.cohortID)
+}
+
+func (o observationView) RecordedAt() time.Time { return o.recordedAt }
+func (o observationView) Observer() string      { return o.observer }
+func (o observationView) Data() map[string]any  { return cloneAttributes(o.data) }
+func (o observationView) Notes() string         { return o.notes }
+
+// Contextual data shape accessors
+func (o observationView) GetDataShape() pluginapi.ObservationShapeRef {
+	return observationShapeFromData(len(o.data) > 0, o.notes)
+}
+
+func (o observationView) HasStructuredPayload() bool {
+	return o.GetDataShape().HasStructuredPayload()
+}
+
+func (o observationView) HasNarrativeNotes() bool {
+	return o.GetDataShape().HasNarrativeNotes()
+}
+
+type sampleView struct {
+	baseView
+	identifier      string
+	sourceType      string
+	organismID      *string
+	cohortID        *string
+	facilityID      string
+	collectedAt     time.Time
+	status          string
+	storageLocation string
+	assayType       string
+	chainOfCustody  []domain.SampleCustodyEvent
+	attributes      map[string]any
+}
+
+func newSampleView(sample domain.Sample) sampleView {
+	return sampleView{
+		baseView:        newBaseView(sample.Base),
+		identifier:      sample.Identifier,
+		sourceType:      sample.SourceType,
+		organismID:      cloneOptionalString(sample.OrganismID),
+		cohortID:        cloneOptionalString(sample.CohortID),
+		facilityID:      sample.FacilityID,
+		collectedAt:     sample.CollectedAt,
+		status:          sample.Status,
+		storageLocation: sample.StorageLocation,
+		assayType:       sample.AssayType,
+		chainOfCustody:  cloneCustodyEvents(sample.ChainOfCustody),
+		attributes:      cloneAttributes(sample.Attributes),
+	}
+}
+
+func (s sampleView) Identifier() string      { return s.identifier }
+func (s sampleView) SourceType() string      { return s.sourceType }
+func (s sampleView) FacilityID() string      { return s.facilityID }
+func (s sampleView) CollectedAt() time.Time  { return s.collectedAt }
+func (s sampleView) Status() string          { return s.status }
+func (s sampleView) StorageLocation() string { return s.storageLocation }
+func (s sampleView) AssayType() string       { return s.assayType }
+func (s sampleView) ChainOfCustody() []map[string]any {
+	return cloneCustodyEventMaps(s.chainOfCustody)
+}
+func (s sampleView) Attributes() map[string]any {
+	return cloneAttributes(s.attributes)
+}
+
+func (s sampleView) OrganismID() (string, bool) {
+	return derefString(s.organismID)
+}
+
+func (s sampleView) CohortID() (string, bool) {
+	return derefString(s.cohortID)
+}
+
+// Contextual sample accessors
+func (s sampleView) GetSource() pluginapi.SampleSourceRef {
+	ctx := pluginapi.NewSampleContext().Sources()
+	source := strings.ToLower(strings.TrimSpace(s.sourceType))
+	switch source {
+	case "organism":
+		return ctx.Organism()
+	case "cohort":
+		return ctx.Cohort()
+	case "environment", "environmental":
+		return ctx.Environmental()
+	default:
+		return ctx.Unknown()
+	}
+}
+
+func (s sampleView) GetStatus() pluginapi.SampleStatusRef {
+	ctx := pluginapi.NewSampleContext().Statuses()
+	status := strings.ToLower(strings.TrimSpace(s.status))
+	switch status {
+	case "stored":
+		return ctx.Stored()
+	case "in_transit", "in-transit", "transit":
+		return ctx.InTransit()
+	case "consumed":
+		return ctx.Consumed()
+	case "disposed":
+		return ctx.Disposed()
+	default:
+		return ctx.Stored()
+	}
+}
+
+func (s sampleView) IsAvailable() bool {
+	return s.GetStatus().IsAvailable()
+}
+
 type protocolView struct {
 	baseView
 	code        string
@@ -298,6 +641,155 @@ func (p protocolView) CanAcceptNewSubjects() bool {
 	return p.GetCurrentStatus().IsActive() && p.maxSubjects > 0
 }
 
+type permitView struct {
+	baseView
+	permitNumber      string
+	authority         string
+	validFrom         time.Time
+	validUntil        time.Time
+	allowedActivities []string
+	facilityIDs       []string
+	protocolIDs       []string
+	notes             string
+}
+
+func newPermitView(permit domain.Permit) permitView {
+	return permitView{
+		baseView:          newBaseView(permit.Base),
+		permitNumber:      permit.PermitNumber,
+		authority:         permit.Authority,
+		validFrom:         permit.ValidFrom,
+		validUntil:        permit.ValidUntil,
+		allowedActivities: cloneStringSlice(permit.AllowedActivities),
+		facilityIDs:       cloneStringSlice(permit.FacilityIDs),
+		protocolIDs:       cloneStringSlice(permit.ProtocolIDs),
+		notes:             permit.Notes,
+	}
+}
+
+func (p permitView) PermitNumber() string  { return p.permitNumber }
+func (p permitView) Authority() string     { return p.authority }
+func (p permitView) ValidFrom() time.Time  { return p.validFrom }
+func (p permitView) ValidUntil() time.Time { return p.validUntil }
+func (p permitView) AllowedActivities() []string {
+	return cloneStringSlice(p.allowedActivities)
+}
+func (p permitView) FacilityIDs() []string { return cloneStringSlice(p.facilityIDs) }
+func (p permitView) ProtocolIDs() []string { return cloneStringSlice(p.protocolIDs) }
+func (p permitView) Notes() string         { return p.notes }
+
+// Contextual validity accessors
+func (p permitView) GetStatus(reference time.Time) pluginapi.PermitStatusRef {
+	statuses := pluginapi.NewPermitContext().Statuses()
+	switch {
+	case reference.Before(p.validFrom):
+		return statuses.Pending()
+	case !p.validUntil.IsZero() && reference.After(p.validUntil):
+		return statuses.Expired()
+	default:
+		return statuses.Active()
+	}
+}
+
+func (p permitView) IsActive(reference time.Time) bool {
+	return p.GetStatus(reference).IsActive()
+}
+
+func (p permitView) IsExpired(reference time.Time) bool {
+	return p.GetStatus(reference).IsExpired()
+}
+
+type projectView struct {
+	baseView
+	code        string
+	title       string
+	description string
+	facilityIDs []string
+}
+
+func newProjectView(project domain.Project) projectView {
+	return projectView{
+		baseView:    newBaseView(project.Base),
+		code:        project.Code,
+		title:       project.Title,
+		description: project.Description,
+		facilityIDs: cloneStringSlice(project.FacilityIDs),
+	}
+}
+
+func (p projectView) Code() string        { return p.code }
+func (p projectView) Title() string       { return p.title }
+func (p projectView) Description() string { return p.description }
+func (p projectView) FacilityIDs() []string {
+	return cloneStringSlice(p.facilityIDs)
+}
+
+type supplyItemView struct {
+	baseView
+	sku            string
+	name           string
+	description    string
+	quantityOnHand int
+	unit           string
+	lotNumber      string
+	expiresAt      *time.Time
+	facilityIDs    []string
+	projectIDs     []string
+	reorderLevel   int
+	attributes     map[string]any
+}
+
+func newSupplyItemView(item domain.SupplyItem) supplyItemView {
+	return supplyItemView{
+		baseView:       newBaseView(item.Base),
+		sku:            item.SKU,
+		name:           item.Name,
+		description:    item.Description,
+		quantityOnHand: item.QuantityOnHand,
+		unit:           item.Unit,
+		lotNumber:      item.LotNumber,
+		expiresAt:      cloneTimePtr(item.ExpiresAt),
+		facilityIDs:    cloneStringSlice(item.FacilityIDs),
+		projectIDs:     cloneStringSlice(item.ProjectIDs),
+		reorderLevel:   item.ReorderLevel,
+		attributes:     cloneAttributes(item.Attributes),
+	}
+}
+
+func (s supplyItemView) SKU() string         { return s.sku }
+func (s supplyItemView) Name() string        { return s.name }
+func (s supplyItemView) Description() string { return s.description }
+func (s supplyItemView) QuantityOnHand() int { return s.quantityOnHand }
+func (s supplyItemView) Unit() string        { return s.unit }
+func (s supplyItemView) LotNumber() string   { return s.lotNumber }
+func (s supplyItemView) FacilityIDs() []string {
+	return cloneStringSlice(s.facilityIDs)
+}
+func (s supplyItemView) ProjectIDs() []string {
+	return cloneStringSlice(s.projectIDs)
+}
+func (s supplyItemView) ReorderLevel() int { return s.reorderLevel }
+func (s supplyItemView) Attributes() map[string]any {
+	return cloneAttributes(s.attributes)
+}
+
+func (s supplyItemView) ExpiresAt() (*time.Time, bool) {
+	return derefTime(s.expiresAt)
+}
+
+// Contextual inventory accessors
+func (s supplyItemView) GetInventoryStatus(reference time.Time) pluginapi.SupplyStatusRef {
+	return supplyStatusFromInventory(s.quantityOnHand, s.reorderLevel, s.expiresAt, reference)
+}
+
+func (s supplyItemView) RequiresReorder(reference time.Time) bool {
+	return s.GetInventoryStatus(reference).RequiresReorder()
+}
+
+func (s supplyItemView) IsExpired(reference time.Time) bool {
+	return s.GetInventoryStatus(reference).IsExpired()
+}
+
 func newOrganismViews(orgs []domain.Organism) []pluginapi.OrganismView {
 	if len(orgs) == 0 {
 		return nil
@@ -322,6 +814,50 @@ func newHousingUnitViews(units []domain.HousingUnit) []pluginapi.HousingUnitView
 	return views
 }
 
+func newFacilityViews(facilities []domain.Facility) []pluginapi.FacilityView {
+	if len(facilities) == 0 {
+		return nil
+	}
+	views := make([]pluginapi.FacilityView, len(facilities))
+	for i, facility := range facilities {
+		views[i] = newFacilityView(facility)
+	}
+	return views
+}
+
+func newTreatmentViews(treatments []domain.Treatment) []pluginapi.TreatmentView {
+	if len(treatments) == 0 {
+		return nil
+	}
+	views := make([]pluginapi.TreatmentView, len(treatments))
+	for i, treatment := range treatments {
+		views[i] = newTreatmentView(treatment)
+	}
+	return views
+}
+
+func newObservationViews(observations []domain.Observation) []pluginapi.ObservationView {
+	if len(observations) == 0 {
+		return nil
+	}
+	views := make([]pluginapi.ObservationView, len(observations))
+	for i, observation := range observations {
+		views[i] = newObservationView(observation)
+	}
+	return views
+}
+
+func newSampleViews(samples []domain.Sample) []pluginapi.SampleView {
+	if len(samples) == 0 {
+		return nil
+	}
+	views := make([]pluginapi.SampleView, len(samples))
+	for i, sample := range samples {
+		views[i] = newSampleView(sample)
+	}
+	return views
+}
+
 func newProtocolViews(protocols []domain.Protocol) []pluginapi.ProtocolView {
 	if len(protocols) == 0 {
 		return nil
@@ -330,6 +866,39 @@ func newProtocolViews(protocols []domain.Protocol) []pluginapi.ProtocolView {
 	for i, protocol := range protocols {
 		pv := newProtocolView(protocol)
 		views[i] = pv
+	}
+	return views
+}
+
+func newPermitViews(permits []domain.Permit) []pluginapi.PermitView {
+	if len(permits) == 0 {
+		return nil
+	}
+	views := make([]pluginapi.PermitView, len(permits))
+	for i, permit := range permits {
+		views[i] = newPermitView(permit)
+	}
+	return views
+}
+
+func newProjectViews(projects []domain.Project) []pluginapi.ProjectView {
+	if len(projects) == 0 {
+		return nil
+	}
+	views := make([]pluginapi.ProjectView, len(projects))
+	for i, project := range projects {
+		views[i] = newProjectView(project)
+	}
+	return views
+}
+
+func newSupplyItemViews(items []domain.SupplyItem) []pluginapi.SupplyItemView {
+	if len(items) == 0 {
+		return nil
+	}
+	views := make([]pluginapi.SupplyItemView, len(items))
+	for i, item := range items {
+		views[i] = newSupplyItemView(item)
 	}
 	return views
 }
@@ -383,6 +952,63 @@ func derefString(ptr *string) (string, bool) {
 	return *ptr, true
 }
 
+func cloneStringSlice(values []string) []string {
+	if len(values) == 0 {
+		return nil
+	}
+	out := make([]string, len(values))
+	copy(out, values)
+	return out
+}
+
+func cloneCustodyEvents(events []domain.SampleCustodyEvent) []domain.SampleCustodyEvent {
+	if len(events) == 0 {
+		return nil
+	}
+	out := make([]domain.SampleCustodyEvent, len(events))
+	for i, event := range events {
+		out[i] = domain.SampleCustodyEvent{
+			Actor:     event.Actor,
+			Location:  event.Location,
+			Timestamp: event.Timestamp,
+			Notes:     event.Notes,
+		}
+	}
+	return out
+}
+
+func cloneCustodyEventMaps(events []domain.SampleCustodyEvent) []map[string]any {
+	if len(events) == 0 {
+		return nil
+	}
+	out := make([]map[string]any, len(events))
+	for i, event := range events {
+		out[i] = map[string]any{
+			"actor":     event.Actor,
+			"location":  event.Location,
+			"timestamp": event.Timestamp,
+			"notes":     event.Notes,
+		}
+	}
+	return out
+}
+
+func cloneTimePtr(src *time.Time) *time.Time {
+	if src == nil {
+		return nil
+	}
+	value := *src
+	return &value
+}
+
+func derefTime(src *time.Time) (*time.Time, bool) {
+	if src == nil {
+		return nil, false
+	}
+	value := *src
+	return &value, true
+}
+
 func cloneAttributes(attrs map[string]any) map[string]any {
 	if len(attrs) == 0 {
 		return nil
@@ -392,6 +1018,46 @@ func cloneAttributes(attrs map[string]any) map[string]any {
 		out[k] = deepCloneAttribute(v)
 	}
 	return out
+}
+
+func treatmentStatusFromLogs(administrationLog, adverseEvents []string) pluginapi.TreatmentStatusRef {
+	statuses := pluginapi.NewTreatmentContext().Statuses()
+	switch {
+	case len(administrationLog) == 0:
+		return statuses.Planned()
+	case len(adverseEvents) == 0:
+		return statuses.Completed()
+	default:
+		return statuses.Flagged()
+	}
+}
+
+func observationShapeFromData(hasStructured bool, notes string) pluginapi.ObservationShapeRef {
+	shapes := pluginapi.NewObservationContext().Shapes()
+	trimmedNotes := strings.TrimSpace(notes)
+	switch {
+	case hasStructured && trimmedNotes != "":
+		return shapes.Mixed()
+	case hasStructured:
+		return shapes.Structured()
+	default:
+		return shapes.Narrative()
+	}
+}
+
+func supplyStatusFromInventory(quantity, reorderLevel int, expiresAt *time.Time, now time.Time) pluginapi.SupplyStatusRef {
+	statuses := pluginapi.NewSupplyContext().Statuses()
+	if expiresAt != nil && !expiresAt.IsZero() && expiresAt.Before(now) {
+		return statuses.Expired()
+	}
+	switch {
+	case quantity <= 0:
+		return statuses.Critical()
+	case reorderLevel > 0 && quantity <= reorderLevel:
+		return statuses.Reorder()
+	default:
+		return statuses.Healthy()
+	}
 }
 
 // deepCloneAttribute performs a best-effort recursive clone of common container

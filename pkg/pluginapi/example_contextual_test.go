@@ -97,7 +97,7 @@ func Example_contextualInterfacesBenefits() {
 	// Output:
 	// Organism is core entity: true
 	// Housing is core entity: true
-	// Protocol is core entity: false
+	// Protocol is core entity: true
 	// Warn is blocking: false
 	// Block is blocking: true
 }

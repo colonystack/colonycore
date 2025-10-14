@@ -6,16 +6,28 @@ FUNC NewBreedingContext() colonycore/pkg/datasetapi.BreedingContext
 FUNC NewBreedingUnit(colonycore/pkg/datasetapi.BreedingUnitData) colonycore/pkg/datasetapi.BreedingUnit
 FUNC NewCohort(colonycore/pkg/datasetapi.CohortData) colonycore/pkg/datasetapi.Cohort
 FUNC NewCohortContext() colonycore/pkg/datasetapi.CohortContext
+FUNC NewFacility(colonycore/pkg/datasetapi.FacilityData) colonycore/pkg/datasetapi.Facility
+FUNC NewFacilityContext() colonycore/pkg/datasetapi.FacilityContext
 FUNC NewHostTemplate(string,colonycore/pkg/datasetapi.Template) (colonycore/pkg/datasetapi.HostTemplate,error)
 FUNC NewHousingContext() colonycore/pkg/datasetapi.HousingContext
 FUNC NewHousingUnit(colonycore/pkg/datasetapi.HousingUnitData) colonycore/pkg/datasetapi.HousingUnit
 FUNC NewLifecycleStageContext() colonycore/pkg/datasetapi.LifecycleStageContext
+FUNC NewObservation(colonycore/pkg/datasetapi.ObservationData) colonycore/pkg/datasetapi.Observation
+FUNC NewObservationContext() colonycore/pkg/datasetapi.ObservationContext
 FUNC NewOrganism(colonycore/pkg/datasetapi.OrganismData) colonycore/pkg/datasetapi.Organism
+FUNC NewPermit(colonycore/pkg/datasetapi.PermitData) colonycore/pkg/datasetapi.Permit
+FUNC NewPermitContext() colonycore/pkg/datasetapi.PermitContext
 FUNC NewProcedure(colonycore/pkg/datasetapi.ProcedureData) colonycore/pkg/datasetapi.Procedure
 FUNC NewProcedureContext() colonycore/pkg/datasetapi.ProcedureContext
 FUNC NewProject(colonycore/pkg/datasetapi.ProjectData) colonycore/pkg/datasetapi.Project
 FUNC NewProtocol(colonycore/pkg/datasetapi.ProtocolData) colonycore/pkg/datasetapi.Protocol
 FUNC NewProtocolContext() colonycore/pkg/datasetapi.ProtocolContext
+FUNC NewSample(colonycore/pkg/datasetapi.SampleData) colonycore/pkg/datasetapi.Sample
+FUNC NewSampleContext() colonycore/pkg/datasetapi.SampleContext
+FUNC NewSupplyContext() colonycore/pkg/datasetapi.SupplyContext
+FUNC NewSupplyItem(colonycore/pkg/datasetapi.SupplyItemData) colonycore/pkg/datasetapi.SupplyItem
+FUNC NewTreatment(colonycore/pkg/datasetapi.TreatmentData) colonycore/pkg/datasetapi.Treatment
+FUNC NewTreatmentContext() colonycore/pkg/datasetapi.TreatmentContext
 FUNC SortTemplateDescriptors([]colonycore/pkg/datasetapi.TemplateDescriptor)
 TYPE BaseData struct { unexported }
 TYPE Binder (func(colonycore/pkg/datasetapi.Environment) (colonycore/pkg/datasetapi.Runner, error))
@@ -40,6 +52,13 @@ TYPE DialectProvider interface { DSL() colonycore/pkg/datasetapi.Dialect SQL() c
 TYPE EntityRef struct { unexported }
 TYPE Environment struct { unexported }
 TYPE EnvironmentTypeRef interface { Equals(colonycore/pkg/datasetapi.EnvironmentTypeRef) bool IsAquatic() bool IsHumid() bool String() string }
+TYPE Facility interface { AccessPolicy() string CreatedAt() time.Time EnvironmentBaselines() map[string]any GetAccessPolicy() colonycore/pkg/datasetapi.FacilityAccessPolicyRef GetZone() colonycore/pkg/datasetapi.FacilityZoneRef HousingUnitIDs() []string ID() string Name() string ProjectIDs() []string SupportsHousingUnit(string) bool UpdatedAt() time.Time Zone() string }
+TYPE FacilityAccessPolicyProvider interface { Open() colonycore/pkg/datasetapi.FacilityAccessPolicyRef Restricted() colonycore/pkg/datasetapi.FacilityAccessPolicyRef StaffOnly() colonycore/pkg/datasetapi.FacilityAccessPolicyRef }
+TYPE FacilityAccessPolicyRef interface { AllowsVisitors() bool Equals(colonycore/pkg/datasetapi.FacilityAccessPolicyRef) bool IsRestricted() bool String() string }
+TYPE FacilityContext interface { AccessPolicies() colonycore/pkg/datasetapi.FacilityAccessPolicyProvider Zones() colonycore/pkg/datasetapi.FacilityZoneProvider }
+TYPE FacilityData struct { unexported }
+TYPE FacilityZoneProvider interface { Biosecure() colonycore/pkg/datasetapi.FacilityZoneRef General() colonycore/pkg/datasetapi.FacilityZoneRef Quarantine() colonycore/pkg/datasetapi.FacilityZoneRef }
+TYPE FacilityZoneRef interface { Equals(colonycore/pkg/datasetapi.FacilityZoneRef) bool IsBiosecure() bool IsQuarantine() bool String() string }
 TYPE Format (string)
 TYPE FormatProvider interface { CSV() colonycore/pkg/datasetapi.Format HTML() colonycore/pkg/datasetapi.Format JSON() colonycore/pkg/datasetapi.Format PNG() colonycore/pkg/datasetapi.Format Parquet() colonycore/pkg/datasetapi.Format }
 TYPE HostTemplate struct { unexported }
@@ -50,16 +69,26 @@ TYPE LifecycleStage (string)
 TYPE LifecycleStageContext interface { Adult() colonycore/pkg/datasetapi.LifecycleStageRef Deceased() colonycore/pkg/datasetapi.LifecycleStageRef Juvenile() colonycore/pkg/datasetapi.LifecycleStageRef Larva() colonycore/pkg/datasetapi.LifecycleStageRef Planned() colonycore/pkg/datasetapi.LifecycleStageRef Retired() colonycore/pkg/datasetapi.LifecycleStageRef }
 TYPE LifecycleStageRef interface { Equals(colonycore/pkg/datasetapi.LifecycleStageRef) bool IsActive() bool String() string Value() colonycore/pkg/datasetapi.LifecycleStage }
 TYPE Metadata struct { unexported }
+TYPE Observation interface { CohortID() (string,bool) CreatedAt() time.Time Data() map[string]any GetDataShape() colonycore/pkg/datasetapi.ObservationShapeRef HasNarrativeNotes() bool HasStructuredPayload() bool ID() string Notes() string Observer() string OrganismID() (string,bool) ProcedureID() (string,bool) RecordedAt() time.Time UpdatedAt() time.Time }
+TYPE ObservationContext interface { Shapes() colonycore/pkg/datasetapi.ObservationShapeProvider }
+TYPE ObservationData struct { unexported }
+TYPE ObservationShapeProvider interface { Mixed() colonycore/pkg/datasetapi.ObservationShapeRef Narrative() colonycore/pkg/datasetapi.ObservationShapeRef Structured() colonycore/pkg/datasetapi.ObservationShapeRef }
+TYPE ObservationShapeRef interface { Equals(colonycore/pkg/datasetapi.ObservationShapeRef) bool HasNarrativeNotes() bool HasStructuredPayload() bool String() string }
 TYPE Organism interface { Attributes() map[string]any CohortID() (string,bool) CreatedAt() time.Time GetCurrentStage() colonycore/pkg/datasetapi.LifecycleStageRef HousingID() (string,bool) ID() string IsActive() bool IsDeceased() bool IsRetired() bool Line() string Name() string ProjectID() (string,bool) ProtocolID() (string,bool) Species() string Stage() colonycore/pkg/datasetapi.LifecycleStage UpdatedAt() time.Time }
 TYPE OrganismData struct { unexported }
 TYPE Parameter struct { unexported }
 TYPE ParameterError struct { unexported }
-TYPE PersistentStore interface { GetHousingUnit(string) (colonycore/pkg/datasetapi.HousingUnit,bool) GetOrganism(string) (colonycore/pkg/datasetapi.Organism,bool) ListBreedingUnits() []colonycore/pkg/datasetapi.BreedingUnit ListCohorts() []colonycore/pkg/datasetapi.Cohort ListHousingUnits() []colonycore/pkg/datasetapi.HousingUnit ListOrganisms() []colonycore/pkg/datasetapi.Organism ListProcedures() []colonycore/pkg/datasetapi.Procedure ListProjects() []colonycore/pkg/datasetapi.Project ListProtocols() []colonycore/pkg/datasetapi.Protocol View(context.Context,func(colonycore/pkg/datasetapi.TransactionView) error) error }
+TYPE Permit interface { AllowedActivities() []string Authority() string CreatedAt() time.Time FacilityIDs() []string GetStatus(time.Time) colonycore/pkg/datasetapi.PermitStatusRef ID() string IsActive(time.Time) bool IsExpired(time.Time) bool Notes() string PermitNumber() string ProtocolIDs() []string UpdatedAt() time.Time ValidFrom() time.Time ValidUntil() time.Time }
+TYPE PermitContext interface { Statuses() colonycore/pkg/datasetapi.PermitStatusProvider }
+TYPE PermitData struct { unexported }
+TYPE PermitStatusProvider interface { Active() colonycore/pkg/datasetapi.PermitStatusRef Expired() colonycore/pkg/datasetapi.PermitStatusRef Pending() colonycore/pkg/datasetapi.PermitStatusRef }
+TYPE PermitStatusRef interface { Equals(colonycore/pkg/datasetapi.PermitStatusRef) bool IsActive() bool IsExpired() bool String() string }
+TYPE PersistentStore interface { GetFacility(string) (colonycore/pkg/datasetapi.Facility,bool) GetHousingUnit(string) (colonycore/pkg/datasetapi.HousingUnit,bool) GetOrganism(string) (colonycore/pkg/datasetapi.Organism,bool) GetPermit(string) (colonycore/pkg/datasetapi.Permit,bool) ListBreedingUnits() []colonycore/pkg/datasetapi.BreedingUnit ListCohorts() []colonycore/pkg/datasetapi.Cohort ListFacilities() []colonycore/pkg/datasetapi.Facility ListHousingUnits() []colonycore/pkg/datasetapi.HousingUnit ListObservations() []colonycore/pkg/datasetapi.Observation ListOrganisms() []colonycore/pkg/datasetapi.Organism ListPermits() []colonycore/pkg/datasetapi.Permit ListProcedures() []colonycore/pkg/datasetapi.Procedure ListProjects() []colonycore/pkg/datasetapi.Project ListProtocols() []colonycore/pkg/datasetapi.Protocol ListSamples() []colonycore/pkg/datasetapi.Sample ListSupplyItems() []colonycore/pkg/datasetapi.SupplyItem ListTreatments() []colonycore/pkg/datasetapi.Treatment View(context.Context,func(colonycore/pkg/datasetapi.TransactionView) error) error }
 TYPE Procedure interface { CohortID() (string,bool) CreatedAt() time.Time GetCurrentStatus() colonycore/pkg/datasetapi.ProcedureStatusRef ID() string IsActiveProcedure() bool IsSuccessful() bool IsTerminalStatus() bool Name() string OrganismIDs() []string ProtocolID() string ScheduledAt() time.Time Status() string UpdatedAt() time.Time }
 TYPE ProcedureContext interface { Cancelled() colonycore/pkg/datasetapi.ProcedureStatusRef Completed() colonycore/pkg/datasetapi.ProcedureStatusRef Failed() colonycore/pkg/datasetapi.ProcedureStatusRef InProgress() colonycore/pkg/datasetapi.ProcedureStatusRef Scheduled() colonycore/pkg/datasetapi.ProcedureStatusRef }
 TYPE ProcedureData struct { unexported }
 TYPE ProcedureStatusRef interface { Equals(colonycore/pkg/datasetapi.ProcedureStatusRef) bool IsActive() bool IsSuccessful() bool IsTerminal() bool String() string }
-TYPE Project interface { Code() string CreatedAt() time.Time Description() string ID() string Title() string UpdatedAt() time.Time }
+TYPE Project interface { Code() string CreatedAt() time.Time Description() string FacilityIDs() []string ID() string Title() string UpdatedAt() time.Time }
 TYPE ProjectData struct { unexported }
 TYPE Protocol interface { CanAcceptNewSubjects() bool Code() string CreatedAt() time.Time Description() string GetCurrentStatus() colonycore/pkg/datasetapi.ProtocolStatusRef ID() string IsActiveProtocol() bool IsTerminalStatus() bool MaxSubjects() int Title() string UpdatedAt() time.Time }
 TYPE ProtocolContext interface { Active() colonycore/pkg/datasetapi.ProtocolStatusRef Cancelled() colonycore/pkg/datasetapi.ProtocolStatusRef Completed() colonycore/pkg/datasetapi.ProtocolStatusRef Draft() colonycore/pkg/datasetapi.ProtocolStatusRef Suspended() colonycore/pkg/datasetapi.ProtocolStatusRef }
@@ -69,8 +98,27 @@ TYPE Row (map[string]any)
 TYPE RunRequest struct { unexported }
 TYPE RunResult struct { unexported }
 TYPE Runner (func(context.Context, colonycore/pkg/datasetapi.RunRequest) (colonycore/pkg/datasetapi.RunResult, error))
+TYPE Sample interface { AssayType() string Attributes() map[string]any ChainOfCustody() []colonycore/pkg/datasetapi.SampleCustodyEvent CohortID() (string,bool) CollectedAt() time.Time CreatedAt() time.Time FacilityID() string GetSource() colonycore/pkg/datasetapi.SampleSourceRef GetStatus() colonycore/pkg/datasetapi.SampleStatusRef ID() string Identifier() string IsAvailable() bool OrganismID() (string,bool) SourceType() string Status() string StorageLocation() string UpdatedAt() time.Time }
+TYPE SampleContext interface { Sources() colonycore/pkg/datasetapi.SampleSourceProvider Statuses() colonycore/pkg/datasetapi.SampleStatusProvider }
+TYPE SampleCustodyEvent interface { Actor() string Location() string Notes() string Timestamp() time.Time }
+TYPE SampleCustodyEventData struct { unexported }
+TYPE SampleData struct { unexported }
+TYPE SampleSourceProvider interface { Cohort() colonycore/pkg/datasetapi.SampleSourceRef Environmental() colonycore/pkg/datasetapi.SampleSourceRef Organism() colonycore/pkg/datasetapi.SampleSourceRef Unknown() colonycore/pkg/datasetapi.SampleSourceRef }
+TYPE SampleSourceRef interface { Equals(colonycore/pkg/datasetapi.SampleSourceRef) bool IsCohortDerived() bool IsEnvironmental() bool IsOrganismDerived() bool String() string }
+TYPE SampleStatusProvider interface { Consumed() colonycore/pkg/datasetapi.SampleStatusRef Disposed() colonycore/pkg/datasetapi.SampleStatusRef InTransit() colonycore/pkg/datasetapi.SampleStatusRef Stored() colonycore/pkg/datasetapi.SampleStatusRef }
+TYPE SampleStatusRef interface { Equals(colonycore/pkg/datasetapi.SampleStatusRef) bool IsAvailable() bool IsTerminal() bool String() string }
 TYPE Scope struct { unexported }
+TYPE SupplyContext interface { Statuses() colonycore/pkg/datasetapi.SupplyStatusProvider }
+TYPE SupplyItem interface { Attributes() map[string]any CreatedAt() time.Time Description() string ExpiresAt() (*time.Time,bool) FacilityIDs() []string GetInventoryStatus(time.Time) colonycore/pkg/datasetapi.SupplyStatusRef ID() string IsExpired(time.Time) bool LotNumber() string Name() string ProjectIDs() []string QuantityOnHand() int ReorderLevel() int RequiresReorder(time.Time) bool SKU() string Unit() string UpdatedAt() time.Time }
+TYPE SupplyItemData struct { unexported }
+TYPE SupplyStatusProvider interface { Critical() colonycore/pkg/datasetapi.SupplyStatusRef Expired() colonycore/pkg/datasetapi.SupplyStatusRef Healthy() colonycore/pkg/datasetapi.SupplyStatusRef Reorder() colonycore/pkg/datasetapi.SupplyStatusRef }
+TYPE SupplyStatusRef interface { Equals(colonycore/pkg/datasetapi.SupplyStatusRef) bool IsExpired() bool RequiresReorder() bool String() string }
 TYPE Template struct { unexported }
 TYPE TemplateDescriptor struct { unexported }
 TYPE TemplateRuntime interface { Descriptor() colonycore/pkg/datasetapi.TemplateDescriptor Run(context.Context,map[string]any,colonycore/pkg/datasetapi.Scope,colonycore/pkg/datasetapi.Format) (colonycore/pkg/datasetapi.RunResult,[]colonycore/pkg/datasetapi.ParameterError,error) SupportsFormat(colonycore/pkg/datasetapi.Format) bool ValidateParameters(map[string]any) (map[string]any,[]colonycore/pkg/datasetapi.ParameterError) }
-TYPE TransactionView interface { FindHousingUnit(string) (colonycore/pkg/datasetapi.HousingUnit,bool) FindOrganism(string) (colonycore/pkg/datasetapi.Organism,bool) ListHousingUnits() []colonycore/pkg/datasetapi.HousingUnit ListOrganisms() []colonycore/pkg/datasetapi.Organism ListProtocols() []colonycore/pkg/datasetapi.Protocol }
+TYPE TransactionView interface { FindFacility(string) (colonycore/pkg/datasetapi.Facility,bool) FindHousingUnit(string) (colonycore/pkg/datasetapi.HousingUnit,bool) FindObservation(string) (colonycore/pkg/datasetapi.Observation,bool) FindOrganism(string) (colonycore/pkg/datasetapi.Organism,bool) FindPermit(string) (colonycore/pkg/datasetapi.Permit,bool) FindSample(string) (colonycore/pkg/datasetapi.Sample,bool) FindSupplyItem(string) (colonycore/pkg/datasetapi.SupplyItem,bool) FindTreatment(string) (colonycore/pkg/datasetapi.Treatment,bool) ListFacilities() []colonycore/pkg/datasetapi.Facility ListHousingUnits() []colonycore/pkg/datasetapi.HousingUnit ListObservations() []colonycore/pkg/datasetapi.Observation ListOrganisms() []colonycore/pkg/datasetapi.Organism ListPermits() []colonycore/pkg/datasetapi.Permit ListProjects() []colonycore/pkg/datasetapi.Project ListProtocols() []colonycore/pkg/datasetapi.Protocol ListSamples() []colonycore/pkg/datasetapi.Sample ListSupplyItems() []colonycore/pkg/datasetapi.SupplyItem ListTreatments() []colonycore/pkg/datasetapi.Treatment }
+TYPE Treatment interface { AdministrationLog() []string AdverseEvents() []string CohortIDs() []string CreatedAt() time.Time DosagePlan() string GetCurrentStatus() colonycore/pkg/datasetapi.TreatmentStatusRef HasAdverseEvents() bool ID() string IsCompleted() bool Name() string OrganismIDs() []string ProcedureID() string UpdatedAt() time.Time }
+TYPE TreatmentContext interface { Statuses() colonycore/pkg/datasetapi.TreatmentStatusProvider }
+TYPE TreatmentData struct { unexported }
+TYPE TreatmentStatusProvider interface { Completed() colonycore/pkg/datasetapi.TreatmentStatusRef Flagged() colonycore/pkg/datasetapi.TreatmentStatusRef InProgress() colonycore/pkg/datasetapi.TreatmentStatusRef Planned() colonycore/pkg/datasetapi.TreatmentStatusRef }
+TYPE TreatmentStatusRef interface { Equals(colonycore/pkg/datasetapi.TreatmentStatusRef) bool IsActive() bool IsCompleted() bool IsFlagged() bool String() string }

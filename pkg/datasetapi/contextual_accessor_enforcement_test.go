@@ -39,17 +39,35 @@ func validateFacadeInterfaceContextualAccessors(t *testing.T) {
 		"HousingUnit": {
 			"GetEnvironmentType", "IsAquaticEnvironment", "IsHumidEnvironment", "SupportsSpecies",
 		},
+		"Facility": {
+			"GetZone", "GetAccessPolicy", "SupportsHousingUnit",
+		},
 		"Protocol": {
 			"GetCurrentStatus", "IsActiveProtocol", "IsTerminalStatus", "CanAcceptNewSubjects",
 		},
 		"Procedure": {
 			"GetCurrentStatus", "IsActiveProcedure", "IsTerminalStatus", "IsSuccessful",
 		},
+		"Treatment": {
+			"GetCurrentStatus", "IsCompleted", "HasAdverseEvents",
+		},
+		"Observation": {
+			"GetDataShape", "HasStructuredPayload", "HasNarrativeNotes",
+		},
+		"Sample": {
+			"GetSource", "GetStatus", "IsAvailable",
+		},
 		"Cohort": {
 			"GetPurpose", "IsResearchCohort", "RequiresProtocol",
 		},
 		"BreedingUnit": {
 			"GetBreedingStrategy", "IsNaturalBreeding", "RequiresIntervention",
+		},
+		"Permit": {
+			"GetStatus", "IsActive", "IsExpired",
+		},
+		"SupplyItem": {
+			"GetInventoryStatus", "RequiresReorder", "IsExpired",
 		},
 	}
 
@@ -71,6 +89,18 @@ func validateFacadeInterfaceContextualAccessors(t *testing.T) {
 			interfaceType = reflect.TypeOf((*Cohort)(nil)).Elem()
 		case "BreedingUnit":
 			interfaceType = reflect.TypeOf((*BreedingUnit)(nil)).Elem()
+		case "Facility":
+			interfaceType = reflect.TypeOf((*Facility)(nil)).Elem()
+		case "Treatment":
+			interfaceType = reflect.TypeOf((*Treatment)(nil)).Elem()
+		case "Observation":
+			interfaceType = reflect.TypeOf((*Observation)(nil)).Elem()
+		case "Sample":
+			interfaceType = reflect.TypeOf((*Sample)(nil)).Elem()
+		case "Permit":
+			interfaceType = reflect.TypeOf((*Permit)(nil)).Elem()
+		case "SupplyItem":
+			interfaceType = reflect.TypeOf((*SupplyItem)(nil)).Elem()
 		default:
 			t.Fatalf("Unknown interface: %s", interfaceName)
 		}
@@ -137,8 +167,14 @@ func validateNoRawConstantsInFacadeInterfaces(t *testing.T) {
 	contextualInterfaces := map[string]bool{
 		"Organism":    true,
 		"HousingUnit": true,
+		"Facility":    true,
 		"Protocol":    true,
 		"Procedure":   true,
+		"Treatment":   true,
+		"Observation": true,
+		"Sample":      true,
+		"Permit":      true,
+		"SupplyItem":  true,
 	}
 
 	// Look for interface declarations
@@ -213,6 +249,14 @@ func validateDatasetContextualInterfacePattern(t *testing.T) {
 		reflect.TypeOf((*ProcedureStatusRef)(nil)).Elem(),
 		reflect.TypeOf((*BreedingStrategyRef)(nil)).Elem(),
 		reflect.TypeOf((*CohortPurposeRef)(nil)).Elem(),
+		reflect.TypeOf((*FacilityZoneRef)(nil)).Elem(),
+		reflect.TypeOf((*FacilityAccessPolicyRef)(nil)).Elem(),
+		reflect.TypeOf((*TreatmentStatusRef)(nil)).Elem(),
+		reflect.TypeOf((*ObservationShapeRef)(nil)).Elem(),
+		reflect.TypeOf((*SampleSourceRef)(nil)).Elem(),
+		reflect.TypeOf((*SampleStatusRef)(nil)).Elem(),
+		reflect.TypeOf((*PermitStatusRef)(nil)).Elem(),
+		reflect.TypeOf((*SupplyStatusRef)(nil)).Elem(),
 	}
 
 	for _, refType := range contextualRefTypes {

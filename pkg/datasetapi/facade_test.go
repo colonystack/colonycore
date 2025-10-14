@@ -52,7 +52,7 @@ func TestOrganismFacadeReadOnly(t *testing.T) {
 		label  string
 		expect string
 	}{
-		{organism.CohortID, "cohort", cohort},
+		{organism.CohortID, organismCohortID, cohort},
 		{organism.HousingID, "housing", housing},
 		{organism.ProtocolID, "protocol", protocol},
 		{organism.ProjectID, "project", project},
@@ -228,7 +228,7 @@ func TestProtocolProjectCohortFacades(t *testing.T) {
 		if err := json.Unmarshal(payload, &serialized); err != nil {
 			t.Fatalf("unmarshal cohort: %v", err)
 		}
-		if serialized["id"] != "cohort" || serialized["purpose"] != "Study" {
+		if serialized["id"] != organismCohortID || serialized["purpose"] != "Study" {
 			t.Fatalf("unexpected cohort json: %+v", serialized)
 		}
 	}
@@ -266,6 +266,230 @@ func TestProtocolProjectCohortFacades(t *testing.T) {
 		}
 		if serialized["id"] != "housing" || serialized["environment"] != envHumid {
 			t.Fatalf("unexpected housing json: %+v", serialized)
+		}
+	}
+}
+
+//nolint:gocyclo // This comprehensive facade test covers many entity types and has inherent complexity
+func TestExtendedFacades(t *testing.T) {
+	now := time.Now().UTC()
+	expires := now.Add(24 * time.Hour)
+	housingID := "H1"
+
+	facility := NewFacility(FacilityData{
+		Base:                 BaseData{ID: "facility", CreatedAt: now, UpdatedAt: now},
+		Name:                 "Biosecure",
+		Zone:                 "Biosecure Wing",
+		AccessPolicy:         "Restricted",
+		EnvironmentBaselines: map[string]any{"temp": 21},
+		HousingUnitIDs:       []string{housingID},
+		ProjectIDs:           []string{"proj"},
+	})
+	if facility.Name() == "" || facility.Zone() == "" || facility.AccessPolicy() == "" {
+		t.Fatal("facility getters should expose values")
+	}
+	if _, ok := facility.EnvironmentBaselines()["temp"]; !ok {
+		t.Fatal("facility baselines should round-trip")
+	}
+	if len(facility.HousingUnitIDs()) != 1 || len(facility.ProjectIDs()) != 1 {
+		t.Fatal("facility should expose related ids")
+	}
+	if !facility.SupportsHousingUnit(housingID) {
+		t.Fatal("facility should support housing id")
+	}
+	if !facility.GetZone().IsBiosecure() || !facility.GetAccessPolicy().IsRestricted() {
+		t.Fatal("facility contextual helpers should reflect semantics")
+	}
+
+	treatment := NewTreatment(TreatmentData{
+		Base:              BaseData{ID: "treatment", CreatedAt: now},
+		Name:              "Dose A",
+		ProcedureID:       "proc",
+		OrganismIDs:       []string{"org"},
+		CohortIDs:         []string{"cohort"},
+		DosagePlan:        "dose plan",
+		AdministrationLog: []string{"dose"},
+		AdverseEvents:     []string{"note"},
+	})
+	if treatment.Name() == "" || treatment.DosagePlan() == "" {
+		t.Fatal("treatment facade should expose fields")
+	}
+	if len(treatment.OrganismIDs()) != 1 || len(treatment.CohortIDs()) != 1 {
+		t.Fatal("treatment should expose related ids")
+	}
+	if !treatment.HasAdverseEvents() || !treatment.IsCompleted() {
+		t.Fatal("treatment helpers should reflect log state")
+	}
+	if len(treatment.AdministrationLog()) != 1 || len(treatment.AdverseEvents()) != 1 {
+		t.Fatal("treatment should expose administration log and adverse events")
+	}
+
+	procID := "proc"
+	organObs := "org-obs"
+	cohortObs := "cohort-obs"
+	observation := NewObservation(ObservationData{
+		Base:        BaseData{ID: "observation", CreatedAt: now},
+		RecordedAt:  now,
+		Observer:    "tech",
+		ProcedureID: &procID,
+		OrganismID:  &organObs,
+		CohortID:    &cohortObs,
+		Notes:       "value",
+		Data:        map[string]any{"score": 1},
+	})
+	if observation.Observer() == "" || observation.Notes() == "" {
+		t.Fatal("observation should retain data")
+	}
+	if val, ok := observation.ProcedureID(); !ok || val != procID {
+		t.Fatalf("expected observation procedure id %q, got %q (ok=%v)", procID, val, ok)
+	}
+	if val, ok := observation.OrganismID(); !ok || val != organObs {
+		t.Fatalf("expected observation organism id %q, got %q (ok=%v)", organObs, val, ok)
+	}
+	if val, ok := observation.CohortID(); !ok || val != cohortObs {
+		t.Fatalf("expected observation cohort id %q, got %q (ok=%v)", cohortObs, val, ok)
+	}
+	if !observation.RecordedAt().Equal(now) {
+		t.Fatalf("expected recorded at %v, got %v", now, observation.RecordedAt())
+	}
+	if _, ok := observation.ProcedureID(); !ok {
+		t.Fatal("observation should expose procedure id")
+	}
+	shape := observation.GetDataShape()
+	if !shape.HasStructuredPayload() || !shape.HasNarrativeNotes() {
+		t.Fatal("observation mixed data shape should report both semantics")
+	}
+	if observation.Data()["score"] != 1 || observation.Notes() == "" {
+		t.Fatal("observation should expose data payload and notes")
+	}
+
+	organID := "org"
+	cohortSample := "cohort"
+	sample := NewSample(SampleData{
+		Base:            BaseData{ID: "sample", CreatedAt: now},
+		Identifier:      "S1",
+		SourceType:      "organism",
+		OrganismID:      &organID,
+		CohortID:        &cohortSample,
+		FacilityID:      facility.ID(),
+		CollectedAt:     now,
+		Status:          "stored",
+		StorageLocation: "freezer",
+		AssayType:       "assay",
+		Attributes:      map[string]any{"key": "value"},
+		ChainOfCustody: []SampleCustodyEventData{{
+			Actor:     "tech",
+			Location:  "lab",
+			Timestamp: now,
+			Notes:     "handoff",
+		}},
+	})
+	if sample.Identifier() == "" || sample.AssayType() == "" || sample.StorageLocation() == "" {
+		t.Fatal("sample should expose fields")
+	}
+	if _, ok := sample.OrganismID(); !ok {
+		t.Fatal("sample should expose organism id")
+	}
+	if val, ok := sample.CohortID(); !ok || val != cohortSample {
+		t.Fatalf("expected cohort value %q, got %q (ok=%v)", cohortSample, val, ok)
+	}
+	if len(sample.ChainOfCustody()) != 1 {
+		t.Fatal("sample custody events should be preserved")
+	}
+	event := sample.ChainOfCustody()[0]
+	if event.Actor() != "tech" || event.Location() != "lab" || event.Notes() != "handoff" {
+		t.Fatalf("unexpected custody event contents: %+v", event)
+	}
+	if !event.Timestamp().Equal(now) {
+		t.Fatalf("expected custody timestamp %v, got %v", now, event.Timestamp())
+	}
+	if !sample.IsAvailable() || !sample.GetSource().IsOrganismDerived() {
+		t.Fatal("sample helpers should report availability/source")
+	}
+	if sample.Status() == "" || sample.StorageLocation() == "" {
+		t.Fatal("sample should expose status and storage location")
+	}
+	if sample.Attributes()["key"] != "value" {
+		t.Fatal("sample attributes should round-trip")
+	}
+
+	permit := NewPermit(PermitData{
+		Base:              BaseData{ID: "permit", CreatedAt: now},
+		PermitNumber:      "PERMIT",
+		Authority:         "Gov",
+		ValidFrom:         now.Add(-time.Hour),
+		ValidUntil:        now.Add(time.Hour),
+		AllowedActivities: []string{"activity"},
+		FacilityIDs:       []string{facility.ID()},
+		ProtocolIDs:       []string{"protocol"},
+		Notes:             "note",
+	})
+	if permit.PermitNumber() == "" || permit.Authority() == "" || permit.Notes() == "" {
+		t.Fatal("permit should expose fields")
+	}
+	if len(permit.AllowedActivities()) != 1 || len(permit.FacilityIDs()) != 1 || len(permit.ProtocolIDs()) != 1 {
+		t.Fatal("permit should expose related ids")
+	}
+	if !permit.IsActive(now) || permit.IsExpired(now.Add(-2*time.Hour)) {
+		t.Fatal("permit helpers should evaluate validity")
+	}
+	if permit.GetStatus(now).String() == "" {
+		t.Fatal("permit contextual status should be available")
+	}
+	if len(permit.AllowedActivities()) != 1 || len(permit.FacilityIDs()) != 1 || len(permit.ProtocolIDs()) != 1 {
+		t.Fatal("permit should expose related ids")
+	}
+	if permit.GetStatus(now).String() == "" {
+		t.Fatal("permit contextual status should be available")
+	}
+
+	supply := NewSupplyItem(SupplyItemData{
+		Base:           BaseData{ID: "supply", CreatedAt: now, UpdatedAt: now},
+		SKU:            "SKU",
+		Name:           "Feed",
+		Description:    "desc",
+		QuantityOnHand: 1,
+		Unit:           "kg",
+		LotNumber:      "LOT",
+		FacilityIDs:    []string{facility.ID()},
+		ProjectIDs:     []string{"proj"},
+		ReorderLevel:   2,
+		Attributes:     map[string]any{"key": "value"},
+		ExpiresAt:      &expires,
+	})
+	if supply.SKU() == "" || supply.Name() == "" || supply.Unit() == "" || supply.LotNumber() == "" {
+		t.Fatal("supply should expose fields")
+	}
+	if len(supply.FacilityIDs()) != 1 || len(supply.ProjectIDs()) != 1 {
+		t.Fatal("supply should expose related ids")
+	}
+	if !supply.RequiresReorder(now) || supply.Attributes()["key"] != "value" {
+		t.Fatal("supply helpers should report reorder and attributes")
+	}
+	if !supply.GetInventoryStatus(expires.Add(time.Hour)).IsExpired() {
+		t.Fatal("supply should report expired after expiration")
+	}
+	if supply.Unit() == "" || supply.LotNumber() == "" {
+		t.Fatal("supply should expose unit and lot number")
+	}
+	if len(supply.FacilityIDs()) != 1 || len(supply.ProjectIDs()) != 1 {
+		t.Fatal("supply should expose related ids")
+	}
+	if qty := supply.QuantityOnHand(); qty != 1 {
+		t.Fatalf("expected quantity 1, got %d", qty)
+	}
+
+	// JSON round-trips cover MarshalJSON code paths for new facades
+	for name, value := range map[string]any{
+		"facility":    facility,
+		"treatment":   treatment,
+		"observation": observation,
+		"sample":      sample,
+		"permit":      permit,
+		"supply":      supply,
+	} {
+		if _, err := json.Marshal(value); err != nil {
+			t.Fatalf("marshal %s: %v", name, err)
 		}
 	}
 }

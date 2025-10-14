@@ -271,6 +271,40 @@ func TestDatasetTemplateSlugVariants(t *testing.T) {
 	}
 }
 
+func TestDatasetTemplateDescriptorAndFormats(t *testing.T) {
+	formatProvider := datasetapi.GetFormatProvider()
+	template := DatasetTemplate{
+		Plugin: "demo",
+		Template: datasetapi.Template{
+			Key:           "demo",
+			Version:       "1.0.0",
+			Title:         "Demo",
+			Description:   "desc",
+			Dialect:       datasetapi.GetDialectProvider().SQL(),
+			Query:         "SELECT 1",
+			Parameters:    []datasetapi.Parameter{{Name: "limit", Type: "integer", Required: true}},
+			Columns:       []datasetapi.Column{{Name: "value", Type: "integer"}},
+			Metadata:      datasetapi.Metadata{Tags: []string{"tag"}},
+			OutputFormats: []datasetapi.Format{formatProvider.JSON()},
+		},
+	}
+
+	desc := template.Descriptor()
+	if desc.Key != demoTemplateKey || desc.Plugin != demoTemplateKey || len(desc.Columns) != 1 || len(desc.Parameters) != 1 {
+		t.Fatalf("unexpected descriptor: %+v", desc)
+	}
+	if desc.Columns[0].Name == "" || desc.Parameters[0].Name == "" {
+		t.Fatal("descriptor should clone column/parameter definitions")
+	}
+
+	if !template.SupportsFormat(formatProvider.JSON()) {
+		t.Fatal("template should support declared format")
+	}
+	if template.SupportsFormat(formatProvider.CSV()) {
+		t.Fatal("template should not support undeclared format")
+	}
+}
+
 func TestDatasetTemplateValidateFailures(t *testing.T) {
 	dialectProvider := datasetapi.GetDialectProvider()
 	formatProvider := datasetapi.GetFormatProvider()

@@ -15,11 +15,36 @@ type fakeRuleViewNoHousing struct {
 
 func (v fakeRuleViewNoHousing) ListOrganisms() []pluginapi.OrganismView       { return v.orgs }
 func (v fakeRuleViewNoHousing) ListHousingUnits() []pluginapi.HousingUnitView { return v.housing }
+func (fakeRuleViewNoHousing) ListFacilities() []pluginapi.FacilityView        { return nil }
+func (fakeRuleViewNoHousing) ListTreatments() []pluginapi.TreatmentView       { return nil }
+func (fakeRuleViewNoHousing) ListObservations() []pluginapi.ObservationView   { return nil }
+func (fakeRuleViewNoHousing) ListSamples() []pluginapi.SampleView             { return nil }
 func (v fakeRuleViewNoHousing) ListProtocols() []pluginapi.ProtocolView       { return nil }
+func (fakeRuleViewNoHousing) ListPermits() []pluginapi.PermitView             { return nil }
+func (fakeRuleViewNoHousing) ListProjects() []pluginapi.ProjectView           { return nil }
+func (fakeRuleViewNoHousing) ListSupplyItems() []pluginapi.SupplyItemView     { return nil }
 func (v fakeRuleViewNoHousing) FindOrganism(_ string) (pluginapi.OrganismView, bool) {
 	return nil, false
 }
 func (v fakeRuleViewNoHousing) FindHousingUnit(_ string) (pluginapi.HousingUnitView, bool) {
+	return nil, false
+}
+func (fakeRuleViewNoHousing) FindFacility(string) (pluginapi.FacilityView, bool) {
+	return nil, false
+}
+func (fakeRuleViewNoHousing) FindTreatment(string) (pluginapi.TreatmentView, bool) {
+	return nil, false
+}
+func (fakeRuleViewNoHousing) FindObservation(string) (pluginapi.ObservationView, bool) {
+	return nil, false
+}
+func (fakeRuleViewNoHousing) FindSample(string) (pluginapi.SampleView, bool) {
+	return nil, false
+}
+func (fakeRuleViewNoHousing) FindPermit(string) (pluginapi.PermitView, bool) {
+	return nil, false
+}
+func (fakeRuleViewNoHousing) FindSupplyItem(string) (pluginapi.SupplyItemView, bool) {
 	return nil, false
 }
 func strPtr(s string) *string { return &s }

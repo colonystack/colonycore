@@ -39,8 +39,26 @@ func validateViewInterfaceContextualAccessors(t *testing.T) {
 		"HousingUnitView": {
 			"GetEnvironmentType", "IsAquaticEnvironment", "IsHumidEnvironment", "SupportsSpecies",
 		},
+		"FacilityView": {
+			"GetZone", "GetAccessPolicy", "SupportsHousingUnit",
+		},
+		"TreatmentView": {
+			"GetCurrentStatus", "IsCompleted", "HasAdverseEvents",
+		},
+		"ObservationView": {
+			"GetDataShape", "HasStructuredPayload", "HasNarrativeNotes",
+		},
+		"SampleView": {
+			"GetSource", "GetStatus", "IsAvailable",
+		},
 		"ProtocolView": {
 			"GetCurrentStatus", "IsActiveProtocol", "IsTerminalStatus", "CanAcceptNewSubjects",
+		},
+		"PermitView": {
+			"GetStatus", "IsActive", "IsExpired",
+		},
+		"SupplyItemView": {
+			"GetInventoryStatus", "RequiresReorder", "IsExpired",
 		},
 	}
 
@@ -56,6 +74,18 @@ func validateViewInterfaceContextualAccessors(t *testing.T) {
 			interfaceType = reflect.TypeOf((*HousingUnitView)(nil)).Elem()
 		case "ProtocolView":
 			interfaceType = reflect.TypeOf((*ProtocolView)(nil)).Elem()
+		case "FacilityView":
+			interfaceType = reflect.TypeOf((*FacilityView)(nil)).Elem()
+		case "TreatmentView":
+			interfaceType = reflect.TypeOf((*TreatmentView)(nil)).Elem()
+		case "ObservationView":
+			interfaceType = reflect.TypeOf((*ObservationView)(nil)).Elem()
+		case "SampleView":
+			interfaceType = reflect.TypeOf((*SampleView)(nil)).Elem()
+		case "PermitView":
+			interfaceType = reflect.TypeOf((*PermitView)(nil)).Elem()
+		case "SupplyItemView":
+			interfaceType = reflect.TypeOf((*SupplyItemView)(nil)).Elem()
 		default:
 			t.Fatalf("Unknown interface: %s", interfaceName)
 		}
@@ -178,6 +208,14 @@ func validateContextualInterfacePattern(t *testing.T) {
 		reflect.TypeOf((*LifecycleStageRef)(nil)).Elem(),
 		reflect.TypeOf((*EnvironmentTypeRef)(nil)).Elem(),
 		reflect.TypeOf((*ProtocolStatusRef)(nil)).Elem(),
+		reflect.TypeOf((*FacilityZoneRef)(nil)).Elem(),
+		reflect.TypeOf((*FacilityAccessPolicyRef)(nil)).Elem(),
+		reflect.TypeOf((*TreatmentStatusRef)(nil)).Elem(),
+		reflect.TypeOf((*ObservationShapeRef)(nil)).Elem(),
+		reflect.TypeOf((*SampleSourceRef)(nil)).Elem(),
+		reflect.TypeOf((*SampleStatusRef)(nil)).Elem(),
+		reflect.TypeOf((*PermitStatusRef)(nil)).Elem(),
+		reflect.TypeOf((*SupplyStatusRef)(nil)).Elem(),
 	}
 
 	for _, refType := range contextualRefTypes {
