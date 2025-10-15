@@ -31,7 +31,8 @@ func TestHousingCapacityRuleViolation(t *testing.T) {
 	rule := NewHousingCapacityRule()
 	mem := NewMemoryStore(NewRulesEngine())
 	_, _ = mem.RunInTransaction(context.Background(), func(tx domain.Transaction) error {
-		h, _ := tx.CreateHousingUnit(domain.HousingUnit{Name: "H", Capacity: 1})
+		f, _ := tx.CreateFacility(domain.Facility{Name: "F"})
+		h, _ := tx.CreateHousingUnit(domain.HousingUnit{Name: "H", FacilityID: f.ID, Capacity: 1})
 		_, _ = tx.CreateOrganism(domain.Organism{Name: "A", Species: "frog", HousingID: &h.ID})
 		_, _ = tx.CreateOrganism(domain.Organism{Name: "B", Species: "frog", HousingID: &h.ID})
 		return nil
