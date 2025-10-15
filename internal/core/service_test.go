@@ -19,7 +19,12 @@ func TestHousingCapacityRuleBlocksOverCapacity(t *testing.T) {
 	svc := core.NewInMemoryService(core.NewDefaultRulesEngine())
 	ctx := context.Background()
 
-	housing, res, err := svc.CreateHousingUnit(ctx, domain.HousingUnit{Name: "Tank A", FacilityID: "Greenhouse", Capacity: 1})
+	facility, _, err := svc.CreateFacility(ctx, domain.Facility{Name: "Greenhouse"})
+	if err != nil {
+		t.Fatalf("create facility: %v", err)
+	}
+
+	housing, res, err := svc.CreateHousingUnit(ctx, domain.HousingUnit{Name: "Tank A", FacilityID: facility.ID, Capacity: 1})
 	if err != nil {
 		t.Fatalf("create housing: %v", err)
 	}
@@ -140,7 +145,12 @@ func TestFrogPluginRegistersSchemasAndRules(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	housing, _, err := svc.CreateHousingUnit(ctx, domain.HousingUnit{Name: "Dry Terrarium", FacilityID: "Lab", Capacity: 2, Environment: "arid"})
+	facility, _, err := svc.CreateFacility(ctx, domain.Facility{Name: "Lab"})
+	if err != nil {
+		t.Fatalf("create facility: %v", err)
+	}
+
+	housing, _, err := svc.CreateHousingUnit(ctx, domain.HousingUnit{Name: "Dry Terrarium", FacilityID: facility.ID, Capacity: 2, Environment: "arid"})
 	if err != nil {
 		t.Fatalf("create housing: %v", err)
 	}
@@ -170,7 +180,12 @@ func TestServiceExtendedCRUD(t *testing.T) {
 	svc := core.NewInMemoryService(core.NewDefaultRulesEngine())
 	ctx := context.Background()
 
-	project, _, err := svc.CreateProject(ctx, domain.Project{Code: "PRJ-EXT", Title: "Extended"})
+	facility, _, err := svc.CreateFacility(ctx, domain.Facility{Name: "Lab"})
+	if err != nil {
+		t.Fatalf("create facility: %v", err)
+	}
+
+	project, _, err := svc.CreateProject(ctx, domain.Project{Code: "PRJ-EXT", Title: "Extended", FacilityIDs: []string{facility.ID}})
 	if err != nil {
 		t.Fatalf("create project: %v", err)
 	}
@@ -178,7 +193,7 @@ func TestServiceExtendedCRUD(t *testing.T) {
 	if err != nil {
 		t.Fatalf("create protocol: %v", err)
 	}
-	housing, _, err := svc.CreateHousingUnit(ctx, domain.HousingUnit{Name: "Humid", FacilityID: "Lab", Capacity: 4, Environment: "humid"})
+	housing, _, err := svc.CreateHousingUnit(ctx, domain.HousingUnit{Name: "Humid", FacilityID: facility.ID, Capacity: 4, Environment: "humid"})
 	if err != nil {
 		t.Fatalf("create housing: %v", err)
 	}
@@ -256,6 +271,119 @@ func TestServiceExtendedCRUD(t *testing.T) {
 	}
 	if _, err := svc.DeleteOrganism(ctx, organismB.ID); err != nil {
 		t.Fatalf("delete organism: %v", err)
+	}
+}
+
+func TestServiceUpdateDeleteWrappers(t *testing.T) {
+	svc := core.NewInMemoryService(core.NewDefaultRulesEngine())
+	ctx := context.Background()
+
+	const updatedDesc = "updated"
+
+	project, _, err := svc.CreateProject(ctx, domain.Project{Code: "PRJ-WRAP", Title: "Wrap"})
+	if err != nil {
+		t.Fatalf("create project: %v", err)
+	}
+	updatedProj, res, err := svc.UpdateProject(ctx, project.ID, func(p *domain.Project) error {
+		p.Description = updatedDesc
+		return nil
+	})
+	if err != nil {
+		t.Fatalf("update project: %v", err)
+	}
+	if res.HasBlocking() {
+		t.Fatalf("unexpected violations: %+v", res.Violations)
+	}
+	if updatedProj.Description != updatedDesc {
+		t.Fatalf("expected project description update")
+	}
+	if res, err := svc.DeleteProject(ctx, project.ID); err != nil {
+		t.Fatalf("delete project: %v", err)
+	} else if res.HasBlocking() {
+		t.Fatalf("unexpected violations on project delete: %+v", res.Violations)
+	}
+
+	protocol, _, err := svc.CreateProtocol(ctx, domain.Protocol{Code: "PROTO-WRAP", Title: "Wrap Proto", MaxSubjects: 3})
+	if err != nil {
+		t.Fatalf("create protocol: %v", err)
+	}
+	updatedProto, res, err := svc.UpdateProtocol(ctx, protocol.ID, func(p *domain.Protocol) error {
+		p.Description = updatedDesc
+		return nil
+	})
+	if err != nil {
+		t.Fatalf("update protocol: %v", err)
+	}
+	if res.HasBlocking() {
+		t.Fatalf("unexpected protocol update violations: %+v", res.Violations)
+	}
+	if updatedProto.Description != updatedDesc {
+		t.Fatalf("expected protocol description update")
+	}
+	if res, err := svc.DeleteProtocol(ctx, protocol.ID); err != nil {
+		t.Fatalf("delete protocol: %v", err)
+	} else if res.HasBlocking() {
+		t.Fatalf("unexpected protocol delete violations: %+v", res.Violations)
+	}
+
+	facility, _, err := svc.CreateFacility(ctx, domain.Facility{Name: "Facility Wrap"})
+	if err != nil {
+		t.Fatalf("create facility: %v", err)
+	}
+	housing, _, err := svc.CreateHousingUnit(ctx, domain.HousingUnit{Name: "Housing Wrap", FacilityID: facility.ID, Capacity: 2})
+	if err != nil {
+		t.Fatalf("create housing: %v", err)
+	}
+	updatedHousing, res, err := svc.UpdateHousingUnit(ctx, housing.ID, func(h *domain.HousingUnit) error {
+		h.Capacity = 3
+		h.Environment = "humid"
+		return nil
+	})
+	if err != nil {
+		t.Fatalf("update housing: %v", err)
+	}
+	if res.HasBlocking() {
+		t.Fatalf("unexpected housing update violations: %+v", res.Violations)
+	}
+	if updatedHousing.Capacity != 3 || updatedHousing.Environment != "humid" {
+		t.Fatalf("expected housing update to apply, got %+v", updatedHousing)
+	}
+	if res, err := svc.DeleteHousingUnit(ctx, housing.ID); err != nil {
+		t.Fatalf("delete housing: %v", err)
+	} else if res.HasBlocking() {
+		t.Fatalf("unexpected housing delete violations: %+v", res.Violations)
+	}
+}
+
+func TestServiceFacilityLifecycle(t *testing.T) {
+	svc := core.NewInMemoryService(core.NewDefaultRulesEngine())
+	ctx := context.Background()
+
+	facility, _, err := svc.CreateFacility(ctx, domain.Facility{Name: "Lifecycle Facility"})
+	if err != nil {
+		t.Fatalf("create facility: %v", err)
+	}
+	updated, res, err := svc.UpdateFacility(ctx, facility.ID, func(f *domain.Facility) error {
+		f.Zone = "ZoneA"
+		if f.EnvironmentBaselines == nil {
+			f.EnvironmentBaselines = map[string]any{}
+		}
+		f.EnvironmentBaselines["temperature"] = "22C"
+		return nil
+	})
+	if err != nil {
+		t.Fatalf("update facility: %v", err)
+	}
+	if res.HasBlocking() {
+		t.Fatalf("unexpected facility update violations: %+v", res.Violations)
+	}
+	if updated.Zone != "ZoneA" || updated.EnvironmentBaselines["temperature"] != "22C" {
+		t.Fatalf("expected facility update to apply, got %+v", updated)
+	}
+	if res, err := svc.DeleteFacility(ctx, facility.ID); err != nil {
+		t.Fatalf("delete facility: %v", err)
+	} else if res.HasBlocking() {
+		t.Fatalf("unexpected facility delete violations: %+v", res.Violations)
 	}
 }
 

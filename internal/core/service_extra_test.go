@@ -30,7 +30,11 @@ func TestAssignOrganismHousing(t *testing.T) {
 		t.Fatalf("expected not found error")
 	}
 	// create housing then assign
-	h, _, err := svc.CreateHousingUnit(ctx, domain.HousingUnit{Name: "H", Capacity: 10})
+	facility, _, err := svc.CreateFacility(ctx, domain.Facility{Name: "F"})
+	if err != nil {
+		t.Fatalf("create facility: %v", err)
+	}
+	h, _, err := svc.CreateHousingUnit(ctx, domain.HousingUnit{Name: "H", FacilityID: facility.ID, Capacity: 10})
 	if err != nil {
 		t.Fatalf("create housing: %v", err)
 	}

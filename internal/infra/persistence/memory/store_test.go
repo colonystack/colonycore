@@ -79,7 +79,11 @@ func TestUpdateHousingUnitErrors(t *testing.T) {
 		if _, err := tx.UpdateHousingUnit("missing", func(*domain.HousingUnit) error { return nil }); err == nil {
 			t.Fatalf("expected missing housing error")
 		}
-		h, err := tx.CreateHousingUnit(domain.HousingUnit{Name: "Unit", Capacity: 2})
+		f, err := tx.CreateFacility(domain.Facility{Name: "Facility"})
+		if err != nil {
+			return err
+		}
+		h, err := tx.CreateHousingUnit(domain.HousingUnit{Name: "Unit", FacilityID: f.ID, Capacity: 2})
 		if err != nil {
 			return err
 		}

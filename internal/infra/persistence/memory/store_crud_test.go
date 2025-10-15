@@ -5,6 +5,7 @@ import (
 	"colonycore/pkg/domain"
 	"context"
 	"fmt"
+	"strings"
 	"testing"
 	"time"
 )
@@ -44,10 +45,6 @@ func seedMemoryStore(t *testing.T, store *memory.Store) memoryIDs {
 
 	var ids memoryIDs
 	if _, err := store.RunInTransaction(ctx, func(tx domain.Transaction) error {
-		if _, err := tx.CreateHousingUnit(domain.HousingUnit{Name: "Invalid", FacilityID: "Lab", Capacity: 0}); err == nil {
-			return fmt.Errorf("expected capacity validation error")
-		}
-
 		projectVal, err := tx.CreateProject(domain.Project{Code: "PRJ-1", Title: "domain.Project"})
 		project := must(t, projectVal, err)
 		ids.projectID = project.ID
@@ -61,6 +58,10 @@ func seedMemoryStore(t *testing.T, store *memory.Store) memoryIDs {
 		})
 		facility := must(t, facilityVal, err)
 		ids.facilityID = facility.ID
+
+		if _, err := tx.CreateHousingUnit(domain.HousingUnit{Name: "Invalid", FacilityID: ids.facilityID, Capacity: 0}); err == nil {
+			return fmt.Errorf("expected capacity validation error")
+		}
 
 		foundFacility, ok := tx.FindFacility(ids.facilityID)
 		requireFound(t, foundFacility, ok, "expected to find facility")
@@ -528,20 +529,20 @@ func exerciseMemoryDeletes(t *testing.T, store *memory.Store, ids memoryIDs) {
 	t.Helper()
 	ctx := context.Background()
 	if _, err := store.RunInTransaction(ctx, func(tx domain.Transaction) error {
+		mustNoErr(t, tx.DeleteObservation(ids.observationID))
+		mustNoErr(t, tx.DeleteTreatment(ids.treatmentID))
 		mustNoErr(t, tx.DeleteProcedure(ids.procedureID))
 		mustNoErr(t, tx.DeleteBreedingUnit(ids.breedingID))
+		mustNoErr(t, tx.DeleteSample(ids.sampleID))
 		mustNoErr(t, tx.DeleteOrganism(ids.organismAID))
 		mustNoErr(t, tx.DeleteOrganism(ids.organismBID))
 		mustNoErr(t, tx.DeleteCohort(ids.cohortID))
-		mustNoErr(t, tx.DeleteHousingUnit(ids.housingID))
-		mustNoErr(t, tx.DeleteFacility(ids.facilityID))
-		mustNoErr(t, tx.DeleteProtocol(ids.protocolID))
-		mustNoErr(t, tx.DeleteTreatment(ids.treatmentID))
-		mustNoErr(t, tx.DeleteObservation(ids.observationID))
-		mustNoErr(t, tx.DeleteSample(ids.sampleID))
-		mustNoErr(t, tx.DeletePermit(ids.permitID))
-		mustNoErr(t, tx.DeleteProject(ids.projectID))
 		mustNoErr(t, tx.DeleteSupplyItem(ids.supplyItemID))
+		mustNoErr(t, tx.DeleteProject(ids.projectID))
+		mustNoErr(t, tx.DeleteHousingUnit(ids.housingID))
+		mustNoErr(t, tx.DeletePermit(ids.permitID))
+		mustNoErr(t, tx.DeleteProtocol(ids.protocolID))
+		mustNoErr(t, tx.DeleteFacility(ids.facilityID))
 		if err := tx.DeleteOrganism(ids.organismAID); err == nil {
 			return fmt.Errorf("expected delete error for missing organism")
 		}
@@ -569,13 +570,484 @@ func verifyMemoryStorePostDelete(t *testing.T, store *memory.Store) {
 	requireLen(t, store.ListSupplyItems(), 0, "supplies after deletion")
 }
 
+func TestCreateHousingUnitRequiresExistingFacility(t *testing.T) {
+	store := memory.NewStore(nil)
+	ctx := context.Background()
+
+	if _, err := store.RunInTransaction(ctx, func(tx domain.Transaction) error {
+		if _, err := tx.CreateHousingUnit(domain.HousingUnit{Name: "NoFacility", FacilityID: "missing", Capacity: 1}); err == nil {
+			t.Fatalf("expected error when facility is missing")
+		}
+		facility, err := tx.CreateFacility(domain.Facility{Name: "Vivarium"})
+		if err != nil {
+			return err
+		}
+		if _, err := tx.CreateHousingUnit(domain.HousingUnit{Name: "Valid", FacilityID: facility.ID, Capacity: 2}); err != nil {
+			t.Fatalf("expected housing creation to succeed: %v", err)
+		}
+		return nil
+	}); err != nil {
+		t.Fatalf("transaction unexpected error: %v", err)
+	}
+}
+
+func TestUpdateHousingUnitMovesFacilityLinks(t *testing.T) {
+	store := memory.NewStore(nil)
+	ctx := context.Background()
+	var facilityA, facilityB domain.Facility
+	var housing domain.HousingUnit
+
+	mustNoErr(t, func() error {
+		_, err := store.RunInTransaction(ctx, func(tx domain.Transaction) error {
+			var err error
+			facilityA, err = tx.CreateFacility(domain.Facility{Name: "Vivarium-A"})
+			if err != nil {
+				return err
+			}
+			facilityB, err = tx.CreateFacility(domain.Facility{Name: "Vivarium-B"})
+			if err != nil {
+				return err
+			}
+			housing, err = tx.CreateHousingUnit(domain.HousingUnit{Name: "Shared", FacilityID: facilityA.ID, Capacity: 2})
+			return err
+		})
+		return err
+	}())
+
+	mustNoErr(t, func() error {
+		_, err := store.RunInTransaction(ctx, func(tx domain.Transaction) error {
+			_, err := tx.UpdateHousingUnit(housing.ID, func(h *domain.HousingUnit) error {
+				h.FacilityID = facilityB.ID
+				h.Environment = "humid"
+				return nil
+			})
+			return err
+		})
+		return err
+	}())
+
+	if _, err := store.RunInTransaction(ctx, func(tx domain.Transaction) error {
+		_, err := tx.UpdateHousingUnit(housing.ID, func(h *domain.HousingUnit) error {
+			h.FacilityID = "missing"
+			return nil
+		})
+		if err == nil {
+			t.Fatalf("expected update error when facility is missing")
+		}
+		return nil
+	}); err != nil {
+		t.Fatalf("transaction unexpected error: %v", err)
+	}
+
+	fA, ok := store.GetFacility(facilityA.ID)
+	if !ok {
+		t.Fatalf("expected facility A to exist")
+	}
+	if len(fA.HousingUnitIDs) != 0 {
+		t.Fatalf("expected facility A to have no housing references, got %+v", fA.HousingUnitIDs)
+	}
+	fB, ok := store.GetFacility(facilityB.ID)
+	if !ok {
+		t.Fatalf("expected facility B to exist")
+	}
+	if len(fB.HousingUnitIDs) != 1 || fB.HousingUnitIDs[0] != housing.ID {
+		t.Fatalf("expected facility B to reference housing, got %+v", fB.HousingUnitIDs)
+	}
+}
+
+func TestDeleteFacilityEnforcesReferences(t *testing.T) {
+	store := memory.NewStore(nil)
+	ctx := context.Background()
+	now := time.Now().UTC()
+	var (
+		facility domain.Facility
+		housing  domain.HousingUnit
+		project  domain.Project
+		protocol domain.Protocol
+		permit   domain.Permit
+		supply   domain.SupplyItem
+		sample   domain.Sample
+		org      domain.Organism
+	)
+
+	mustNoErr(t, func() error {
+		_, err := store.RunInTransaction(ctx, func(tx domain.Transaction) error {
+			var err error
+			facility, err = tx.CreateFacility(domain.Facility{Name: "Constraints"})
+			if err != nil {
+				return err
+			}
+			project, err = tx.CreateProject(domain.Project{Code: "PRJ", Title: "Project", FacilityIDs: []string{facility.ID}})
+			if err != nil {
+				return err
+			}
+			protocol, err = tx.CreateProtocol(domain.Protocol{Code: "PROTO", Title: "Protocol", MaxSubjects: 5})
+			if err != nil {
+				return err
+			}
+			housing, err = tx.CreateHousingUnit(domain.HousingUnit{Name: "Tank", FacilityID: facility.ID, Capacity: 2})
+			if err != nil {
+				return err
+			}
+			org, err = tx.CreateOrganism(domain.Organism{Name: "Specimen"})
+			if err != nil {
+				return err
+			}
+			sample, err = tx.CreateSample(domain.Sample{
+				Identifier:      "S",
+				SourceType:      "blood",
+				FacilityID:      facility.ID,
+				OrganismID:      &org.ID,
+				CollectedAt:     now,
+				Status:          "stored",
+				StorageLocation: "room",
+			})
+			if err != nil {
+				return err
+			}
+			permit, err = tx.CreatePermit(domain.Permit{
+				PermitNumber:      "PERM",
+				Authority:         "Gov",
+				ValidFrom:         now,
+				ValidUntil:        now.Add(time.Hour),
+				AllowedActivities: []string{"collect"},
+				FacilityIDs:       []string{facility.ID},
+				ProtocolIDs:       []string{protocol.ID},
+			})
+			if err != nil {
+				return err
+			}
+			supply, err = tx.CreateSupplyItem(domain.SupplyItem{
+				SKU:            "SKU",
+				Name:           "Gloves",
+				QuantityOnHand: 5,
+				Unit:           "box",
+				FacilityIDs:    []string{facility.ID},
+			})
+			return err
+		})
+		return err
+	}())
+
+	expectDeleteError := func(substr string) {
+		t.Helper()
+		if _, err := store.RunInTransaction(ctx, func(tx domain.Transaction) error {
+			return tx.DeleteFacility(facility.ID)
+		}); err == nil || !strings.Contains(err.Error(), substr) {
+			t.Fatalf("expected delete error containing %q, got %v", substr, err)
+		}
+	}
+
+	expectDeleteError("housing unit")
+
+	mustNoErr(t, func() error {
+		_, err := store.RunInTransaction(ctx, func(tx domain.Transaction) error {
+			return tx.DeleteHousingUnit(housing.ID)
+		})
+		return err
+	}())
+
+	expectDeleteError("sample")
+
+	mustNoErr(t, func() error {
+		_, err := store.RunInTransaction(ctx, func(tx domain.Transaction) error {
+			return tx.DeleteSample(sample.ID)
+		})
+		return err
+	}())
+
+	expectDeleteError("project")
+
+	mustNoErr(t, func() error {
+		_, err := store.RunInTransaction(ctx, func(tx domain.Transaction) error {
+			return tx.DeleteProject(project.ID)
+		})
+		return err
+	}())
+
+	expectDeleteError("permit")
+
+	mustNoErr(t, func() error {
+		_, err := store.RunInTransaction(ctx, func(tx domain.Transaction) error {
+			return tx.DeletePermit(permit.ID)
+		})
+		return err
+	}())
+
+	expectDeleteError("supply item")
+
+	mustNoErr(t, func() error {
+		_, err := store.RunInTransaction(ctx, func(tx domain.Transaction) error {
+			return tx.DeleteSupplyItem(supply.ID)
+		})
+		return err
+	}())
+
+	if _, err := store.RunInTransaction(ctx, func(tx domain.Transaction) error {
+		return tx.DeleteFacility(facility.ID)
+	}); err != nil {
+		t.Fatalf("expected facility delete to succeed after removing references: %v", err)
+	}
+}
+
+func TestRelationshipValidations(t *testing.T) {
+	store := memory.NewStore(nil)
+	ctx := context.Background()
+	now := time.Now().UTC()
+
+	if _, err := store.RunInTransaction(ctx, func(tx domain.Transaction) error {
+		if _, err := tx.CreateTreatment(domain.Treatment{Name: "NoProcedure"}); err == nil {
+			t.Fatalf("expected treatment creation without procedure to fail")
+		}
+
+		facility, err := tx.CreateFacility(domain.Facility{Name: "Facility"})
+		if err != nil {
+			return err
+		}
+		protocol, err := tx.CreateProtocol(domain.Protocol{Code: "PROT", Title: "Protocol", MaxSubjects: 5})
+		if err != nil {
+			return err
+		}
+
+		if _, err := tx.CreateTreatment(domain.Treatment{Name: "MissingProcedureRef", ProcedureID: "missing"}); err == nil {
+			t.Fatalf("expected treatment missing procedure to fail")
+		}
+
+		procedure, err := tx.CreateProcedure(domain.Procedure{Name: "Proc", Status: "scheduled", ScheduledAt: now, ProtocolID: protocol.ID})
+		if err != nil {
+			return err
+		}
+
+		if _, err := tx.CreateTreatment(domain.Treatment{Name: "MissingOrganism", ProcedureID: procedure.ID, OrganismIDs: []string{"missing"}}); err == nil {
+			t.Fatalf("expected missing organism validation to fail")
+		}
+
+		organism, err := tx.CreateOrganism(domain.Organism{Name: "Org"})
+		if err != nil {
+			return err
+		}
+
+		if _, err := tx.CreateTreatment(domain.Treatment{Name: "ValidTreatment", ProcedureID: procedure.ID, OrganismIDs: []string{organism.ID}}); err != nil {
+			t.Fatalf("expected treatment creation to succeed: %v", err)
+		}
+
+		if _, err := tx.CreateObservation(domain.Observation{Observer: "Tech", RecordedAt: now}); err == nil {
+			t.Fatalf("expected observation without context to fail")
+		}
+		procID := procedure.ID
+		if _, err := tx.CreateObservation(domain.Observation{ProcedureID: &procID, Observer: "Tech", RecordedAt: now}); err != nil {
+			t.Fatalf("expected observation creation to succeed: %v", err)
+		}
+
+		if _, err := tx.CreateSample(domain.Sample{Identifier: "S0", SourceType: "blood", CollectedAt: now, Status: "stored", StorageLocation: "room"}); err == nil {
+			t.Fatalf("expected sample without facility to fail")
+		}
+		if _, err := tx.CreateSample(domain.Sample{Identifier: "S1", SourceType: "blood", FacilityID: facility.ID, CollectedAt: now, Status: "stored", StorageLocation: "room"}); err == nil {
+			t.Fatalf("expected sample without organism or cohort to fail")
+		}
+		if _, err := tx.CreateSample(domain.Sample{Identifier: "S2", SourceType: "blood", FacilityID: facility.ID, OrganismID: &organism.ID, CollectedAt: now, Status: "stored", StorageLocation: "room"}); err != nil {
+			t.Fatalf("expected sample creation to succeed: %v", err)
+		}
+
+		if _, err := tx.CreatePermit(domain.Permit{PermitNumber: "PERM-FAIL", FacilityIDs: []string{"missing"}, ProtocolIDs: []string{"prot"}}); err == nil {
+			t.Fatalf("expected permit with missing facility to fail")
+		}
+		if _, err := tx.CreatePermit(domain.Permit{
+			PermitNumber: "PERM-FAIL2",
+			FacilityIDs:  []string{facility.ID},
+			ProtocolIDs:  []string{"missing"},
+			ValidFrom:    now,
+			ValidUntil:   now.Add(time.Hour),
+		}); err == nil {
+			t.Fatalf("expected permit with missing protocol to fail")
+		}
+		if _, err := tx.CreatePermit(domain.Permit{
+			PermitNumber:      "PERM-OK",
+			Authority:         "Gov",
+			ValidFrom:         now,
+			ValidUntil:        now.Add(time.Hour),
+			AllowedActivities: []string{"collect"},
+			FacilityIDs:       []string{facility.ID},
+			ProtocolIDs:       []string{protocol.ID},
+		}); err != nil {
+			t.Fatalf("expected permit creation to succeed: %v", err)
+		}
+
+		if _, err := tx.CreateSupplyItem(domain.SupplyItem{SKU: "SKU-FAIL", Name: "Supply", FacilityIDs: []string{"missing"}}); err == nil {
+			t.Fatalf("expected supply creation with missing facility to fail")
+		}
+		if _, err := tx.CreateSupplyItem(domain.SupplyItem{
+			SKU:         "SKU-FAIL2",
+			Name:        "Supply",
+			FacilityIDs: []string{facility.ID},
+			ProjectIDs:  []string{"missing"},
+		}); err == nil {
+			t.Fatalf("expected supply creation with missing project to fail")
+		}
+
+		project, err := tx.CreateProject(domain.Project{Code: "PRJ-REL", Title: "Project"})
+		if err != nil {
+			return err
+		}
+		if _, err := tx.CreateSupplyItem(domain.SupplyItem{
+			SKU:            "SKU-OK",
+			Name:           "Supply",
+			QuantityOnHand: 10,
+			Unit:           "box",
+			FacilityIDs:    []string{facility.ID},
+			ProjectIDs:     []string{project.ID},
+		}); err != nil {
+			t.Fatalf("expected supply creation to succeed: %v", err)
+		}
+		return nil
+	}); err != nil {
+		t.Fatalf("transaction unexpected error: %v", err)
+	}
+}
+
+func TestUpdateSupplyItemDedupe(t *testing.T) {
+	store := memory.NewStore(nil)
+	ctx := context.Background()
+	var (
+		facility domain.Facility
+		project  domain.Project
+		supply   domain.SupplyItem
+	)
+
+	mustNoErr(t, func() error {
+		_, err := store.RunInTransaction(ctx, func(tx domain.Transaction) error {
+			var err error
+			facility, err = tx.CreateFacility(domain.Facility{Name: "Supply Facility"})
+			if err != nil {
+				return err
+			}
+			project, err = tx.CreateProject(domain.Project{Code: "SUP", Title: "Supply Project"})
+			if err != nil {
+				return err
+			}
+			supply, err = tx.CreateSupplyItem(domain.SupplyItem{
+				SKU:            "SKU-DEDUP",
+				Name:           "Gloves",
+				QuantityOnHand: 5,
+				Unit:           "box",
+				FacilityIDs:    []string{facility.ID},
+				ProjectIDs:     []string{project.ID},
+			})
+			return err
+		})
+		return err
+	}())
+
+	mustNoErr(t, func() error {
+		_, err := store.RunInTransaction(ctx, func(tx domain.Transaction) error {
+			_, err := tx.UpdateSupplyItem(supply.ID, func(s *domain.SupplyItem) error {
+				s.FacilityIDs = []string{facility.ID, facility.ID}
+				s.ProjectIDs = []string{project.ID, project.ID}
+				return nil
+			})
+			if err != nil {
+				return err
+			}
+			if _, err := tx.UpdateSupplyItem(supply.ID, func(s *domain.SupplyItem) error {
+				s.FacilityIDs = []string{"missing"}
+				return nil
+			}); err == nil {
+				t.Fatalf("expected update error for missing facility reference")
+			}
+			return nil
+		})
+		return err
+	}())
+
+	items := store.ListSupplyItems()
+	if len(items) != 1 {
+		t.Fatalf("expected single supply item, got %d", len(items))
+	}
+	if len(items[0].FacilityIDs) != 1 || items[0].FacilityIDs[0] != facility.ID {
+		t.Fatalf("expected deduped facility IDs, got %+v", items[0].FacilityIDs)
+	}
+	if len(items[0].ProjectIDs) != 1 || items[0].ProjectIDs[0] != project.ID {
+		t.Fatalf("expected deduped project IDs, got %+v", items[0].ProjectIDs)
+	}
+}
+
+func TestUpdatePermitDedupe(t *testing.T) {
+	store := memory.NewStore(nil)
+	ctx := context.Background()
+	var (
+		facility domain.Facility
+		protocol domain.Protocol
+		permit   domain.Permit
+	)
+
+	mustNoErr(t, func() error {
+		_, err := store.RunInTransaction(ctx, func(tx domain.Transaction) error {
+			var err error
+			facility, err = tx.CreateFacility(domain.Facility{Name: "Permit Facility"})
+			if err != nil {
+				return err
+			}
+			protocol, err = tx.CreateProtocol(domain.Protocol{Code: "PERM", Title: "Permit Proto", MaxSubjects: 2})
+			if err != nil {
+				return err
+			}
+			permit, err = tx.CreatePermit(domain.Permit{
+				PermitNumber:      "PERM-DEDUP",
+				Authority:         "Gov",
+				ValidFrom:         time.Now().UTC(),
+				ValidUntil:        time.Now().UTC().Add(time.Hour),
+				AllowedActivities: []string{"collect"},
+				FacilityIDs:       []string{facility.ID},
+				ProtocolIDs:       []string{protocol.ID},
+			})
+			return err
+		})
+		return err
+	}())
+
+	mustNoErr(t, func() error {
+		_, err := store.RunInTransaction(ctx, func(tx domain.Transaction) error {
+			_, err := tx.UpdatePermit(permit.ID, func(p *domain.Permit) error {
+				p.FacilityIDs = []string{facility.ID, facility.ID}
+				p.ProtocolIDs = []string{protocol.ID, protocol.ID}
+				return nil
+			})
+			if err != nil {
+				return err
+			}
+			if _, err := tx.UpdatePermit(permit.ID, func(p *domain.Permit) error {
+				p.FacilityIDs = []string{"missing"}
+				return nil
+			}); err == nil {
+				t.Fatalf("expected update error for missing facility reference")
+			}
+			return nil
+		})
+		return err
+	}())
+
+	permits := store.ListPermits()
+	if len(permits) != 1 {
+		t.Fatalf("expected single permit, got %d", len(permits))
+	}
+	if len(permits[0].FacilityIDs) != 1 || permits[0].FacilityIDs[0] != facility.ID {
+		t.Fatalf("expected deduped facility IDs, got %+v", permits[0].FacilityIDs)
+	}
+	if len(permits[0].ProtocolIDs) != 1 || permits[0].ProtocolIDs[0] != protocol.ID {
+		t.Fatalf("expected deduped protocol IDs, got %+v", permits[0].ProtocolIDs)
+	}
+}
+
 func TestMemoryStoreViewReadOnly(t *testing.T) {
 	store := memory.NewStore(nil)
 	ctx := context.Background()
 	var housing domain.HousingUnit
 	if _, err := store.RunInTransaction(ctx, func(tx domain.Transaction) error {
-		var err error
-		housing, err = tx.CreateHousingUnit(domain.HousingUnit{Name: "Tank", FacilityID: "Lab", Capacity: 1})
+		facility, err := tx.CreateFacility(domain.Facility{Name: "Lab"})
+		if err != nil {
+			return err
+		}
+		housing, err = tx.CreateHousingUnit(domain.HousingUnit{Name: "Tank", FacilityID: facility.ID, Capacity: 1})
 		return err
 	}); err != nil {
 		t.Fatalf("create housing: %v", err)
@@ -600,8 +1072,11 @@ func TestUpdateHousingUnitValidation(t *testing.T) {
 	ctx := context.Background()
 	var housing domain.HousingUnit
 	if _, err := store.RunInTransaction(ctx, func(tx domain.Transaction) error {
-		var err error
-		housing, err = tx.CreateHousingUnit(domain.HousingUnit{Name: "Validated", FacilityID: "Lab", Capacity: 2})
+		facility, err := tx.CreateFacility(domain.Facility{Name: "Lab"})
+		if err != nil {
+			return err
+		}
+		housing, err = tx.CreateHousingUnit(domain.HousingUnit{Name: "Validated", FacilityID: facility.ID, Capacity: 2})
 		return err
 	}); err != nil {
 		t.Fatalf("create housing: %v", err)

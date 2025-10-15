@@ -12,7 +12,11 @@ func TestStore_UpdateHousingUnit_InvalidCapacity(t *testing.T) {
 	eng := NewDefaultRulesEngine()
 	store := NewMemoryStore(eng)
 	_, err := store.RunInTransaction(context.Background(), func(tx domain.Transaction) error {
-		h, err := tx.CreateHousingUnit(domain.HousingUnit{Capacity: 1, Name: "A"})
+		f, err := tx.CreateFacility(domain.Facility{Name: "F"})
+		if err != nil {
+			return err
+		}
+		h, err := tx.CreateHousingUnit(domain.HousingUnit{Capacity: 1, Name: "A", FacilityID: f.ID})
 		if err != nil {
 			return err
 		}

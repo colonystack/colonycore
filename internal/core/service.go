@@ -131,6 +131,24 @@ func (s *Service) CreateProject(ctx context.Context, project domain.Project) (do
 	return created, res, err
 }
 
+// UpdateProject mutates a project.
+func (s *Service) UpdateProject(ctx context.Context, id string, mutator func(*domain.Project) error) (domain.Project, domain.Result, error) {
+	var updated domain.Project
+	res, err := s.run(ctx, "update_project", func(tx domain.Transaction) error {
+		var innerErr error
+		updated, innerErr = tx.UpdateProject(id, mutator)
+		return innerErr
+	})
+	return updated, res, err
+}
+
+// DeleteProject removes a project.
+func (s *Service) DeleteProject(ctx context.Context, id string) (domain.Result, error) {
+	return s.run(ctx, "delete_project", func(tx domain.Transaction) error {
+		return tx.DeleteProject(id)
+	})
+}
+
 // CreateProtocol persists a new protocol.
 func (s *Service) CreateProtocol(ctx context.Context, protocol domain.Protocol) (domain.Protocol, domain.Result, error) {
 	var created domain.Protocol
@@ -140,6 +158,24 @@ func (s *Service) CreateProtocol(ctx context.Context, protocol domain.Protocol) 
 		return innerErr
 	})
 	return created, res, err
+}
+
+// UpdateProtocol mutates a protocol.
+func (s *Service) UpdateProtocol(ctx context.Context, id string, mutator func(*domain.Protocol) error) (domain.Protocol, domain.Result, error) {
+	var updated domain.Protocol
+	res, err := s.run(ctx, "update_protocol", func(tx domain.Transaction) error {
+		var innerErr error
+		updated, innerErr = tx.UpdateProtocol(id, mutator)
+		return innerErr
+	})
+	return updated, res, err
+}
+
+// DeleteProtocol removes a protocol.
+func (s *Service) DeleteProtocol(ctx context.Context, id string) (domain.Result, error) {
+	return s.run(ctx, "delete_protocol", func(tx domain.Transaction) error {
+		return tx.DeleteProtocol(id)
+	})
 }
 
 // CreateFacility persists facility metadata.
@@ -180,6 +216,24 @@ func (s *Service) CreateHousingUnit(ctx context.Context, housing domain.HousingU
 		return innerErr
 	})
 	return created, res, err
+}
+
+// UpdateHousingUnit mutates a housing unit.
+func (s *Service) UpdateHousingUnit(ctx context.Context, id string, mutator func(*domain.HousingUnit) error) (domain.HousingUnit, domain.Result, error) {
+	var updated domain.HousingUnit
+	res, err := s.run(ctx, "update_housing_unit", func(tx domain.Transaction) error {
+		var innerErr error
+		updated, innerErr = tx.UpdateHousingUnit(id, mutator)
+		return innerErr
+	})
+	return updated, res, err
+}
+
+// DeleteHousingUnit removes a housing unit.
+func (s *Service) DeleteHousingUnit(ctx context.Context, id string) (domain.Result, error) {
+	return s.run(ctx, "delete_housing_unit", func(tx domain.Transaction) error {
+		return tx.DeleteHousingUnit(id)
+	})
 }
 
 // CreateCohort persists a new cohort.

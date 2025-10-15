@@ -9,6 +9,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"sort"
 	"sync"
 	"time"
 )
@@ -213,6 +214,200 @@ func memoryStateFromSnapshot(s Snapshot) memoryState {
 	return state
 }
 
+func migrateSnapshot(snapshot Snapshot) Snapshot {
+	if snapshot.Organisms == nil {
+		snapshot.Organisms = map[string]Organism{}
+	}
+	if snapshot.Cohorts == nil {
+		snapshot.Cohorts = map[string]Cohort{}
+	}
+	if snapshot.Housing == nil {
+		snapshot.Housing = map[string]HousingUnit{}
+	}
+	if snapshot.Facilities == nil {
+		snapshot.Facilities = map[string]Facility{}
+	}
+	if snapshot.Breeding == nil {
+		snapshot.Breeding = map[string]BreedingUnit{}
+	}
+	if snapshot.Procedures == nil {
+		snapshot.Procedures = map[string]Procedure{}
+	}
+	if snapshot.Treatments == nil {
+		snapshot.Treatments = map[string]Treatment{}
+	}
+	if snapshot.Observations == nil {
+		snapshot.Observations = map[string]Observation{}
+	}
+	if snapshot.Samples == nil {
+		snapshot.Samples = map[string]Sample{}
+	}
+	if snapshot.Protocols == nil {
+		snapshot.Protocols = map[string]Protocol{}
+	}
+	if snapshot.Permits == nil {
+		snapshot.Permits = map[string]Permit{}
+	}
+	if snapshot.Projects == nil {
+		snapshot.Projects = map[string]Project{}
+	}
+	if snapshot.Supplies == nil {
+		snapshot.Supplies = map[string]SupplyItem{}
+	}
+
+	facilityExists := func(id string) bool {
+		_, ok := snapshot.Facilities[id]
+		return ok
+	}
+	projectExists := func(id string) bool {
+		_, ok := snapshot.Projects[id]
+		return ok
+	}
+	organismExists := func(id string) bool {
+		_, ok := snapshot.Organisms[id]
+		return ok
+	}
+	cohortExists := func(id string) bool {
+		_, ok := snapshot.Cohorts[id]
+		return ok
+	}
+	procedureExists := func(id string) bool {
+		_, ok := snapshot.Procedures[id]
+		return ok
+	}
+	protocolExists := func(id string) bool {
+		_, ok := snapshot.Protocols[id]
+		return ok
+	}
+
+	for id, housing := range snapshot.Housing {
+		if housing.FacilityID == "" || !facilityExists(housing.FacilityID) {
+			delete(snapshot.Housing, id)
+			continue
+		}
+		if housing.Capacity <= 0 {
+			housing.Capacity = 1
+		}
+		snapshot.Housing[id] = housing
+	}
+
+	for id, treatment := range snapshot.Treatments {
+		if treatment.ProcedureID == "" || !procedureExists(treatment.ProcedureID) {
+			delete(snapshot.Treatments, id)
+			continue
+		}
+		if filtered, changed := filterIDs(treatment.OrganismIDs, organismExists); changed {
+			treatment.OrganismIDs = filtered
+		}
+		if filtered, changed := filterIDs(treatment.CohortIDs, cohortExists); changed {
+			treatment.CohortIDs = filtered
+		}
+		snapshot.Treatments[id] = treatment
+	}
+
+	for id, observation := range snapshot.Observations {
+		if observation.Data == nil {
+			observation.Data = map[string]any{}
+		}
+		if observation.ProcedureID != nil && !procedureExists(*observation.ProcedureID) {
+			observation.ProcedureID = nil
+		}
+		if observation.OrganismID != nil && !organismExists(*observation.OrganismID) {
+			observation.OrganismID = nil
+		}
+		if observation.CohortID != nil && !cohortExists(*observation.CohortID) {
+			observation.CohortID = nil
+		}
+		if observation.ProcedureID == nil && observation.OrganismID == nil && observation.CohortID == nil {
+			delete(snapshot.Observations, id)
+			continue
+		}
+		snapshot.Observations[id] = observation
+	}
+
+	for id, sample := range snapshot.Samples {
+		if sample.Attributes == nil {
+			sample.Attributes = map[string]any{}
+		}
+		if sample.FacilityID == "" || !facilityExists(sample.FacilityID) {
+			delete(snapshot.Samples, id)
+			continue
+		}
+		if sample.OrganismID != nil && !organismExists(*sample.OrganismID) {
+			sample.OrganismID = nil
+		}
+		if sample.CohortID != nil && !cohortExists(*sample.CohortID) {
+			sample.CohortID = nil
+		}
+		if sample.OrganismID == nil && sample.CohortID == nil {
+			delete(snapshot.Samples, id)
+			continue
+		}
+		snapshot.Samples[id] = sample
+	}
+
+	for id, permit := range snapshot.Permits {
+		if filtered, changed := filterIDs(permit.FacilityIDs, facilityExists); changed {
+			permit.FacilityIDs = filtered
+		}
+		if filtered, changed := filterIDs(permit.ProtocolIDs, protocolExists); changed {
+			permit.ProtocolIDs = filtered
+		}
+		snapshot.Permits[id] = permit
+	}
+
+	for id, project := range snapshot.Projects {
+		if filtered, changed := filterIDs(project.FacilityIDs, facilityExists); changed {
+			project.FacilityIDs = filtered
+		}
+		snapshot.Projects[id] = project
+	}
+
+	for id, item := range snapshot.Supplies {
+		if item.Attributes == nil {
+			item.Attributes = map[string]any{}
+		}
+		if filtered, changed := filterIDs(item.FacilityIDs, facilityExists); changed {
+			item.FacilityIDs = filtered
+		}
+		if filtered, changed := filterIDs(item.ProjectIDs, projectExists); changed {
+			item.ProjectIDs = filtered
+		}
+		snapshot.Supplies[id] = item
+	}
+
+	for id, facility := range snapshot.Facilities {
+		if facility.EnvironmentBaselines == nil {
+			facility.EnvironmentBaselines = map[string]any{}
+		}
+		snapshot.Facilities[id] = facility
+	}
+
+	for id, facility := range snapshot.Facilities {
+		var housingIDs []string
+		for _, housing := range snapshot.Housing {
+			if housing.FacilityID == id {
+				housingIDs = append(housingIDs, housing.ID)
+			}
+		}
+		sort.Strings(housingIDs)
+		facility.HousingUnitIDs = housingIDs
+
+		var projectIDs []string
+		for _, project := range snapshot.Projects {
+			if containsString(project.FacilityIDs, id) {
+				projectIDs = append(projectIDs, project.ID)
+			}
+		}
+		sort.Strings(projectIDs)
+		facility.ProjectIDs = projectIDs
+
+		snapshot.Facilities[id] = facility
+	}
+
+	return snapshot
+}
+
 func (s memoryState) clone() memoryState {
 	cloned := newMemoryState()
 	for k, v := range s.organisms {
@@ -283,7 +478,11 @@ func cloneProcedure(p Procedure) Procedure {
 	return cp
 }
 func cloneProtocol(p Protocol) Protocol { return p }
-func cloneProject(p Project) Project    { return p }
+func cloneProject(p Project) Project {
+	cp := p
+	cp.FacilityIDs = append([]string(nil), p.FacilityIDs...)
+	return cp
+}
 
 func cloneFacility(f Facility) Facility {
 	cp := f
@@ -336,6 +535,99 @@ func clonePermit(p Permit) Permit {
 	cp.FacilityIDs = append([]string(nil), p.FacilityIDs...)
 	cp.ProtocolIDs = append([]string(nil), p.ProtocolIDs...)
 	return cp
+}
+
+func appendIfMissing(values []string, id string) ([]string, bool) {
+	for _, existing := range values {
+		if existing == id {
+			return values, false
+		}
+	}
+	return append(values, id), true
+}
+
+func removeIfPresent(values []string, id string) ([]string, bool) {
+	for idx, existing := range values {
+		if existing == id {
+			out := make([]string, 0, len(values)-1)
+			out = append(out, values[:idx]...)
+			out = append(out, values[idx+1:]...)
+			return out, true
+		}
+	}
+	return values, false
+}
+
+func containsString(values []string, id string) bool {
+	for _, existing := range values {
+		if existing == id {
+			return true
+		}
+	}
+	return false
+}
+
+func dedupeStrings(values []string) []string {
+	if len(values) <= 1 {
+		return append([]string(nil), values...)
+	}
+	seen := make(map[string]struct{}, len(values))
+	out := make([]string, 0, len(values))
+	for _, v := range values {
+		if _, ok := seen[v]; ok {
+			continue
+		}
+		seen[v] = struct{}{}
+		out = append(out, v)
+	}
+	return out
+}
+
+func filterIDs(values []string, exists func(string) bool) ([]string, bool) {
+	if len(values) == 0 {
+		return nil, false
+	}
+	out := make([]string, 0, len(values))
+	seen := make(map[string]struct{}, len(values))
+	changed := false
+	for _, v := range values {
+		if _, ok := seen[v]; ok {
+			changed = true
+			continue
+		}
+		seen[v] = struct{}{}
+		if !exists(v) {
+			changed = true
+			continue
+		}
+		out = append(out, v)
+	}
+	if !changed && len(out) == len(values) {
+		return values, false
+	}
+	return out, true
+}
+
+func facilityHousingIDs(state memoryState, facilityID string) []string {
+	var ids []string
+	for _, housing := range state.housing {
+		if housing.FacilityID == facilityID {
+			ids = append(ids, housing.ID)
+		}
+	}
+	sort.Strings(ids)
+	return ids
+}
+
+func facilityProjectIDs(state memoryState, facilityID string) []string {
+	var ids []string
+	for _, project := range state.projects {
+		if containsString(project.FacilityIDs, facilityID) {
+			ids = append(ids, project.ID)
+		}
+	}
+	sort.Strings(ids)
+	return ids
 }
 
 func cloneSupplyItem(s SupplyItem) SupplyItem {
@@ -394,7 +686,7 @@ func (s *Store) ExportState() Snapshot {
 func (s *Store) ImportState(snapshot Snapshot) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	s.state = memoryStateFromSnapshot(snapshot)
+	s.state = memoryStateFromSnapshot(migrateSnapshot(snapshot))
 }
 
 // RulesEngine exposes the currently configured engine for integration points like plugins.
@@ -669,6 +961,21 @@ func (tx *transaction) FindFacility(id string) (Facility, bool) {
 	return cloneFacility(f), true
 }
 
+func (tx *transaction) mutateFacility(id string, mutate func(*Facility) bool) error {
+	facility, ok := tx.state.facilities[id]
+	if !ok {
+		return fmt.Errorf("facility %q not found", id)
+	}
+	before := cloneFacility(facility)
+	if !mutate(&facility) {
+		return nil
+	}
+	facility.UpdatedAt = tx.now
+	tx.state.facilities[id] = cloneFacility(facility)
+	tx.recordChange(Change{Entity: domain.EntityFacility, Action: domain.ActionUpdate, Before: before, After: cloneFacility(facility)})
+	return nil
+}
+
 // FindTreatment exposes treatment lookup within the transaction scope.
 func (tx *transaction) FindTreatment(id string) (Treatment, bool) {
 	t, ok := tx.state.treatments[id]
@@ -755,6 +1062,11 @@ func (tx *transaction) DeleteOrganism(id string) error {
 	if !ok {
 		return fmt.Errorf("organism %q not found", id)
 	}
+	for _, sample := range tx.state.samples {
+		if sample.OrganismID != nil && *sample.OrganismID == id {
+			return fmt.Errorf("organism %q still referenced by sample %q", id, sample.ID)
+		}
+	}
 	delete(tx.state.organisms, id)
 	tx.recordChange(Change{Entity: domain.EntityOrganism, Action: domain.ActionDelete, Before: cloneOrganism(current)})
 	return nil
@@ -798,6 +1110,11 @@ func (tx *transaction) DeleteCohort(id string) error {
 	if !ok {
 		return fmt.Errorf("cohort %q not found", id)
 	}
+	for _, sample := range tx.state.samples {
+		if sample.CohortID != nil && *sample.CohortID == id {
+			return fmt.Errorf("cohort %q still referenced by sample %q", id, sample.ID)
+		}
+	}
 	delete(tx.state.cohorts, id)
 	tx.recordChange(Change{Entity: domain.EntityCohort, Action: domain.ActionDelete, Before: cloneCohort(current)})
 	return nil
@@ -811,6 +1128,12 @@ func (tx *transaction) CreateHousingUnit(h HousingUnit) (HousingUnit, error) {
 	if _, exists := tx.state.housing[h.ID]; exists {
 		return HousingUnit{}, fmt.Errorf("housing unit %q already exists", h.ID)
 	}
+	if h.FacilityID == "" {
+		return HousingUnit{}, errors.New("housing unit requires facility id")
+	}
+	if _, ok := tx.state.facilities[h.FacilityID]; !ok {
+		return HousingUnit{}, fmt.Errorf("facility %q not found", h.FacilityID)
+	}
 	if h.Capacity <= 0 {
 		return HousingUnit{}, errors.New("housing capacity must be positive")
 	}
@@ -818,6 +1141,15 @@ func (tx *transaction) CreateHousingUnit(h HousingUnit) (HousingUnit, error) {
 	h.UpdatedAt = tx.now
 	tx.state.housing[h.ID] = cloneHousing(h)
 	tx.recordChange(Change{Entity: domain.EntityHousingUnit, Action: domain.ActionCreate, After: cloneHousing(h)})
+	if err := tx.mutateFacility(h.FacilityID, func(f *Facility) bool {
+		ids, changed := appendIfMissing(f.HousingUnitIDs, h.ID)
+		if changed {
+			f.HousingUnitIDs = ids
+		}
+		return changed
+	}); err != nil {
+		return HousingUnit{}, err
+	}
 	return cloneHousing(h), nil
 }
 
@@ -827,9 +1159,16 @@ func (tx *transaction) UpdateHousingUnit(id string, mutator func(*HousingUnit) e
 	if !ok {
 		return HousingUnit{}, fmt.Errorf("housing unit %q not found", id)
 	}
+	prevFacility := current.FacilityID
 	before := cloneHousing(current)
 	if err := mutator(&current); err != nil {
 		return HousingUnit{}, err
+	}
+	if current.FacilityID == "" {
+		return HousingUnit{}, errors.New("housing unit requires facility id")
+	}
+	if _, ok := tx.state.facilities[current.FacilityID]; !ok {
+		return HousingUnit{}, fmt.Errorf("facility %q not found", current.FacilityID)
 	}
 	if current.Capacity <= 0 {
 		return HousingUnit{}, errors.New("housing capacity must be positive")
@@ -838,6 +1177,26 @@ func (tx *transaction) UpdateHousingUnit(id string, mutator func(*HousingUnit) e
 	current.UpdatedAt = tx.now
 	tx.state.housing[id] = cloneHousing(current)
 	tx.recordChange(Change{Entity: domain.EntityHousingUnit, Action: domain.ActionUpdate, Before: before, After: cloneHousing(current)})
+	if prevFacility != current.FacilityID {
+		if err := tx.mutateFacility(prevFacility, func(f *Facility) bool {
+			ids, changed := removeIfPresent(f.HousingUnitIDs, id)
+			if changed {
+				f.HousingUnitIDs = ids
+			}
+			return changed
+		}); err != nil {
+			return HousingUnit{}, err
+		}
+	}
+	if err := tx.mutateFacility(current.FacilityID, func(f *Facility) bool {
+		ids, changed := appendIfMissing(f.HousingUnitIDs, id)
+		if changed {
+			f.HousingUnitIDs = ids
+		}
+		return changed
+	}); err != nil {
+		return HousingUnit{}, err
+	}
 	return cloneHousing(current), nil
 }
 
@@ -846,6 +1205,15 @@ func (tx *transaction) DeleteHousingUnit(id string) error {
 	current, ok := tx.state.housing[id]
 	if !ok {
 		return fmt.Errorf("housing unit %q not found", id)
+	}
+	if err := tx.mutateFacility(current.FacilityID, func(f *Facility) bool {
+		ids, changed := removeIfPresent(f.HousingUnitIDs, id)
+		if changed {
+			f.HousingUnitIDs = ids
+		}
+		return changed
+	}); err != nil {
+		return err
 	}
 	delete(tx.state.housing, id)
 	tx.recordChange(Change{Entity: domain.EntityHousingUnit, Action: domain.ActionDelete, Before: cloneHousing(current)})
@@ -862,6 +1230,8 @@ func (tx *transaction) CreateFacility(f Facility) (Facility, error) {
 	}
 	f.CreatedAt = tx.now
 	f.UpdatedAt = tx.now
+	f.HousingUnitIDs = nil
+	f.ProjectIDs = nil
 	if f.EnvironmentBaselines == nil {
 		f.EnvironmentBaselines = map[string]any{}
 	}
@@ -883,6 +1253,8 @@ func (tx *transaction) UpdateFacility(id string, mutator func(*Facility) error) 
 	if current.EnvironmentBaselines == nil {
 		current.EnvironmentBaselines = map[string]any{}
 	}
+	current.HousingUnitIDs = facilityHousingIDs(tx.state, id)
+	current.ProjectIDs = facilityProjectIDs(tx.state, id)
 	current.ID = id
 	current.UpdatedAt = tx.now
 	tx.state.facilities[id] = cloneFacility(current)
@@ -895,6 +1267,34 @@ func (tx *transaction) DeleteFacility(id string) error {
 	current, ok := tx.state.facilities[id]
 	if !ok {
 		return fmt.Errorf("facility %q not found", id)
+	}
+	if len(current.HousingUnitIDs) > 0 {
+		return fmt.Errorf("facility %q has %d housing units; remove them before delete", id, len(current.HousingUnitIDs))
+	}
+	for _, housing := range tx.state.housing {
+		if housing.FacilityID == id {
+			return fmt.Errorf("facility %q still referenced by housing unit %q", id, housing.ID)
+		}
+	}
+	for _, sample := range tx.state.samples {
+		if sample.FacilityID == id {
+			return fmt.Errorf("facility %q still referenced by sample %q", id, sample.ID)
+		}
+	}
+	for _, project := range tx.state.projects {
+		if containsString(project.FacilityIDs, id) {
+			return fmt.Errorf("facility %q still referenced by project %q", id, project.ID)
+		}
+	}
+	for _, permit := range tx.state.permits {
+		if containsString(permit.FacilityIDs, id) {
+			return fmt.Errorf("facility %q still referenced by permit %q", id, permit.ID)
+		}
+	}
+	for _, item := range tx.state.supplies {
+		if containsString(item.FacilityIDs, id) {
+			return fmt.Errorf("facility %q still referenced by supply item %q", id, item.ID)
+		}
 	}
 	delete(tx.state.facilities, id)
 	tx.recordChange(Change{Entity: domain.EntityFacility, Action: domain.ActionDelete, Before: cloneFacility(current)})
@@ -982,6 +1382,16 @@ func (tx *transaction) DeleteProcedure(id string) error {
 	if !ok {
 		return fmt.Errorf("procedure %q not found", id)
 	}
+	for _, treatment := range tx.state.treatments {
+		if treatment.ProcedureID == id {
+			return fmt.Errorf("procedure %q still referenced by treatment %q", id, treatment.ID)
+		}
+	}
+	for _, observation := range tx.state.observations {
+		if observation.ProcedureID != nil && *observation.ProcedureID == id {
+			return fmt.Errorf("procedure %q still referenced by observation %q", id, observation.ID)
+		}
+	}
 	delete(tx.state.procedures, id)
 	tx.recordChange(Change{Entity: domain.EntityProcedure, Action: domain.ActionDelete, Before: cloneProcedure(current)})
 	return nil
@@ -994,6 +1404,24 @@ func (tx *transaction) CreateTreatment(t Treatment) (Treatment, error) {
 	}
 	if _, exists := tx.state.treatments[t.ID]; exists {
 		return Treatment{}, fmt.Errorf("treatment %q already exists", t.ID)
+	}
+	if t.ProcedureID == "" {
+		return Treatment{}, errors.New("treatment requires procedure id")
+	}
+	if _, ok := tx.state.procedures[t.ProcedureID]; !ok {
+		return Treatment{}, fmt.Errorf("procedure %q not found", t.ProcedureID)
+	}
+	t.OrganismIDs = dedupeStrings(t.OrganismIDs)
+	for _, organismID := range t.OrganismIDs {
+		if _, ok := tx.state.organisms[organismID]; !ok {
+			return Treatment{}, fmt.Errorf("organism %q not found for treatment", organismID)
+		}
+	}
+	t.CohortIDs = dedupeStrings(t.CohortIDs)
+	for _, cohortID := range t.CohortIDs {
+		if _, ok := tx.state.cohorts[cohortID]; !ok {
+			return Treatment{}, fmt.Errorf("cohort %q not found for treatment", cohortID)
+		}
 	}
 	t.CreatedAt = tx.now
 	t.UpdatedAt = tx.now
@@ -1011,6 +1439,24 @@ func (tx *transaction) UpdateTreatment(id string, mutator func(*Treatment) error
 	before := cloneTreatment(current)
 	if err := mutator(&current); err != nil {
 		return Treatment{}, err
+	}
+	if current.ProcedureID == "" {
+		return Treatment{}, errors.New("treatment requires procedure id")
+	}
+	if _, ok := tx.state.procedures[current.ProcedureID]; !ok {
+		return Treatment{}, fmt.Errorf("procedure %q not found", current.ProcedureID)
+	}
+	current.OrganismIDs = dedupeStrings(current.OrganismIDs)
+	for _, organismID := range current.OrganismIDs {
+		if _, ok := tx.state.organisms[organismID]; !ok {
+			return Treatment{}, fmt.Errorf("organism %q not found for treatment", organismID)
+		}
+	}
+	current.CohortIDs = dedupeStrings(current.CohortIDs)
+	for _, cohortID := range current.CohortIDs {
+		if _, ok := tx.state.cohorts[cohortID]; !ok {
+			return Treatment{}, fmt.Errorf("cohort %q not found for treatment", cohortID)
+		}
 	}
 	current.ID = id
 	current.UpdatedAt = tx.now
@@ -1038,6 +1484,24 @@ func (tx *transaction) CreateObservation(o Observation) (Observation, error) {
 	if _, exists := tx.state.observations[o.ID]; exists {
 		return Observation{}, fmt.Errorf("observation %q already exists", o.ID)
 	}
+	if o.ProcedureID == nil && o.OrganismID == nil && o.CohortID == nil {
+		return Observation{}, errors.New("observation requires procedure, organism, or cohort reference")
+	}
+	if o.ProcedureID != nil {
+		if _, ok := tx.state.procedures[*o.ProcedureID]; !ok {
+			return Observation{}, fmt.Errorf("procedure %q not found for observation", *o.ProcedureID)
+		}
+	}
+	if o.OrganismID != nil {
+		if _, ok := tx.state.organisms[*o.OrganismID]; !ok {
+			return Observation{}, fmt.Errorf("organism %q not found for observation", *o.OrganismID)
+		}
+	}
+	if o.CohortID != nil {
+		if _, ok := tx.state.cohorts[*o.CohortID]; !ok {
+			return Observation{}, fmt.Errorf("cohort %q not found for observation", *o.CohortID)
+		}
+	}
 	o.CreatedAt = tx.now
 	o.UpdatedAt = tx.now
 	if o.Data == nil {
@@ -1057,6 +1521,24 @@ func (tx *transaction) UpdateObservation(id string, mutator func(*Observation) e
 	before := cloneObservation(current)
 	if err := mutator(&current); err != nil {
 		return Observation{}, err
+	}
+	if current.ProcedureID == nil && current.OrganismID == nil && current.CohortID == nil {
+		return Observation{}, errors.New("observation requires procedure, organism, or cohort reference")
+	}
+	if current.ProcedureID != nil {
+		if _, ok := tx.state.procedures[*current.ProcedureID]; !ok {
+			return Observation{}, fmt.Errorf("procedure %q not found for observation", *current.ProcedureID)
+		}
+	}
+	if current.OrganismID != nil {
+		if _, ok := tx.state.organisms[*current.OrganismID]; !ok {
+			return Observation{}, fmt.Errorf("organism %q not found for observation", *current.OrganismID)
+		}
+	}
+	if current.CohortID != nil {
+		if _, ok := tx.state.cohorts[*current.CohortID]; !ok {
+			return Observation{}, fmt.Errorf("cohort %q not found for observation", *current.CohortID)
+		}
 	}
 	if current.Data == nil {
 		current.Data = map[string]any{}
@@ -1087,6 +1569,25 @@ func (tx *transaction) CreateSample(s Sample) (Sample, error) {
 	if _, exists := tx.state.samples[s.ID]; exists {
 		return Sample{}, fmt.Errorf("sample %q already exists", s.ID)
 	}
+	if s.FacilityID == "" {
+		return Sample{}, errors.New("sample requires facility id")
+	}
+	if _, ok := tx.state.facilities[s.FacilityID]; !ok {
+		return Sample{}, fmt.Errorf("facility %q not found for sample", s.FacilityID)
+	}
+	if s.OrganismID == nil && s.CohortID == nil {
+		return Sample{}, errors.New("sample requires organism or cohort reference")
+	}
+	if s.OrganismID != nil {
+		if _, ok := tx.state.organisms[*s.OrganismID]; !ok {
+			return Sample{}, fmt.Errorf("organism %q not found for sample", *s.OrganismID)
+		}
+	}
+	if s.CohortID != nil {
+		if _, ok := tx.state.cohorts[*s.CohortID]; !ok {
+			return Sample{}, fmt.Errorf("cohort %q not found for sample", *s.CohortID)
+		}
+	}
 	s.CreatedAt = tx.now
 	s.UpdatedAt = tx.now
 	if s.Attributes == nil {
@@ -1106,6 +1607,25 @@ func (tx *transaction) UpdateSample(id string, mutator func(*Sample) error) (Sam
 	before := cloneSample(current)
 	if err := mutator(&current); err != nil {
 		return Sample{}, err
+	}
+	if current.FacilityID == "" {
+		return Sample{}, errors.New("sample requires facility id")
+	}
+	if _, ok := tx.state.facilities[current.FacilityID]; !ok {
+		return Sample{}, fmt.Errorf("facility %q not found for sample", current.FacilityID)
+	}
+	if current.OrganismID == nil && current.CohortID == nil {
+		return Sample{}, errors.New("sample requires organism or cohort reference")
+	}
+	if current.OrganismID != nil {
+		if _, ok := tx.state.organisms[*current.OrganismID]; !ok {
+			return Sample{}, fmt.Errorf("organism %q not found for sample", *current.OrganismID)
+		}
+	}
+	if current.CohortID != nil {
+		if _, ok := tx.state.cohorts[*current.CohortID]; !ok {
+			return Sample{}, fmt.Errorf("cohort %q not found for sample", *current.CohortID)
+		}
 	}
 	if current.Attributes == nil {
 		current.Attributes = map[string]any{}
@@ -1166,6 +1686,11 @@ func (tx *transaction) DeleteProtocol(id string) error {
 	if !ok {
 		return fmt.Errorf("protocol %q not found", id)
 	}
+	for _, permit := range tx.state.permits {
+		if containsString(permit.ProtocolIDs, id) {
+			return fmt.Errorf("protocol %q still referenced by permit %q", id, permit.ID)
+		}
+	}
 	delete(tx.state.protocols, id)
 	tx.recordChange(Change{Entity: domain.EntityProtocol, Action: domain.ActionDelete, Before: cloneProtocol(current)})
 	return nil
@@ -1178,6 +1703,18 @@ func (tx *transaction) CreatePermit(p Permit) (Permit, error) {
 	}
 	if _, exists := tx.state.permits[p.ID]; exists {
 		return Permit{}, fmt.Errorf("permit %q already exists", p.ID)
+	}
+	p.FacilityIDs = dedupeStrings(p.FacilityIDs)
+	for _, facilityID := range p.FacilityIDs {
+		if _, ok := tx.state.facilities[facilityID]; !ok {
+			return Permit{}, fmt.Errorf("facility %q not found for permit", facilityID)
+		}
+	}
+	p.ProtocolIDs = dedupeStrings(p.ProtocolIDs)
+	for _, protocolID := range p.ProtocolIDs {
+		if _, ok := tx.state.protocols[protocolID]; !ok {
+			return Permit{}, fmt.Errorf("protocol %q not found for permit", protocolID)
+		}
 	}
 	p.CreatedAt = tx.now
 	p.UpdatedAt = tx.now
@@ -1195,6 +1732,18 @@ func (tx *transaction) UpdatePermit(id string, mutator func(*Permit) error) (Per
 	before := clonePermit(current)
 	if err := mutator(&current); err != nil {
 		return Permit{}, err
+	}
+	current.FacilityIDs = dedupeStrings(current.FacilityIDs)
+	for _, facilityID := range current.FacilityIDs {
+		if _, ok := tx.state.facilities[facilityID]; !ok {
+			return Permit{}, fmt.Errorf("facility %q not found for permit", facilityID)
+		}
+	}
+	current.ProtocolIDs = dedupeStrings(current.ProtocolIDs)
+	for _, protocolID := range current.ProtocolIDs {
+		if _, ok := tx.state.protocols[protocolID]; !ok {
+			return Permit{}, fmt.Errorf("protocol %q not found for permit", protocolID)
+		}
 	}
 	current.ID = id
 	current.UpdatedAt = tx.now
@@ -1222,6 +1771,12 @@ func (tx *transaction) CreateProject(p Project) (Project, error) {
 	if _, exists := tx.state.projects[p.ID]; exists {
 		return Project{}, fmt.Errorf("project %q already exists", p.ID)
 	}
+	p.FacilityIDs = dedupeStrings(p.FacilityIDs)
+	for _, facilityID := range p.FacilityIDs {
+		if _, ok := tx.state.facilities[facilityID]; !ok {
+			return Project{}, fmt.Errorf("facility %q not found for project", facilityID)
+		}
+	}
 	p.CreatedAt = tx.now
 	p.UpdatedAt = tx.now
 	tx.state.projects[p.ID] = cloneProject(p)
@@ -1239,6 +1794,12 @@ func (tx *transaction) UpdateProject(id string, mutator func(*Project) error) (P
 	if err := mutator(&current); err != nil {
 		return Project{}, err
 	}
+	current.FacilityIDs = dedupeStrings(current.FacilityIDs)
+	for _, facilityID := range current.FacilityIDs {
+		if _, ok := tx.state.facilities[facilityID]; !ok {
+			return Project{}, fmt.Errorf("facility %q not found for project", facilityID)
+		}
+	}
 	current.ID = id
 	current.UpdatedAt = tx.now
 	tx.state.projects[id] = cloneProject(current)
@@ -1252,6 +1813,11 @@ func (tx *transaction) DeleteProject(id string) error {
 	if !ok {
 		return fmt.Errorf("project %q not found", id)
 	}
+	for _, supply := range tx.state.supplies {
+		if containsString(supply.ProjectIDs, id) {
+			return fmt.Errorf("project %q still referenced by supply item %q", id, supply.ID)
+		}
+	}
 	delete(tx.state.projects, id)
 	tx.recordChange(Change{Entity: domain.EntityProject, Action: domain.ActionDelete, Before: cloneProject(current)})
 	return nil
@@ -1264,6 +1830,18 @@ func (tx *transaction) CreateSupplyItem(s SupplyItem) (SupplyItem, error) {
 	}
 	if _, exists := tx.state.supplies[s.ID]; exists {
 		return SupplyItem{}, fmt.Errorf("supply item %q already exists", s.ID)
+	}
+	s.FacilityIDs = dedupeStrings(s.FacilityIDs)
+	for _, facilityID := range s.FacilityIDs {
+		if _, ok := tx.state.facilities[facilityID]; !ok {
+			return SupplyItem{}, fmt.Errorf("facility %q not found for supply item", facilityID)
+		}
+	}
+	s.ProjectIDs = dedupeStrings(s.ProjectIDs)
+	for _, projectID := range s.ProjectIDs {
+		if _, ok := tx.state.projects[projectID]; !ok {
+			return SupplyItem{}, fmt.Errorf("project %q not found for supply item", projectID)
+		}
 	}
 	s.CreatedAt = tx.now
 	s.UpdatedAt = tx.now
@@ -1284,6 +1862,18 @@ func (tx *transaction) UpdateSupplyItem(id string, mutator func(*SupplyItem) err
 	before := cloneSupplyItem(current)
 	if err := mutator(&current); err != nil {
 		return SupplyItem{}, err
+	}
+	current.FacilityIDs = dedupeStrings(current.FacilityIDs)
+	for _, facilityID := range current.FacilityIDs {
+		if _, ok := tx.state.facilities[facilityID]; !ok {
+			return SupplyItem{}, fmt.Errorf("facility %q not found for supply item", facilityID)
+		}
+	}
+	current.ProjectIDs = dedupeStrings(current.ProjectIDs)
+	for _, projectID := range current.ProjectIDs {
+		if _, ok := tx.state.projects[projectID]; !ok {
+			return SupplyItem{}, fmt.Errorf("project %q not found for supply item", projectID)
+		}
 	}
 	if current.Attributes == nil {
 		current.Attributes = map[string]any{}
