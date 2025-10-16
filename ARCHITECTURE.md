@@ -43,6 +43,8 @@ The plugin API is defined in `pkg/pluginapi` and versioned per ADR-0009. Plugins
 
 Future additions to the public surface require an accompanying RFC/ADR update and a versioning decision (see ADR-0009).
 
+As of the v0.3.0 compliance entity expansion, the plugin API exposes dedicated views (`FacilityView`, `TreatmentView`, `ObservationView`, `SampleView`, `PermitView`, `SupplyItemView`) and contextual providers (`FacilityContext`, `TreatmentContext`, `ObservationContext`, `SampleContext`, `PermitContext`, `SupplyContext`). These follow the ADR-0010 pattern (opaque references with semantic helpers) and are catalogued for plugin authors in `docs/plugins/upgrade-notes.md`. Rules MUST rely on the contextual helpers (`GetZone`, `GetCurrentStatus`, `IsActive`, `RequiresReorder`, etc.) rather than string comparisons to remain forward compatible.
+
 #### Architecture Guards for Plugins
 
 The enforcement stack is summarized here:
@@ -86,6 +88,7 @@ Dataset templates and exporters live in `internal/adapters/datasets`. They adapt
 - The adapter layer consumes `pkg/datasetapi` only; it never imports plugin code directly.
 - Export storage contracts and blob implementations follow ADR-0008. See `internal/blob` and `internal/infra/blob/*` for concrete factories.
 - Dataset catalog HTTP handlers rely on the service layer (`internal/core.Service`) rather than persistence directly, preserving the hexagonal boundary.
+- Compliance entities are now part of the `TransactionView` surface (`ListFacilities`, `ListTreatments`, `ListObservations`, `ListSamples`, `ListPermits`, `ListSupplyItems`) and are accompanied by `Find*` helpers. Dataset authors should audit templates and ensure contextual access is used when cross-referencing the new entities; see `docs/plugins/upgrade-notes.md` for migration checklists.
 
 Run `go test ./internal/adapters/datasets` after changing dataset adapters to exercise guard branches, HTTP flows, and export worker invariants.
 

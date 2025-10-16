@@ -45,6 +45,37 @@ Adopt an embedded SQLite-backed store (internally `sqlite.Store`, exposed throug
 - Env vars: `COLONYCORE_STORAGE_DRIVER`, `COLONYCORE_SQLITE_PATH`, `COLONYCORE_POSTGRES_DSN`.
 - Test coverage via `internal/core/sqlite_store_test.go` and `internal/infra/persistence/sqlite/store_test.go` ensures snapshot reload semantics.
 
+## Driver Selection & Configuration
+Persistent storage drivers are selected exclusively via environment variables—deployments can move between in-memory, SQLite, or Postgres (reserved) without recompilation.
+
+### Quick Reference
+- Unset `COLONYCORE_STORAGE_DRIVER` → `sqlite` (creates `./colonycore.db`; override path with `COLONYCORE_SQLITE_PATH`).
+- `COLONYCORE_STORAGE_DRIVER=memory` → in-memory / ephemeral store.
+- `COLONYCORE_STORAGE_DRIVER=sqlite` → explicit SQLite selection (same defaults as unset).
+- `COLONYCORE_STORAGE_DRIVER=postgres` → reserved placeholder; requires `COLONYCORE_POSTGRES_DSN`.
+
+### Environment Variables
+- `COLONYCORE_STORAGE_DRIVER`: `memory` | `sqlite` | `postgres`. Defaults to `sqlite` outside of tests.
+- `COLONYCORE_SQLITE_PATH`: Filesystem path to the SQLite DB file (`./colonycore.db` if unset).
+- `COLONYCORE_POSTGRES_DSN`: Connection string for the upcoming Postgres implementation.
+
+Local development and CI can rely on defaults (SQLite file under the current working directory). Tests still target the in-memory driver directly for performance.
+
 ## Status & Follow-Up
 Accepted for v0.1.0 baseline. Postgres driver implementation tracked as a follow-up (will supersede placeholder). Metrics & delta persistence targeted post initial adopter feedback.
 
+## SQLite Operational Notes
+The snapshot strategy writes the full logical state into a single `state` table as JSON blobs after each successful transaction. This keeps the implementation compact, allows readers to inspect state with standard SQL tooling, and makes rollback/reset trivial (delete the DB file). The trade-offs are:
+- Write throughput remains serialized; concurrent writes queue behind the transaction boundary.
+- Snapshot cost grows with dataset size; future optimizations focus on incremental/delta persistence and background checkpointing.
+
+Read concurrency is comparable to the in-memory driver (multiple readers, single writer). For larger deployments, Postgres will deliver row-level locking and normalized schemas.
+
+## Postgres Roadmap
+The placeholder driver checks configuration wiring today so deployments can standardize on `COLONYCORE_POSTGRES_DSN` early. Planned work includes:
+1. Normalized schema with per-entity persistence.
+2. Row-level locking and transactional alignment with the rules engine.
+3. Versioned migrations and schema introspection.
+4. Metrics covering snapshot lag, row counts, and write latency.
+
+Once complete, the Postgres driver will replace the placeholder implementation without changing the configuration contract.
