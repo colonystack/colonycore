@@ -83,3 +83,43 @@ Key properties:
 - Existing snapshot persistence ADR: `0007-storage-baseline.md`
 - Dataset export worker: `internal/adapters/datasets/exporter.go`
 - Inspired by simplified subsets of AWS S3, GCS, MinIO client patterns.
+
+## Driver Matrix & Configuration
+Object storage drivers are runtime-selectable via environment variables; unset values favor a local filesystem implementation for developer ergonomics.
+
+### Drivers
+- `fs` (default): Stores blobs on the local filesystem at `COLONYCORE_BLOB_FS_ROOT` (`./blobdata` if unset). Metadata sidecars (`.meta` files) preserve headers without introducing a separate database.
+- `s3`: Targets AWS S3 or any S3-compatible endpoint (MinIO, Ceph RGW). Requires an explicit bucket and optional endpoint overrides for on-prem deployments.
+- `memory`: Ephemeral in-memory driver used exclusively for tests.
+
+### Environment Variables
+- `COLONYCORE_BLOB_DRIVER`: `fs` | `s3` | `memory`; defaults to `fs`.
+- `COLONYCORE_BLOB_FS_ROOT`: Directory root for the filesystem driver (`./blobdata` by default). Namespace segregation is handled via caller-provided keys.
+- `COLONYCORE_BLOB_S3_BUCKET`: Required bucket name for the S3 driver.
+- `COLONYCORE_BLOB_S3_REGION`: Optional AWS region (defaults to `us-east-1`).
+- `COLONYCORE_BLOB_S3_ENDPOINT`: Optional custom endpoint URL for S3-compatible services.
+- `COLONYCORE_BLOB_S3_PATH_STYLE`: Set to `true` to force path-style access (commonly necessary for MinIO).
+- AWS credentials follow the upstream SDK resolution chain (`AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_SESSION_TOKEN`, shared config files, IAM roles, etc.).
+
+### Semantics & Operator Notes
+- `Put` fails if a key already exists; callers delete first to overwrite.
+- Keys are opaque strings; `List` applies conventional prefix matching without pagination.
+- `PresignURL` returns synthetic local URLs for the filesystem driver and genuine signed GET URLs for S3 backends.
+- Metadata (`map[string]string`) is stored as a flat map; large structured metadata belongs in persistent domain stores with blob keys as references.
+- The memory driver omits presigning support (`ErrUnsupported`).
+
+### Example Configuration (Postgres + MinIO)
+External deployments often pair the filesystem replacement with Postgres for persistent state:
+
+```bash
+export COLONYCORE_STORAGE_DRIVER=postgres
+export COLONYCORE_POSTGRES_DSN='postgres://colonycore:colonycore@localhost:5432/colonycore?sslmode=disable'
+
+export COLONYCORE_BLOB_DRIVER=s3
+export COLONYCORE_BLOB_S3_BUCKET=colonycore-dev
+export COLONYCORE_BLOB_S3_REGION=us-east-1
+export COLONYCORE_BLOB_S3_ENDPOINT=http://localhost:9000
+export COLONYCORE_BLOB_S3_PATH_STYLE=true
+```
+
+Local development can omit all variables and rely on SQLite plus the filesystem blob store (`./blobdata`), ensuring zero-config durability for iterative work.
