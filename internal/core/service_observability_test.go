@@ -1,7 +1,10 @@
 package core
 
 import (
+	"bytes"
 	"context"
+	"expvar"
+	"strings"
 	"testing"
 	"time"
 
@@ -286,5 +289,49 @@ func TestServiceObservabilityComplianceEntities(t *testing.T) {
 		if !audit.has(op, AuditStatusSuccess, nil) {
 			t.Fatalf("expected audit success entry for %s", op)
 		}
+	}
+}
+
+const entryStatusSuccess = "success"
+const entryStatusError = "error"
+
+func TestExpvarMetricsRecorderExports(t *testing.T) {
+	recorder := NewExpvarMetricsRecorder("")
+	if recorder.Name() == "" {
+		t.Fatalf("expected recorder to have export name")
+	}
+	recorder.Observe(context.Background(), "test_op", true, 10*time.Millisecond)
+	recorder.Observe(context.Background(), "test_op", false, 5*time.Millisecond)
+
+	snapshot := recorder.Snapshot()
+	if snapshot.DurationsMS["test_op"] <= 0 {
+		t.Fatalf("expected positive duration, snapshot=%+v", snapshot)
+	}
+	if snapshot.Results["test_op"][entryStatusSuccess] != 1 || snapshot.Results["test_op"][entryStatusError] != 1 {
+		t.Fatalf("unexpected results snapshot=%+v", snapshot)
+	}
+
+	if v := expvar.Get(recorder.Name()); v == nil {
+		t.Fatalf("expected expvar export to be registered")
+	} else if !strings.Contains(v.String(), "test_op") {
+		t.Fatalf("expected expvar output to contain operation: %s", v.String())
+	}
+}
+
+func TestJSONTraceTracerExports(t *testing.T) {
+	var buf bytes.Buffer
+	tracer := NewJSONTracer(&buf)
+	_, span := tracer.Start(context.Background(), "trace_op")
+	span.End(nil)
+
+	entries := tracer.Entries()
+	if len(entries) != 1 {
+		t.Fatalf("expected single span entry, got %d", len(entries))
+	}
+	if entries[0].Operation != "trace_op" || entries[0].Status != entryStatusSuccess {
+		t.Fatalf("unexpected span entry: %+v", entries[0])
+	}
+	if !strings.Contains(buf.String(), "\"operation\":\"trace_op\"") {
+		t.Fatalf("expected JSON output to contain operation: %q", buf.String())
 	}
 }
