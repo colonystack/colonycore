@@ -73,7 +73,14 @@ func TestIntegrationSmoke(t *testing.T) {
 	for _, cv := range coreVariants {
 		t.Run(cv.name, func(t *testing.T) {
 			store := cv.open(t)
-			svc := core.NewService(store)
+			metricsRecorder := core.NewExpvarMetricsRecorder("")
+			var traceBuffer bytes.Buffer
+			tracer := core.NewJSONTracer(&traceBuffer)
+			svc := core.NewService(
+				store,
+				core.WithMetricsRecorder(metricsRecorder),
+				core.WithTracer(tracer),
+			)
 			facility, _, err := svc.CreateFacility(ctx, domain.Facility{Name: "Lab"})
 			if err != nil {
 				t.Fatalf("create facility: %v", err)
@@ -114,6 +121,28 @@ func TestIntegrationSmoke(t *testing.T) {
 			// Validate organism reflects assignment
 			if got, ok := store.GetOrganism(org.ID); !ok || got.HousingID == nil || *got.HousingID != created.ID {
 				t.Fatalf("expected organism housing assignment persisted")
+			}
+
+			// Validate observability exporters captured core operations.
+			snapshot := metricsRecorder.Snapshot()
+			if len(snapshot.DurationsMS) == 0 {
+				t.Fatalf("expected metrics durations for operations, got empty")
+			}
+			if snapshot.Results["create_facility"]["success"] == 0 {
+				t.Fatalf("expected create_facility success metric recorded: %+v", snapshot.Results)
+			}
+			if traceBuffer.Len() == 0 {
+				t.Fatalf("expected trace exporter to emit spans")
+			}
+			var foundSpan bool
+			for _, entry := range tracer.Entries() {
+				if entry.Operation == "create_facility" && entry.Status == "success" {
+					foundSpan = true
+					break
+				}
+			}
+			if !foundSpan {
+				t.Fatalf("expected trace entry for create_facility, entries=%+v", tracer.Entries())
 			}
 		})
 	}
