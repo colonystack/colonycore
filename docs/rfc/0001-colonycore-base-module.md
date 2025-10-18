@@ -1,6 +1,6 @@
 # RFC: ColonyCore Base Module
 
-- Status: Draft — v0.3.0 baseline includes Facility/Treatment/Observation/Sample/Permit/SupplyItem flows; plugin upgrade guidance in docs/plugins/upgrade-notes.md; references ADR-0007 storage baseline, ADR-0008 object storage contract, ADR-0009 plugin interface stability & semver policy, ADR-0010 contextual accessor pattern implementation
+- Status: Draft — v0.3.0 baseline includes Facility/Treatment/Observation/Sample/Permit/SupplyItem flows; references ADR-0007 storage baseline, ADR-0008 object storage contract, ADR-0009 plugin interface stability & semver policy, ADR-0010 contextual accessor pattern implementation
 - Created: 2025-09-21
 - Authors: Tobias Harnickell
 - Stakeholders: Tobias Harnickell
