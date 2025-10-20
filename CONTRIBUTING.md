@@ -19,14 +19,14 @@ Respectful, inclusive communication is expected. See the `CODE_OF_CONDUCT.md` fo
 ## Workflow
 1. **Discuss**: open an issue for non-trivial changes. Link existing RFC/ADR if applicable.
 2. **Branch**: create a feature branch in your fork.
-3. **Code**: keep PRs focused and small; update docs if behavior changes.
-4. **Test**: add or update tests where it makes sense.
+3. **Code**: keep PRs focused and small and update docs if behavior changes.
+4. **Test**: add or update tests where it makes sense. Run Pre-commit hooks locally before pushing.
 5. **PR**: use the short PR template.
 
 ## Commit and PR Style
 - **Commits**: conventional commits are *encouraged*, e.g. `feat: …`, `fix: …`. (see [conventionalcommits.com](https://www.conventionalcommits.org/en/v1.0.0/)).
 - **PR title**: short and descriptive, mirroring the main change.
-- **PR body**: include “What/Why/How”, test notes, and any breaking changes. The template should guide you through.
+- **PR body**: include “What/Why/How”, test notes, and any breaking changes. Favor concise phrases and titles. The template should guide you through.
 
 ## Issues
 Use the issue forms:
@@ -71,6 +71,7 @@ Use the issue forms:
 - **Emergency bypass**: prefer `SKIP=<hook id> pre-commit run --all-files` (for example `SKIP=check-jsonschema-openapi`); use `git commit --no-verify` only when absolutely necessary and follow up with a fix before merging.
 ## Style and Tooling
 - Follow existing code style and run formatters/linters where available.
+- Write clear, concise comments and docstrings.
 - Keep dependencies minimal and explain new ones in the PR.
 
 ## Licensing
