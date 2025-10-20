@@ -5,6 +5,7 @@ Thanks for considering a contribution — this project keeps things lightweight 
 ## TL;DR
 - Fork → small PRs → clear “What/Why/How” → basic tests → maintainer review.
 - Follow the repo’s RFCs/ADRs and do not contradict them.
+- Agents and automations must follow the guardrails in `AGENTS.md`.
 - Be kind and constructive.
 
 ## Code of Conduct

@@ -16,6 +16,7 @@ src/**/*.go             @TobyTheHutt
 # Specific files
 /Makefile               @TobyTheHutt
 /README.md              @TobyTheHutt
+src/**/AGENTS.md              @TobyTheHutt
 
 # Overrides for a subpath
 # /src/experimental/      @org/research

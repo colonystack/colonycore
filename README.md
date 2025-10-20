@@ -155,3 +155,4 @@ go test -run TestIntegrationSmoke ./internal/integration -count=1
 - Ownership and escalation paths are tracked in `MAINTAINERS.md` and `SECURITY.md`; the latter also details the coordinated vulnerability disclosure process.
 - Long-form decision records and proposals live in `docs/adr/` and `docs/rfc/`. Operational considerations are captured in `docs/annex/`.
 - All source code is licensed under the terms of `LICENSE`.
+- Non-human contributors must follow the workflows and guardrails in `AGENTS.md`.
