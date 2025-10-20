@@ -17,3 +17,4 @@
 - [ ] I have updated the relevant RFC and its linked resources
 - [ ] I have added tests
 - [ ] I ran manual tests
+- [ ] I strictly followed `AGENTS.md`
