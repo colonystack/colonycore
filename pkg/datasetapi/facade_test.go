@@ -203,14 +203,21 @@ func TestBreedingProcedureFacadesCloneCollections(t *testing.T) {
 		t.Fatalf("expected pairing attributes map to be cloned")
 	}
 
+	procedureProject := "project-1"
+	ProcedureProjectClone := procedureProject
+	treatmentIDs := []string{"t1"}
+	observationIDs := []string{"obs1"}
 	procedure := NewProcedure(ProcedureData{
-		Base:        BaseData{ID: "proc", UpdatedAt: created},
-		Name:        "Procedure",
-		Status:      "scheduled",
-		ScheduledAt: created.Add(time.Hour),
-		ProtocolID:  organismProtocolID,
-		CohortID:    &housing,
-		OrganismIDs: []string{"o1"},
+		Base:           BaseData{ID: "proc", UpdatedAt: created},
+		Name:           "Procedure",
+		Status:         "scheduled",
+		ScheduledAt:    created.Add(time.Hour),
+		ProtocolID:     organismProtocolID,
+		ProjectID:      &procedureProject,
+		CohortID:       &housing,
+		OrganismIDs:    []string{"o1"},
+		TreatmentIDs:   append([]string(nil), treatmentIDs...),
+		ObservationIDs: append([]string(nil), observationIDs...),
 	})
 
 	ids := procedure.OrganismIDs()
@@ -220,6 +227,25 @@ func TestBreedingProcedureFacadesCloneCollections(t *testing.T) {
 	}
 	if _, ok := procedure.CohortID(); !ok {
 		t.Fatalf("expected cohort id to be present")
+	}
+	if projectID, ok := procedure.ProjectID(); !ok || projectID != ProcedureProjectClone {
+		t.Fatalf("expected project id clone to be present")
+	}
+	procedureProject = mutatedLiteral
+	if projectID, _ := procedure.ProjectID(); projectID != ProcedureProjectClone {
+		t.Fatalf("expected project id clone to remain stable, got %q", projectID)
+	}
+	treatments := procedure.TreatmentIDs()
+	if len(treatments) != 1 || treatments[0] != "t1" {
+		t.Fatalf("expected treatment ids clone, got %+v", treatments)
+	}
+	treatments[0] = mutatedLiteral
+	if procedure.TreatmentIDs()[0] != "t1" {
+		t.Fatalf("expected treatment ids clone to remain stable")
+	}
+	observationIDs[0] = mutatedLiteral
+	if procedure.ObservationIDs()[0] != "obs1" {
+		t.Fatalf("expected observation ids clone to remain stable")
 	}
 
 	if payload, err := json.Marshal(breeding); err != nil {
@@ -253,6 +279,15 @@ func TestBreedingProcedureFacadesCloneCollections(t *testing.T) {
 		if serialized["id"] != "proc" || serialized["protocol_id"] != "protocol" {
 			t.Fatalf("unexpected procedure json: %+v", serialized)
 		}
+		if serialized["project_id"] != ProcedureProjectClone {
+			t.Fatalf("expected serialized project id, got %+v", serialized["project_id"])
+		}
+		if ids, ok := serialized["treatment_ids"].([]any); !ok || len(ids) != 1 || ids[0] != "t1" {
+			t.Fatalf("expected serialized treatment ids, got %+v", serialized["treatment_ids"])
+		}
+		if ids, ok := serialized["observation_ids"].([]any); !ok || len(ids) != 1 || ids[0] != "obs1" {
+			t.Fatalf("expected serialized observation ids, got %+v", serialized["observation_ids"])
+		}
 	}
 }
 
@@ -285,14 +320,34 @@ func TestProtocolProjectCohortFacades(t *testing.T) {
 		t.Fatalf("unexpected protocol values")
 	}
 
+	projectFacilityIDs := []string{"facility-1"}
+	projectProtocolIDs := []string{"protocol-1"}
+	projectOrganismIDs := []string{"organism-1"}
+	projectProcedureIDs := []string{"procedure-1"}
+	projectSupplyIDs := []string{"supply-1"}
 	project := NewProject(ProjectData{
-		Base:        BaseData{ID: "project", CreatedAt: now},
-		Code:        "PR",
-		Title:       "Project",
-		Description: "Description",
+		Base:          BaseData{ID: "project", CreatedAt: now},
+		Code:          "PR",
+		Title:         "Project",
+		Description:   "Description",
+		FacilityIDs:   append([]string(nil), projectFacilityIDs...),
+		ProtocolIDs:   append([]string(nil), projectProtocolIDs...),
+		OrganismIDs:   append([]string(nil), projectOrganismIDs...),
+		ProcedureIDs:  append([]string(nil), projectProcedureIDs...),
+		SupplyItemIDs: append([]string(nil), projectSupplyIDs...),
 	})
 	if project.Code() != "PR" || project.Title() != "Project" || project.Description() != "Description" {
 		t.Fatalf("unexpected project values")
+	}
+	if len(project.FacilityIDs()) != 1 || len(project.ProtocolIDs()) != 1 || len(project.OrganismIDs()) != 1 || len(project.ProcedureIDs()) != 1 || len(project.SupplyItemIDs()) != 1 {
+		t.Fatalf("expected project relationships to round-trip")
+	}
+	projectProtocolIDs[0] = mutatedLiteral
+	projectOrganismIDs[0] = mutatedLiteral
+	projectProcedureIDs[0] = mutatedLiteral
+	projectSupplyIDs[0] = mutatedLiteral
+	if project.ProtocolIDs()[0] != "protocol-1" || project.OrganismIDs()[0] != "organism-1" || project.ProcedureIDs()[0] != "procedure-1" || project.SupplyItemIDs()[0] != "supply-1" {
+		t.Fatalf("expected project relationship slices to be cloned")
 	}
 
 	housing := NewHousingUnit(HousingUnitData{
@@ -345,6 +400,21 @@ func TestProtocolProjectCohortFacades(t *testing.T) {
 		}
 		if serialized["code"] != "PR" || serialized["title"] != "Project" {
 			t.Fatalf("unexpected project json: %+v", serialized)
+		}
+		if ids, ok := serialized["facility_ids"].([]any); !ok || len(ids) != 1 || ids[0] != "facility-1" {
+			t.Fatalf("expected facility ids in serialized project, got %+v", serialized["facility_ids"])
+		}
+		if ids, ok := serialized["protocol_ids"].([]any); !ok || len(ids) != 1 || ids[0] != "protocol-1" {
+			t.Fatalf("expected protocol ids in serialized project, got %+v", serialized["protocol_ids"])
+		}
+		if ids, ok := serialized["organism_ids"].([]any); !ok || len(ids) != 1 || ids[0] != "organism-1" {
+			t.Fatalf("expected organism ids in serialized project, got %+v", serialized["organism_ids"])
+		}
+		if ids, ok := serialized["procedure_ids"].([]any); !ok || len(ids) != 1 || ids[0] != "procedure-1" {
+			t.Fatalf("expected procedure ids in serialized project, got %+v", serialized["procedure_ids"])
+		}
+		if ids, ok := serialized["supply_item_ids"].([]any); !ok || len(ids) != 1 || ids[0] != "supply-1" {
+			t.Fatalf("expected supply item ids in serialized project, got %+v", serialized["supply_item_ids"])
 		}
 	}
 
@@ -611,6 +681,15 @@ func TestOptionalAccessorsBehaviors(t *testing.T) {
 	procedure := NewProcedure(ProcedureData{Base: BaseData{ID: "proc"}, ProtocolID: "proto"})
 	if _, ok := procedure.CohortID(); ok {
 		t.Fatalf("expected cohort accessor on procedure to report missing value")
+	}
+	if _, ok := procedure.ProjectID(); ok {
+		t.Fatalf("expected project accessor on procedure to report missing value")
+	}
+	if procedure.TreatmentIDs() != nil {
+		t.Fatalf("expected nil treatment ids when unset")
+	}
+	if procedure.ObservationIDs() != nil {
+		t.Fatalf("expected nil observation ids when unset")
 	}
 }
 

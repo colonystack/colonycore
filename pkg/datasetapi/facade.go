@@ -149,13 +149,16 @@ type BreedingUnitData struct {
 
 // ProcedureData describes the fields required to construct a Procedure facade.
 type ProcedureData struct {
-	Base        BaseData
-	Name        string
-	Status      string
-	ScheduledAt time.Time
-	ProtocolID  string
-	CohortID    *string
-	OrganismIDs []string
+	Base           BaseData
+	Name           string
+	Status         string
+	ScheduledAt    time.Time
+	ProtocolID     string
+	ProjectID      *string
+	CohortID       *string
+	OrganismIDs    []string
+	TreatmentIDs   []string
+	ObservationIDs []string
 }
 
 // TreatmentData describes the fields required to construct a Treatment facade.
@@ -231,11 +234,15 @@ type PermitData struct {
 
 // ProjectData describes the fields required to construct a Project facade.
 type ProjectData struct {
-	Base        BaseData
-	Code        string
-	Title       string
-	Description string
-	FacilityIDs []string
+	Base          BaseData
+	Code          string
+	Title         string
+	Description   string
+	FacilityIDs   []string
+	ProtocolIDs   []string
+	OrganismIDs   []string
+	ProcedureIDs  []string
+	SupplyItemIDs []string
 }
 
 // SupplyItemData describes the fields required to construct a SupplyItem facade.
@@ -365,8 +372,11 @@ type Procedure interface {
 	Status() string
 	ScheduledAt() time.Time
 	ProtocolID() string
+	ProjectID() (string, bool)
 	CohortID() (string, bool)
 	OrganismIDs() []string
+	TreatmentIDs() []string
+	ObservationIDs() []string
 
 	// Contextual status accessors
 	GetCurrentStatus() ProcedureStatusRef
@@ -490,6 +500,10 @@ type Project interface {
 	Title() string
 	Description() string
 	FacilityIDs() []string
+	ProtocolIDs() []string
+	OrganismIDs() []string
+	ProcedureIDs() []string
+	SupplyItemIDs() []string
 }
 
 // SupplyItem exposes read-only supply metadata to dataset plugins.
@@ -1082,24 +1096,30 @@ func (b breedingUnit) MarshalJSON() ([]byte, error) {
 
 type procedure struct {
 	base
-	name        string
-	status      string
-	scheduledAt time.Time
-	protocolID  string
-	cohortID    *string
-	organismIDs []string
+	name           string
+	status         string
+	scheduledAt    time.Time
+	protocolID     string
+	projectID      *string
+	cohortID       *string
+	organismIDs    []string
+	treatmentIDs   []string
+	observationIDs []string
 }
 
 // NewProcedure constructs a read-only Procedure facade.
 func NewProcedure(data ProcedureData) Procedure {
 	return procedure{
-		base:        newBase(data.Base),
-		name:        data.Name,
-		status:      data.Status,
-		scheduledAt: data.ScheduledAt,
-		protocolID:  data.ProtocolID,
-		cohortID:    cloneOptionalString(data.CohortID),
-		organismIDs: cloneStringSlice(data.OrganismIDs),
+		base:           newBase(data.Base),
+		name:           data.Name,
+		status:         data.Status,
+		scheduledAt:    data.ScheduledAt,
+		protocolID:     data.ProtocolID,
+		projectID:      cloneOptionalString(data.ProjectID),
+		cohortID:       cloneOptionalString(data.CohortID),
+		organismIDs:    cloneStringSlice(data.OrganismIDs),
+		treatmentIDs:   cloneStringSlice(data.TreatmentIDs),
+		observationIDs: cloneStringSlice(data.ObservationIDs),
 	}
 }
 
@@ -1107,11 +1127,20 @@ func (p procedure) Name() string           { return p.name }
 func (p procedure) Status() string         { return p.status }
 func (p procedure) ScheduledAt() time.Time { return p.scheduledAt }
 func (p procedure) ProtocolID() string     { return p.protocolID }
+func (p procedure) ProjectID() (string, bool) {
+	return derefString(p.projectID)
+}
 func (p procedure) CohortID() (string, bool) {
 	return derefString(p.cohortID)
 }
 func (p procedure) OrganismIDs() []string {
 	return cloneStringSlice(p.organismIDs)
+}
+func (p procedure) TreatmentIDs() []string {
+	return cloneStringSlice(p.treatmentIDs)
+}
+func (p procedure) ObservationIDs() []string {
+	return cloneStringSlice(p.observationIDs)
 }
 
 // Contextual status accessors
@@ -1148,26 +1177,32 @@ func (p procedure) IsSuccessful() bool {
 
 func (p procedure) MarshalJSON() ([]byte, error) {
 	type procedureJSON struct {
-		ID          string    `json:"id"`
-		CreatedAt   time.Time `json:"created_at"`
-		UpdatedAt   time.Time `json:"updated_at"`
-		Name        string    `json:"name"`
-		Status      string    `json:"status"`
-		ScheduledAt time.Time `json:"scheduled_at"`
-		ProtocolID  string    `json:"protocol_id"`
-		CohortID    *string   `json:"cohort_id,omitempty"`
-		OrganismIDs []string  `json:"organism_ids"`
+		ID             string    `json:"id"`
+		CreatedAt      time.Time `json:"created_at"`
+		UpdatedAt      time.Time `json:"updated_at"`
+		Name           string    `json:"name"`
+		Status         string    `json:"status"`
+		ScheduledAt    time.Time `json:"scheduled_at"`
+		ProtocolID     string    `json:"protocol_id"`
+		ProjectID      *string   `json:"project_id,omitempty"`
+		CohortID       *string   `json:"cohort_id,omitempty"`
+		OrganismIDs    []string  `json:"organism_ids,omitempty"`
+		TreatmentIDs   []string  `json:"treatment_ids,omitempty"`
+		ObservationIDs []string  `json:"observation_ids,omitempty"`
 	}
 	return json.Marshal(procedureJSON{
-		ID:          p.ID(),
-		CreatedAt:   p.CreatedAt(),
-		UpdatedAt:   p.UpdatedAt(),
-		Name:        p.name,
-		Status:      p.status,
-		ScheduledAt: p.scheduledAt,
-		ProtocolID:  p.protocolID,
-		CohortID:    cloneOptionalString(p.cohortID),
-		OrganismIDs: cloneStringSlice(p.organismIDs),
+		ID:             p.ID(),
+		CreatedAt:      p.CreatedAt(),
+		UpdatedAt:      p.UpdatedAt(),
+		Name:           p.name,
+		Status:         p.status,
+		ScheduledAt:    p.scheduledAt,
+		ProtocolID:     p.protocolID,
+		ProjectID:      cloneOptionalString(p.projectID),
+		CohortID:       cloneOptionalString(p.cohortID),
+		OrganismIDs:    cloneStringSlice(p.organismIDs),
+		TreatmentIDs:   cloneStringSlice(p.treatmentIDs),
+		ObservationIDs: cloneStringSlice(p.observationIDs),
 	})
 }
 
@@ -1649,20 +1684,28 @@ func (p permit) MarshalJSON() ([]byte, error) {
 
 type project struct {
 	base
-	code        string
-	title       string
-	description string
-	facilityIDs []string
+	code          string
+	title         string
+	description   string
+	facilityIDs   []string
+	protocolIDs   []string
+	organismIDs   []string
+	procedureIDs  []string
+	supplyItemIDs []string
 }
 
 // NewProject constructs a read-only Project facade.
 func NewProject(data ProjectData) Project {
 	return project{
-		base:        newBase(data.Base),
-		code:        data.Code,
-		title:       data.Title,
-		description: data.Description,
-		facilityIDs: cloneStringSlice(data.FacilityIDs),
+		base:          newBase(data.Base),
+		code:          data.Code,
+		title:         data.Title,
+		description:   data.Description,
+		facilityIDs:   cloneStringSlice(data.FacilityIDs),
+		protocolIDs:   cloneStringSlice(data.ProtocolIDs),
+		organismIDs:   cloneStringSlice(data.OrganismIDs),
+		procedureIDs:  cloneStringSlice(data.ProcedureIDs),
+		supplyItemIDs: cloneStringSlice(data.SupplyItemIDs),
 	}
 }
 
@@ -1672,25 +1715,45 @@ func (p project) Description() string { return p.description }
 func (p project) FacilityIDs() []string {
 	return cloneStringSlice(p.facilityIDs)
 }
+func (p project) ProtocolIDs() []string {
+	return cloneStringSlice(p.protocolIDs)
+}
+func (p project) OrganismIDs() []string {
+	return cloneStringSlice(p.organismIDs)
+}
+func (p project) ProcedureIDs() []string {
+	return cloneStringSlice(p.procedureIDs)
+}
+func (p project) SupplyItemIDs() []string {
+	return cloneStringSlice(p.supplyItemIDs)
+}
 
 func (p project) MarshalJSON() ([]byte, error) {
 	type projectJSON struct {
-		ID          string    `json:"id"`
-		CreatedAt   time.Time `json:"created_at"`
-		UpdatedAt   time.Time `json:"updated_at"`
-		Code        string    `json:"code"`
-		Title       string    `json:"title"`
-		Description string    `json:"description"`
-		FacilityIDs []string  `json:"facility_ids,omitempty"`
+		ID            string    `json:"id"`
+		CreatedAt     time.Time `json:"created_at"`
+		UpdatedAt     time.Time `json:"updated_at"`
+		Code          string    `json:"code"`
+		Title         string    `json:"title"`
+		Description   string    `json:"description"`
+		FacilityIDs   []string  `json:"facility_ids,omitempty"`
+		ProtocolIDs   []string  `json:"protocol_ids,omitempty"`
+		OrganismIDs   []string  `json:"organism_ids,omitempty"`
+		ProcedureIDs  []string  `json:"procedure_ids,omitempty"`
+		SupplyItemIDs []string  `json:"supply_item_ids,omitempty"`
 	}
 	return json.Marshal(projectJSON{
-		ID:          p.ID(),
-		CreatedAt:   p.CreatedAt(),
-		UpdatedAt:   p.UpdatedAt(),
-		Code:        p.code,
-		Title:       p.title,
-		Description: p.description,
-		FacilityIDs: cloneStringSlice(p.facilityIDs),
+		ID:            p.ID(),
+		CreatedAt:     p.CreatedAt(),
+		UpdatedAt:     p.UpdatedAt(),
+		Code:          p.code,
+		Title:         p.title,
+		Description:   p.description,
+		FacilityIDs:   cloneStringSlice(p.facilityIDs),
+		ProtocolIDs:   cloneStringSlice(p.protocolIDs),
+		OrganismIDs:   cloneStringSlice(p.organismIDs),
+		ProcedureIDs:  cloneStringSlice(p.procedureIDs),
+		SupplyItemIDs: cloneStringSlice(p.supplyItemIDs),
 	})
 }
 
