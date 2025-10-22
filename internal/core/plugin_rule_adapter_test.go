@@ -423,6 +423,9 @@ func TestOrganismViewAccessors(t *testing.T) {
 	housingID := "H1"
 	protocolID := "P1"
 	projectID := "PRJ"
+	lineID := "line-id"
+	strainID := "strain-id"
+	parentIDs := []string{"p1", "p2"}
 	attributes := map[string]any{"key": "value"}
 
 	domainOrg := domain.Organism{
@@ -430,6 +433,9 @@ func TestOrganismViewAccessors(t *testing.T) {
 		Name:       "Specimen",
 		Species:    "Frogus",
 		Line:       "LineA",
+		LineID:     &lineID,
+		StrainID:   &strainID,
+		ParentIDs:  append([]string(nil), parentIDs...),
 		Stage:      domain.StageAdult,
 		HousingID:  &housingID,
 		ProtocolID: &protocolID,
@@ -451,6 +457,15 @@ func TestOrganismViewAccessors(t *testing.T) {
 	if view.Line() != domainOrg.Line {
 		t.Fatalf("unexpected line: %s", view.Line())
 	}
+	if got, ok := view.LineID(); !ok || got != lineID {
+		t.Fatalf("unexpected line id: %s (%v)", got, ok)
+	}
+	if got, ok := view.StrainID(); !ok || got != strainID {
+		t.Fatalf("unexpected strain id: %s (%v)", got, ok)
+	}
+	if parents := view.ParentIDs(); len(parents) != len(parentIDs) || parents[0] != "p1" {
+		t.Fatalf("unexpected parent ids: %+v", parents)
+	}
 	if view.Stage() != pluginapi.LifecycleStage(domain.StageAdult) {
 		t.Fatalf("unexpected stage: %s", view.Stage())
 	}
@@ -471,6 +486,10 @@ func TestOrganismViewAccessors(t *testing.T) {
 	attrs["key"] = "mutated"
 	if refreshed := view.Attributes()["key"]; refreshed != "value" {
 		t.Fatalf("expected attributes copy to remain unchanged, got %v", refreshed)
+	}
+	parentIDs[0] = "changed"
+	if view.ParentIDs()[0] != "p1" {
+		t.Fatalf("expected parent ids clone to remain stable")
 	}
 }
 

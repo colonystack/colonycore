@@ -48,6 +48,9 @@ type OrganismFixtureConfig struct {
 	Name       string
 	Species    string
 	Line       string
+	LineID     *string
+	StrainID   *string
+	ParentIDs  []string
 	Stage      datasetapi.LifecycleStage
 	CohortID   *string
 	HousingID  *string
@@ -73,6 +76,9 @@ func Organism(cfg OrganismFixtureConfig) datasetapi.Organism {
 		Name:       cfg.Name,
 		Species:    cfg.Species,
 		Line:       cfg.Line,
+		LineID:     cloneOptionalString(cfg.LineID),
+		StrainID:   cloneOptionalString(cfg.StrainID),
+		ParentIDs:  append([]string(nil), cfg.ParentIDs...),
 		Stage:      domain.LifecycleStage(cfg.Stage),
 		CohortID:   cloneOptionalString(cfg.CohortID),
 		HousingID:  cloneOptionalString(cfg.HousingID),
@@ -86,6 +92,9 @@ func Organism(cfg OrganismFixtureConfig) datasetapi.Organism {
 		Name:       domainOrganism.Name,
 		Species:    domainOrganism.Species,
 		Line:       domainOrganism.Line,
+		LineID:     domainOrganism.LineID,
+		StrainID:   domainOrganism.StrainID,
+		ParentIDs:  append([]string(nil), domainOrganism.ParentIDs...),
 		Stage:      datasetapi.LifecycleStage(domainOrganism.Stage),
 		CohortID:   domainOrganism.CohortID,
 		HousingID:  domainOrganism.HousingID,

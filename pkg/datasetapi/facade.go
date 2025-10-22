@@ -88,6 +88,9 @@ type OrganismData struct {
 	Name       string
 	Species    string
 	Line       string
+	LineID     *string
+	StrainID   *string
+	ParentIDs  []string
 	Stage      LifecycleStage
 	CohortID   *string
 	HousingID  *string
@@ -128,13 +131,20 @@ type FacilityData struct {
 
 // BreedingUnitData describes the fields required to construct a BreedingUnit facade.
 type BreedingUnitData struct {
-	Base       BaseData
-	Name       string
-	Strategy   string
-	HousingID  *string
-	ProtocolID *string
-	FemaleIDs  []string
-	MaleIDs    []string
+	Base              BaseData
+	Name              string
+	Strategy          string
+	HousingID         *string
+	ProtocolID        *string
+	LineID            *string
+	StrainID          *string
+	TargetLineID      *string
+	TargetStrainID    *string
+	PairingIntent     string
+	PairingNotes      string
+	PairingAttributes map[string]any
+	FemaleIDs         []string
+	MaleIDs           []string
 }
 
 // ProcedureData describes the fields required to construct a Procedure facade.
@@ -252,6 +262,9 @@ type Organism interface {
 	Name() string
 	Species() string
 	Line() string
+	LineID() (string, bool)
+	StrainID() (string, bool)
+	ParentIDs() []string
 	Stage() LifecycleStage // Legacy - prefer GetCurrentStage() for new code
 	CohortID() (string, bool)
 	HousingID() (string, bool)
@@ -327,6 +340,13 @@ type BreedingUnit interface {
 	Strategy() string
 	HousingID() (string, bool)
 	ProtocolID() (string, bool)
+	LineID() (string, bool)
+	StrainID() (string, bool)
+	TargetLineID() (string, bool)
+	TargetStrainID() (string, bool)
+	PairingIntent() string
+	PairingNotes() string
+	PairingAttributes() map[string]any
 	FemaleIDs() []string
 	MaleIDs() []string
 
@@ -518,6 +538,9 @@ type organism struct {
 	name       string
 	species    string
 	line       string
+	lineID     *string
+	strainID   *string
+	parentIDs  []string
 	stage      LifecycleStage
 	cohortID   *string
 	housingID  *string
@@ -533,6 +556,9 @@ func NewOrganism(data OrganismData) Organism {
 		name:       data.Name,
 		species:    data.Species,
 		line:       data.Line,
+		lineID:     cloneOptionalString(data.LineID),
+		strainID:   cloneOptionalString(data.StrainID),
+		parentIDs:  append([]string(nil), data.ParentIDs...),
 		stage:      data.Stage,
 		cohortID:   cloneOptionalString(data.CohortID),
 		housingID:  cloneOptionalString(data.HousingID),
@@ -545,6 +571,18 @@ func NewOrganism(data OrganismData) Organism {
 func (o organism) Name() string    { return o.name }
 func (o organism) Species() string { return o.species }
 func (o organism) Line() string    { return o.line }
+func (o organism) LineID() (string, bool) {
+	return derefString(o.lineID)
+}
+func (o organism) StrainID() (string, bool) {
+	return derefString(o.strainID)
+}
+func (o organism) ParentIDs() []string {
+	if len(o.parentIDs) == 0 {
+		return nil
+	}
+	return append([]string(nil), o.parentIDs...)
+}
 func (o organism) Stage() LifecycleStage {
 	return o.stage
 }
@@ -606,6 +644,9 @@ func (o organism) MarshalJSON() ([]byte, error) {
 		Name       string         `json:"name"`
 		Species    string         `json:"species"`
 		Line       string         `json:"line"`
+		LineID     *string        `json:"line_id,omitempty"`
+		StrainID   *string        `json:"strain_id,omitempty"`
+		ParentIDs  []string       `json:"parent_ids,omitempty"`
 		Stage      LifecycleStage `json:"stage"`
 		CohortID   *string        `json:"cohort_id,omitempty"`
 		HousingID  *string        `json:"housing_id,omitempty"`
@@ -620,6 +661,9 @@ func (o organism) MarshalJSON() ([]byte, error) {
 		Name:       o.name,
 		Species:    o.species,
 		Line:       o.line,
+		LineID:     cloneOptionalString(o.lineID),
+		StrainID:   cloneOptionalString(o.strainID),
+		ParentIDs:  append([]string(nil), o.parentIDs...),
 		Stage:      o.stage,
 		CohortID:   cloneOptionalString(o.cohortID),
 		HousingID:  cloneOptionalString(o.housingID),
@@ -900,24 +944,38 @@ func (f facility) MarshalJSON() ([]byte, error) {
 
 type breedingUnit struct {
 	base
-	name       string
-	strategy   string
-	housingID  *string
-	protocolID *string
-	femaleIDs  []string
-	maleIDs    []string
+	name              string
+	strategy          string
+	housingID         *string
+	protocolID        *string
+	lineID            *string
+	strainID          *string
+	targetLineID      *string
+	targetStrainID    *string
+	pairingIntent     string
+	pairingNotes      string
+	pairingAttributes map[string]any
+	femaleIDs         []string
+	maleIDs           []string
 }
 
 // NewBreedingUnit constructs a read-only BreedingUnit facade.
 func NewBreedingUnit(data BreedingUnitData) BreedingUnit {
 	return breedingUnit{
-		base:       newBase(data.Base),
-		name:       data.Name,
-		strategy:   data.Strategy,
-		housingID:  cloneOptionalString(data.HousingID),
-		protocolID: cloneOptionalString(data.ProtocolID),
-		femaleIDs:  cloneStringSlice(data.FemaleIDs),
-		maleIDs:    cloneStringSlice(data.MaleIDs),
+		base:              newBase(data.Base),
+		name:              data.Name,
+		strategy:          data.Strategy,
+		housingID:         cloneOptionalString(data.HousingID),
+		protocolID:        cloneOptionalString(data.ProtocolID),
+		lineID:            cloneOptionalString(data.LineID),
+		strainID:          cloneOptionalString(data.StrainID),
+		targetLineID:      cloneOptionalString(data.TargetLineID),
+		targetStrainID:    cloneOptionalString(data.TargetStrainID),
+		pairingIntent:     data.PairingIntent,
+		pairingNotes:      data.PairingNotes,
+		pairingAttributes: cloneAttributes(data.PairingAttributes),
+		femaleIDs:         cloneStringSlice(data.FemaleIDs),
+		maleIDs:           cloneStringSlice(data.MaleIDs),
 	}
 }
 
@@ -928,6 +986,27 @@ func (b breedingUnit) HousingID() (string, bool) {
 }
 func (b breedingUnit) ProtocolID() (string, bool) {
 	return derefString(b.protocolID)
+}
+func (b breedingUnit) LineID() (string, bool) {
+	return derefString(b.lineID)
+}
+func (b breedingUnit) StrainID() (string, bool) {
+	return derefString(b.strainID)
+}
+func (b breedingUnit) TargetLineID() (string, bool) {
+	return derefString(b.targetLineID)
+}
+func (b breedingUnit) TargetStrainID() (string, bool) {
+	return derefString(b.targetStrainID)
+}
+func (b breedingUnit) PairingIntent() string {
+	return b.pairingIntent
+}
+func (b breedingUnit) PairingNotes() string {
+	return b.pairingNotes
+}
+func (b breedingUnit) PairingAttributes() map[string]any {
+	return cloneAttributes(b.pairingAttributes)
 }
 func (b breedingUnit) FemaleIDs() []string {
 	return cloneStringSlice(b.femaleIDs)
@@ -964,26 +1043,40 @@ func (b breedingUnit) RequiresIntervention() bool {
 
 func (b breedingUnit) MarshalJSON() ([]byte, error) {
 	type breedingJSON struct {
-		ID         string    `json:"id"`
-		CreatedAt  time.Time `json:"created_at"`
-		UpdatedAt  time.Time `json:"updated_at"`
-		Name       string    `json:"name"`
-		Strategy   string    `json:"strategy"`
-		HousingID  *string   `json:"housing_id,omitempty"`
-		ProtocolID *string   `json:"protocol_id,omitempty"`
-		FemaleIDs  []string  `json:"female_ids"`
-		MaleIDs    []string  `json:"male_ids"`
+		ID                string         `json:"id"`
+		CreatedAt         time.Time      `json:"created_at"`
+		UpdatedAt         time.Time      `json:"updated_at"`
+		Name              string         `json:"name"`
+		Strategy          string         `json:"strategy"`
+		HousingID         *string        `json:"housing_id,omitempty"`
+		ProtocolID        *string        `json:"protocol_id,omitempty"`
+		LineID            *string        `json:"line_id,omitempty"`
+		StrainID          *string        `json:"strain_id,omitempty"`
+		TargetLineID      *string        `json:"target_line_id,omitempty"`
+		TargetStrainID    *string        `json:"target_strain_id,omitempty"`
+		PairingIntent     string         `json:"pairing_intent,omitempty"`
+		PairingNotes      string         `json:"pairing_notes,omitempty"`
+		PairingAttributes map[string]any `json:"pairing_attributes,omitempty"`
+		FemaleIDs         []string       `json:"female_ids"`
+		MaleIDs           []string       `json:"male_ids"`
 	}
 	return json.Marshal(breedingJSON{
-		ID:         b.ID(),
-		CreatedAt:  b.CreatedAt(),
-		UpdatedAt:  b.UpdatedAt(),
-		Name:       b.name,
-		Strategy:   b.strategy,
-		HousingID:  cloneOptionalString(b.housingID),
-		ProtocolID: cloneOptionalString(b.protocolID),
-		FemaleIDs:  cloneStringSlice(b.femaleIDs),
-		MaleIDs:    cloneStringSlice(b.maleIDs),
+		ID:                b.ID(),
+		CreatedAt:         b.CreatedAt(),
+		UpdatedAt:         b.UpdatedAt(),
+		Name:              b.name,
+		Strategy:          b.strategy,
+		HousingID:         cloneOptionalString(b.housingID),
+		ProtocolID:        cloneOptionalString(b.protocolID),
+		LineID:            cloneOptionalString(b.lineID),
+		StrainID:          cloneOptionalString(b.strainID),
+		TargetLineID:      cloneOptionalString(b.targetLineID),
+		TargetStrainID:    cloneOptionalString(b.targetStrainID),
+		PairingIntent:     b.pairingIntent,
+		PairingNotes:      b.pairingNotes,
+		PairingAttributes: cloneAttributes(b.pairingAttributes),
+		FemaleIDs:         cloneStringSlice(b.femaleIDs),
+		MaleIDs:           cloneStringSlice(b.maleIDs),
 	})
 }
 

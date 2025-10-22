@@ -460,6 +460,9 @@ func cloneOrganism(o Organism) Organism {
 			cp.Attributes[k] = v
 		}
 	}
+	if len(o.ParentIDs) != 0 {
+		cp.ParentIDs = append([]string(nil), o.ParentIDs...)
+	}
 	return cp
 }
 

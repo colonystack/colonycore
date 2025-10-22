@@ -35,6 +35,12 @@ const (
 	EntityPermit EntityType = "permit"
 	// EntitySupplyItem identifies a supply item record.
 	EntitySupplyItem EntityType = "supply_item"
+	// EntityLine identifies a genetic line record.
+	EntityLine EntityType = "line"
+	// EntityStrain identifies a managed strain record derived from a line.
+	EntityStrain EntityType = "strain"
+	// EntityGenotypeMarker identifies a genotype marker definition record.
+	EntityGenotypeMarker EntityType = "genotype_marker"
 )
 
 // LifecycleStage represents the canonical organism lifecycle states described in the RFC.
@@ -77,6 +83,9 @@ type Organism struct {
 	Name       string         `json:"name"`
 	Species    string         `json:"species"`
 	Line       string         `json:"line"`
+	LineID     *string        `json:"line_id"`
+	StrainID   *string        `json:"strain_id"`
+	ParentIDs  []string       `json:"parent_ids"`
 	Stage      LifecycleStage `json:"stage"`
 	CohortID   *string        `json:"cohort_id"`
 	HousingID  *string        `json:"housing_id"`
@@ -118,12 +127,59 @@ type Facility struct {
 // BreedingUnit tracks configured pairings or groups intended for reproduction.
 type BreedingUnit struct {
 	Base
-	Name       string   `json:"name"`
-	Strategy   string   `json:"strategy"`
-	HousingID  *string  `json:"housing_id"`
-	ProtocolID *string  `json:"protocol_id"`
-	FemaleIDs  []string `json:"female_ids"`
-	MaleIDs    []string `json:"male_ids"`
+	Name              string         `json:"name"`
+	Strategy          string         `json:"strategy"`
+	HousingID         *string        `json:"housing_id"`
+	ProtocolID        *string        `json:"protocol_id"`
+	LineID            *string        `json:"line_id"`
+	StrainID          *string        `json:"strain_id"`
+	TargetLineID      *string        `json:"target_line_id"`
+	TargetStrainID    *string        `json:"target_strain_id"`
+	PairingIntent     string         `json:"pairing_intent"`
+	PairingNotes      string         `json:"pairing_notes"`
+	PairingAttributes map[string]any `json:"pairing_attributes"`
+	FemaleIDs         []string       `json:"female_ids"`
+	MaleIDs           []string       `json:"male_ids"`
+}
+
+// Line represents a genetic lineage with shared inheritance characteristics.
+type Line struct {
+	Base
+	Code               string         `json:"code"`
+	Name               string         `json:"name"`
+	Description        string         `json:"description"`
+	Origin             string         `json:"origin"`
+	GenotypeMarkerIDs  []string       `json:"genotype_marker_ids"`
+	DefaultAttributes  map[string]any `json:"default_attributes"`
+	DeprecatedAt       *time.Time     `json:"deprecated_at"`
+	DeprecationReason  string         `json:"deprecation_reason"`
+	ExtensionOverrides map[string]any `json:"extension_overrides"`
+}
+
+// Strain represents a managed sub-population derived from a line.
+type Strain struct {
+	Base
+	Code              string         `json:"code"`
+	Name              string         `json:"name"`
+	LineID            string         `json:"line_id"`
+	Description       string         `json:"description"`
+	Generation        string         `json:"generation"`
+	GenotypeMarkerIDs []string       `json:"genotype_marker_ids"`
+	Attributes        map[string]any `json:"attributes"`
+	RetiredAt         *time.Time     `json:"retired_at"`
+	RetirementReason  string         `json:"retirement_reason"`
+}
+
+// GenotypeMarker captures assay metadata for genetic markers used in lineage tracking.
+type GenotypeMarker struct {
+	Base
+	Name           string         `json:"name"`
+	Locus          string         `json:"locus"`
+	Alleles        []string       `json:"alleles"`
+	AssayMethod    string         `json:"assay_method"`
+	Interpretation string         `json:"interpretation"`
+	Version        string         `json:"version"`
+	Attributes     map[string]any `json:"attributes"`
 }
 
 // Procedure captures scheduled or completed animal procedures.

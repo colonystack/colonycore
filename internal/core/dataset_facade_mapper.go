@@ -19,6 +19,9 @@ func facadeOrganismFromDomain(org domain.Organism) datasetapi.Organism {
 		Name:       org.Name,
 		Species:    org.Species,
 		Line:       org.Line,
+		LineID:     org.LineID,
+		StrainID:   org.StrainID,
+		ParentIDs:  append([]string(nil), org.ParentIDs...),
 		Stage:      datasetapi.LifecycleStage(org.Stage),
 		CohortID:   org.CohortID,
 		HousingID:  org.HousingID,
@@ -127,13 +130,20 @@ func facadeCohortsFromDomain(cohorts []domain.Cohort) []datasetapi.Cohort {
 
 func facadeBreedingUnitFromDomain(unit domain.BreedingUnit) datasetapi.BreedingUnit {
 	return datasetapi.NewBreedingUnit(datasetapi.BreedingUnitData{
-		Base:       baseDataFromDomain(unit.Base),
-		Name:       unit.Name,
-		Strategy:   unit.Strategy,
-		HousingID:  unit.HousingID,
-		ProtocolID: unit.ProtocolID,
-		FemaleIDs:  unit.FemaleIDs,
-		MaleIDs:    unit.MaleIDs,
+		Base:              baseDataFromDomain(unit.Base),
+		Name:              unit.Name,
+		Strategy:          unit.Strategy,
+		HousingID:         unit.HousingID,
+		ProtocolID:        unit.ProtocolID,
+		LineID:            unit.LineID,
+		StrainID:          unit.StrainID,
+		TargetLineID:      unit.TargetLineID,
+		TargetStrainID:    unit.TargetStrainID,
+		PairingIntent:     unit.PairingIntent,
+		PairingNotes:      unit.PairingNotes,
+		PairingAttributes: unit.PairingAttributes,
+		FemaleIDs:         unit.FemaleIDs,
+		MaleIDs:           unit.MaleIDs,
 	})
 }
 

@@ -22,12 +22,18 @@ func TestOrganismFacadeReadOnly(t *testing.T) {
 	protocol := organismProtocolID
 	project := organismProjectID
 	attrs := map[string]any{"flag": true}
+	lineID := "line-id"
+	strainID := "strain-id"
+	parentIDs := []string{"p1", "p2"}
 
 	organism := NewOrganism(OrganismData{
 		Base:       BaseData{ID: "id", CreatedAt: createdAt, UpdatedAt: updatedAt},
 		Name:       "Alpha",
 		Species:    "Frog",
 		Line:       "Line",
+		LineID:     &lineID,
+		StrainID:   &strainID,
+		ParentIDs:  parentIDs,
 		Stage:      LifecycleStage(NewLifecycleStageContext().Adult().String()),
 		CohortID:   &cohort,
 		HousingID:  &housing,
@@ -42,6 +48,15 @@ func TestOrganismFacadeReadOnly(t *testing.T) {
 	}
 	if organism.Species() != "Frog" || organism.Line() != "Line" {
 		t.Fatalf("unexpected organism species/line: %s %s", organism.Species(), organism.Line())
+	}
+	if got, ok := organism.LineID(); !ok || got != lineID {
+		t.Fatalf("expected line id %s, got %s", lineID, got)
+	}
+	if got, ok := organism.StrainID(); !ok || got != strainID {
+		t.Fatalf("expected strain id %s, got %s", strainID, got)
+	}
+	if p := organism.ParentIDs(); len(p) != len(parentIDs) || p[0] != "p1" {
+		t.Fatalf("unexpected parent ids: %+v", p)
 	}
 	if organism.CreatedAt() != createdAt || organism.UpdatedAt() != updatedAt {
 		t.Fatalf("unexpected timestamps: %+v", organism)
@@ -68,6 +83,7 @@ func TestOrganismFacadeReadOnly(t *testing.T) {
 	housing = mutatedLiteral
 	protocol = mutatedLiteral
 	project = mutatedLiteral
+	parentIDs[0] = mutatedLiteral
 	if value, _ := organism.CohortID(); value != organismCohortID {
 		t.Fatalf("expected cohort clone to remain stable, got %s", value)
 	}
@@ -79,6 +95,9 @@ func TestOrganismFacadeReadOnly(t *testing.T) {
 	attrsCopy["flag"] = false
 	if organism.Attributes()["flag"] != true {
 		t.Fatalf("expected attributes clone to remain immutable")
+	}
+	if organism.ParentIDs()[0] != "p1" {
+		t.Fatalf("expected parent ids clone to remain immutable")
 	}
 
 	payload, err := json.Marshal(organism)
@@ -92,20 +111,44 @@ func TestOrganismFacadeReadOnly(t *testing.T) {
 	if serialized["id"] != "id" || serialized["species"] != "Frog" {
 		t.Fatalf("unexpected serialized organism: %+v", serialized)
 	}
+	if serialized["line_id"] != "line-id" {
+		t.Fatalf("expected serialized line id, got %+v", serialized["line_id"])
+	}
+	if serialized["strain_id"] != "strain-id" {
+		t.Fatalf("expected serialized strain id, got %+v", serialized["strain_id"])
+	}
+	if parents, ok := serialized["parent_ids"].([]any); !ok || len(parents) != 2 {
+		t.Fatalf("expected serialized parent ids")
+	}
 }
 
 func TestBreedingProcedureFacadesCloneCollections(t *testing.T) {
 	created := time.Now().UTC()
 	housing := organismHousingID
 	protocol := organismProtocolID
+	lineID := "line-1"
+	lineSnapshot := lineID
+	strainID := "strain-1"
+	strainSnapshot := strainID
+	targetLineID := "line-2"
+	targetLineSnapshot := targetLineID
+	targetStrainID := "strain-2"
+	targetStrainSnapshot := targetStrainID
 	breeding := NewBreedingUnit(BreedingUnitData{
-		Base:       BaseData{ID: "breed", CreatedAt: created},
-		Name:       "Breeding",
-		Strategy:   "pair",
-		HousingID:  &housing,
-		ProtocolID: &protocol,
-		FemaleIDs:  []string{"f1"},
-		MaleIDs:    []string{"m1"},
+		Base:              BaseData{ID: "breed", CreatedAt: created},
+		Name:              "Breeding",
+		Strategy:          "pair",
+		HousingID:         &housing,
+		ProtocolID:        &protocol,
+		LineID:            &lineID,
+		StrainID:          &strainID,
+		TargetLineID:      &targetLineID,
+		TargetStrainID:    &targetStrainID,
+		PairingIntent:     "outcross",
+		PairingNotes:      "Documented pairing intent",
+		PairingAttributes: map[string]any{"purpose": "lineage"},
+		FemaleIDs:         []string{"f1"},
+		MaleIDs:           []string{"m1"},
 	})
 
 	females := breeding.FemaleIDs()
@@ -119,6 +162,45 @@ func TestBreedingProcedureFacadesCloneCollections(t *testing.T) {
 	housing = mutatedLiteral
 	if id, _ := breeding.HousingID(); id != organismHousingID {
 		t.Fatalf("expected housing id clone to be stable")
+	}
+	if got, ok := breeding.LineID(); !ok || got != lineSnapshot {
+		t.Fatalf("expected line id clone, got %q", got)
+	}
+	lineID = mutatedLiteral
+	if got, _ := breeding.LineID(); got != lineSnapshot {
+		t.Fatalf("expected line id clone to remain stable, got %q", got)
+	}
+	if got, ok := breeding.StrainID(); !ok || got != strainSnapshot {
+		t.Fatalf("expected strain id clone, got %q", got)
+	}
+	strainID = mutatedLiteral
+	if got, _ := breeding.StrainID(); got != strainSnapshot {
+		t.Fatalf("expected strain id clone to remain stable, got %q", got)
+	}
+	if got, ok := breeding.TargetLineID(); !ok || got != targetLineSnapshot {
+		t.Fatalf("expected target line id clone, got %q", got)
+	}
+	targetLineID = mutatedLiteral
+	if got, _ := breeding.TargetLineID(); got != targetLineSnapshot {
+		t.Fatalf("expected target line id clone to remain stable, got %q", got)
+	}
+	if got, ok := breeding.TargetStrainID(); !ok || got != targetStrainSnapshot {
+		t.Fatalf("expected target strain id clone, got %q", got)
+	}
+	targetStrainID = mutatedLiteral
+	if got, _ := breeding.TargetStrainID(); got != targetStrainSnapshot {
+		t.Fatalf("expected target strain id clone to remain stable, got %q", got)
+	}
+	if intent := breeding.PairingIntent(); intent != "outcross" {
+		t.Fatalf("expected pairing intent clone, got %q", intent)
+	}
+	if notes := breeding.PairingNotes(); notes != "Documented pairing intent" {
+		t.Fatalf("expected pairing notes clone, got %q", notes)
+	}
+	attrs := breeding.PairingAttributes()
+	attrs["purpose"] = mutatedLiteral
+	if breeding.PairingAttributes()["purpose"] != "lineage" {
+		t.Fatalf("expected pairing attributes map to be cloned")
 	}
 
 	procedure := NewProcedure(ProcedureData{
@@ -149,6 +231,15 @@ func TestBreedingProcedureFacadesCloneCollections(t *testing.T) {
 		}
 		if serialized["id"] != "breed" || serialized["strategy"] != "pair" {
 			t.Fatalf("unexpected breeding json: %+v", serialized)
+		}
+		if serialized["line_id"] != lineSnapshot {
+			t.Fatalf("expected serialized line id, got %+v", serialized["line_id"])
+		}
+		if serialized["pairing_intent"] != "outcross" {
+			t.Fatalf("expected serialized pairing intent, got %+v", serialized["pairing_intent"])
+		}
+		if attrs, ok := serialized["pairing_attributes"].(map[string]any); !ok || attrs["purpose"] != "lineage" {
+			t.Fatalf("expected serialized pairing attributes, got %+v", serialized["pairing_attributes"])
 		}
 	}
 

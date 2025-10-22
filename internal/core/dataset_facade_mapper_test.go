@@ -23,11 +23,17 @@ func TestFacadeOrganismFromDomainCopiesData(t *testing.T) {
 	housing := testHousingID
 	protocol := testProtocolID
 	project := testProjectID
+	lineID := "line-id"
+	strainID := "strain-id"
+	parentIDs := []string{"p1", "p2"}
 	org := domain.Organism{
 		Base:       domain.Base{ID: "id", CreatedAt: now.Add(-time.Hour), UpdatedAt: now},
 		Name:       "Name",
 		Species:    "Species",
 		Line:       "Line",
+		LineID:     &lineID,
+		StrainID:   &strainID,
+		ParentIDs:  append([]string(nil), parentIDs...),
 		Stage:      domain.StageAdult,
 		CohortID:   &cohort,
 		HousingID:  &housing,
@@ -40,6 +46,16 @@ func TestFacadeOrganismFromDomainCopiesData(t *testing.T) {
 
 	if converted.ID() != org.ID || converted.Stage() != datasetapi.LifecycleStage(org.Stage) {
 		t.Fatalf("unexpected conversion: %+v", converted)
+	}
+	if got, ok := converted.LineID(); !ok || got != lineID {
+		t.Fatalf("expected line id clone")
+	}
+	if got, ok := converted.StrainID(); !ok || got != strainID {
+		t.Fatalf("expected strain id clone")
+	}
+	clonedParents := converted.ParentIDs()
+	if len(clonedParents) != len(parentIDs) || clonedParents[0] != "p1" {
+		t.Fatalf("unexpected parent ids: %+v", clonedParents)
 	}
 
 	attrs := converted.Attributes()
@@ -66,6 +82,10 @@ func TestFacadeOrganismFromDomainCopiesData(t *testing.T) {
 	if idAfter, _ := converted.ProjectID(); idAfter == testLiteralMutated {
 		t.Fatalf("expected project clone to remain stable")
 	}
+	parentIDs[0] = testLiteralMutated
+	if converted.ParentIDs()[0] != "p1" {
+		t.Fatalf("expected parent id clone to remain stable")
+	}
 }
 
 func TestFacadeCollectionsCloneSlices(t *testing.T) {
@@ -75,7 +95,30 @@ func TestFacadeCollectionsCloneSlices(t *testing.T) {
 	protocol := domain.Protocol{Base: domain.Base{ID: "P"}, Code: "C", Title: "T", Description: "D", MaxSubjects: 5}
 	project := domain.Project{Base: domain.Base{ID: "PR"}, Code: "CC", Title: "Title", Description: "Desc"}
 	cohort := domain.Cohort{Base: domain.Base{ID: "C"}, Name: "Group", Purpose: "Study", ProjectID: &cohortID, HousingID: &cohortID, ProtocolID: &cohortID}
-	breeding := domain.BreedingUnit{Base: domain.Base{ID: "B"}, Name: "Breed", Strategy: "Pair", HousingID: &cohortID, ProtocolID: &cohortID, FemaleIDs: []string{"f1"}, MaleIDs: []string{"m1"}}
+	lineID := "line-1"
+	lineSnapshot := lineID
+	strainID := "strain-1"
+	strainSnapshot := strainID
+	targetLineID := "line-2"
+	targetLineSnapshot := targetLineID
+	targetStrainID := "strain-2"
+	targetStrainSnapshot := targetStrainID
+	breeding := domain.BreedingUnit{
+		Base:              domain.Base{ID: "B"},
+		Name:              "Breed",
+		Strategy:          "Pair",
+		HousingID:         &cohortID,
+		ProtocolID:        &cohortID,
+		LineID:            &lineID,
+		StrainID:          &strainID,
+		TargetLineID:      &targetLineID,
+		TargetStrainID:    &targetStrainID,
+		PairingIntent:     "outcross",
+		PairingNotes:      "Documented pairing",
+		PairingAttributes: map[string]any{"purpose": "lineage"},
+		FemaleIDs:         []string{"f1"},
+		MaleIDs:           []string{"m1"},
+	}
 	procedure := domain.Procedure{Base: domain.Base{ID: "PROC", UpdatedAt: now}, Name: "Proc", Status: "pending", ScheduledAt: now.Add(time.Hour), ProtocolID: "P", CohortID: &cohortID, OrganismIDs: []string{"o1"}}
 
 	cohorts := facadeCohortsFromDomain([]domain.Cohort{cohort})
@@ -93,6 +136,39 @@ func TestFacadeCollectionsCloneSlices(t *testing.T) {
 	females[0] = testLiteralMutated
 	if breeding.FemaleIDs[0] != "f1" {
 		t.Fatalf("expected breeding slice clone")
+	}
+	if got, ok := breedingUnits[0].LineID(); !ok || got != lineSnapshot {
+		t.Fatalf("expected line id clone, got %q", got)
+	}
+	lineID = testLiteralMutated
+	if got, _ := breedingUnits[0].LineID(); got != lineSnapshot {
+		t.Fatalf("expected line id clone to remain stable, got %q", got)
+	}
+	strainID = testLiteralMutated
+	if got, _ := breedingUnits[0].StrainID(); got != strainSnapshot {
+		t.Fatalf("expected strain id clone to remain stable, got %q", got)
+	}
+	if got, ok := breedingUnits[0].TargetLineID(); !ok || got != targetLineSnapshot {
+		t.Fatalf("expected target line id clone, got %q", got)
+	}
+	targetLineID = testLiteralMutated
+	if got, _ := breedingUnits[0].TargetLineID(); got != targetLineSnapshot {
+		t.Fatalf("expected target line id clone to remain stable, got %q", got)
+	}
+	targetStrainID = testLiteralMutated
+	if got, _ := breedingUnits[0].TargetStrainID(); got != targetStrainSnapshot {
+		t.Fatalf("expected target strain clone to remain stable, got %q", got)
+	}
+	if intent := breedingUnits[0].PairingIntent(); intent != "outcross" {
+		t.Fatalf("expected pairing intent 'outcross', got %q", intent)
+	}
+	if notes := breedingUnits[0].PairingNotes(); notes != "Documented pairing" {
+		t.Fatalf("expected pairing notes clone, got %q", notes)
+	}
+	attr := breedingUnits[0].PairingAttributes()
+	attr["purpose"] = testLiteralMutated
+	if breeding.PairingAttributes["purpose"] != "lineage" {
+		t.Fatalf("expected pairing attributes to be cloned")
 	}
 	procIDs := procedures[0].OrganismIDs()
 	procIDs[0] = testLiteralMutated
