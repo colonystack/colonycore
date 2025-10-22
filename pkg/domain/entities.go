@@ -185,12 +185,15 @@ type GenotypeMarker struct {
 // Procedure captures scheduled or completed animal procedures.
 type Procedure struct {
 	Base
-	Name        string    `json:"name"`
-	Status      string    `json:"status"`
-	ScheduledAt time.Time `json:"scheduled_at"`
-	ProtocolID  string    `json:"protocol_id"`
-	CohortID    *string   `json:"cohort_id"`
-	OrganismIDs []string  `json:"organism_ids"`
+	Name           string    `json:"name"`
+	Status         string    `json:"status"`
+	ScheduledAt    time.Time `json:"scheduled_at"`
+	ProtocolID     string    `json:"protocol_id"`
+	ProjectID      *string   `json:"project_id"`
+	CohortID       *string   `json:"cohort_id"`
+	OrganismIDs    []string  `json:"organism_ids"`
+	TreatmentIDs   []string  `json:"treatment_ids"`
+	ObservationIDs []string  `json:"observation_ids"`
 }
 
 // Treatment captures therapeutic interventions and their outcomes.
@@ -267,10 +270,14 @@ type Permit struct {
 // Project captures cost center allocations.
 type Project struct {
 	Base
-	Code        string   `json:"code"`
-	Title       string   `json:"title"`
-	Description string   `json:"description"`
-	FacilityIDs []string `json:"facility_ids"`
+	Code          string   `json:"code"`
+	Title         string   `json:"title"`
+	Description   string   `json:"description"`
+	FacilityIDs   []string `json:"facility_ids"`
+	ProtocolIDs   []string `json:"protocol_ids"`
+	OrganismIDs   []string `json:"organism_ids"`
+	ProcedureIDs  []string `json:"procedure_ids"`
+	SupplyItemIDs []string `json:"supply_item_ids"`
 }
 
 // SupplyItem models inventory resources consumed by projects or facilities.

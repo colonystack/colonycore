@@ -87,11 +87,15 @@ func facadeProtocolsFromDomain(protocols []domain.Protocol) []datasetapi.Protoco
 
 func facadeProjectFromDomain(project domain.Project) datasetapi.Project {
 	return datasetapi.NewProject(datasetapi.ProjectData{
-		Base:        baseDataFromDomain(project.Base),
-		Code:        project.Code,
-		Title:       project.Title,
-		Description: project.Description,
-		FacilityIDs: project.FacilityIDs,
+		Base:          baseDataFromDomain(project.Base),
+		Code:          project.Code,
+		Title:         project.Title,
+		Description:   project.Description,
+		FacilityIDs:   project.FacilityIDs,
+		ProtocolIDs:   project.ProtocolIDs,
+		OrganismIDs:   project.OrganismIDs,
+		ProcedureIDs:  project.ProcedureIDs,
+		SupplyItemIDs: project.SupplyItemIDs,
 	})
 }
 
@@ -160,13 +164,16 @@ func facadeBreedingUnitsFromDomain(units []domain.BreedingUnit) []datasetapi.Bre
 
 func facadeProcedureFromDomain(proc domain.Procedure) datasetapi.Procedure {
 	return datasetapi.NewProcedure(datasetapi.ProcedureData{
-		Base:        baseDataFromDomain(proc.Base),
-		Name:        proc.Name,
-		Status:      proc.Status,
-		ScheduledAt: proc.ScheduledAt,
-		ProtocolID:  proc.ProtocolID,
-		CohortID:    proc.CohortID,
-		OrganismIDs: proc.OrganismIDs,
+		Base:           baseDataFromDomain(proc.Base),
+		Name:           proc.Name,
+		Status:         proc.Status,
+		ScheduledAt:    proc.ScheduledAt,
+		ProtocolID:     proc.ProtocolID,
+		ProjectID:      proc.ProjectID,
+		CohortID:       proc.CohortID,
+		OrganismIDs:    proc.OrganismIDs,
+		TreatmentIDs:   proc.TreatmentIDs,
+		ObservationIDs: proc.ObservationIDs,
 	})
 }
 
