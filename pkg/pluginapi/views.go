@@ -15,6 +15,9 @@ type OrganismView interface {
 	Name() string
 	Species() string
 	Line() string
+	LineID() (string, bool)
+	StrainID() (string, bool)
+	ParentIDs() []string
 	Stage() LifecycleStage // Legacy - prefer GetCurrentStage() for new code
 	CohortID() (string, bool)
 	HousingID() (string, bool)

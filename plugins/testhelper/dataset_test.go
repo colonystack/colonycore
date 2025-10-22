@@ -10,13 +10,26 @@ const mutatedValue = "mutated"
 func TestOrganismFixtureBuilder(t *testing.T) {
 	now := time.Now().UTC().Truncate(time.Second)
 	name := "Org1"
+	lineID := "line-id"
+	strainID := "strain-id"
+	parentIDs := []string{"p1", "p2"}
 	cfg := OrganismFixtureConfig{
 		BaseFixture: BaseFixture{ID: "o1", CreatedAt: now, UpdatedAt: now},
-		Name:        name, Species: "sp", Line: "L", Stage: LifecycleStages().Adult,
+		Name:        name, Species: "sp", Line: "L", LineID: &lineID, StrainID: &strainID, ParentIDs: parentIDs, Stage: LifecycleStages().Adult,
 	}
 	org := Organism(cfg)
 	if org.Name() != name || org.Stage() != LifecycleStages().Adult {
 		t.Fatalf("unexpected organism attributes: %s %v", org.Name(), org.Stage())
+	}
+	if got, ok := org.LineID(); !ok || got != lineID {
+		t.Fatalf("expected line id %s, got %s", lineID, got)
+	}
+	if got, ok := org.StrainID(); !ok || got != strainID {
+		t.Fatalf("expected strain id %s, got %s", strainID, got)
+	}
+	gotParents := org.ParentIDs()
+	if len(gotParents) != len(parentIDs) || gotParents[0] != "p1" || gotParents[1] != "p2" {
+		t.Fatalf("unexpected parent ids: %+v", gotParents)
 	}
 	list := Organisms(cfg)
 	if len(list) != 1 || list[0].Name() != name {
@@ -38,12 +51,16 @@ func TestOrganismHelperClonesData(t *testing.T) {
 	project := "project"
 	housing := "housing"
 	attributes := map[string]any{"flag": true}
+	lineID := "line-id"
+	parentIDs := []string{"p1"}
 
 	organism := Organism(OrganismFixtureConfig{
 		BaseFixture: BaseFixture{ID: "org", CreatedAt: now, UpdatedAt: now},
 		Name:        "Name",
 		Species:     "Species",
 		Line:        "Line",
+		LineID:      &lineID,
+		ParentIDs:   parentIDs,
 		Stage:       LifecycleStages().Adult,
 		ProjectID:   &project,
 		HousingID:   &housing,
@@ -66,6 +83,10 @@ func TestOrganismHelperClonesData(t *testing.T) {
 	attrs["flag"] = false
 	if organism.Attributes()["flag"] != true {
 		t.Fatalf("expected attribute clone to remain immutable")
+	}
+	parentIDs[0] = mutatedValue
+	if organism.ParentIDs()[0] != "p1" {
+		t.Fatalf("expected parent id slice clone to remain unchanged")
 	}
 
 	if got := Organisms(); got != nil {

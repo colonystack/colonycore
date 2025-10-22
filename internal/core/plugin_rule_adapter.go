@@ -174,6 +174,9 @@ type organismView struct {
 	name       string
 	species    string
 	line       string
+	lineID     *string
+	strainID   *string
+	parentIDs  []string
 	stage      pluginapi.LifecycleStage
 	cohortID   *string
 	housingID  *string
@@ -188,6 +191,9 @@ func newOrganismView(org domain.Organism) organismView {
 		name:       org.Name,
 		species:    org.Species,
 		line:       org.Line,
+		lineID:     cloneOptionalString(org.LineID),
+		strainID:   cloneOptionalString(org.StrainID),
+		parentIDs:  append([]string(nil), org.ParentIDs...),
 		stage:      pluginapi.LifecycleStage(org.Stage),
 		cohortID:   cloneOptionalString(org.CohortID),
 		housingID:  cloneOptionalString(org.HousingID),
@@ -200,6 +206,18 @@ func newOrganismView(org domain.Organism) organismView {
 func (o organismView) Name() string    { return o.name }
 func (o organismView) Species() string { return o.species }
 func (o organismView) Line() string    { return o.line }
+func (o organismView) LineID() (string, bool) {
+	return derefString(o.lineID)
+}
+func (o organismView) StrainID() (string, bool) {
+	return derefString(o.strainID)
+}
+func (o organismView) ParentIDs() []string {
+	if len(o.parentIDs) == 0 {
+		return nil
+	}
+	return append([]string(nil), o.parentIDs...)
+}
 func (o organismView) Stage() pluginapi.LifecycleStage {
 	return o.stage
 }

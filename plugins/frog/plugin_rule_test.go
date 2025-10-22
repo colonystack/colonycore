@@ -96,6 +96,9 @@ func (stubOrganism) UpdatedAt() time.Time            { return time.Time{} }
 func (stubOrganism) Name() string                    { return "" }
 func (o stubOrganism) Species() string               { return o.species }
 func (stubOrganism) Line() string                    { return "" }
+func (stubOrganism) LineID() (string, bool)          { return "", false }
+func (stubOrganism) StrainID() (string, bool)        { return "", false }
+func (stubOrganism) ParentIDs() []string             { return nil }
 func (stubOrganism) Stage() pluginapi.LifecycleStage { return "" }
 func (stubOrganism) CohortID() (string, bool)        { return "", false }
 func (o stubOrganism) HousingID() (string, bool) {
