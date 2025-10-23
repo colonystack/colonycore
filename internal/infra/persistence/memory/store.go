@@ -214,6 +214,7 @@ func memoryStateFromSnapshot(s Snapshot) memoryState {
 	return state
 }
 
+//nolint:gocyclo // migrateSnapshot aggregates multiple migration concerns in one pass for parity with existing snapshots.
 func migrateSnapshot(snapshot Snapshot) Snapshot {
 	if snapshot.Organisms == nil {
 		snapshot.Organisms = map[string]Organism{}
@@ -363,6 +364,28 @@ func migrateSnapshot(snapshot Snapshot) Snapshot {
 		snapshot.Projects[id] = project
 	}
 
+	for id, procedure := range snapshot.Procedures {
+		var treatmentIDs []string
+		for _, treatment := range snapshot.Treatments {
+			if treatment.ProcedureID == id {
+				treatmentIDs = append(treatmentIDs, treatment.ID)
+			}
+		}
+		sort.Strings(treatmentIDs)
+		procedure.TreatmentIDs = treatmentIDs
+
+		var observationIDs []string
+		for _, observation := range snapshot.Observations {
+			if observation.ProcedureID != nil && *observation.ProcedureID == id {
+				observationIDs = append(observationIDs, observation.ID)
+			}
+		}
+		sort.Strings(observationIDs)
+		procedure.ObservationIDs = observationIDs
+
+		snapshot.Procedures[id] = procedure
+	}
+
 	for id, item := range snapshot.Supplies {
 		if item.Attributes == nil {
 			item.Attributes = map[string]any{}
@@ -403,6 +426,37 @@ func migrateSnapshot(snapshot Snapshot) Snapshot {
 		facility.ProjectIDs = projectIDs
 
 		snapshot.Facilities[id] = facility
+	}
+
+	for id, project := range snapshot.Projects {
+		var organismIDs []string
+		for _, organism := range snapshot.Organisms {
+			if organism.ProjectID != nil && *organism.ProjectID == id {
+				organismIDs = append(organismIDs, organism.ID)
+			}
+		}
+		sort.Strings(organismIDs)
+		project.OrganismIDs = organismIDs
+
+		var procedureIDs []string
+		for _, procedure := range snapshot.Procedures {
+			if procedure.ProjectID != nil && *procedure.ProjectID == id {
+				procedureIDs = append(procedureIDs, procedure.ID)
+			}
+		}
+		sort.Strings(procedureIDs)
+		project.ProcedureIDs = procedureIDs
+
+		var supplyItemIDs []string
+		for _, supply := range snapshot.Supplies {
+			if containsString(supply.ProjectIDs, id) {
+				supplyItemIDs = append(supplyItemIDs, supply.ID)
+			}
+		}
+		sort.Strings(supplyItemIDs)
+		project.SupplyItemIDs = supplyItemIDs
+
+		snapshot.Projects[id] = project
 	}
 
 	return snapshot
@@ -478,12 +532,18 @@ func cloneBreeding(b BreedingUnit) BreedingUnit {
 func cloneProcedure(p Procedure) Procedure {
 	cp := p
 	cp.OrganismIDs = append([]string(nil), p.OrganismIDs...)
+	cp.TreatmentIDs = append([]string(nil), p.TreatmentIDs...)
+	cp.ObservationIDs = append([]string(nil), p.ObservationIDs...)
 	return cp
 }
 func cloneProtocol(p Protocol) Protocol { return p }
 func cloneProject(p Project) Project {
 	cp := p
 	cp.FacilityIDs = append([]string(nil), p.FacilityIDs...)
+	cp.ProtocolIDs = append([]string(nil), p.ProtocolIDs...)
+	cp.OrganismIDs = append([]string(nil), p.OrganismIDs...)
+	cp.ProcedureIDs = append([]string(nil), p.ProcedureIDs...)
+	cp.SupplyItemIDs = append([]string(nil), p.SupplyItemIDs...)
 	return cp
 }
 
@@ -540,27 +600,6 @@ func clonePermit(p Permit) Permit {
 	return cp
 }
 
-func appendIfMissing(values []string, id string) ([]string, bool) {
-	for _, existing := range values {
-		if existing == id {
-			return values, false
-		}
-	}
-	return append(values, id), true
-}
-
-func removeIfPresent(values []string, id string) ([]string, bool) {
-	for idx, existing := range values {
-		if existing == id {
-			out := make([]string, 0, len(values)-1)
-			out = append(out, values[:idx]...)
-			out = append(out, values[idx+1:]...)
-			return out, true
-		}
-	}
-	return values, false
-}
-
 func containsString(values []string, id string) bool {
 	for _, existing := range values {
 		if existing == id {
@@ -611,7 +650,7 @@ func filterIDs(values []string, exists func(string) bool) ([]string, bool) {
 	return out, true
 }
 
-func facilityHousingIDs(state memoryState, facilityID string) []string {
+func facilityHousingIDs(state *memoryState, facilityID string) []string {
 	var ids []string
 	for _, housing := range state.housing {
 		if housing.FacilityID == facilityID {
@@ -622,7 +661,7 @@ func facilityHousingIDs(state memoryState, facilityID string) []string {
 	return ids
 }
 
-func facilityProjectIDs(state memoryState, facilityID string) []string {
+func facilityProjectIDs(state *memoryState, facilityID string) []string {
 	var ids []string
 	for _, project := range state.projects {
 		if containsString(project.FacilityIDs, facilityID) {
@@ -631,6 +670,80 @@ func facilityProjectIDs(state memoryState, facilityID string) []string {
 	}
 	sort.Strings(ids)
 	return ids
+}
+
+func decorateFacility(state *memoryState, facility Facility) Facility {
+	facility.HousingUnitIDs = facilityHousingIDs(state, facility.ID)
+	facility.ProjectIDs = facilityProjectIDs(state, facility.ID)
+	return facility
+}
+
+func procedureTreatmentIDs(state *memoryState, procedureID string) []string {
+	var ids []string
+	for _, treatment := range state.treatments {
+		if treatment.ProcedureID == procedureID {
+			ids = append(ids, treatment.ID)
+		}
+	}
+	sort.Strings(ids)
+	return ids
+}
+
+func procedureObservationIDs(state *memoryState, procedureID string) []string {
+	var ids []string
+	for _, observation := range state.observations {
+		if observation.ProcedureID != nil && *observation.ProcedureID == procedureID {
+			ids = append(ids, observation.ID)
+		}
+	}
+	sort.Strings(ids)
+	return ids
+}
+
+func decorateProcedure(state *memoryState, procedure Procedure) Procedure {
+	procedure.TreatmentIDs = procedureTreatmentIDs(state, procedure.ID)
+	procedure.ObservationIDs = procedureObservationIDs(state, procedure.ID)
+	return procedure
+}
+
+func projectOrganismIDs(state *memoryState, projectID string) []string {
+	var ids []string
+	for _, organism := range state.organisms {
+		if organism.ProjectID != nil && *organism.ProjectID == projectID {
+			ids = append(ids, organism.ID)
+		}
+	}
+	sort.Strings(ids)
+	return ids
+}
+
+func projectProcedureIDs(state *memoryState, projectID string) []string {
+	var ids []string
+	for _, procedure := range state.procedures {
+		if procedure.ProjectID != nil && *procedure.ProjectID == projectID {
+			ids = append(ids, procedure.ID)
+		}
+	}
+	sort.Strings(ids)
+	return ids
+}
+
+func projectSupplyItemIDs(state *memoryState, projectID string) []string {
+	var ids []string
+	for _, item := range state.supplies {
+		if containsString(item.ProjectIDs, projectID) {
+			ids = append(ids, item.ID)
+		}
+	}
+	sort.Strings(ids)
+	return ids
+}
+
+func decorateProject(state *memoryState, project Project) Project {
+	project.OrganismIDs = projectOrganismIDs(state, project.ID)
+	project.ProcedureIDs = projectProcedureIDs(state, project.ID)
+	project.SupplyItemIDs = projectSupplyItemIDs(state, project.ID)
+	return project
 }
 
 func cloneSupplyItem(s SupplyItem) SupplyItem {
@@ -745,7 +858,7 @@ func (v transactionView) ListHousingUnits() []HousingUnit {
 func (v transactionView) ListFacilities() []Facility {
 	out := make([]Facility, 0, len(v.state.facilities))
 	for _, f := range v.state.facilities {
-		out = append(out, cloneFacility(f))
+		out = append(out, cloneFacility(decorateFacility(v.state, f)))
 	}
 	return out
 }
@@ -774,7 +887,7 @@ func (v transactionView) FindFacility(id string) (Facility, bool) {
 	if !ok {
 		return Facility{}, false
 	}
-	return cloneFacility(f), true
+	return cloneFacility(decorateFacility(v.state, f)), true
 }
 
 // ListProtocols returns all protocols present in the snapshot.
@@ -862,7 +975,7 @@ func (v transactionView) FindPermit(id string) (Permit, bool) {
 func (v transactionView) ListProjects() []Project {
 	out := make([]Project, 0, len(v.state.projects))
 	for _, p := range v.state.projects {
-		out = append(out, cloneProject(p))
+		out = append(out, cloneProject(decorateProject(v.state, p)))
 	}
 	return out
 }
@@ -961,22 +1074,7 @@ func (tx *transaction) FindFacility(id string) (Facility, bool) {
 	if !ok {
 		return Facility{}, false
 	}
-	return cloneFacility(f), true
-}
-
-func (tx *transaction) mutateFacility(id string, mutate func(*Facility) bool) error {
-	facility, ok := tx.state.facilities[id]
-	if !ok {
-		return fmt.Errorf("facility %q not found", id)
-	}
-	before := cloneFacility(facility)
-	if !mutate(&facility) {
-		return nil
-	}
-	facility.UpdatedAt = tx.now
-	tx.state.facilities[id] = cloneFacility(facility)
-	tx.recordChange(Change{Entity: domain.EntityFacility, Action: domain.ActionUpdate, Before: before, After: cloneFacility(facility)})
-	return nil
+	return cloneFacility(decorateFacility(&tx.state, f)), true
 }
 
 // FindTreatment exposes treatment lookup within the transaction scope.
@@ -1144,15 +1242,6 @@ func (tx *transaction) CreateHousingUnit(h HousingUnit) (HousingUnit, error) {
 	h.UpdatedAt = tx.now
 	tx.state.housing[h.ID] = cloneHousing(h)
 	tx.recordChange(Change{Entity: domain.EntityHousingUnit, Action: domain.ActionCreate, After: cloneHousing(h)})
-	if err := tx.mutateFacility(h.FacilityID, func(f *Facility) bool {
-		ids, changed := appendIfMissing(f.HousingUnitIDs, h.ID)
-		if changed {
-			f.HousingUnitIDs = ids
-		}
-		return changed
-	}); err != nil {
-		return HousingUnit{}, err
-	}
 	return cloneHousing(h), nil
 }
 
@@ -1162,7 +1251,6 @@ func (tx *transaction) UpdateHousingUnit(id string, mutator func(*HousingUnit) e
 	if !ok {
 		return HousingUnit{}, fmt.Errorf("housing unit %q not found", id)
 	}
-	prevFacility := current.FacilityID
 	before := cloneHousing(current)
 	if err := mutator(&current); err != nil {
 		return HousingUnit{}, err
@@ -1180,26 +1268,6 @@ func (tx *transaction) UpdateHousingUnit(id string, mutator func(*HousingUnit) e
 	current.UpdatedAt = tx.now
 	tx.state.housing[id] = cloneHousing(current)
 	tx.recordChange(Change{Entity: domain.EntityHousingUnit, Action: domain.ActionUpdate, Before: before, After: cloneHousing(current)})
-	if prevFacility != current.FacilityID {
-		if err := tx.mutateFacility(prevFacility, func(f *Facility) bool {
-			ids, changed := removeIfPresent(f.HousingUnitIDs, id)
-			if changed {
-				f.HousingUnitIDs = ids
-			}
-			return changed
-		}); err != nil {
-			return HousingUnit{}, err
-		}
-	}
-	if err := tx.mutateFacility(current.FacilityID, func(f *Facility) bool {
-		ids, changed := appendIfMissing(f.HousingUnitIDs, id)
-		if changed {
-			f.HousingUnitIDs = ids
-		}
-		return changed
-	}); err != nil {
-		return HousingUnit{}, err
-	}
 	return cloneHousing(current), nil
 }
 
@@ -1208,15 +1276,6 @@ func (tx *transaction) DeleteHousingUnit(id string) error {
 	current, ok := tx.state.housing[id]
 	if !ok {
 		return fmt.Errorf("housing unit %q not found", id)
-	}
-	if err := tx.mutateFacility(current.FacilityID, func(f *Facility) bool {
-		ids, changed := removeIfPresent(f.HousingUnitIDs, id)
-		if changed {
-			f.HousingUnitIDs = ids
-		}
-		return changed
-	}); err != nil {
-		return err
 	}
 	delete(tx.state.housing, id)
 	tx.recordChange(Change{Entity: domain.EntityHousingUnit, Action: domain.ActionDelete, Before: cloneHousing(current)})
@@ -1239,8 +1298,9 @@ func (tx *transaction) CreateFacility(f Facility) (Facility, error) {
 		f.EnvironmentBaselines = map[string]any{}
 	}
 	tx.state.facilities[f.ID] = cloneFacility(f)
-	tx.recordChange(Change{Entity: domain.EntityFacility, Action: domain.ActionCreate, After: cloneFacility(f)})
-	return cloneFacility(f), nil
+	created := decorateFacility(&tx.state, f)
+	tx.recordChange(Change{Entity: domain.EntityFacility, Action: domain.ActionCreate, After: cloneFacility(created)})
+	return cloneFacility(created), nil
 }
 
 // UpdateFacility mutates an existing facility.
@@ -1249,20 +1309,22 @@ func (tx *transaction) UpdateFacility(id string, mutator func(*Facility) error) 
 	if !ok {
 		return Facility{}, fmt.Errorf("facility %q not found", id)
 	}
-	before := cloneFacility(current)
+	beforeDecorated := decorateFacility(&tx.state, current)
+	before := cloneFacility(beforeDecorated)
 	if err := mutator(&current); err != nil {
 		return Facility{}, err
 	}
 	if current.EnvironmentBaselines == nil {
 		current.EnvironmentBaselines = map[string]any{}
 	}
-	current.HousingUnitIDs = facilityHousingIDs(tx.state, id)
-	current.ProjectIDs = facilityProjectIDs(tx.state, id)
+	current.HousingUnitIDs = nil
+	current.ProjectIDs = nil
 	current.ID = id
 	current.UpdatedAt = tx.now
 	tx.state.facilities[id] = cloneFacility(current)
-	tx.recordChange(Change{Entity: domain.EntityFacility, Action: domain.ActionUpdate, Before: before, After: cloneFacility(current)})
-	return cloneFacility(current), nil
+	afterDecorated := decorateFacility(&tx.state, current)
+	tx.recordChange(Change{Entity: domain.EntityFacility, Action: domain.ActionUpdate, Before: before, After: cloneFacility(afterDecorated)})
+	return cloneFacility(afterDecorated), nil
 }
 
 // DeleteFacility removes a facility from state.
@@ -1271,8 +1333,9 @@ func (tx *transaction) DeleteFacility(id string) error {
 	if !ok {
 		return fmt.Errorf("facility %q not found", id)
 	}
-	if len(current.HousingUnitIDs) > 0 {
-		return fmt.Errorf("facility %q has %d housing units; remove them before delete", id, len(current.HousingUnitIDs))
+	decoratedCurrent := decorateFacility(&tx.state, current)
+	if count := len(facilityHousingIDs(&tx.state, id)); count > 0 {
+		return fmt.Errorf("facility %q has %d housing units; remove them before delete", id, count)
 	}
 	for _, housing := range tx.state.housing {
 		if housing.FacilityID == id {
@@ -1300,7 +1363,7 @@ func (tx *transaction) DeleteFacility(id string) error {
 		}
 	}
 	delete(tx.state.facilities, id)
-	tx.recordChange(Change{Entity: domain.EntityFacility, Action: domain.ActionDelete, Before: cloneFacility(current)})
+	tx.recordChange(Change{Entity: domain.EntityFacility, Action: domain.ActionDelete, Before: cloneFacility(decoratedCurrent)})
 	return nil
 }
 
@@ -1355,11 +1418,14 @@ func (tx *transaction) CreateProcedure(p Procedure) (Procedure, error) {
 	if _, exists := tx.state.procedures[p.ID]; exists {
 		return Procedure{}, fmt.Errorf("procedure %q already exists", p.ID)
 	}
+	p.TreatmentIDs = nil
+	p.ObservationIDs = nil
 	p.CreatedAt = tx.now
 	p.UpdatedAt = tx.now
 	tx.state.procedures[p.ID] = cloneProcedure(p)
-	tx.recordChange(Change{Entity: domain.EntityProcedure, Action: domain.ActionCreate, After: cloneProcedure(p)})
-	return cloneProcedure(p), nil
+	created := decorateProcedure(&tx.state, p)
+	tx.recordChange(Change{Entity: domain.EntityProcedure, Action: domain.ActionCreate, After: cloneProcedure(created)})
+	return cloneProcedure(created), nil
 }
 
 // UpdateProcedure mutates a procedure.
@@ -1368,15 +1434,19 @@ func (tx *transaction) UpdateProcedure(id string, mutator func(*Procedure) error
 	if !ok {
 		return Procedure{}, fmt.Errorf("procedure %q not found", id)
 	}
-	before := cloneProcedure(current)
+	beforeDecorated := decorateProcedure(&tx.state, current)
+	before := cloneProcedure(beforeDecorated)
 	if err := mutator(&current); err != nil {
 		return Procedure{}, err
 	}
+	current.TreatmentIDs = nil
+	current.ObservationIDs = nil
 	current.ID = id
 	current.UpdatedAt = tx.now
 	tx.state.procedures[id] = cloneProcedure(current)
-	tx.recordChange(Change{Entity: domain.EntityProcedure, Action: domain.ActionUpdate, Before: before, After: cloneProcedure(current)})
-	return cloneProcedure(current), nil
+	afterDecorated := decorateProcedure(&tx.state, current)
+	tx.recordChange(Change{Entity: domain.EntityProcedure, Action: domain.ActionUpdate, Before: before, After: cloneProcedure(afterDecorated)})
+	return cloneProcedure(afterDecorated), nil
 }
 
 // DeleteProcedure removes a procedure.
@@ -1385,6 +1455,7 @@ func (tx *transaction) DeleteProcedure(id string) error {
 	if !ok {
 		return fmt.Errorf("procedure %q not found", id)
 	}
+	decoratedCurrent := decorateProcedure(&tx.state, current)
 	for _, treatment := range tx.state.treatments {
 		if treatment.ProcedureID == id {
 			return fmt.Errorf("procedure %q still referenced by treatment %q", id, treatment.ID)
@@ -1396,7 +1467,7 @@ func (tx *transaction) DeleteProcedure(id string) error {
 		}
 	}
 	delete(tx.state.procedures, id)
-	tx.recordChange(Change{Entity: domain.EntityProcedure, Action: domain.ActionDelete, Before: cloneProcedure(current)})
+	tx.recordChange(Change{Entity: domain.EntityProcedure, Action: domain.ActionDelete, Before: cloneProcedure(decoratedCurrent)})
 	return nil
 }
 
@@ -1780,11 +1851,15 @@ func (tx *transaction) CreateProject(p Project) (Project, error) {
 			return Project{}, fmt.Errorf("facility %q not found for project", facilityID)
 		}
 	}
+	p.OrganismIDs = nil
+	p.ProcedureIDs = nil
+	p.SupplyItemIDs = nil
 	p.CreatedAt = tx.now
 	p.UpdatedAt = tx.now
 	tx.state.projects[p.ID] = cloneProject(p)
-	tx.recordChange(Change{Entity: domain.EntityProject, Action: domain.ActionCreate, After: cloneProject(p)})
-	return cloneProject(p), nil
+	created := decorateProject(&tx.state, p)
+	tx.recordChange(Change{Entity: domain.EntityProject, Action: domain.ActionCreate, After: cloneProject(created)})
+	return cloneProject(created), nil
 }
 
 // UpdateProject mutates an existing project record.
@@ -1793,7 +1868,8 @@ func (tx *transaction) UpdateProject(id string, mutator func(*Project) error) (P
 	if !ok {
 		return Project{}, fmt.Errorf("project %q not found", id)
 	}
-	before := cloneProject(current)
+	beforeDecorated := decorateProject(&tx.state, current)
+	before := cloneProject(beforeDecorated)
 	if err := mutator(&current); err != nil {
 		return Project{}, err
 	}
@@ -1803,11 +1879,15 @@ func (tx *transaction) UpdateProject(id string, mutator func(*Project) error) (P
 			return Project{}, fmt.Errorf("facility %q not found for project", facilityID)
 		}
 	}
+	current.OrganismIDs = nil
+	current.ProcedureIDs = nil
+	current.SupplyItemIDs = nil
 	current.ID = id
 	current.UpdatedAt = tx.now
 	tx.state.projects[id] = cloneProject(current)
-	tx.recordChange(Change{Entity: domain.EntityProject, Action: domain.ActionUpdate, Before: before, After: cloneProject(current)})
-	return cloneProject(current), nil
+	afterDecorated := decorateProject(&tx.state, current)
+	tx.recordChange(Change{Entity: domain.EntityProject, Action: domain.ActionUpdate, Before: before, After: cloneProject(afterDecorated)})
+	return cloneProject(afterDecorated), nil
 }
 
 // DeleteProject removes a project from state.
@@ -1816,13 +1896,14 @@ func (tx *transaction) DeleteProject(id string) error {
 	if !ok {
 		return fmt.Errorf("project %q not found", id)
 	}
+	decoratedCurrent := decorateProject(&tx.state, current)
 	for _, supply := range tx.state.supplies {
 		if containsString(supply.ProjectIDs, id) {
 			return fmt.Errorf("project %q still referenced by supply item %q", id, supply.ID)
 		}
 	}
 	delete(tx.state.projects, id)
-	tx.recordChange(Change{Entity: domain.EntityProject, Action: domain.ActionDelete, Before: cloneProject(current)})
+	tx.recordChange(Change{Entity: domain.EntityProject, Action: domain.ActionDelete, Before: cloneProject(decoratedCurrent)})
 	return nil
 }
 
@@ -1957,7 +2038,8 @@ func (s *Store) GetFacility(id string) (Facility, bool) {
 	if !ok {
 		return Facility{}, false
 	}
-	return cloneFacility(f), true
+	decorated := decorateFacility(&s.state, f)
+	return cloneFacility(decorated), true
 }
 
 // ListFacilities returns all facilities.
@@ -1966,7 +2048,7 @@ func (s *Store) ListFacilities() []Facility {
 	defer s.mu.RUnlock()
 	out := make([]Facility, 0, len(s.state.facilities))
 	for _, f := range s.state.facilities {
-		out = append(out, cloneFacility(f))
+		out = append(out, cloneFacility(decorateFacility(&s.state, f)))
 	}
 	return out
 }
@@ -2054,7 +2136,7 @@ func (s *Store) ListProjects() []Project {
 	defer s.mu.RUnlock()
 	out := make([]Project, 0, len(s.state.projects))
 	for _, p := range s.state.projects {
-		out = append(out, cloneProject(p))
+		out = append(out, cloneProject(decorateProject(&s.state, p)))
 	}
 	return out
 }
@@ -2076,7 +2158,7 @@ func (s *Store) ListProcedures() []Procedure {
 	defer s.mu.RUnlock()
 	out := make([]Procedure, 0, len(s.state.procedures))
 	for _, p := range s.state.procedures {
-		out = append(out, cloneProcedure(p))
+		out = append(out, cloneProcedure(decorateProcedure(&s.state, p)))
 	}
 	return out
 }
