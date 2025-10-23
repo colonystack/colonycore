@@ -191,6 +191,7 @@ func facadeProceduresFromDomain(procs []domain.Procedure) []datasetapi.Procedure
 func facadeFacilityFromDomain(facility domain.Facility) datasetapi.Facility {
 	return datasetapi.NewFacility(datasetapi.FacilityData{
 		Base:                 baseDataFromDomain(facility.Base),
+		Code:                 facility.Code,
 		Name:                 facility.Name,
 		Zone:                 facility.Zone,
 		AccessPolicy:         facility.AccessPolicy,

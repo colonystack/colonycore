@@ -255,6 +255,7 @@ func TestNewViewAccessors(t *testing.T) {
 	now := time.Now()
 	facility := newFacilityView(domain.Facility{
 		Base:                 domain.Base{ID: "facility", CreatedAt: now, UpdatedAt: now},
+		Code:                 "FAC-99",
 		Name:                 "Facility",
 		Zone:                 "Quarantine Zone",
 		AccessPolicy:         "Restricted",
@@ -270,6 +271,9 @@ func TestNewViewAccessors(t *testing.T) {
 	}
 	if facility.EnvironmentBaselines()["temp"] != 21 {
 		t.Fatal("facility baselines should round-trip")
+	}
+	if facility.Code() != "FAC-99" {
+		t.Fatalf("expected facility code to round-trip, got %q", facility.Code())
 	}
 	if !facility.GetZone().IsQuarantine() {
 		t.Fatal("facility zone contextual accessor should report quarantine")

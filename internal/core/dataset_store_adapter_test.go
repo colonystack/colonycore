@@ -41,7 +41,7 @@ func TestDatasetPersistentStoreAdapter(t *testing.T) {
 	cohortEntity := domain.Cohort{Base: domain.Base{ID: cohortID}, Name: "Group", Purpose: "Study", ProjectID: &projectRef, HousingID: &housingRef, ProtocolID: &protocolRef}
 	breeding := domain.BreedingUnit{Base: domain.Base{ID: "breeding"}, Name: "Pair", Strategy: "pair", HousingID: &housingRef, ProtocolID: &protocolRef, FemaleIDs: []string{"f"}, MaleIDs: []string{"m"}}
 	procedure := domain.Procedure{Base: domain.Base{ID: "procedure"}, Name: "Proc", Status: "scheduled", ScheduledAt: now.Add(time.Hour), ProtocolID: protocolID, CohortID: &cohort, OrganismIDs: []string{organismID}}
-	facility := domain.Facility{Base: domain.Base{ID: "facility"}, Name: "Facility", Zone: "biosecure", AccessPolicy: "restricted", HousingUnitIDs: []string{housingID}}
+	facility := domain.Facility{Base: domain.Base{ID: "facility"}, Code: "FAC", Name: "Facility", Zone: "biosecure", AccessPolicy: "restricted", HousingUnitIDs: []string{housingID}}
 	treatment := domain.Treatment{Base: domain.Base{ID: "treatment"}, Name: "Treatment", ProcedureID: procedure.ID, OrganismIDs: []string{organismID}, AdministrationLog: []string{"dose1"}}
 	observation := domain.Observation{Base: domain.Base{ID: "observation"}, RecordedAt: now, Observer: "tech"}
 	sample := domain.Sample{Base: domain.Base{ID: "sample"}, Identifier: "S1", SourceType: "organism", FacilityID: facility.ID, CollectedAt: now, Status: "stored"}

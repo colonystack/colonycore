@@ -52,7 +52,7 @@ TYPE DialectProvider interface { DSL() colonycore/pkg/datasetapi.Dialect SQL() c
 TYPE EntityRef struct { unexported }
 TYPE Environment struct { unexported }
 TYPE EnvironmentTypeRef interface { Equals(colonycore/pkg/datasetapi.EnvironmentTypeRef) bool IsAquatic() bool IsHumid() bool String() string }
-TYPE Facility interface { AccessPolicy() string CreatedAt() time.Time EnvironmentBaselines() map[string]any GetAccessPolicy() colonycore/pkg/datasetapi.FacilityAccessPolicyRef GetZone() colonycore/pkg/datasetapi.FacilityZoneRef HousingUnitIDs() []string ID() string Name() string ProjectIDs() []string SupportsHousingUnit(string) bool UpdatedAt() time.Time Zone() string }
+TYPE Facility interface { AccessPolicy() string Code() string CreatedAt() time.Time EnvironmentBaselines() map[string]any GetAccessPolicy() colonycore/pkg/datasetapi.FacilityAccessPolicyRef GetZone() colonycore/pkg/datasetapi.FacilityZoneRef HousingUnitIDs() []string ID() string Name() string ProjectIDs() []string SupportsHousingUnit(string) bool UpdatedAt() time.Time Zone() string }
 TYPE FacilityAccessPolicyProvider interface { Open() colonycore/pkg/datasetapi.FacilityAccessPolicyRef Restricted() colonycore/pkg/datasetapi.FacilityAccessPolicyRef StaffOnly() colonycore/pkg/datasetapi.FacilityAccessPolicyRef }
 TYPE FacilityAccessPolicyRef interface { AllowsVisitors() bool Equals(colonycore/pkg/datasetapi.FacilityAccessPolicyRef) bool IsRestricted() bool String() string }
 TYPE FacilityContext interface { AccessPolicies() colonycore/pkg/datasetapi.FacilityAccessPolicyProvider Zones() colonycore/pkg/datasetapi.FacilityZoneProvider }

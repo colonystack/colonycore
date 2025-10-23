@@ -338,6 +338,7 @@ func (h housingUnitView) SupportsSpecies(species string) bool {
 
 type facilityView struct {
 	baseView
+	code                 string
 	name                 string
 	zone                 string
 	accessPolicy         string
@@ -349,6 +350,7 @@ type facilityView struct {
 func newFacilityView(facility domain.Facility) facilityView {
 	return facilityView{
 		baseView:             newBaseView(facility.Base),
+		code:                 facility.Code,
 		name:                 facility.Name,
 		zone:                 facility.Zone,
 		accessPolicy:         facility.AccessPolicy,
@@ -358,6 +360,7 @@ func newFacilityView(facility domain.Facility) facilityView {
 	}
 }
 
+func (f facilityView) Code() string         { return f.code }
 func (f facilityView) Name() string         { return f.name }
 func (f facilityView) Zone() string         { return f.zone }
 func (f facilityView) AccessPolicy() string { return f.accessPolicy }
