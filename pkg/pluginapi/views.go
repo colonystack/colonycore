@@ -50,6 +50,7 @@ type HousingUnitView interface {
 // FacilityView is a read-only projection of a facility record.
 type FacilityView interface {
 	BaseView
+	Code() string
 	Name() string
 	Zone() string
 	AccessPolicy() string

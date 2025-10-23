@@ -439,6 +439,7 @@ func TestExtendedFacades(t *testing.T) {
 
 	facility := NewFacility(FacilityData{
 		Base:                 BaseData{ID: "facility", CreatedAt: now, UpdatedAt: now},
+		Code:                 "FAC-1",
 		Name:                 "Biosecure",
 		Zone:                 "Biosecure Wing",
 		AccessPolicy:         "Restricted",
@@ -458,8 +459,25 @@ func TestExtendedFacades(t *testing.T) {
 	if !facility.SupportsHousingUnit(housingID) {
 		t.Fatal("facility should support housing id")
 	}
+	if facility.Code() != "FAC-1" {
+		t.Fatalf("expected facility code in facade, got %q", facility.Code())
+	}
 	if !facility.GetZone().IsBiosecure() || !facility.GetAccessPolicy().IsRestricted() {
 		t.Fatal("facility contextual helpers should reflect semantics")
+	}
+	if payload, err := json.Marshal(facility); err != nil {
+		t.Fatalf("marshal facility: %v", err)
+	} else {
+		var serialized map[string]any
+		if err := json.Unmarshal(payload, &serialized); err != nil {
+			t.Fatalf("unmarshal facility: %v", err)
+		}
+		if serialized["code"] != "FAC-1" {
+			t.Fatalf("expected facility code in json, got %+v", serialized)
+		}
+		if serialized["name"] != "Biosecure" || serialized["zone"] != "Biosecure Wing" {
+			t.Fatalf("unexpected facility json: %+v", serialized)
+		}
 	}
 
 	treatment := NewTreatment(TreatmentData{

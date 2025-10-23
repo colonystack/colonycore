@@ -121,6 +121,7 @@ type HousingUnitData struct {
 // FacilityData describes the fields required to construct a Facility facade.
 type FacilityData struct {
 	Base                 BaseData
+	Code                 string
 	Name                 string
 	Zone                 string
 	AccessPolicy         string
@@ -325,6 +326,7 @@ type Facility interface {
 	ID() string
 	CreatedAt() time.Time
 	UpdatedAt() time.Time
+	Code() string
 	Name() string
 	Zone() string
 	AccessPolicy() string
@@ -861,6 +863,7 @@ func (h housingUnit) MarshalJSON() ([]byte, error) {
 
 type facility struct {
 	base
+	code                 string
 	name                 string
 	zone                 string
 	accessPolicy         string
@@ -873,6 +876,7 @@ type facility struct {
 func NewFacility(data FacilityData) Facility {
 	return facility{
 		base:                 newBase(data.Base),
+		code:                 data.Code,
 		name:                 data.Name,
 		zone:                 data.Zone,
 		accessPolicy:         data.AccessPolicy,
@@ -882,6 +886,7 @@ func NewFacility(data FacilityData) Facility {
 	}
 }
 
+func (f facility) Code() string         { return f.code }
 func (f facility) Name() string         { return f.name }
 func (f facility) Zone() string         { return f.zone }
 func (f facility) AccessPolicy() string { return f.accessPolicy }
@@ -936,6 +941,7 @@ func (f facility) MarshalJSON() ([]byte, error) {
 		ID                   string         `json:"id"`
 		CreatedAt            time.Time      `json:"created_at"`
 		UpdatedAt            time.Time      `json:"updated_at"`
+		Code                 string         `json:"code"`
 		Name                 string         `json:"name"`
 		Zone                 string         `json:"zone"`
 		AccessPolicy         string         `json:"access_policy"`
@@ -947,6 +953,7 @@ func (f facility) MarshalJSON() ([]byte, error) {
 		ID:                   f.ID(),
 		CreatedAt:            f.CreatedAt(),
 		UpdatedAt:            f.UpdatedAt(),
+		Code:                 f.code,
 		Name:                 f.name,
 		Zone:                 f.zone,
 		AccessPolicy:         f.accessPolicy,

@@ -116,6 +116,7 @@ type HousingUnit struct {
 // Facility aggregates housing units with shared biosecurity controls.
 type Facility struct {
 	Base
+	Code                 string         `json:"code"`
 	Name                 string         `json:"name"`
 	Zone                 string         `json:"zone"`
 	AccessPolicy         string         `json:"access_policy"`
