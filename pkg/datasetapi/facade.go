@@ -141,8 +141,8 @@ type BreedingUnitData struct {
 	StrainID          *string
 	TargetLineID      *string
 	TargetStrainID    *string
-	PairingIntent     string
-	PairingNotes      string
+	PairingIntent     *string
+	PairingNotes      *string
 	PairingAttributes map[string]any
 	FemaleIDs         []string
 	MaleIDs           []string
@@ -183,7 +183,7 @@ type ObservationData struct {
 	RecordedAt  time.Time
 	Observer    string
 	Data        map[string]any
-	Notes       string
+	Notes       *string
 }
 
 // SampleData describes the fields required to construct a Sample facade.
@@ -207,7 +207,7 @@ type SampleCustodyEventData struct {
 	Actor     string
 	Location  string
 	Timestamp time.Time
-	Notes     string
+	Notes     *string
 }
 
 // ProtocolData describes the fields required to construct a Protocol facade.
@@ -215,7 +215,7 @@ type ProtocolData struct {
 	Base        BaseData
 	Code        string
 	Title       string
-	Description string
+	Description *string
 	MaxSubjects int
 	Status      string
 }
@@ -230,7 +230,7 @@ type PermitData struct {
 	AllowedActivities []string
 	FacilityIDs       []string
 	ProtocolIDs       []string
-	Notes             string
+	Notes             *string
 }
 
 // ProjectData describes the fields required to construct a Project facade.
@@ -238,7 +238,7 @@ type ProjectData struct {
 	Base          BaseData
 	Code          string
 	Title         string
-	Description   string
+	Description   *string
 	FacilityIDs   []string
 	ProtocolIDs   []string
 	OrganismIDs   []string
@@ -251,10 +251,10 @@ type SupplyItemData struct {
 	Base           BaseData
 	SKU            string
 	Name           string
-	Description    string
+	Description    *string
 	QuantityOnHand int
 	Unit           string
-	LotNumber      string
+	LotNumber      *string
 	ExpiresAt      *time.Time
 	FacilityIDs    []string
 	ProjectIDs     []string
@@ -973,8 +973,8 @@ type breedingUnit struct {
 	strainID          *string
 	targetLineID      *string
 	targetStrainID    *string
-	pairingIntent     string
-	pairingNotes      string
+	pairingIntent     *string
+	pairingNotes      *string
 	pairingAttributes map[string]any
 	femaleIDs         []string
 	maleIDs           []string
@@ -992,8 +992,8 @@ func NewBreedingUnit(data BreedingUnitData) BreedingUnit {
 		strainID:          cloneOptionalString(data.StrainID),
 		targetLineID:      cloneOptionalString(data.TargetLineID),
 		targetStrainID:    cloneOptionalString(data.TargetStrainID),
-		pairingIntent:     data.PairingIntent,
-		pairingNotes:      data.PairingNotes,
+		pairingIntent:     cloneOptionalString(data.PairingIntent),
+		pairingNotes:      cloneOptionalString(data.PairingNotes),
 		pairingAttributes: cloneAttributes(data.PairingAttributes),
 		femaleIDs:         cloneStringSlice(data.FemaleIDs),
 		maleIDs:           cloneStringSlice(data.MaleIDs),
@@ -1021,10 +1021,16 @@ func (b breedingUnit) TargetStrainID() (string, bool) {
 	return derefString(b.targetStrainID)
 }
 func (b breedingUnit) PairingIntent() string {
-	return b.pairingIntent
+	if v, ok := derefString(b.pairingIntent); ok {
+		return v
+	}
+	return ""
 }
 func (b breedingUnit) PairingNotes() string {
-	return b.pairingNotes
+	if v, ok := derefString(b.pairingNotes); ok {
+		return v
+	}
+	return ""
 }
 func (b breedingUnit) PairingAttributes() map[string]any {
 	return cloneAttributes(b.pairingAttributes)
@@ -1075,8 +1081,8 @@ func (b breedingUnit) MarshalJSON() ([]byte, error) {
 		StrainID          *string        `json:"strain_id,omitempty"`
 		TargetLineID      *string        `json:"target_line_id,omitempty"`
 		TargetStrainID    *string        `json:"target_strain_id,omitempty"`
-		PairingIntent     string         `json:"pairing_intent,omitempty"`
-		PairingNotes      string         `json:"pairing_notes,omitempty"`
+		PairingIntent     *string        `json:"pairing_intent,omitempty"`
+		PairingNotes      *string        `json:"pairing_notes,omitempty"`
 		PairingAttributes map[string]any `json:"pairing_attributes,omitempty"`
 		FemaleIDs         []string       `json:"female_ids"`
 		MaleIDs           []string       `json:"male_ids"`
@@ -1093,8 +1099,8 @@ func (b breedingUnit) MarshalJSON() ([]byte, error) {
 		StrainID:          cloneOptionalString(b.strainID),
 		TargetLineID:      cloneOptionalString(b.targetLineID),
 		TargetStrainID:    cloneOptionalString(b.targetStrainID),
-		PairingIntent:     b.pairingIntent,
-		PairingNotes:      b.pairingNotes,
+		PairingIntent:     cloneOptionalString(b.pairingIntent),
+		PairingNotes:      cloneOptionalString(b.pairingNotes),
 		PairingAttributes: cloneAttributes(b.pairingAttributes),
 		FemaleIDs:         cloneStringSlice(b.femaleIDs),
 		MaleIDs:           cloneStringSlice(b.maleIDs),
@@ -1299,7 +1305,7 @@ type observation struct {
 	recordedAt  time.Time
 	observer    string
 	data        map[string]any
-	notes       string
+	notes       *string
 }
 
 // NewObservation constructs a read-only Observation facade.
@@ -1312,7 +1318,7 @@ func NewObservation(data ObservationData) Observation {
 		recordedAt:  data.RecordedAt,
 		observer:    data.Observer,
 		data:        cloneAttributes(data.Data),
-		notes:       data.Notes,
+		notes:       cloneOptionalString(data.Notes),
 	}
 }
 
@@ -1331,11 +1337,17 @@ func (o observation) CohortID() (string, bool) {
 func (o observation) RecordedAt() time.Time { return o.recordedAt }
 func (o observation) Observer() string      { return o.observer }
 func (o observation) Data() map[string]any  { return cloneAttributes(o.data) }
-func (o observation) Notes() string         { return o.notes }
+func (o observation) Notes() string {
+	if v, ok := derefString(o.notes); ok {
+		return v
+	}
+	return ""
+}
 
 // Contextual data shape accessors
 func (o observation) GetDataShape() ObservationShapeRef {
-	return inferObservationShape(len(o.data) > 0, strings.TrimSpace(o.notes) != "")
+	narrative, _ := derefString(o.notes)
+	return inferObservationShape(len(o.data) > 0, strings.TrimSpace(narrative) != "")
 }
 
 func (o observation) HasStructuredPayload() bool {
@@ -1343,7 +1355,10 @@ func (o observation) HasStructuredPayload() bool {
 }
 
 func (o observation) HasNarrativeNotes() bool {
-	return o.GetDataShape().HasNarrativeNotes()
+	if note, ok := derefString(o.notes); ok {
+		return strings.TrimSpace(note) != ""
+	}
+	return false
 }
 
 func (o observation) MarshalJSON() ([]byte, error) {
@@ -1357,7 +1372,7 @@ func (o observation) MarshalJSON() ([]byte, error) {
 		RecordedAt  time.Time      `json:"recorded_at"`
 		Observer    string         `json:"observer"`
 		Data        map[string]any `json:"data,omitempty"`
-		Notes       string         `json:"notes,omitempty"`
+		Notes       *string        `json:"notes,omitempty"`
 	}
 	return json.Marshal(observationJSON{
 		ID:          o.ID(),
@@ -1369,7 +1384,7 @@ func (o observation) MarshalJSON() ([]byte, error) {
 		RecordedAt:  o.recordedAt,
 		Observer:    o.observer,
 		Data:        cloneAttributes(o.data),
-		Notes:       o.notes,
+		Notes:       cloneOptionalString(o.notes),
 	})
 }
 
@@ -1512,19 +1527,24 @@ type custodyEvent struct {
 	actor     string
 	location  string
 	timestamp time.Time
-	notes     string
+	notes     *string
 }
 
 func (c custodyEvent) Actor() string        { return c.actor }
 func (c custodyEvent) Location() string     { return c.location }
 func (c custodyEvent) Timestamp() time.Time { return c.timestamp }
-func (c custodyEvent) Notes() string        { return c.notes }
+func (c custodyEvent) Notes() string {
+	if v, ok := derefString(c.notes); ok {
+		return v
+	}
+	return ""
+}
 
 type protocol struct {
 	base
 	code        string
 	title       string
-	description string
+	description *string
 	maxSubjects int
 	status      string
 }
@@ -1535,16 +1555,21 @@ func NewProtocol(data ProtocolData) Protocol {
 		base:        newBase(data.Base),
 		code:        data.Code,
 		title:       data.Title,
-		description: data.Description,
+		description: cloneOptionalString(data.Description),
 		maxSubjects: data.MaxSubjects,
 		status:      data.Status,
 	}
 }
 
-func (p protocol) Code() string        { return p.code }
-func (p protocol) Title() string       { return p.title }
-func (p protocol) Description() string { return p.description }
-func (p protocol) MaxSubjects() int    { return p.maxSubjects }
+func (p protocol) Code() string  { return p.code }
+func (p protocol) Title() string { return p.title }
+func (p protocol) Description() string {
+	if v, ok := derefString(p.description); ok {
+		return v
+	}
+	return ""
+}
+func (p protocol) MaxSubjects() int { return p.maxSubjects }
 
 // Contextual status accessors
 func (p protocol) GetCurrentStatus() ProtocolStatusRef {
@@ -1585,7 +1610,7 @@ func (p protocol) MarshalJSON() ([]byte, error) {
 		UpdatedAt   time.Time `json:"updated_at"`
 		Code        string    `json:"code"`
 		Title       string    `json:"title"`
-		Description string    `json:"description"`
+		Description *string   `json:"description,omitempty"`
 		MaxSubjects int       `json:"max_subjects"`
 		Status      string    `json:"status"`
 	}
@@ -1595,7 +1620,7 @@ func (p protocol) MarshalJSON() ([]byte, error) {
 		UpdatedAt:   p.UpdatedAt(),
 		Code:        p.code,
 		Title:       p.title,
-		Description: p.description,
+		Description: cloneOptionalString(p.description),
 		MaxSubjects: p.maxSubjects,
 		Status:      p.status,
 	})
@@ -1610,7 +1635,7 @@ type permit struct {
 	allowedActivities []string
 	facilityIDs       []string
 	protocolIDs       []string
-	notes             string
+	notes             *string
 }
 
 // NewPermit constructs a read-only Permit facade.
@@ -1624,7 +1649,7 @@ func NewPermit(data PermitData) Permit {
 		allowedActivities: cloneStringSlice(data.AllowedActivities),
 		facilityIDs:       cloneStringSlice(data.FacilityIDs),
 		protocolIDs:       cloneStringSlice(data.ProtocolIDs),
-		notes:             data.Notes,
+		notes:             cloneOptionalString(data.Notes),
 	}
 }
 
@@ -1637,7 +1662,12 @@ func (p permit) AllowedActivities() []string {
 }
 func (p permit) FacilityIDs() []string { return cloneStringSlice(p.facilityIDs) }
 func (p permit) ProtocolIDs() []string { return cloneStringSlice(p.protocolIDs) }
-func (p permit) Notes() string         { return p.notes }
+func (p permit) Notes() string {
+	if v, ok := derefString(p.notes); ok {
+		return v
+	}
+	return ""
+}
 
 // Contextual validity accessors
 func (p permit) GetStatus(reference time.Time) PermitStatusRef {
@@ -1672,7 +1702,7 @@ func (p permit) MarshalJSON() ([]byte, error) {
 		AllowedActivities []string  `json:"allowed_activities,omitempty"`
 		FacilityIDs       []string  `json:"facility_ids,omitempty"`
 		ProtocolIDs       []string  `json:"protocol_ids,omitempty"`
-		Notes             string    `json:"notes,omitempty"`
+		Notes             *string   `json:"notes,omitempty"`
 	}
 	return json.Marshal(permitJSON{
 		ID:                p.ID(),
@@ -1685,7 +1715,7 @@ func (p permit) MarshalJSON() ([]byte, error) {
 		AllowedActivities: cloneStringSlice(p.allowedActivities),
 		FacilityIDs:       cloneStringSlice(p.facilityIDs),
 		ProtocolIDs:       cloneStringSlice(p.protocolIDs),
-		Notes:             p.notes,
+		Notes:             cloneOptionalString(p.notes),
 	})
 }
 
@@ -1693,7 +1723,7 @@ type project struct {
 	base
 	code          string
 	title         string
-	description   string
+	description   *string
 	facilityIDs   []string
 	protocolIDs   []string
 	organismIDs   []string
@@ -1707,7 +1737,7 @@ func NewProject(data ProjectData) Project {
 		base:          newBase(data.Base),
 		code:          data.Code,
 		title:         data.Title,
-		description:   data.Description,
+		description:   cloneOptionalString(data.Description),
 		facilityIDs:   cloneStringSlice(data.FacilityIDs),
 		protocolIDs:   cloneStringSlice(data.ProtocolIDs),
 		organismIDs:   cloneStringSlice(data.OrganismIDs),
@@ -1716,9 +1746,14 @@ func NewProject(data ProjectData) Project {
 	}
 }
 
-func (p project) Code() string        { return p.code }
-func (p project) Title() string       { return p.title }
-func (p project) Description() string { return p.description }
+func (p project) Code() string  { return p.code }
+func (p project) Title() string { return p.title }
+func (p project) Description() string {
+	if v, ok := derefString(p.description); ok {
+		return v
+	}
+	return ""
+}
 func (p project) FacilityIDs() []string {
 	return cloneStringSlice(p.facilityIDs)
 }
@@ -1742,7 +1777,7 @@ func (p project) MarshalJSON() ([]byte, error) {
 		UpdatedAt     time.Time `json:"updated_at"`
 		Code          string    `json:"code"`
 		Title         string    `json:"title"`
-		Description   string    `json:"description"`
+		Description   *string   `json:"description,omitempty"`
 		FacilityIDs   []string  `json:"facility_ids,omitempty"`
 		ProtocolIDs   []string  `json:"protocol_ids,omitempty"`
 		OrganismIDs   []string  `json:"organism_ids,omitempty"`
@@ -1755,7 +1790,7 @@ func (p project) MarshalJSON() ([]byte, error) {
 		UpdatedAt:     p.UpdatedAt(),
 		Code:          p.code,
 		Title:         p.title,
-		Description:   p.description,
+		Description:   cloneOptionalString(p.description),
 		FacilityIDs:   cloneStringSlice(p.facilityIDs),
 		ProtocolIDs:   cloneStringSlice(p.protocolIDs),
 		OrganismIDs:   cloneStringSlice(p.organismIDs),
@@ -1768,10 +1803,10 @@ type supplyItem struct {
 	base
 	sku            string
 	name           string
-	description    string
+	description    *string
 	quantityOnHand int
 	unit           string
-	lotNumber      string
+	lotNumber      *string
 	expiresAt      *time.Time
 	facilityIDs    []string
 	projectIDs     []string
@@ -1785,10 +1820,10 @@ func NewSupplyItem(data SupplyItemData) SupplyItem {
 		base:           newBase(data.Base),
 		sku:            data.SKU,
 		name:           data.Name,
-		description:    data.Description,
+		description:    cloneOptionalString(data.Description),
 		quantityOnHand: data.QuantityOnHand,
 		unit:           data.Unit,
-		lotNumber:      data.LotNumber,
+		lotNumber:      cloneOptionalString(data.LotNumber),
 		expiresAt:      cloneTimePtr(data.ExpiresAt),
 		facilityIDs:    cloneStringSlice(data.FacilityIDs),
 		projectIDs:     cloneStringSlice(data.ProjectIDs),
@@ -1797,12 +1832,22 @@ func NewSupplyItem(data SupplyItemData) SupplyItem {
 	}
 }
 
-func (s supplyItem) SKU() string         { return s.sku }
-func (s supplyItem) Name() string        { return s.name }
-func (s supplyItem) Description() string { return s.description }
+func (s supplyItem) SKU() string  { return s.sku }
+func (s supplyItem) Name() string { return s.name }
+func (s supplyItem) Description() string {
+	if v, ok := derefString(s.description); ok {
+		return v
+	}
+	return ""
+}
 func (s supplyItem) QuantityOnHand() int { return s.quantityOnHand }
 func (s supplyItem) Unit() string        { return s.unit }
-func (s supplyItem) LotNumber() string   { return s.lotNumber }
+func (s supplyItem) LotNumber() string {
+	if v, ok := derefString(s.lotNumber); ok {
+		return v
+	}
+	return ""
+}
 func (s supplyItem) FacilityIDs() []string {
 	return cloneStringSlice(s.facilityIDs)
 }
@@ -1838,10 +1883,10 @@ func (s supplyItem) MarshalJSON() ([]byte, error) {
 		UpdatedAt      time.Time      `json:"updated_at"`
 		SKU            string         `json:"sku"`
 		Name           string         `json:"name"`
-		Description    string         `json:"description"`
+		Description    *string        `json:"description,omitempty"`
 		QuantityOnHand int            `json:"quantity_on_hand"`
 		Unit           string         `json:"unit"`
-		LotNumber      string         `json:"lot_number"`
+		LotNumber      *string        `json:"lot_number,omitempty"`
 		ExpiresAt      *time.Time     `json:"expires_at,omitempty"`
 		FacilityIDs    []string       `json:"facility_ids,omitempty"`
 		ProjectIDs     []string       `json:"project_ids,omitempty"`
@@ -1854,10 +1899,10 @@ func (s supplyItem) MarshalJSON() ([]byte, error) {
 		UpdatedAt:      s.UpdatedAt(),
 		SKU:            s.sku,
 		Name:           s.name,
-		Description:    s.description,
+		Description:    cloneOptionalString(s.description),
 		QuantityOnHand: s.quantityOnHand,
 		Unit:           s.unit,
-		LotNumber:      s.lotNumber,
+		LotNumber:      cloneOptionalString(s.lotNumber),
 		ExpiresAt:      cloneTimePtr(s.expiresAt),
 		FacilityIDs:    cloneStringSlice(s.facilityIDs),
 		ProjectIDs:     cloneStringSlice(s.projectIDs),
@@ -1916,7 +1961,7 @@ func buildCustodyEvents(events []SampleCustodyEventData) []custodyEvent {
 			actor:     event.Actor,
 			location:  event.Location,
 			timestamp: event.Timestamp,
-			notes:     event.Notes,
+			notes:     cloneOptionalString(event.Notes),
 		}
 	}
 	return out
@@ -1928,12 +1973,15 @@ func serializeCustodyEvents(events []custodyEvent) []map[string]any {
 	}
 	out := make([]map[string]any, len(events))
 	for i, event := range events {
-		out[i] = map[string]any{
+		entry := map[string]any{
 			"actor":     event.actor,
 			"location":  event.location,
 			"timestamp": event.timestamp,
-			"notes":     event.notes,
 		}
+		if note, ok := derefString(event.notes); ok && strings.TrimSpace(note) != "" {
+			entry["notes"] = note
+		}
+		out[i] = entry
 	}
 	return out
 }

@@ -79,7 +79,7 @@ func TestMemStoreCRUDReduced(t *testing.T) {
 	}
 	if _, err := store.RunInTransaction(ctx, func(tx domain.Transaction) error {
 		if _, err := tx.UpdateProject(projectID, func(p *domain.Project) error {
-			p.Description = updatedDesc
+			p.Description = strPtr(updatedDesc)
 			return nil
 		}); err != nil {
 			return err
@@ -99,7 +99,7 @@ func TestMemStoreProcedureLifecycleReduced(t *testing.T) {
 		if err != nil {
 			return err
 		}
-		_, err = tx.CreateProcedure(domain.Procedure{Name: "Check", Status: "scheduled", ScheduledAt: now, ProtocolID: prot.ID})
+		_, err = tx.CreateProcedure(domain.Procedure{Name: "Check", Status: domain.ProcedureStatusScheduled, ScheduledAt: now, ProtocolID: prot.ID})
 		return err
 	}); err != nil {
 		t.Fatalf("create procedure: %v", err)
@@ -136,7 +136,7 @@ func TestMigrateSnapshotRelationships(t *testing.T) {
 		"prot-1": {Base: domain.Base{ID: "prot-1"}, Code: "PR", Title: "Protocol", MaxSubjects: 10, Status: "active"},
 	}
 	procedures := map[string]domain.Procedure{
-		"proc-1": {Base: domain.Base{ID: "proc-1"}, Name: "Proc", Status: "scheduled", ScheduledAt: now, ProtocolID: "prot-1", OrganismIDs: []string{"org-1"}},
+		"proc-1": {Base: domain.Base{ID: "proc-1"}, Name: "Proc", Status: domain.ProcedureStatusScheduled, ScheduledAt: now, ProtocolID: "prot-1", OrganismIDs: []string{"org-1"}},
 	}
 
 	snapshot := Snapshot{
@@ -150,17 +150,17 @@ func TestMigrateSnapshotRelationships(t *testing.T) {
 		},
 		Procedures: procedures,
 		Treatments: map[string]domain.Treatment{
-			"treat-1": {Base: domain.Base{ID: "treat-1"}, Name: "Treat", ProcedureID: "proc-1", OrganismIDs: []string{"org-1", "org-1"}, CohortIDs: []string{"missing"}},
+			"treat-1": {Base: domain.Base{ID: "treat-1"}, Name: "Treat", Status: domain.TreatmentStatusPlanned, ProcedureID: "proc-1", OrganismIDs: []string{"org-1", "org-1"}, CohortIDs: []string{"missing"}},
 		},
 		Observations: map[string]domain.Observation{
 			"obs-1": {Base: domain.Base{ID: "obs-1"}, ProcedureID: ptr("proc-1"), Observer: "Tech", RecordedAt: now},
 		},
 		Samples: map[string]domain.Sample{
-			"sample-1": {Base: domain.Base{ID: "sample-1"}, Identifier: "S1", SourceType: "blood", FacilityID: "fac-1", OrganismID: ptr("org-1"), CollectedAt: now, Status: "stored", StorageLocation: "freezer"},
+			"sample-1": {Base: domain.Base{ID: "sample-1"}, Identifier: "S1", SourceType: "blood", FacilityID: "fac-1", OrganismID: ptr("org-1"), CollectedAt: now, Status: domain.SampleStatusStored, StorageLocation: "freezer"},
 		},
 		Protocols: protocols,
 		Permits: map[string]domain.Permit{
-			"permit-1": {Base: domain.Base{ID: "permit-1"}, PermitNumber: "P1", Authority: "Gov", ValidFrom: now, ValidUntil: now.AddDate(1, 0, 0), FacilityIDs: []string{"fac-1", "fac-1"}, ProtocolIDs: []string{"prot-1"}},
+			"permit-1": {Base: domain.Base{ID: "permit-1"}, PermitNumber: "P1", Authority: "Gov", Status: domain.PermitStatusActive, ValidFrom: now, ValidUntil: now.AddDate(1, 0, 0), FacilityIDs: []string{"fac-1", "fac-1"}, ProtocolIDs: []string{"prot-1"}},
 		},
 		Projects: map[string]domain.Project{
 			"proj-1": {Base: domain.Base{ID: "proj-1"}, Code: "P1", Title: "Project", FacilityIDs: []string{"fac-1", "fac-1"}},

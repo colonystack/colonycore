@@ -13,10 +13,10 @@ func TestSupplyItemAccessors(t *testing.T) {
 		Base:           BaseData{ID: "supply", CreatedAt: now, UpdatedAt: now},
 		SKU:            "SKU-1",
 		Name:           "Supply",
-		Description:    "desc",
+		Description:    strPtr("desc"),
 		QuantityOnHand: 2,
 		Unit:           "box",
-		LotNumber:      "LOT",
+		LotNumber:      strPtr("LOT"),
 		ExpiresAt:      &expires,
 		FacilityIDs:    []string{"fac"},
 		ProjectIDs:     []string{"proj"},
@@ -76,7 +76,7 @@ func TestPermitAccessors(t *testing.T) {
 		AllowedActivities: []string{"collect"},
 		FacilityIDs:       []string{"fac"},
 		ProtocolIDs:       []string{"prot"},
-		Notes:             "note",
+		Notes:             strPtr("note"),
 	}
 
 	permit := NewPermit(data)

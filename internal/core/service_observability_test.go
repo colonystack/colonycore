@@ -142,7 +142,7 @@ func TestServiceObservabilityComplianceEntities(t *testing.T) {
 	}
 	procedure, _, err := svc.CreateProcedure(ctx, domain.Procedure{
 		Name:        "Procedure",
-		Status:      "scheduled",
+		Status:      domain.ProcedureStatusScheduled,
 		ScheduledAt: time.Now().UTC(),
 		ProtocolID:  protocol.ID,
 	})
@@ -177,7 +177,7 @@ func TestServiceObservabilityComplianceEntities(t *testing.T) {
 		t.Fatalf("create observation: %v", err)
 	}
 	if _, _, err := svc.UpdateObservation(ctx, obs.ID, func(o *domain.Observation) error {
-		o.Notes = updatedDesc
+		o.Notes = strPtr(updatedDesc)
 		return nil
 	}); err != nil {
 		t.Fatalf("update observation: %v", err)
@@ -193,7 +193,7 @@ func TestServiceObservabilityComplianceEntities(t *testing.T) {
 		OrganismID:      &org.ID,
 		FacilityID:      facility.ID,
 		CollectedAt:     time.Now().UTC(),
-		Status:          "stored",
+		Status:          domain.SampleStatusStored,
 		StorageLocation: "Freezer-1",
 		AssayType:       "PCR",
 	})
@@ -201,7 +201,7 @@ func TestServiceObservabilityComplianceEntities(t *testing.T) {
 		t.Fatalf("create sample: %v", err)
 	}
 	if _, _, err := svc.UpdateSample(ctx, sample.ID, func(s *domain.Sample) error {
-		s.Status = "processed"
+		s.Status = domain.SampleStatusDisposed
 		return nil
 	}); err != nil {
 		t.Fatalf("update sample: %v", err)
@@ -217,7 +217,7 @@ func TestServiceObservabilityComplianceEntities(t *testing.T) {
 		t.Fatalf("create permit: %v", err)
 	}
 	if _, _, err := svc.UpdatePermit(ctx, permit.ID, func(p *domain.Permit) error {
-		p.Notes = updatedDesc
+		p.Notes = strPtr(updatedDesc)
 		return nil
 	}); err != nil {
 		t.Fatalf("update permit: %v", err)

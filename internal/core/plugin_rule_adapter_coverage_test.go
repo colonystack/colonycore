@@ -196,7 +196,7 @@ func TestObservationViewHasNarrativeNotes(t *testing.T) {
 		Base: domain.Base{
 			ID: "observation-1",
 		},
-		Notes: "These are some notes",
+		Notes: strPtr("These are some notes"),
 	}
 
 	view := newObservationView(observation)
@@ -209,11 +209,11 @@ func TestObservationViewHasNarrativeNotes(t *testing.T) {
 		Base: domain.Base{
 			ID: "observation-2",
 		},
-		Notes: "",
+		Notes: strPtr(""),
 	}
 	viewEmpty := newObservationView(observationEmpty)
-	if !viewEmpty.HasNarrativeNotes() {
-		t.Errorf("Expected HasNarrativeNotes to be true even for empty notes (narrative capability)")
+	if viewEmpty.HasNarrativeNotes() {
+		t.Errorf("Expected HasNarrativeNotes to be false for empty notes")
 	}
 }
 

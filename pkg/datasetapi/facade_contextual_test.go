@@ -182,7 +182,7 @@ func TestProtocolContextualAccessors(t *testing.T) {
 			Base:        BaseData{ID: "protocol1"},
 			Code:        "P001",
 			Title:       "Test Protocol",
-			Description: "Test description",
+			Description: strPtr("Test description"),
 			MaxSubjects: 10,
 		})
 
@@ -250,7 +250,7 @@ func TestProtocolContextualAccessors(t *testing.T) {
 	t.Run("Description accessor works", func(t *testing.T) {
 		protocol := NewProtocol(ProtocolData{
 			Base:        BaseData{ID: "protocol1"},
-			Description: "Test description",
+			Description: strPtr("Test description"),
 		})
 
 		if protocol.Description() != "Test description" {

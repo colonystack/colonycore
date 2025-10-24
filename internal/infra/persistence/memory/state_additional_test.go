@@ -50,7 +50,7 @@ func TestSnapshotAllEntities(t *testing.T) {
 			return err
 		}
 		// Create procedure referencing organism
-		if _, err := tx.CreateProcedure(domain.Procedure{Name: "Check", Status: "scheduled", ScheduledAt: time.Now().UTC(), ProtocolID: p.ID, OrganismIDs: []string{o.ID}}); err != nil {
+		if _, err := tx.CreateProcedure(domain.Procedure{Name: "Check", Status: domain.ProcedureStatusScheduled, ScheduledAt: time.Now().UTC(), ProtocolID: p.ID, OrganismIDs: []string{o.ID}}); err != nil {
 			return err
 		}
 		return nil
@@ -103,7 +103,7 @@ func TestImportStateAppliesRelationshipMigrations(t *testing.T) {
 		"prot-1": {Base: domain.Base{ID: "prot-1"}, Code: "PR", Title: "Protocol", MaxSubjects: 10, Status: "active"},
 	}
 	procedures := map[string]domain.Procedure{
-		"proc-1": {Base: domain.Base{ID: "proc-1"}, Name: "Proc", Status: "scheduled", ScheduledAt: now, ProtocolID: "prot-1", OrganismIDs: []string{"org-1"}},
+		"proc-1": {Base: domain.Base{ID: "proc-1"}, Name: "Proc", Status: domain.ProcedureStatusScheduled, ScheduledAt: now, ProtocolID: "prot-1", OrganismIDs: []string{"org-1"}},
 	}
 
 	snapshot := Snapshot{
@@ -126,12 +126,12 @@ func TestImportStateAppliesRelationshipMigrations(t *testing.T) {
 			"obs-2": {Base: domain.Base{ID: "obs-2"}, ProcedureID: ptr("missing"), Observer: "Tech", RecordedAt: now},
 		},
 		Samples: map[string]domain.Sample{
-			"sample-1": {Base: domain.Base{ID: "sample-1"}, Identifier: "S1", SourceType: "blood", FacilityID: facilityKey, OrganismID: ptr("org-1"), CollectedAt: now, Status: "stored", StorageLocation: "freezer"},
-			"sample-2": {Base: domain.Base{ID: "sample-2"}, Identifier: "S2", SourceType: "blood", FacilityID: "missing", CollectedAt: now, Status: "stored", StorageLocation: "freezer"},
+			"sample-1": {Base: domain.Base{ID: "sample-1"}, Identifier: "S1", SourceType: "blood", FacilityID: facilityKey, OrganismID: ptr("org-1"), CollectedAt: now, Status: domain.SampleStatusStored, StorageLocation: "freezer"},
+			"sample-2": {Base: domain.Base{ID: "sample-2"}, Identifier: "S2", SourceType: "blood", FacilityID: "missing", CollectedAt: now, Status: domain.SampleStatusStored, StorageLocation: "freezer"},
 		},
 		Protocols: protocols,
 		Permits: map[string]domain.Permit{
-			"permit-1": {Base: domain.Base{ID: "permit-1"}, PermitNumber: "P1", Authority: "Gov", ValidFrom: now, ValidUntil: now.AddDate(1, 0, 0), FacilityIDs: []string{facilityKey, "missing", facilityKey}, ProtocolIDs: []string{"prot-1", "missing"}},
+			"permit-1": {Base: domain.Base{ID: "permit-1"}, PermitNumber: "P1", Authority: "Gov", Status: domain.PermitStatusActive, ValidFrom: now, ValidUntil: now.AddDate(1, 0, 0), FacilityIDs: []string{facilityKey, "missing", facilityKey}, ProtocolIDs: []string{"prot-1", "missing"}},
 		},
 		Projects: map[string]domain.Project{
 			"proj-1": {Base: domain.Base{ID: "proj-1"}, Code: "P1", Title: "Project", FacilityIDs: []string{facilityKey, facilityKey, "missing"}},
@@ -210,10 +210,10 @@ func TestMigrateSnapshotCleansDataVariants(t *testing.T) {
 			"housing-remove": {Base: domain.Base{ID: "housing-remove"}, Name: "HR", FacilityID: "missing", Capacity: 2},
 		},
 		Procedures: map[string]domain.Procedure{
-			"proc-keep": {Base: domain.Base{ID: "proc-keep"}, Name: "Proc", Status: "scheduled", ScheduledAt: now, ProtocolID: "prot-keep"},
+			"proc-keep": {Base: domain.Base{ID: "proc-keep"}, Name: "Proc", Status: domain.ProcedureStatusScheduled, ScheduledAt: now, ProtocolID: "prot-keep"},
 		},
 		Treatments: map[string]domain.Treatment{
-			"treatment-valid":  {Base: domain.Base{ID: "treatment-valid"}, Name: "Treat", ProcedureID: "proc-keep", OrganismIDs: []string{"org-keep", "org-keep", "missing"}, CohortIDs: []string{"cohort-keep", "missing"}},
+			"treatment-valid":  {Base: domain.Base{ID: "treatment-valid"}, Name: "Treat", Status: domain.TreatmentStatusPlanned, ProcedureID: "proc-keep", OrganismIDs: []string{"org-keep", "org-keep", "missing"}, CohortIDs: []string{"cohort-keep", "missing"}},
 			"treatment-remove": {Base: domain.Base{ID: "treatment-remove"}, Name: "TreatBad", ProcedureID: "missing"},
 		},
 		Observations: map[string]domain.Observation{
@@ -221,15 +221,15 @@ func TestMigrateSnapshotCleansDataVariants(t *testing.T) {
 			"observation-drop":  {Base: domain.Base{ID: "observation-drop"}, ProcedureID: ptr("missing"), Observer: "Tech", RecordedAt: now},
 		},
 		Samples: map[string]domain.Sample{
-			"sample-valid":            {Base: domain.Base{ID: "sample-valid"}, Identifier: "S", SourceType: "blood", FacilityID: facilityID, OrganismID: ptr("org-keep"), CollectedAt: now, Status: "stored", StorageLocation: "room"},
-			"sample-drop":             {Base: domain.Base{ID: "sample-drop"}, Identifier: "S2", SourceType: "blood", FacilityID: facilityID, OrganismID: ptr("missing"), CollectedAt: now, Status: "stored", StorageLocation: "room"},
-			"sample-missing-facility": {Base: domain.Base{ID: "sample-missing-facility"}, Identifier: "S3", SourceType: "blood", FacilityID: "missing", CollectedAt: now, Status: "stored", StorageLocation: "room"},
+			"sample-valid":            {Base: domain.Base{ID: "sample-valid"}, Identifier: "S", SourceType: "blood", FacilityID: facilityID, OrganismID: ptr("org-keep"), CollectedAt: now, Status: domain.SampleStatusStored, StorageLocation: "room"},
+			"sample-drop":             {Base: domain.Base{ID: "sample-drop"}, Identifier: "S2", SourceType: "blood", FacilityID: facilityID, OrganismID: ptr("missing"), CollectedAt: now, Status: domain.SampleStatusStored, StorageLocation: "room"},
+			"sample-missing-facility": {Base: domain.Base{ID: "sample-missing-facility"}, Identifier: "S3", SourceType: "blood", FacilityID: "missing", CollectedAt: now, Status: domain.SampleStatusStored, StorageLocation: "room"},
 		},
 		Protocols: map[string]domain.Protocol{
 			"prot-keep": {Base: domain.Base{ID: "prot-keep"}, Code: "PR", Title: "Protocol", MaxSubjects: 5, Status: "active"},
 		},
 		Permits: map[string]domain.Permit{
-			"permit-valid": {Base: domain.Base{ID: "permit-valid"}, PermitNumber: "P", Authority: "Gov", ValidFrom: now, ValidUntil: now.Add(time.Hour), FacilityIDs: []string{facilityID, facilityID, "missing"}, ProtocolIDs: []string{"prot-keep", "missing"}},
+			"permit-valid": {Base: domain.Base{ID: "permit-valid"}, PermitNumber: "P", Authority: "Gov", Status: domain.PermitStatusActive, ValidFrom: now, ValidUntil: now.Add(time.Hour), FacilityIDs: []string{facilityID, facilityID, "missing"}, ProtocolIDs: []string{"prot-keep", "missing"}},
 		},
 		Projects: map[string]domain.Project{
 			"project-valid": {Base: domain.Base{ID: "project-valid"}, Code: "PRJ", Title: "Project", FacilityIDs: []string{facilityID, facilityID, "missing"}},

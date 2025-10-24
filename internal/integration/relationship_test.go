@@ -9,6 +9,10 @@ import (
 	domain "colonycore/pkg/domain"
 )
 
+func strPtr(v string) *string {
+	return &v
+}
+
 func TestIntegrationEntityRelationships(t *testing.T) {
 	ctx := context.Background()
 	now := time.Now().UTC()
@@ -81,7 +85,7 @@ func TestIntegrationEntityRelationships(t *testing.T) {
 			project, res, err := svc.CreateProject(ctx, domain.Project{
 				Code:        "PROJ-1",
 				Title:       "Project 1",
-				Description: "linked to facility",
+				Description: strPtr("linked to facility"),
 				FacilityIDs: []string{facility.ID},
 			})
 			if err != nil {
@@ -94,7 +98,7 @@ func TestIntegrationEntityRelationships(t *testing.T) {
 			protocol, res, err := svc.CreateProtocol(ctx, domain.Protocol{
 				Code:        "PR-1",
 				Title:       "Protocol 1",
-				Description: "baseline protocol",
+				Description: strPtr("baseline protocol"),
 				MaxSubjects: 10,
 				Status:      "active",
 			})
@@ -118,7 +122,7 @@ func TestIntegrationEntityRelationships(t *testing.T) {
 
 			procedure, res, err := svc.CreateProcedure(ctx, domain.Procedure{
 				Name:        "Procedure-1",
-				Status:      "scheduled",
+				Status:      domain.ProcedureStatusScheduled,
 				ScheduledAt: now,
 				ProtocolID:  protocol.ID,
 				OrganismIDs: []string{organism.ID},
@@ -139,6 +143,7 @@ func TestIntegrationEntityRelationships(t *testing.T) {
 
 			treatment, res, err := svc.CreateTreatment(ctx, domain.Treatment{
 				Name:        "Treatment-1",
+				Status:      domain.TreatmentStatusPlanned,
 				ProcedureID: procedure.ID,
 				OrganismIDs: []string{organism.ID, organism.ID},
 				DosagePlan:  "Plan A",
@@ -153,7 +158,7 @@ func TestIntegrationEntityRelationships(t *testing.T) {
 			if _, _, err := svc.CreateObservation(ctx, domain.Observation{
 				Observer:   "Tech",
 				RecordedAt: now,
-				Notes:      "missing context",
+				Notes:      strPtr("missing context"),
 			}); err == nil {
 				t.Fatalf("expected observation creation to fail without context")
 			}
@@ -164,7 +169,7 @@ func TestIntegrationEntityRelationships(t *testing.T) {
 				Observer:    "Tech",
 				RecordedAt:  now,
 				Data:        map[string]any{"weight": 12.5},
-				Notes:       "baseline observation",
+				Notes:       strPtr("baseline observation"),
 			})
 			if err != nil {
 				t.Fatalf("create observation: %v", err)
@@ -184,7 +189,7 @@ func TestIntegrationEntityRelationships(t *testing.T) {
 				FacilityID:      "missing-facility",
 				OrganismID:      &organismID,
 				CollectedAt:     now,
-				Status:          "stored",
+				Status:          domain.SampleStatusStored,
 				StorageLocation: "freezer-a",
 			}); err == nil {
 				t.Fatalf("expected sample creation to fail for missing facility")
@@ -195,7 +200,7 @@ func TestIntegrationEntityRelationships(t *testing.T) {
 				SourceType:      "blood",
 				FacilityID:      facility.ID,
 				CollectedAt:     now,
-				Status:          "stored",
+				Status:          domain.SampleStatusStored,
 				StorageLocation: "freezer-a",
 			}); err == nil {
 				t.Fatalf("expected sample creation to fail without organism or cohort")
@@ -207,7 +212,7 @@ func TestIntegrationEntityRelationships(t *testing.T) {
 				FacilityID:      facility.ID,
 				OrganismID:      &organismID,
 				CollectedAt:     now,
-				Status:          "stored",
+				Status:          domain.SampleStatusStored,
 				StorageLocation: "freezer-a",
 			})
 			if err != nil {
@@ -220,6 +225,7 @@ func TestIntegrationEntityRelationships(t *testing.T) {
 			if _, _, err := svc.CreatePermit(ctx, domain.Permit{
 				PermitNumber: "PERM-ERR",
 				Authority:    "Gov",
+				Status:       domain.PermitStatusPending,
 				ValidFrom:    now,
 				ValidUntil:   now.AddDate(1, 0, 0),
 				FacilityIDs:  []string{facility.ID},
@@ -231,6 +237,7 @@ func TestIntegrationEntityRelationships(t *testing.T) {
 			permit, res, err := svc.CreatePermit(ctx, domain.Permit{
 				PermitNumber:      "PERM-1",
 				Authority:         "Gov",
+				Status:            domain.PermitStatusActive,
 				ValidFrom:         now,
 				ValidUntil:        now.AddDate(1, 0, 0),
 				AllowedActivities: []string{"activity"},
@@ -247,7 +254,7 @@ func TestIntegrationEntityRelationships(t *testing.T) {
 			if _, _, err := svc.CreateSupplyItem(ctx, domain.SupplyItem{
 				SKU:            "SKU-ERR",
 				Name:           "Gloves",
-				Description:    "invalid project reference",
+				Description:    strPtr("invalid project reference"),
 				QuantityOnHand: 5,
 				Unit:           "box",
 				FacilityIDs:    []string{facility.ID},
@@ -259,7 +266,7 @@ func TestIntegrationEntityRelationships(t *testing.T) {
 			supply, res, err := svc.CreateSupplyItem(ctx, domain.SupplyItem{
 				SKU:            "SKU-1",
 				Name:           "Gloves",
-				Description:    "valid supply",
+				Description:    strPtr("valid supply"),
 				QuantityOnHand: 25,
 				Unit:           "box",
 				FacilityIDs:    []string{facility.ID},

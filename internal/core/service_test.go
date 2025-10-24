@@ -15,6 +15,10 @@ import (
 	memory "colonycore/internal/infra/persistence/memory"
 )
 
+func strPtr(v string) *string {
+	return &v
+}
+
 func TestHousingCapacityRuleBlocksOverCapacity(t *testing.T) {
 	svc := core.NewInMemoryService(core.NewDefaultRulesEngine())
 	ctx := context.Background()
@@ -248,7 +252,7 @@ func TestServiceExtendedCRUD(t *testing.T) {
 
 	procedure, _, err := svc.CreateProcedure(ctx, domain.Procedure{
 		Name:        "Procedure",
-		Status:      "scheduled",
+		Status:      domain.ProcedureStatusScheduled,
 		ScheduledAt: time.Now().Add(time.Minute),
 		ProtocolID:  protID,
 		OrganismIDs: []string{organismA.ID},
@@ -258,7 +262,7 @@ func TestServiceExtendedCRUD(t *testing.T) {
 	}
 
 	if _, res, err := svc.UpdateProcedure(ctx, procedure.ID, func(p *domain.Procedure) error {
-		p.Status = "completed"
+		p.Status = domain.ProcedureStatusCompleted
 		return nil
 	}); err != nil {
 		t.Fatalf("update procedure: %v", err)
@@ -285,7 +289,7 @@ func TestServiceUpdateDeleteWrappers(t *testing.T) {
 		t.Fatalf("create project: %v", err)
 	}
 	updatedProj, res, err := svc.UpdateProject(ctx, project.ID, func(p *domain.Project) error {
-		p.Description = updatedDesc
+		p.Description = strPtr(updatedDesc)
 		return nil
 	})
 	if err != nil {
@@ -294,7 +298,7 @@ func TestServiceUpdateDeleteWrappers(t *testing.T) {
 	if res.HasBlocking() {
 		t.Fatalf("unexpected violations: %+v", res.Violations)
 	}
-	if updatedProj.Description != updatedDesc {
+	if updatedProj.Description == nil || *updatedProj.Description != updatedDesc {
 		t.Fatalf("expected project description update")
 	}
 	if res, err := svc.DeleteProject(ctx, project.ID); err != nil {
@@ -308,7 +312,7 @@ func TestServiceUpdateDeleteWrappers(t *testing.T) {
 		t.Fatalf("create protocol: %v", err)
 	}
 	updatedProto, res, err := svc.UpdateProtocol(ctx, protocol.ID, func(p *domain.Protocol) error {
-		p.Description = updatedDesc
+		p.Description = strPtr(updatedDesc)
 		return nil
 	})
 	if err != nil {
@@ -317,7 +321,7 @@ func TestServiceUpdateDeleteWrappers(t *testing.T) {
 	if res.HasBlocking() {
 		t.Fatalf("unexpected protocol update violations: %+v", res.Violations)
 	}
-	if updatedProto.Description != updatedDesc {
+	if updatedProto.Description == nil || *updatedProto.Description != updatedDesc {
 		t.Fatalf("expected protocol description update")
 	}
 	if res, err := svc.DeleteProtocol(ctx, protocol.ID); err != nil {
@@ -504,7 +508,7 @@ func TestServiceEmitsChangesForNewEntities(t *testing.T) {
 	assertSingleChange(t, collector.take(), domain.EntityObservation, domain.ActionCreate)
 
 	if _, res, err := svc.UpdateObservation(ctx, observation.ID, func(obs *domain.Observation) error {
-		obs.Notes = "reviewed"
+		obs.Notes = strPtr("reviewed")
 		return nil
 	}); err != nil {
 		t.Fatalf("update observation: %v", err)
@@ -526,7 +530,7 @@ func TestServiceEmitsChangesForNewEntities(t *testing.T) {
 		OrganismID:      &organism.ID,
 		FacilityID:      facilityB.ID,
 		CollectedAt:     now,
-		Status:          "stored",
+		Status:          domain.SampleStatusStored,
 		StorageLocation: "freezer-1",
 	})
 	if err != nil {
@@ -536,7 +540,7 @@ func TestServiceEmitsChangesForNewEntities(t *testing.T) {
 	assertSingleChange(t, collector.take(), domain.EntitySample, domain.ActionCreate)
 
 	if _, res, err := svc.UpdateSample(ctx, sample.ID, func(smp *domain.Sample) error {
-		smp.Status = "consumed"
+		smp.Status = domain.SampleStatusConsumed
 		return nil
 	}); err != nil {
 		t.Fatalf("update sample: %v", err)
@@ -555,6 +559,7 @@ func TestServiceEmitsChangesForNewEntities(t *testing.T) {
 	permit, res, err := svc.CreatePermit(ctx, domain.Permit{
 		PermitNumber:      "P-1",
 		Authority:         "Gov",
+		Status:            domain.PermitStatusActive,
 		ValidFrom:         now.Add(-time.Hour),
 		ValidUntil:        now.Add(time.Hour),
 		AllowedActivities: []string{"collect"},
@@ -568,7 +573,7 @@ func TestServiceEmitsChangesForNewEntities(t *testing.T) {
 	assertSingleChange(t, collector.take(), domain.EntityPermit, domain.ActionCreate)
 
 	if _, res, err := svc.UpdatePermit(ctx, permit.ID, func(pmt *domain.Permit) error {
-		pmt.Notes = "updated"
+		pmt.Notes = strPtr("updated")
 		return nil
 	}); err != nil {
 		t.Fatalf("update permit: %v", err)
@@ -587,7 +592,7 @@ func TestServiceEmitsChangesForNewEntities(t *testing.T) {
 	supply, res, err := svc.CreateSupplyItem(ctx, domain.SupplyItem{
 		SKU:            "SKU-1",
 		Name:           "Feed",
-		Description:    "Standard feed",
+		Description:    strPtr("Standard feed"),
 		QuantityOnHand: 10,
 		Unit:           "kg",
 		FacilityIDs:    []string{facilityB.ID},

@@ -58,6 +58,50 @@ const (
 	StageDeceased LifecycleStage = "deceased"
 )
 
+// ProcedureStatus enumerates canonical procedure workflow states (RFC-0001 §5.4).
+type ProcedureStatus string
+
+// Canonical procedure statuses used for scheduling and validation.
+const (
+	ProcedureStatusScheduled  ProcedureStatus = "scheduled"
+	ProcedureStatusInProgress ProcedureStatus = "in_progress"
+	ProcedureStatusCompleted  ProcedureStatus = "completed"
+	ProcedureStatusCancelled  ProcedureStatus = "cancelled"
+	ProcedureStatusFailed     ProcedureStatus = "failed"
+)
+
+// TreatmentStatus enumerates treatment lifecycle states enforced by the plugin contract.
+type TreatmentStatus string
+
+// Canonical treatment statuses recognised by rule and dataset adapters.
+const (
+	TreatmentStatusPlanned    TreatmentStatus = "planned"
+	TreatmentStatusInProgress TreatmentStatus = "in_progress"
+	TreatmentStatusCompleted  TreatmentStatus = "completed"
+	TreatmentStatusFlagged    TreatmentStatus = "flagged"
+)
+
+// SampleStatus enumerates sample custody states (stored, in transit, consumed, disposed).
+type SampleStatus string
+
+// Canonical sample statuses used for chain-of-custody validation.
+const (
+	SampleStatusStored    SampleStatus = "stored"
+	SampleStatusInTransit SampleStatus = "in_transit"
+	SampleStatusConsumed  SampleStatus = "consumed"
+	SampleStatusDisposed  SampleStatus = "disposed"
+)
+
+// PermitStatus enumerates permit validity states consumed by compliance workflows.
+type PermitStatus string
+
+// Canonical permit statuses describing regulatory validity.
+const (
+	PermitStatusPending PermitStatus = "pending"
+	PermitStatusActive  PermitStatus = "active"
+	PermitStatusExpired PermitStatus = "expired"
+)
+
 // Severity captures rule outcomes.
 type Severity string
 
@@ -136,8 +180,8 @@ type BreedingUnit struct {
 	StrainID          *string        `json:"strain_id"`
 	TargetLineID      *string        `json:"target_line_id"`
 	TargetStrainID    *string        `json:"target_strain_id"`
-	PairingIntent     string         `json:"pairing_intent"`
-	PairingNotes      string         `json:"pairing_notes"`
+	PairingIntent     *string        `json:"pairing_intent,omitempty"`
+	PairingNotes      *string        `json:"pairing_notes,omitempty"`
 	PairingAttributes map[string]any `json:"pairing_attributes"`
 	FemaleIDs         []string       `json:"female_ids"`
 	MaleIDs           []string       `json:"male_ids"`
@@ -148,12 +192,12 @@ type Line struct {
 	Base
 	Code               string         `json:"code"`
 	Name               string         `json:"name"`
-	Description        string         `json:"description"`
+	Description        *string        `json:"description,omitempty"`
 	Origin             string         `json:"origin"`
 	GenotypeMarkerIDs  []string       `json:"genotype_marker_ids"`
 	DefaultAttributes  map[string]any `json:"default_attributes"`
 	DeprecatedAt       *time.Time     `json:"deprecated_at"`
-	DeprecationReason  string         `json:"deprecation_reason"`
+	DeprecationReason  *string        `json:"deprecation_reason,omitempty"`
 	ExtensionOverrides map[string]any `json:"extension_overrides"`
 }
 
@@ -163,12 +207,12 @@ type Strain struct {
 	Code              string         `json:"code"`
 	Name              string         `json:"name"`
 	LineID            string         `json:"line_id"`
-	Description       string         `json:"description"`
-	Generation        string         `json:"generation"`
+	Description       *string        `json:"description,omitempty"`
+	Generation        *string        `json:"generation,omitempty"`
 	GenotypeMarkerIDs []string       `json:"genotype_marker_ids"`
 	Attributes        map[string]any `json:"attributes"`
 	RetiredAt         *time.Time     `json:"retired_at"`
-	RetirementReason  string         `json:"retirement_reason"`
+	RetirementReason  *string        `json:"retirement_reason,omitempty"`
 }
 
 // GenotypeMarker captures assay metadata for genetic markers used in lineage tracking.
@@ -186,27 +230,28 @@ type GenotypeMarker struct {
 // Procedure captures scheduled or completed animal procedures.
 type Procedure struct {
 	Base
-	Name           string    `json:"name"`
-	Status         string    `json:"status"`
-	ScheduledAt    time.Time `json:"scheduled_at"`
-	ProtocolID     string    `json:"protocol_id"`
-	ProjectID      *string   `json:"project_id"`
-	CohortID       *string   `json:"cohort_id"`
-	OrganismIDs    []string  `json:"organism_ids"`
-	TreatmentIDs   []string  `json:"treatment_ids"`
-	ObservationIDs []string  `json:"observation_ids"`
+	Name           string          `json:"name"`
+	Status         ProcedureStatus `json:"status"`
+	ScheduledAt    time.Time       `json:"scheduled_at"`
+	ProtocolID     string          `json:"protocol_id"`
+	ProjectID      *string         `json:"project_id"`
+	CohortID       *string         `json:"cohort_id"`
+	OrganismIDs    []string        `json:"organism_ids"`
+	TreatmentIDs   []string        `json:"treatment_ids"`
+	ObservationIDs []string        `json:"observation_ids"`
 }
 
 // Treatment captures therapeutic interventions and their outcomes.
 type Treatment struct {
 	Base
-	Name              string   `json:"name"`
-	ProcedureID       string   `json:"procedure_id"`
-	OrganismIDs       []string `json:"organism_ids"`
-	CohortIDs         []string `json:"cohort_ids"`
-	DosagePlan        string   `json:"dosage_plan"`
-	AdministrationLog []string `json:"administration_log"`
-	AdverseEvents     []string `json:"adverse_events"`
+	Name              string          `json:"name"`
+	Status            TreatmentStatus `json:"status"`
+	ProcedureID       string          `json:"procedure_id"`
+	OrganismIDs       []string        `json:"organism_ids"`
+	CohortIDs         []string        `json:"cohort_ids"`
+	DosagePlan        string          `json:"dosage_plan"`
+	AdministrationLog []string        `json:"administration_log"`
+	AdverseEvents     []string        `json:"adverse_events"`
 }
 
 // Observation records structured or free-form notes captured during workflows.
@@ -218,7 +263,7 @@ type Observation struct {
 	RecordedAt  time.Time      `json:"recorded_at"`
 	Observer    string         `json:"observer"`
 	Data        map[string]any `json:"data"`
-	Notes       string         `json:"notes"`
+	Notes       *string        `json:"notes,omitempty"`
 }
 
 // Sample tracks material derived from organisms or cohorts.
@@ -230,7 +275,7 @@ type Sample struct {
 	CohortID        *string              `json:"cohort_id"`
 	FacilityID      string               `json:"facility_id"`
 	CollectedAt     time.Time            `json:"collected_at"`
-	Status          string               `json:"status"`
+	Status          SampleStatus         `json:"status"`
 	StorageLocation string               `json:"storage_location"`
 	AssayType       string               `json:"assay_type"`
 	ChainOfCustody  []SampleCustodyEvent `json:"chain_of_custody"`
@@ -242,30 +287,31 @@ type SampleCustodyEvent struct {
 	Actor     string    `json:"actor"`
 	Location  string    `json:"location"`
 	Timestamp time.Time `json:"timestamp"`
-	Notes     string    `json:"notes"`
+	Notes     *string   `json:"notes,omitempty"`
 }
 
 // Protocol represents compliance agreements.
 type Protocol struct {
 	Base
-	Code        string `json:"code"`
-	Title       string `json:"title"`
-	Description string `json:"description"`
-	MaxSubjects int    `json:"max_subjects"`
-	Status      string `json:"status"`
+	Code        string  `json:"code"`
+	Title       string  `json:"title"`
+	Description *string `json:"description,omitempty"`
+	MaxSubjects int     `json:"max_subjects"`
+	Status      string  `json:"status"`
 }
 
 // Permit represents external authorizations needed for compliance.
 type Permit struct {
 	Base
-	PermitNumber      string    `json:"permit_number"`
-	Authority         string    `json:"authority"`
-	ValidFrom         time.Time `json:"valid_from"`
-	ValidUntil        time.Time `json:"valid_until"`
-	AllowedActivities []string  `json:"allowed_activities"`
-	FacilityIDs       []string  `json:"facility_ids"`
-	ProtocolIDs       []string  `json:"protocol_ids"`
-	Notes             string    `json:"notes"`
+	PermitNumber      string       `json:"permit_number"`
+	Authority         string       `json:"authority"`
+	Status            PermitStatus `json:"status"`
+	ValidFrom         time.Time    `json:"valid_from"`
+	ValidUntil        time.Time    `json:"valid_until"`
+	AllowedActivities []string     `json:"allowed_activities"`
+	FacilityIDs       []string     `json:"facility_ids"`
+	ProtocolIDs       []string     `json:"protocol_ids"`
+	Notes             *string      `json:"notes,omitempty"`
 }
 
 // Project captures cost center allocations.
@@ -273,7 +319,7 @@ type Project struct {
 	Base
 	Code          string   `json:"code"`
 	Title         string   `json:"title"`
-	Description   string   `json:"description"`
+	Description   *string  `json:"description,omitempty"`
 	FacilityIDs   []string `json:"facility_ids"`
 	ProtocolIDs   []string `json:"protocol_ids"`
 	OrganismIDs   []string `json:"organism_ids"`
@@ -286,10 +332,10 @@ type SupplyItem struct {
 	Base
 	SKU            string         `json:"sku"`
 	Name           string         `json:"name"`
-	Description    string         `json:"description"`
+	Description    *string        `json:"description,omitempty"`
 	QuantityOnHand int            `json:"quantity_on_hand"`
 	Unit           string         `json:"unit"`
-	LotNumber      string         `json:"lot_number"`
+	LotNumber      *string        `json:"lot_number,omitempty"`
 	ExpiresAt      *time.Time     `json:"expires_at"`
 	FacilityIDs    []string       `json:"facility_ids"`
 	ProjectIDs     []string       `json:"project_ids"`

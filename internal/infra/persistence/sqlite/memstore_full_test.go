@@ -11,6 +11,10 @@ import (
 	"time"
 )
 
+func strPtr(v string) *string {
+	return &v
+}
+
 // helper to run a transaction and fail fast
 func runTx(t *testing.T, store *memStore, fn func(tx domain.Transaction) error) domain.Result {
 	t.Helper()
@@ -68,9 +72,9 @@ func TestMemStore_FullCRUDAndErrors(t *testing.T) { //nolint:gocyclo // exhausti
 		breeding = b
 		p, _ := tx.CreateProtocol(domain.Protocol{Code: "P1", Title: "Proto", MaxSubjects: 10})
 		protocol = p
-		pr, _ := tx.CreateProcedure(domain.Procedure{Name: "Proc", Status: "scheduled", ProtocolID: protocol.ID, OrganismIDs: []string{o1.ID}, ScheduledAt: time.Now().UTC()})
+		pr, _ := tx.CreateProcedure(domain.Procedure{Name: "Proc", Status: domain.ProcedureStatusScheduled, ProtocolID: protocol.ID, OrganismIDs: []string{o1.ID}, ScheduledAt: time.Now().UTC()})
 		procedure = pr
-		t, _ := tx.CreateTreatment(domain.Treatment{Name: "Dose", ProcedureID: procedure.ID, OrganismIDs: []string{o1.ID}, CohortIDs: []string{cohort.ID}, DosagePlan: "10mg"})
+		t, _ := tx.CreateTreatment(domain.Treatment{Name: "Dose", Status: domain.TreatmentStatusPlanned, ProcedureID: procedure.ID, OrganismIDs: []string{o1.ID}, CohortIDs: []string{cohort.ID}, DosagePlan: "10mg"})
 		treatment = t
 		now := time.Now().UTC()
 		ob, _ := tx.CreateObservation(domain.Observation{ProcedureID: &procedure.ID, OrganismID: &o1.ID, RecordedAt: now, Observer: "tech", Data: map[string]any{"score": 5}})
@@ -82,7 +86,7 @@ func TestMemStore_FullCRUDAndErrors(t *testing.T) { //nolint:gocyclo // exhausti
 			OrganismID:      &o1.ID,
 			FacilityID:      facility.ID,
 			CollectedAt:     now,
-			Status:          "stored",
+			Status:          domain.SampleStatusStored,
 			StorageLocation: "freezer",
 			AssayType:       "PCR",
 			ChainOfCustody:  custody,
@@ -92,22 +96,23 @@ func TestMemStore_FullCRUDAndErrors(t *testing.T) { //nolint:gocyclo // exhausti
 		per, _ := tx.CreatePermit(domain.Permit{
 			PermitNumber:      "PER-1",
 			Authority:         "Agency",
+			Status:            domain.PermitStatusActive,
 			ValidFrom:         now.Add(-time.Hour),
 			ValidUntil:        now.Add(time.Hour),
 			AllowedActivities: []string{"collect"},
 			FacilityIDs:       []string{facility.ID},
 			ProtocolIDs:       []string{protocol.ID},
-			Notes:             "issue",
+			Notes:             strPtr("issue"),
 		})
 		permit = per
 		expiry := time.Now().Add(48 * time.Hour)
 		s, _ := tx.CreateSupplyItem(domain.SupplyItem{
 			SKU:            "SKU1",
 			Name:           "Feed",
-			Description:    "daily feed",
+			Description:    strPtr("daily feed"),
 			QuantityOnHand: 50,
 			Unit:           "grams",
-			LotNumber:      "LOT-1",
+			LotNumber:      strPtr("LOT-1"),
 			ExpiresAt:      &expiry,
 			FacilityIDs:    []string{facility.ID},
 			ProjectIDs:     []string{project.ID},
@@ -241,9 +246,9 @@ func TestMemStore_FullCRUDAndErrors(t *testing.T) { //nolint:gocyclo // exhausti
 		_, _ = tx.UpdateCohort(cohort.ID, func(c *domain.Cohort) error { c.Purpose = "updated"; return nil })
 		_, _ = tx.UpdateHousingUnit(housing.ID, func(h *domain.HousingUnit) error { h.Environment = "humid"; h.Capacity = 3; return nil })
 		_, _ = tx.UpdateBreedingUnit(breeding.ID, func(b *domain.BreedingUnit) error { b.FemaleIDs = append(b.FemaleIDs, orgB.ID); return nil })
-		_, _ = tx.UpdateProtocol(protocol.ID, func(p *domain.Protocol) error { p.Description = "desc"; return nil })
-		_, _ = tx.UpdateProcedure(procedure.ID, func(p *domain.Procedure) error { p.Status = "complete"; return nil })
-		_, _ = tx.UpdateProject(project.ID, func(p *domain.Project) error { p.Description = "d"; return nil })
+		_, _ = tx.UpdateProtocol(protocol.ID, func(p *domain.Protocol) error { p.Description = strPtr("desc"); return nil })
+		_, _ = tx.UpdateProcedure(procedure.ID, func(p *domain.Procedure) error { p.Status = domain.ProcedureStatusCompleted; return nil })
+		_, _ = tx.UpdateProject(project.ID, func(p *domain.Project) error { p.Description = strPtr("d"); return nil })
 		_, _ = tx.UpdateFacility(facility.ID, func(f *domain.Facility) error {
 			f.AccessPolicy = "training"
 			f.EnvironmentBaselines["humidity"] = "55%"
@@ -253,9 +258,9 @@ func TestMemStore_FullCRUDAndErrors(t *testing.T) { //nolint:gocyclo // exhausti
 			t.AdministrationLog = append(t.AdministrationLog, "follow-up")
 			return nil
 		})
-		_, _ = tx.UpdateObservation(observation.ID, func(o *domain.Observation) error { o.Notes = "checked"; o.Data["score"] = 6; return nil })
-		_, _ = tx.UpdateSample(sample.ID, func(s *domain.Sample) error { s.Status = "consumed"; return nil })
-		_, _ = tx.UpdatePermit(permit.ID, func(p *domain.Permit) error { p.Notes = "updated"; return nil })
+		_, _ = tx.UpdateObservation(observation.ID, func(o *domain.Observation) error { o.Notes = strPtr("checked"); o.Data["score"] = 6; return nil })
+		_, _ = tx.UpdateSample(sample.ID, func(s *domain.Sample) error { s.Status = domain.SampleStatusConsumed; return nil })
+		_, _ = tx.UpdatePermit(permit.ID, func(p *domain.Permit) error { p.Notes = strPtr("updated"); return nil })
 		_, _ = tx.UpdateSupplyItem(supply.ID, func(s *domain.SupplyItem) error { s.QuantityOnHand = 40; return nil })
 		return nil
 	})
@@ -439,7 +444,7 @@ func TestSQLiteStore_Persist_Reload_Full(t *testing.T) {
 
 		procedure, err := tx.CreateProcedure(domain.Procedure{
 			Name:        "Procedure",
-			Status:      "scheduled",
+			Status:      domain.ProcedureStatusScheduled,
 			ScheduledAt: now,
 			ProtocolID:  protocol.ID,
 			OrganismIDs: []string{organism.ID},
@@ -451,6 +456,7 @@ func TestSQLiteStore_Persist_Reload_Full(t *testing.T) {
 
 		treatment, err := tx.CreateTreatment(domain.Treatment{
 			Name:        "Treatment",
+			Status:      domain.TreatmentStatusPlanned,
 			ProcedureID: procedure.ID,
 			OrganismIDs: []string{organism.ID},
 			CohortIDs:   []string{cohort.ID},
@@ -480,7 +486,7 @@ func TestSQLiteStore_Persist_Reload_Full(t *testing.T) {
 			OrganismID:      &organism.ID,
 			FacilityID:      facility.ID,
 			CollectedAt:     now,
-			Status:          "stored",
+			Status:          domain.SampleStatusStored,
 			StorageLocation: "freezer",
 			AssayType:       "PCR",
 			ChainOfCustody:  custody,
@@ -494,12 +500,13 @@ func TestSQLiteStore_Persist_Reload_Full(t *testing.T) {
 		permit, err := tx.CreatePermit(domain.Permit{
 			PermitNumber:      "PER-1",
 			Authority:         "Agency",
+			Status:            domain.PermitStatusActive,
 			ValidFrom:         now.Add(-time.Hour),
 			ValidUntil:        now.Add(time.Hour),
 			AllowedActivities: []string{"collect"},
 			FacilityIDs:       []string{facility.ID},
 			ProtocolIDs:       []string{protocol.ID},
-			Notes:             "initial issuance",
+			Notes:             strPtr("initial issuance"),
 		})
 		if err != nil {
 			return err
@@ -510,10 +517,10 @@ func TestSQLiteStore_Persist_Reload_Full(t *testing.T) {
 		supply, err := tx.CreateSupplyItem(domain.SupplyItem{
 			SKU:            "SKU-1",
 			Name:           "Diet Blocks",
-			Description:    "nutrient feed",
+			Description:    strPtr("nutrient feed"),
 			QuantityOnHand: 100,
 			Unit:           "grams",
-			LotNumber:      "LOT-1",
+			LotNumber:      strPtr("LOT-1"),
 			ExpiresAt:      &expiry,
 			FacilityIDs:    []string{facility.ID},
 			ProjectIDs:     []string{project.ID},
@@ -573,7 +580,7 @@ func TestSQLiteStore_Persist_Reload_Full(t *testing.T) {
 		t.Fatalf("expected project persisted")
 	}
 	if err := reloaded.View(ctx, func(view domain.TransactionView) error {
-		if sample, ok := view.FindSample(sampleID); !ok || sample.Status != "stored" {
+		if sample, ok := view.FindSample(sampleID); !ok || sample.Status != domain.SampleStatusStored {
 			return fmt.Errorf("expected sample persisted via view")
 		}
 		if treatment, ok := view.FindTreatment(treatmentID); !ok || treatment.DosagePlan != "10mg/kg" {
@@ -816,7 +823,7 @@ func TestMemStoreDeleteFacilityEnforcesReferences(t *testing.T) {
 			FacilityID:      facility.ID,
 			OrganismID:      &org.ID,
 			CollectedAt:     now,
-			Status:          "stored",
+			Status:          domain.SampleStatusStored,
 			StorageLocation: "room",
 		})
 		if err != nil {
@@ -911,7 +918,7 @@ func TestMemStoreRelationshipValidations(t *testing.T) {
 			t.Fatalf("expected treatment missing procedure to fail")
 		}
 
-		procedure, err := tx.CreateProcedure(domain.Procedure{Name: "Proc", Status: "scheduled", ScheduledAt: now, ProtocolID: protocol.ID})
+		procedure, err := tx.CreateProcedure(domain.Procedure{Name: "Proc", Status: domain.ProcedureStatusScheduled, ScheduledAt: now, ProtocolID: protocol.ID})
 		if err != nil {
 			return err
 		}
@@ -937,13 +944,13 @@ func TestMemStoreRelationshipValidations(t *testing.T) {
 			t.Fatalf("expected observation creation to succeed: %v", err)
 		}
 
-		if _, err := tx.CreateSample(domain.Sample{Identifier: "S0", SourceType: "blood", CollectedAt: now, Status: "stored", StorageLocation: "room"}); err == nil {
+		if _, err := tx.CreateSample(domain.Sample{Identifier: "S0", SourceType: "blood", CollectedAt: now, Status: domain.SampleStatusStored, StorageLocation: "room"}); err == nil {
 			t.Fatalf("expected sample without facility to fail")
 		}
-		if _, err := tx.CreateSample(domain.Sample{Identifier: "S1", SourceType: "blood", FacilityID: facility.ID, CollectedAt: now, Status: "stored", StorageLocation: "room"}); err == nil {
+		if _, err := tx.CreateSample(domain.Sample{Identifier: "S1", SourceType: "blood", FacilityID: facility.ID, CollectedAt: now, Status: domain.SampleStatusStored, StorageLocation: "room"}); err == nil {
 			t.Fatalf("expected sample without organism or cohort to fail")
 		}
-		if _, err := tx.CreateSample(domain.Sample{Identifier: "S2", SourceType: "blood", FacilityID: facility.ID, OrganismID: &organism.ID, CollectedAt: now, Status: "stored", StorageLocation: "room"}); err != nil {
+		if _, err := tx.CreateSample(domain.Sample{Identifier: "S2", SourceType: "blood", FacilityID: facility.ID, OrganismID: &organism.ID, CollectedAt: now, Status: domain.SampleStatusStored, StorageLocation: "room"}); err != nil {
 			t.Fatalf("expected sample creation to succeed: %v", err)
 		}
 
@@ -1021,7 +1028,7 @@ func TestSQLiteMigrateSnapshotCleansDataVariants(t *testing.T) {
 			"housing-remove": {Base: domain.Base{ID: "housing-remove"}, Name: "HR", FacilityID: "missing", Capacity: 2},
 		},
 		Procedures: map[string]domain.Procedure{
-			"proc-keep": {Base: domain.Base{ID: "proc-keep"}, Name: "Proc", Status: "scheduled", ScheduledAt: now, ProtocolID: "prot-keep"},
+			"proc-keep": {Base: domain.Base{ID: "proc-keep"}, Name: "Proc", Status: domain.ProcedureStatusScheduled, ScheduledAt: now, ProtocolID: "prot-keep"},
 		},
 		Treatments: map[string]domain.Treatment{
 			"treatment-valid":  {Base: domain.Base{ID: "treatment-valid"}, Name: "Treat", ProcedureID: "proc-keep", OrganismIDs: []string{"org-keep", "org-keep", "missing"}, CohortIDs: []string{"cohort-keep", "missing"}},
@@ -1032,9 +1039,9 @@ func TestSQLiteMigrateSnapshotCleansDataVariants(t *testing.T) {
 			"observation-drop":  {Base: domain.Base{ID: "observation-drop"}, ProcedureID: ptr("missing"), Observer: "Tech", RecordedAt: now},
 		},
 		Samples: map[string]domain.Sample{
-			"sample-valid":            {Base: domain.Base{ID: "sample-valid"}, Identifier: "S", SourceType: "blood", FacilityID: facilityID, OrganismID: ptr("org-keep"), CollectedAt: now, Status: "stored", StorageLocation: "room"},
-			"sample-drop":             {Base: domain.Base{ID: "sample-drop"}, Identifier: "S2", SourceType: "blood", FacilityID: facilityID, OrganismID: ptr("missing"), CollectedAt: now, Status: "stored", StorageLocation: "room"},
-			"sample-missing-facility": {Base: domain.Base{ID: "sample-missing-facility"}, Identifier: "S3", SourceType: "blood", FacilityID: "missing", CollectedAt: now, Status: "stored", StorageLocation: "room"},
+			"sample-valid":            {Base: domain.Base{ID: "sample-valid"}, Identifier: "S", SourceType: "blood", FacilityID: facilityID, OrganismID: ptr("org-keep"), CollectedAt: now, Status: domain.SampleStatusStored, StorageLocation: "room"},
+			"sample-drop":             {Base: domain.Base{ID: "sample-drop"}, Identifier: "S2", SourceType: "blood", FacilityID: facilityID, OrganismID: ptr("missing"), CollectedAt: now, Status: domain.SampleStatusStored, StorageLocation: "room"},
+			"sample-missing-facility": {Base: domain.Base{ID: "sample-missing-facility"}, Identifier: "S3", SourceType: "blood", FacilityID: "missing", CollectedAt: now, Status: domain.SampleStatusStored, StorageLocation: "room"},
 		},
 		Protocols: map[string]domain.Protocol{
 			"prot-keep": {Base: domain.Base{ID: "prot-keep"}, Code: "PR", Title: "Protocol", MaxSubjects: 5, Status: "active"},

@@ -17,6 +17,10 @@ const (
 	testProjectID              = "project"
 )
 
+func strPtr(v string) *string {
+	return &v
+}
+
 func TestFacadeOrganismFromDomainCopiesData(t *testing.T) {
 	now := time.Now()
 	cohort := testCohortID
@@ -92,12 +96,12 @@ func TestFacadeCollectionsCloneSlices(t *testing.T) {
 	now := time.Now()
 	cohortID := testCohortID
 	housing := domain.HousingUnit{Base: domain.Base{ID: "H"}, Name: "Hab", FacilityID: "F", Capacity: 3, Environment: "wet"}
-	protocol := domain.Protocol{Base: domain.Base{ID: "P"}, Code: "C", Title: "T", Description: "D", MaxSubjects: 5}
+	protocol := domain.Protocol{Base: domain.Base{ID: "P"}, Code: "C", Title: "T", Description: strPtr("D"), MaxSubjects: 5}
 	project := domain.Project{
 		Base:          domain.Base{ID: "PR"},
 		Code:          "CC",
 		Title:         "Title",
-		Description:   "Desc",
+		Description:   strPtr("Desc"),
 		FacilityIDs:   []string{"facility"},
 		ProtocolIDs:   []string{"protocol"},
 		OrganismIDs:   []string{"organism"},
@@ -123,8 +127,8 @@ func TestFacadeCollectionsCloneSlices(t *testing.T) {
 		StrainID:          &strainID,
 		TargetLineID:      &targetLineID,
 		TargetStrainID:    &targetStrainID,
-		PairingIntent:     "outcross",
-		PairingNotes:      "Documented pairing",
+		PairingIntent:     strPtr("outcross"),
+		PairingNotes:      strPtr("Documented pairing"),
 		PairingAttributes: map[string]any{"purpose": "lineage"},
 		FemaleIDs:         []string{"f1"},
 		MaleIDs:           []string{"m1"},

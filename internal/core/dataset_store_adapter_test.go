@@ -36,16 +36,16 @@ func TestDatasetPersistentStoreAdapter(t *testing.T) {
 		Attributes: junkAttr,
 	}
 	unit := domain.HousingUnit{Base: domain.Base{ID: housingID}, Name: "Hab", Environment: "humid"}
-	protocol := domain.Protocol{Base: domain.Base{ID: protocolID}, Code: "P", Title: "Protocol", Description: "Desc", MaxSubjects: 10}
-	project := domain.Project{Base: domain.Base{ID: projectID}, Code: "PR", Title: "Project", Description: "Research"}
+	protocol := domain.Protocol{Base: domain.Base{ID: protocolID}, Code: "P", Title: "Protocol", Description: strPtr("Desc"), MaxSubjects: 10}
+	project := domain.Project{Base: domain.Base{ID: projectID}, Code: "PR", Title: "Project", Description: strPtr("Research")}
 	cohortEntity := domain.Cohort{Base: domain.Base{ID: cohortID}, Name: "Group", Purpose: "Study", ProjectID: &projectRef, HousingID: &housingRef, ProtocolID: &protocolRef}
 	breeding := domain.BreedingUnit{Base: domain.Base{ID: "breeding"}, Name: "Pair", Strategy: "pair", HousingID: &housingRef, ProtocolID: &protocolRef, FemaleIDs: []string{"f"}, MaleIDs: []string{"m"}}
-	procedure := domain.Procedure{Base: domain.Base{ID: "procedure"}, Name: "Proc", Status: "scheduled", ScheduledAt: now.Add(time.Hour), ProtocolID: protocolID, CohortID: &cohort, OrganismIDs: []string{organismID}}
+	procedure := domain.Procedure{Base: domain.Base{ID: "procedure"}, Name: "Proc", Status: domain.ProcedureStatusScheduled, ScheduledAt: now.Add(time.Hour), ProtocolID: protocolID, CohortID: &cohort, OrganismIDs: []string{organismID}}
 	facility := domain.Facility{Base: domain.Base{ID: "facility"}, Code: "FAC", Name: "Facility", Zone: "biosecure", AccessPolicy: "restricted", HousingUnitIDs: []string{housingID}}
-	treatment := domain.Treatment{Base: domain.Base{ID: "treatment"}, Name: "Treatment", ProcedureID: procedure.ID, OrganismIDs: []string{organismID}, AdministrationLog: []string{"dose1"}}
+	treatment := domain.Treatment{Base: domain.Base{ID: "treatment"}, Name: "Treatment", Status: domain.TreatmentStatusInProgress, ProcedureID: procedure.ID, OrganismIDs: []string{organismID}, AdministrationLog: []string{"dose1"}}
 	observation := domain.Observation{Base: domain.Base{ID: "observation"}, RecordedAt: now, Observer: "tech"}
-	sample := domain.Sample{Base: domain.Base{ID: "sample"}, Identifier: "S1", SourceType: "organism", FacilityID: facility.ID, CollectedAt: now, Status: "stored"}
-	permit := domain.Permit{Base: domain.Base{ID: "permit"}, PermitNumber: "PERMIT", Authority: "Gov", ValidFrom: now.Add(-24 * time.Hour), ValidUntil: now.Add(24 * time.Hour)}
+	sample := domain.Sample{Base: domain.Base{ID: "sample"}, Identifier: "S1", SourceType: "organism", FacilityID: facility.ID, CollectedAt: now, Status: domain.SampleStatusStored}
+	permit := domain.Permit{Base: domain.Base{ID: "permit"}, PermitNumber: "PERMIT", Authority: "Gov", Status: domain.PermitStatusActive, ValidFrom: now.Add(-24 * time.Hour), ValidUntil: now.Add(24 * time.Hour)}
 	supply := domain.SupplyItem{Base: domain.Base{ID: "supply"}, SKU: "SKU", Name: "Item", QuantityOnHand: 5, ReorderLevel: 1}
 
 	fake := &fakePersistentStore{

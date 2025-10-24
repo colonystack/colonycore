@@ -114,7 +114,7 @@ func TestMemoryStoreCRUDAndQueries(t *testing.T) {
 
 		procedure, err := tx.CreateProcedure(domain.Procedure{
 			Name:        "Check",
-			Status:      "scheduled",
+			Status:      domain.ProcedureStatusScheduled,
 			ScheduledAt: time.Now().Add(time.Minute),
 			ProtocolID:  protocolID,
 			OrganismIDs: []string{organismAID, organismBID},
@@ -192,13 +192,13 @@ func TestMemoryStoreCRUDAndQueries(t *testing.T) {
 		}
 		const updatedDesc = "updated"
 		if _, err := tx.UpdateProject(projectID, func(p *domain.Project) error {
-			p.Description = updatedDesc
+			p.Description = strPtr(updatedDesc)
 			return nil
 		}); err != nil {
 			return err
 		}
 		if _, err := tx.UpdateProtocol(protocolID, func(p *domain.Protocol) error {
-			p.Description = updatedDesc
+			p.Description = strPtr(updatedDesc)
 			return nil
 		}); err != nil {
 			return err
@@ -217,7 +217,7 @@ func TestMemoryStoreCRUDAndQueries(t *testing.T) {
 			return err
 		}
 		if _, err := tx.UpdateProcedure(procedureID, func(p *domain.Procedure) error {
-			p.Status = "completed"
+			p.Status = domain.ProcedureStatusCompleted
 			return nil
 		}); err != nil {
 			return err

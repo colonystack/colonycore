@@ -468,7 +468,7 @@ type observationView struct {
 	recordedAt  time.Time
 	observer    string
 	data        map[string]any
-	notes       string
+	notes       *string
 }
 
 func newObservationView(observation domain.Observation) observationView {
@@ -480,7 +480,7 @@ func newObservationView(observation domain.Observation) observationView {
 		recordedAt:  observation.RecordedAt,
 		observer:    observation.Observer,
 		data:        cloneAttributes(observation.Data),
-		notes:       observation.Notes,
+		notes:       cloneOptionalString(observation.Notes),
 	}
 }
 
@@ -499,11 +499,17 @@ func (o observationView) CohortID() (string, bool) {
 func (o observationView) RecordedAt() time.Time { return o.recordedAt }
 func (o observationView) Observer() string      { return o.observer }
 func (o observationView) Data() map[string]any  { return cloneAttributes(o.data) }
-func (o observationView) Notes() string         { return o.notes }
+func (o observationView) Notes() string {
+	if note, ok := derefString(o.notes); ok {
+		return note
+	}
+	return ""
+}
 
 // Contextual data shape accessors
 func (o observationView) GetDataShape() pluginapi.ObservationShapeRef {
-	return observationShapeFromData(len(o.data) > 0, o.notes)
+	note, _ := derefString(o.notes)
+	return observationShapeFromData(len(o.data) > 0, note)
 }
 
 func (o observationView) HasStructuredPayload() bool {
@@ -511,7 +517,10 @@ func (o observationView) HasStructuredPayload() bool {
 }
 
 func (o observationView) HasNarrativeNotes() bool {
-	return o.GetDataShape().HasNarrativeNotes()
+	if note, ok := derefString(o.notes); ok {
+		return strings.TrimSpace(note) != ""
+	}
+	return false
 }
 
 type sampleView struct {
@@ -538,7 +547,7 @@ func newSampleView(sample domain.Sample) sampleView {
 		cohortID:        cloneOptionalString(sample.CohortID),
 		facilityID:      sample.FacilityID,
 		collectedAt:     sample.CollectedAt,
-		status:          sample.Status,
+		status:          string(sample.Status),
 		storageLocation: sample.StorageLocation,
 		assayType:       sample.AssayType,
 		chainOfCustody:  cloneCustodyEvents(sample.ChainOfCustody),
@@ -609,7 +618,7 @@ type protocolView struct {
 	baseView
 	code        string
 	title       string
-	description string
+	description *string
 	maxSubjects int
 	status      string
 }
@@ -619,16 +628,21 @@ func newProtocolView(protocol domain.Protocol) protocolView {
 		baseView:    newBaseView(protocol.Base),
 		code:        protocol.Code,
 		title:       protocol.Title,
-		description: protocol.Description,
+		description: cloneOptionalString(protocol.Description),
 		maxSubjects: protocol.MaxSubjects,
 		status:      protocol.Status,
 	}
 }
 
-func (p protocolView) Code() string        { return p.code }
-func (p protocolView) Title() string       { return p.title }
-func (p protocolView) Description() string { return p.description }
-func (p protocolView) MaxSubjects() int    { return p.maxSubjects }
+func (p protocolView) Code() string  { return p.code }
+func (p protocolView) Title() string { return p.title }
+func (p protocolView) Description() string {
+	if desc, ok := derefString(p.description); ok {
+		return desc
+	}
+	return ""
+}
+func (p protocolView) MaxSubjects() int { return p.maxSubjects }
 
 // Contextual status accessors
 func (p protocolView) GetCurrentStatus() pluginapi.ProtocolStatusRef {
@@ -671,7 +685,7 @@ type permitView struct {
 	allowedActivities []string
 	facilityIDs       []string
 	protocolIDs       []string
-	notes             string
+	notes             *string
 }
 
 func newPermitView(permit domain.Permit) permitView {
@@ -684,7 +698,7 @@ func newPermitView(permit domain.Permit) permitView {
 		allowedActivities: cloneStringSlice(permit.AllowedActivities),
 		facilityIDs:       cloneStringSlice(permit.FacilityIDs),
 		protocolIDs:       cloneStringSlice(permit.ProtocolIDs),
-		notes:             permit.Notes,
+		notes:             cloneOptionalString(permit.Notes),
 	}
 }
 
@@ -697,7 +711,12 @@ func (p permitView) AllowedActivities() []string {
 }
 func (p permitView) FacilityIDs() []string { return cloneStringSlice(p.facilityIDs) }
 func (p permitView) ProtocolIDs() []string { return cloneStringSlice(p.protocolIDs) }
-func (p permitView) Notes() string         { return p.notes }
+func (p permitView) Notes() string {
+	if note, ok := derefString(p.notes); ok {
+		return note
+	}
+	return ""
+}
 
 // Contextual validity accessors
 func (p permitView) GetStatus(reference time.Time) pluginapi.PermitStatusRef {
@@ -724,7 +743,7 @@ type projectView struct {
 	baseView
 	code        string
 	title       string
-	description string
+	description *string
 	facilityIDs []string
 }
 
@@ -733,14 +752,19 @@ func newProjectView(project domain.Project) projectView {
 		baseView:    newBaseView(project.Base),
 		code:        project.Code,
 		title:       project.Title,
-		description: project.Description,
+		description: cloneOptionalString(project.Description),
 		facilityIDs: cloneStringSlice(project.FacilityIDs),
 	}
 }
 
-func (p projectView) Code() string        { return p.code }
-func (p projectView) Title() string       { return p.title }
-func (p projectView) Description() string { return p.description }
+func (p projectView) Code() string  { return p.code }
+func (p projectView) Title() string { return p.title }
+func (p projectView) Description() string {
+	if desc, ok := derefString(p.description); ok {
+		return desc
+	}
+	return ""
+}
 func (p projectView) FacilityIDs() []string {
 	return cloneStringSlice(p.facilityIDs)
 }
@@ -749,10 +773,10 @@ type supplyItemView struct {
 	baseView
 	sku            string
 	name           string
-	description    string
+	description    *string
 	quantityOnHand int
 	unit           string
-	lotNumber      string
+	lotNumber      *string
 	expiresAt      *time.Time
 	facilityIDs    []string
 	projectIDs     []string
@@ -765,10 +789,10 @@ func newSupplyItemView(item domain.SupplyItem) supplyItemView {
 		baseView:       newBaseView(item.Base),
 		sku:            item.SKU,
 		name:           item.Name,
-		description:    item.Description,
+		description:    cloneOptionalString(item.Description),
 		quantityOnHand: item.QuantityOnHand,
 		unit:           item.Unit,
-		lotNumber:      item.LotNumber,
+		lotNumber:      cloneOptionalString(item.LotNumber),
 		expiresAt:      cloneTimePtr(item.ExpiresAt),
 		facilityIDs:    cloneStringSlice(item.FacilityIDs),
 		projectIDs:     cloneStringSlice(item.ProjectIDs),
@@ -777,12 +801,22 @@ func newSupplyItemView(item domain.SupplyItem) supplyItemView {
 	}
 }
 
-func (s supplyItemView) SKU() string         { return s.sku }
-func (s supplyItemView) Name() string        { return s.name }
-func (s supplyItemView) Description() string { return s.description }
+func (s supplyItemView) SKU() string  { return s.sku }
+func (s supplyItemView) Name() string { return s.name }
+func (s supplyItemView) Description() string {
+	if desc, ok := derefString(s.description); ok {
+		return desc
+	}
+	return ""
+}
 func (s supplyItemView) QuantityOnHand() int { return s.quantityOnHand }
 func (s supplyItemView) Unit() string        { return s.unit }
-func (s supplyItemView) LotNumber() string   { return s.lotNumber }
+func (s supplyItemView) LotNumber() string {
+	if lot, ok := derefString(s.lotNumber); ok {
+		return lot
+	}
+	return ""
+}
 func (s supplyItemView) FacilityIDs() []string {
 	return cloneStringSlice(s.facilityIDs)
 }
@@ -992,7 +1026,7 @@ func cloneCustodyEvents(events []domain.SampleCustodyEvent) []domain.SampleCusto
 			Actor:     event.Actor,
 			Location:  event.Location,
 			Timestamp: event.Timestamp,
-			Notes:     event.Notes,
+			Notes:     cloneOptionalString(event.Notes),
 		}
 	}
 	return out
@@ -1004,12 +1038,15 @@ func cloneCustodyEventMaps(events []domain.SampleCustodyEvent) []map[string]any 
 	}
 	out := make([]map[string]any, len(events))
 	for i, event := range events {
-		out[i] = map[string]any{
+		entry := map[string]any{
 			"actor":     event.Actor,
 			"location":  event.Location,
 			"timestamp": event.Timestamp,
-			"notes":     event.Notes,
 		}
+		if note, ok := derefString(event.Notes); ok && strings.TrimSpace(note) != "" {
+			entry["notes"] = note
+		}
+		out[i] = entry
 	}
 	return out
 }

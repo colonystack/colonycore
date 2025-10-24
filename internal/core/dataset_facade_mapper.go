@@ -166,7 +166,7 @@ func facadeProcedureFromDomain(proc domain.Procedure) datasetapi.Procedure {
 	return datasetapi.NewProcedure(datasetapi.ProcedureData{
 		Base:           baseDataFromDomain(proc.Base),
 		Name:           proc.Name,
-		Status:         proc.Status,
+		Status:         string(proc.Status),
 		ScheduledAt:    proc.ScheduledAt,
 		ProtocolID:     proc.ProtocolID,
 		ProjectID:      proc.ProjectID,
@@ -269,7 +269,7 @@ func facadeSampleFromDomain(sample domain.Sample) datasetapi.Sample {
 		CohortID:        sample.CohortID,
 		FacilityID:      sample.FacilityID,
 		CollectedAt:     sample.CollectedAt,
-		Status:          sample.Status,
+		Status:          string(sample.Status),
 		StorageLocation: sample.StorageLocation,
 		AssayType:       sample.AssayType,
 		ChainOfCustody:  custodyEventsToData(sample.ChainOfCustody),

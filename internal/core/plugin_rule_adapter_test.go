@@ -312,7 +312,7 @@ func TestNewViewAccessors(t *testing.T) {
 		Observer:    "tech",
 		ProcedureID: &procID,
 		Data:        map[string]any{"score": 1},
-		Notes:       "text",
+		Notes:       strPtr("text"),
 	})
 	if observation.Observer() == "" || observation.Notes() == "" {
 		t.Fatal("observation view should expose observer")
@@ -332,7 +332,7 @@ func TestNewViewAccessors(t *testing.T) {
 		OrganismID:      &organID,
 		FacilityID:      "facility",
 		CollectedAt:     now,
-		Status:          "stored",
+		Status:          domain.SampleStatusStored,
 		StorageLocation: "freezer",
 		AssayType:       "assay",
 		Attributes:      map[string]any{"k": "v"},
@@ -340,7 +340,7 @@ func TestNewViewAccessors(t *testing.T) {
 			Actor:     "tech",
 			Location:  "lab",
 			Timestamp: now,
-			Notes:     "note",
+			Notes:     strPtr("note"),
 		}},
 	})
 	if sample.Identifier() == "" || sample.AssayType() == "" || sample.StorageLocation() == "" {
@@ -360,12 +360,13 @@ func TestNewViewAccessors(t *testing.T) {
 		Base:              domain.Base{ID: "permit", CreatedAt: now},
 		PermitNumber:      "PERMIT",
 		Authority:         "Gov",
+		Status:            domain.PermitStatusActive,
 		ValidFrom:         now.Add(-time.Hour),
 		ValidUntil:        now.Add(time.Hour),
 		AllowedActivities: []string{"activity"},
 		FacilityIDs:       []string{"facility"},
 		ProtocolIDs:       []string{"protocol"},
-		Notes:             "note",
+		Notes:             strPtr("note"),
 	})
 	if permit.PermitNumber() == "" || permit.Authority() == "" || permit.Notes() == "" {
 		t.Fatal("permit view should expose base fields")
@@ -381,10 +382,10 @@ func TestNewViewAccessors(t *testing.T) {
 		Base:           domain.Base{ID: "supply", CreatedAt: now, UpdatedAt: now},
 		SKU:            "SKU",
 		Name:           "Feed",
-		Description:    "desc",
+		Description:    strPtr("desc"),
 		QuantityOnHand: 1,
 		Unit:           "kg",
-		LotNumber:      "LOT",
+		LotNumber:      strPtr("LOT"),
 		FacilityIDs:    []string{"facility"},
 		ProjectIDs:     []string{"project"},
 		ReorderLevel:   2,
@@ -523,7 +524,7 @@ func TestHousingAndProtocolViews(t *testing.T) {
 		Base:        domain.Base{ID: "PROTO", CreatedAt: createdAt, UpdatedAt: updatedAt},
 		Code:        "PR",
 		Title:       "Protocol",
-		Description: "Desc",
+		Description: strPtr("Desc"),
 		MaxSubjects: 5,
 	}
 	protocolView := newProtocolView(domainProtocol)
@@ -533,7 +534,7 @@ func TestHousingAndProtocolViews(t *testing.T) {
 	if protocolView.Title() != domainProtocol.Title {
 		t.Fatalf("unexpected protocol title: %s", protocolView.Title())
 	}
-	if protocolView.Description() != domainProtocol.Description || protocolView.MaxSubjects() != domainProtocol.MaxSubjects {
+	if protocolView.Description() != *domainProtocol.Description || protocolView.MaxSubjects() != domainProtocol.MaxSubjects {
 		t.Fatalf("unexpected protocol details")
 	}
 }
@@ -646,7 +647,7 @@ func TestProtocolViewContextualAccessors(t *testing.T) {
 		},
 		Code:        "P001",
 		Title:       "Test Protocol",
-		Description: "Test description",
+		Description: strPtr("Test description"),
 		MaxSubjects: 10,
 		Status:      "active",
 	}

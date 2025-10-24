@@ -27,6 +27,10 @@ type memoryIDs struct {
 	organismBID   string
 }
 
+func strPtr(v string) *string {
+	return &v
+}
+
 const permitNumberFixture = "PER-1"
 
 func TestMemoryStoreCRUDAndQueries(t *testing.T) {
@@ -151,7 +155,7 @@ func seedMemoryStore(t *testing.T, store *memory.Store) memoryIDs {
 
 		procedureVal, err := tx.CreateProcedure(domain.Procedure{
 			Name:        "Check",
-			Status:      "scheduled",
+			Status:      domain.ProcedureStatusScheduled,
 			ScheduledAt: time.Now().Add(time.Minute),
 			ProtocolID:  ids.protocolID,
 			OrganismIDs: []string{ids.organismAID, ids.organismBID},
@@ -161,6 +165,7 @@ func seedMemoryStore(t *testing.T, store *memory.Store) memoryIDs {
 
 		treatmentVal, err := tx.CreateTreatment(domain.Treatment{
 			Name:              "Dose",
+			Status:            domain.TreatmentStatusPlanned,
 			ProcedureID:       ids.procedureID,
 			OrganismIDs:       []string{ids.organismAID},
 			CohortIDs:         []string{ids.cohortID},
@@ -184,7 +189,7 @@ func seedMemoryStore(t *testing.T, store *memory.Store) memoryIDs {
 			RecordedAt:  recorded,
 			Observer:    "tech",
 			Data:        map[string]any{"score": 5},
-			Notes:       "baseline",
+			Notes:       strPtr("baseline"),
 		})
 		observation := must(t, observationVal, err)
 		ids.observationID = observation.ID
@@ -195,14 +200,14 @@ func seedMemoryStore(t *testing.T, store *memory.Store) memoryIDs {
 			t.Fatalf("unexpected observation returned from lookup")
 		}
 
-		custody := []domain.SampleCustodyEvent{{Actor: "tech", Location: "bench", Timestamp: time.Now().UTC(), Notes: "collected"}}
+		custody := []domain.SampleCustodyEvent{{Actor: "tech", Location: "bench", Timestamp: time.Now().UTC(), Notes: strPtr("collected")}}
 		sampleVal, err := tx.CreateSample(domain.Sample{
 			Identifier:      "S-1",
 			SourceType:      "blood",
 			OrganismID:      &ids.organismAID,
 			FacilityID:      ids.facilityID,
 			CollectedAt:     time.Now().UTC(),
-			Status:          "stored",
+			Status:          domain.SampleStatusStored,
 			StorageLocation: "freezer-1",
 			AssayType:       "PCR",
 			ChainOfCustody:  custody,
@@ -227,7 +232,7 @@ func seedMemoryStore(t *testing.T, store *memory.Store) memoryIDs {
 			AllowedActivities: []string{"collect"},
 			FacilityIDs:       []string{ids.facilityID},
 			ProtocolIDs:       []string{ids.protocolID},
-			Notes:             "initial issuance",
+			Notes:             strPtr("initial issuance"),
 		})
 		permit := must(t, permitVal, err)
 		ids.permitID = permit.ID
@@ -244,10 +249,10 @@ func seedMemoryStore(t *testing.T, store *memory.Store) memoryIDs {
 		supplyVal, err := tx.CreateSupplyItem(domain.SupplyItem{
 			SKU:            "SKU-1",
 			Name:           "Diet Blocks",
-			Description:    "nutrient feed",
+			Description:    strPtr("nutrient feed"),
 			QuantityOnHand: 100,
 			Unit:           "grams",
-			LotNumber:      "LOT-44",
+			LotNumber:      strPtr("LOT-44"),
 			ExpiresAt:      &expiry,
 			FacilityIDs:    []string{ids.facilityID},
 			ProjectIDs:     []string{ids.projectID},
@@ -405,12 +410,12 @@ func exerciseMemoryUpdates(t *testing.T, store *memory.Store, ids memoryIDs) {
 
 		const updatedDesc = "updated"
 		_, err := tx.UpdateProject(ids.projectID, func(p *domain.Project) error {
-			p.Description = updatedDesc
+			p.Description = strPtr(updatedDesc)
 			return nil
 		})
 		mustNoErr(t, err)
 		_, err = tx.UpdateProtocol(ids.protocolID, func(p *domain.Protocol) error {
-			p.Description = updatedDesc
+			p.Description = strPtr(updatedDesc)
 			return nil
 		})
 		mustNoErr(t, err)
@@ -426,7 +431,7 @@ func exerciseMemoryUpdates(t *testing.T, store *memory.Store, ids memoryIDs) {
 		})
 		mustNoErr(t, err)
 		_, err = tx.UpdateProcedure(ids.procedureID, func(p *domain.Procedure) error {
-			p.Status = "completed"
+			p.Status = domain.ProcedureStatusCompleted
 			return nil
 		})
 		mustNoErr(t, err)
@@ -446,7 +451,7 @@ func exerciseMemoryUpdates(t *testing.T, store *memory.Store, ids memoryIDs) {
 		})
 		mustNoErr(t, err)
 		_, err = tx.UpdateObservation(ids.observationID, func(o *domain.Observation) error {
-			o.Notes = updatedDesc
+			o.Notes = strPtr(updatedDesc)
 			if o.Data == nil {
 				o.Data = map[string]any{}
 			}
@@ -455,7 +460,7 @@ func exerciseMemoryUpdates(t *testing.T, store *memory.Store, ids memoryIDs) {
 		})
 		mustNoErr(t, err)
 		_, err = tx.UpdateSample(ids.sampleID, func(s *domain.Sample) error {
-			s.Status = "consumed"
+			s.Status = domain.SampleStatusConsumed
 			s.ChainOfCustody = append(s.ChainOfCustody, domain.SampleCustodyEvent{Actor: "lab", Location: "analysis", Timestamp: time.Now().UTC()})
 			if s.Attributes == nil {
 				s.Attributes = map[string]any{}
@@ -465,7 +470,7 @@ func exerciseMemoryUpdates(t *testing.T, store *memory.Store, ids memoryIDs) {
 		})
 		mustNoErr(t, err)
 		_, err = tx.UpdatePermit(ids.permitID, func(p *domain.Permit) error {
-			p.Notes = updatedDesc
+			p.Notes = strPtr(updatedDesc)
 			p.AllowedActivities = append(p.AllowedActivities, "dispose")
 			return nil
 		})
@@ -514,7 +519,7 @@ func exerciseMemoryUpdates(t *testing.T, store *memory.Store, ids memoryIDs) {
 
 	samples := store.ListSamples()
 	requireLen(t, samples, 1, "sample list length after update")
-	if samples[0].Status != "consumed" {
+	if samples[0].Status != domain.SampleStatusConsumed {
 		t.Fatalf("expected sample status to be consumed, got %s", samples[0].Status)
 	}
 
@@ -699,7 +704,7 @@ func TestDeleteFacilityEnforcesReferences(t *testing.T) {
 				FacilityID:      facility.ID,
 				OrganismID:      &org.ID,
 				CollectedAt:     now,
-				Status:          "stored",
+				Status:          domain.SampleStatusStored,
 				StorageLocation: "room",
 			})
 			if err != nil {
@@ -708,6 +713,7 @@ func TestDeleteFacilityEnforcesReferences(t *testing.T) {
 			permit, err = tx.CreatePermit(domain.Permit{
 				PermitNumber:      "PERM",
 				Authority:         "Gov",
+				Status:            domain.PermitStatusActive,
 				ValidFrom:         now,
 				ValidUntil:        now.Add(time.Hour),
 				AllowedActivities: []string{"collect"},
@@ -813,7 +819,7 @@ func TestRelationshipValidations(t *testing.T) {
 			t.Fatalf("expected treatment missing procedure to fail")
 		}
 
-		procedure, err := tx.CreateProcedure(domain.Procedure{Name: "Proc", Status: "scheduled", ScheduledAt: now, ProtocolID: protocol.ID})
+		procedure, err := tx.CreateProcedure(domain.Procedure{Name: "Proc", Status: domain.ProcedureStatusScheduled, ScheduledAt: now, ProtocolID: protocol.ID})
 		if err != nil {
 			return err
 		}
@@ -827,7 +833,7 @@ func TestRelationshipValidations(t *testing.T) {
 			return err
 		}
 
-		if _, err := tx.CreateTreatment(domain.Treatment{Name: "ValidTreatment", ProcedureID: procedure.ID, OrganismIDs: []string{organism.ID}}); err != nil {
+		if _, err := tx.CreateTreatment(domain.Treatment{Name: "ValidTreatment", Status: domain.TreatmentStatusPlanned, ProcedureID: procedure.ID, OrganismIDs: []string{organism.ID}}); err != nil {
 			t.Fatalf("expected treatment creation to succeed: %v", err)
 		}
 
@@ -839,13 +845,13 @@ func TestRelationshipValidations(t *testing.T) {
 			t.Fatalf("expected observation creation to succeed: %v", err)
 		}
 
-		if _, err := tx.CreateSample(domain.Sample{Identifier: "S0", SourceType: "blood", CollectedAt: now, Status: "stored", StorageLocation: "room"}); err == nil {
+		if _, err := tx.CreateSample(domain.Sample{Identifier: "S0", SourceType: "blood", CollectedAt: now, Status: domain.SampleStatusStored, StorageLocation: "room"}); err == nil {
 			t.Fatalf("expected sample without facility to fail")
 		}
-		if _, err := tx.CreateSample(domain.Sample{Identifier: "S1", SourceType: "blood", FacilityID: facility.ID, CollectedAt: now, Status: "stored", StorageLocation: "room"}); err == nil {
+		if _, err := tx.CreateSample(domain.Sample{Identifier: "S1", SourceType: "blood", FacilityID: facility.ID, CollectedAt: now, Status: domain.SampleStatusStored, StorageLocation: "room"}); err == nil {
 			t.Fatalf("expected sample without organism or cohort to fail")
 		}
-		if _, err := tx.CreateSample(domain.Sample{Identifier: "S2", SourceType: "blood", FacilityID: facility.ID, OrganismID: &organism.ID, CollectedAt: now, Status: "stored", StorageLocation: "room"}); err != nil {
+		if _, err := tx.CreateSample(domain.Sample{Identifier: "S2", SourceType: "blood", FacilityID: facility.ID, OrganismID: &organism.ID, CollectedAt: now, Status: domain.SampleStatusStored, StorageLocation: "room"}); err != nil {
 			t.Fatalf("expected sample creation to succeed: %v", err)
 		}
 
@@ -856,6 +862,7 @@ func TestRelationshipValidations(t *testing.T) {
 			PermitNumber: "PERM-FAIL2",
 			FacilityIDs:  []string{facility.ID},
 			ProtocolIDs:  []string{"missing"},
+			Status:       domain.PermitStatusPending,
 			ValidFrom:    now,
 			ValidUntil:   now.Add(time.Hour),
 		}); err == nil {
@@ -864,6 +871,7 @@ func TestRelationshipValidations(t *testing.T) {
 		if _, err := tx.CreatePermit(domain.Permit{
 			PermitNumber:      "PERM-OK",
 			Authority:         "Gov",
+			Status:            domain.PermitStatusPending,
 			ValidFrom:         now,
 			ValidUntil:        now.Add(time.Hour),
 			AllowedActivities: []string{"collect"},

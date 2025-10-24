@@ -14,6 +14,10 @@ const (
 	mutatedLiteral     = "mutated"
 )
 
+func strPtr(v string) *string {
+	return &v
+}
+
 func TestOrganismFacadeReadOnly(t *testing.T) {
 	createdAt := time.Date(2024, 1, 2, 3, 4, 5, 0, time.UTC)
 	updatedAt := createdAt.Add(time.Hour)
@@ -144,8 +148,8 @@ func TestBreedingProcedureFacadesCloneCollections(t *testing.T) {
 		StrainID:          &strainID,
 		TargetLineID:      &targetLineID,
 		TargetStrainID:    &targetStrainID,
-		PairingIntent:     "outcross",
-		PairingNotes:      "Documented pairing intent",
+		PairingIntent:     strPtr("outcross"),
+		PairingNotes:      strPtr("Documented pairing intent"),
 		PairingAttributes: map[string]any{"purpose": "lineage"},
 		FemaleIDs:         []string{"f1"},
 		MaleIDs:           []string{"m1"},
@@ -313,7 +317,7 @@ func TestProtocolProjectCohortFacades(t *testing.T) {
 		Base:        BaseData{ID: "protocol", CreatedAt: now},
 		Code:        "P",
 		Title:       "Protocol",
-		Description: "Desc",
+		Description: strPtr("Desc"),
 		MaxSubjects: 5,
 	})
 	if protocol.Code() != "P" || protocol.Title() != "Protocol" || protocol.MaxSubjects() != 5 {
@@ -329,7 +333,7 @@ func TestProtocolProjectCohortFacades(t *testing.T) {
 		Base:          BaseData{ID: "project", CreatedAt: now},
 		Code:          "PR",
 		Title:         "Project",
-		Description:   "Description",
+		Description:   strPtr("Description"),
 		FacilityIDs:   append([]string(nil), projectFacilityIDs...),
 		ProtocolIDs:   append([]string(nil), projectProtocolIDs...),
 		OrganismIDs:   append([]string(nil), projectOrganismIDs...),
@@ -513,7 +517,7 @@ func TestExtendedFacades(t *testing.T) {
 		ProcedureID: &procID,
 		OrganismID:  &organObs,
 		CohortID:    &cohortObs,
-		Notes:       "value",
+		Notes:       strPtr("value"),
 		Data:        map[string]any{"score": 1},
 	})
 	if observation.Observer() == "" || observation.Notes() == "" {
@@ -560,7 +564,7 @@ func TestExtendedFacades(t *testing.T) {
 			Actor:     "tech",
 			Location:  "lab",
 			Timestamp: now,
-			Notes:     "handoff",
+			Notes:     strPtr("handoff"),
 		}},
 	})
 	if sample.Identifier() == "" || sample.AssayType() == "" || sample.StorageLocation() == "" {
@@ -601,7 +605,7 @@ func TestExtendedFacades(t *testing.T) {
 		AllowedActivities: []string{"activity"},
 		FacilityIDs:       []string{facility.ID()},
 		ProtocolIDs:       []string{"protocol"},
-		Notes:             "note",
+		Notes:             strPtr("note"),
 	})
 	if permit.PermitNumber() == "" || permit.Authority() == "" || permit.Notes() == "" {
 		t.Fatal("permit should expose fields")
@@ -626,10 +630,10 @@ func TestExtendedFacades(t *testing.T) {
 		Base:           BaseData{ID: "supply", CreatedAt: now, UpdatedAt: now},
 		SKU:            "SKU",
 		Name:           "Feed",
-		Description:    "desc",
+		Description:    strPtr("desc"),
 		QuantityOnHand: 1,
 		Unit:           "kg",
-		LotNumber:      "LOT",
+		LotNumber:      strPtr("LOT"),
 		FacilityIDs:    []string{facility.ID()},
 		ProjectIDs:     []string{"proj"},
 		ReorderLevel:   2,
