@@ -1,11 +1,15 @@
 Rules:
-  - SelectorRegexp: "^colonycore/internal/adapters/datasets(/|$)"
+  - SelectorRegexp: "^colonycore/"
     AllowedPrefixes:
       - "colonycore/internal/adapters/datasets"
+      - "colonycore/internal/adapters/testutil"
       - "colonycore/pkg/datasetapi"
       - "colonycore/pkg/pluginapi"
       - "colonycore/pkg/domain"
+      - "colonycore/internal/core"
 InverseRules:
-  - SelectorRegexp: "^colonycore/internal/adapters/datasets(/|$)"
+  - SelectorRegexp: "^colonycore/"
     AllowedPrefixes:
       - "colonycore/internal/adapters/datasets"
+      - "colonycore/internal/core"
+      - "colonycore/internal/integration"

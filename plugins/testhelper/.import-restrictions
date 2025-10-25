@@ -1,13 +1,12 @@
 Rules:
   - SelectorRegexp: "^colonycore/"
     AllowedPrefixes:
+      - "colonycore/plugins/testhelper"
+      - "colonycore/pkg/datasetapi"
       - "colonycore/pkg/domain"
 InverseRules:
-  - SelectorRegexp: "^colonycore/pkg/domain/"
+  - SelectorRegexp: "^colonycore/"
     AllowedPrefixes:
-      - "colonycore/pkg/domain"
+      - "colonycore/plugins/testhelper"
       - "colonycore/internal/core"
       - "colonycore/internal/adapters/datasets"
-      - "colonycore/internal/infra/persistence"
-      - "colonycore/internal/integration"
-      - "colonycore/plugins/testhelper"

@@ -39,6 +39,12 @@ Use the issue forms:
 - Add unit/integration tests when adding logic or fixing a bug.
 - Manual “operator-like” checks are fine for PoC work; describe steps in the PR.
 
+## Test Utilities
+- Shared guard helpers that multiple packages use live in `colonycore/testutil`; keep that package free of plugin or adapter imports so existing import rules stay valid.
+- When you need fixtures that reach across architectural boundaries (for example, adapter tests installing reference plugins), create a package-scoped `testutil` directory next to the code under test, document the dependency in `.import-restrictions`, and gate it from production code via guard tests.
+- Dataset adapter tests reuse `internal/adapters/testutil` to install the reference frog plugin via `core.Service`; that helper is allowed to touch the persistence memory/sqlite stores and the public dataset/plugin/domain APIs. Keep any new dependencies scoped to those surfaces and extend the `.import-restrictions` file before relying on them.
+- Prefer reusing existing helpers before adding new ones, and explain any new cross-package utilities in the PR description so reviewers can confirm boundary expectations.
+
 ## RFCs / ADRs
 - Architecture and rules live under `docs/rfc/` and `docs/adr/`, as well as `docs/annex/`.
 - Changes that affect core contracts or lifecycles should start as an RFC. Do NOT merge features that conflict with accepted RFCs.
@@ -48,6 +54,7 @@ Use the issue forms:
   - Build: `make build` or language-native build
   - Test: `make test`
   - Lint/format: `make lint` (runs gofmt/vet/registry/golangci plus Ruff and the R lintr)
+- Import guardrails rely on `import-boss`; the runbook in `docs/annex/0003-import-boss-runbook.md` covers command syntax and troubleshooting.
 
 ## Client Linting
 - `make lint` (or `pre-commit run --all-files`) exercises the Go, Python, and R linters exactly as CI does; run it before pushing if you touch `clients/python` or `clients/R`.

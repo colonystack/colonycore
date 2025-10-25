@@ -127,7 +127,8 @@ import-boss:
 	else \
 		inputs=$$(printf '%s\n' $$pkgs | paste -sd, -); \
 		echo "==> import-boss"; \
-		$(IMPORT_BOSS_BIN) --alsologtostderr=false --logtostderr=false --stderrthreshold=ERROR --verify-only --input-dirs $$inputs; \
+		mkdir -p $(GOCACHE); \
+		GOCACHE="$(GOCACHE)" $(IMPORT_BOSS_BIN) --alsologtostderr=false --logtostderr=false --stderrthreshold=ERROR --verify-only --input-dirs $$inputs; \
 		echo "import-boss: OK"; \
 	fi
 

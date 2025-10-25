@@ -49,6 +49,7 @@ linters:
             - go/ast
             - go/parser
             - go/token
+            - maps
             - github.com/aws/aws-sdk-go-v2/aws
             - github.com/aws/aws-sdk-go-v2/config
             - github.com/aws/aws-sdk-go-v2/credentials
@@ -62,12 +63,14 @@ linters:
             - os/exec
             - path/filepath
             - regexp
+            - reflect
             - sort
             - strconv
             - strings
             - sync
             - testing
             - time
+            - slices
           deny:
             - pkg: github.com/pkg/errors
               desc: Use standard library errors instead
@@ -118,6 +121,7 @@ linters:
             - strings
             - testing
             - time
+            - reflect
           deny:
             - pkg: github.com/pkg/errors
               desc: Use standard library errors instead

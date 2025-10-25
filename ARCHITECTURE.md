@@ -26,7 +26,7 @@ ColonyCore follows a hexagonal-inspired layering model:
 Dependency direction is validated by:
 
 - `go test ./...` (includes AST-based guards that reject forbidden imports and alias usage).
-- `.import-restrictions` in each layer (executed via `make lint` → `make import-boss`).
+- `.import-restrictions` in each layer (executed via `make lint` → `make import-boss`; see `docs/annex/0003-import-boss-runbook.md` for usage details).
 - `scripts/validate_plugin_patterns.go` (executed from `make lint`) ensuring plugins stay within sanctioned APIs.
 
 Whenever you introduce a new package, add a `.import-restrictions` file and—if needed—a focused guard test mirroring the existing patterns.

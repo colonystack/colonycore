@@ -5,16 +5,16 @@ import (
 	"testing"
 	"time"
 
+	"colonycore/internal/adapters/testutil"
 	"colonycore/internal/core"
 	"colonycore/pkg/datasetapi"
 	"colonycore/pkg/domain"
-	"colonycore/plugins/frog"
 )
 
 func TestWorkerProcessesExport(t *testing.T) {
 	formatProvider := datasetapi.GetFormatProvider()
 	svc := core.NewInMemoryService(core.NewDefaultRulesEngine())
-	meta, err := svc.InstallPlugin(frog.New())
+	meta, err := testutil.InstallFrogPlugin(svc)
 	if err != nil {
 		t.Fatalf("install plugin: %v", err)
 	}
@@ -71,7 +71,7 @@ func TestWorkerProcessesExport(t *testing.T) {
 
 func TestWorkerRejectsUnsupportedFormat(t *testing.T) {
 	svc := core.NewInMemoryService(core.NewDefaultRulesEngine())
-	meta, err := svc.InstallPlugin(frog.New())
+	meta, err := testutil.InstallFrogPlugin(svc)
 	if err != nil {
 		t.Fatalf("install plugin: %v", err)
 	}

@@ -1,8 +1,8 @@
 package datasets
 
 import (
+	"colonycore/internal/adapters/testutil"
 	"colonycore/internal/core"
-	"colonycore/plugins/frog"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -11,7 +11,7 @@ import (
 // Basic smoke test ensuring handler lists templates after plugin install.
 func TestHandlerListTemplates_Smoke(t *testing.T) {
 	svc := core.NewInMemoryService(core.NewDefaultRulesEngine())
-	if _, err := svc.InstallPlugin(frog.New()); err != nil {
+	if _, err := testutil.InstallFrogPlugin(svc); err != nil {
 		t.Fatalf("install plugin: %v", err)
 	}
 	h := NewHandler(svc)

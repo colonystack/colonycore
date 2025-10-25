@@ -10,10 +10,10 @@ import (
 	"testing"
 	"time"
 
+	"colonycore/internal/adapters/testutil"
 	"colonycore/internal/core"
 	"colonycore/pkg/datasetapi"
 	"colonycore/pkg/domain"
-	"colonycore/plugins/frog"
 )
 
 // (Helper types are defined in exporter_worker_test.go; reuse them here.)
@@ -37,7 +37,7 @@ func TestWorkerEnqueueDuplicateFormatsAndQueueFull(t *testing.T) {
 	formatProvider := datasetapi.GetFormatProvider()
 
 	svc := core.NewInMemoryService(core.NewDefaultRulesEngine())
-	meta, err := svc.InstallPlugin(frog.New())
+	meta, err := testutil.InstallFrogPlugin(svc)
 	if err != nil {
 		t.Fatalf("install plugin: %v", err)
 	}
@@ -94,7 +94,7 @@ func TestHandlerServeHTTPNoCatalog(t *testing.T) {
 
 func TestHandlerRunAcceptHeaderNegotiation(t *testing.T) {
 	svc := core.NewInMemoryService(core.NewDefaultRulesEngine())
-	meta, err := svc.InstallPlugin(frog.New())
+	meta, err := testutil.InstallFrogPlugin(svc)
 	if err != nil {
 		t.Fatalf("install plugin: %v", err)
 	}
@@ -169,7 +169,7 @@ func TestWorkerStopContextTimeoutBranch(_ *testing.T) {
 func TestHandlerExportCreateTemplateSlugFallback(t *testing.T) {
 	// Provide export create path where slug components are used instead of direct slug.
 	svc := core.NewInMemoryService(core.NewDefaultRulesEngine())
-	meta, err := svc.InstallPlugin(frog.New())
+	meta, err := testutil.InstallFrogPlugin(svc)
 	if err != nil {
 		t.Fatalf("install plugin: %v", err)
 	}
