@@ -143,6 +143,10 @@ func (id PluginID) String() string {
 	return string(id)
 }
 
+// PluginCore represents core-owned payloads stored when no plugin identifier
+// was recorded in legacy map fields.
+const PluginCore PluginID = "core"
+
 // ErrUnknownHook indicates an extension payload referenced a hook that is not
 // part of the sanctioned schema slots.
 var ErrUnknownHook = errors.New("extension: unknown hook identifier")
@@ -374,6 +378,29 @@ func (c Container) Raw() map[string]map[string]any {
 		wire[string(hook)] = inner
 	}
 	return wire
+}
+
+// CloneValue returns a deep copy of the provided JSON-compatible value using
+// the same semantics as the container internals.
+func CloneValue(value any) any {
+	return cloneValue(value)
+}
+
+// CloneMap produces a deep copy of the provided map[string]any. The result may
+// be nil when the input is nil.
+func CloneMap(values map[string]any) map[string]any {
+	if values == nil {
+		return nil
+	}
+	cloned := cloneValue(values)
+	if cloned == nil {
+		return nil
+	}
+	result, ok := cloned.(map[string]any)
+	if !ok {
+		return nil
+	}
+	return result
 }
 
 // cloneValue deep copies supported JSON-compatible values to prevent shared

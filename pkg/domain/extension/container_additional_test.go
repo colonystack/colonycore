@@ -84,3 +84,38 @@ func TestCloneIntoTypeBranches(t *testing.T) {
 		t.Fatalf("expected original value when conversion not possible")
 	}
 }
+
+func TestCloneMapExportedHelpers(t *testing.T) {
+	if CloneMap(nil) != nil {
+		t.Fatalf("expected nil clone for nil input")
+	}
+
+	source := map[string]any{"nested": []string{"a"}}
+	cloned := CloneMap(source)
+	if cloned == nil {
+		t.Fatalf("expected cloned map")
+	}
+	cloned["nested"].([]string)[0] = "b"
+	if source["nested"].([]string)[0] != "a" {
+		t.Fatalf("expected original map unchanged")
+	}
+
+	value := CloneValue(42).(int)
+	if value != 42 {
+		t.Fatalf("expected primitive clone to retain value")
+	}
+}
+
+func TestContainerSetOnZeroValueInitialisesMap(t *testing.T) {
+	var container Container // zero value to exercise ensurePayload
+	if err := container.Set(HookSampleAttributes, PluginID("frog"), map[string]any{"k": "v"}); err != nil {
+		t.Fatalf("set failed: %v", err)
+	}
+	payload, ok := container.Get(HookSampleAttributes, PluginID("frog"))
+	if !ok {
+		t.Fatalf("expected payload after set")
+	}
+	if payload.(map[string]any)["k"] != "v" {
+		t.Fatalf("unexpected payload: %+v", payload)
+	}
+}

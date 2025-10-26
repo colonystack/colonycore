@@ -153,3 +153,17 @@ func TestSlotUnmarshalEdgeCases(t *testing.T) {
 		t.Fatalf("expected empty raw map after empty object")
 	}
 }
+
+func TestSlotSetOnZeroValueInitialisesMap(t *testing.T) {
+	var slot Slot // zero value without constructor to exercise ensureMap
+	if err := slot.BindHook(HookOrganismAttributes); err != nil {
+		t.Fatalf("bind hook failed: %v", err)
+	}
+	if err := slot.Set(PluginID("frog"), map[string]any{"k": "v"}); err != nil {
+		t.Fatalf("set failed: %v", err)
+	}
+	payload, ok := slot.Get(PluginID("frog"))
+	if !ok || payload.(map[string]any)["k"] != "v" {
+		t.Fatalf("expected stored payload after set, got %v", payload)
+	}
+}

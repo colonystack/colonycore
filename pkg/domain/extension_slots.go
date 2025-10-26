@@ -1,6 +1,8 @@
 package domain
 
-import "colonycore/pkg/domain/extension"
+import (
+	"colonycore/pkg/domain/extension"
+)
 
 // EnsureDefaultAttributes returns the line default attributes slot, initialising
 // it with the correct hook identifier when needed.
@@ -42,4 +44,64 @@ func (g *GenotypeMarker) EnsureAttributes() *extension.Slot {
 	}
 	_ = g.Attributes.BindHook(extension.HookGenotypeMarkerAttributes)
 	return g.Attributes
+}
+
+// SetAttributes clones the provided map into the organism attributes field.
+func (o *Organism) SetAttributes(attrs map[string]any) {
+	o.Attributes = assignExtensionMap(attrs)
+}
+
+// AttributesMap returns a deep copy of the organism attributes map.
+func (o Organism) AttributesMap() map[string]any {
+	return cloneExtensionMap(o.Attributes)
+}
+
+// SetEnvironmentBaselines clones the provided map into the facility baselines field.
+func (f *Facility) SetEnvironmentBaselines(baselines map[string]any) {
+	f.EnvironmentBaselines = assignExtensionMap(baselines)
+}
+
+// EnvironmentBaselinesMap returns a deep copy of the facility environment baselines.
+func (f Facility) EnvironmentBaselinesMap() map[string]any {
+	return cloneExtensionMap(f.EnvironmentBaselines)
+}
+
+// SetPairingAttributes clones the provided map into the breeding unit pairing field.
+func (b *BreedingUnit) SetPairingAttributes(attrs map[string]any) {
+	b.PairingAttributes = assignExtensionMap(attrs)
+}
+
+// PairingAttributesMap returns a deep copy of the breeding unit pairing attributes.
+func (b BreedingUnit) PairingAttributesMap() map[string]any {
+	return cloneExtensionMap(b.PairingAttributes)
+}
+
+// SetData clones the provided map into the observation data field.
+func (o *Observation) SetData(data map[string]any) {
+	o.Data = assignExtensionMap(data)
+}
+
+// DataMap returns a deep copy of the observation data map.
+func (o Observation) DataMap() map[string]any {
+	return cloneExtensionMap(o.Data)
+}
+
+// SetAttributes clones the provided map into the sample attributes field.
+func (s *Sample) SetAttributes(attrs map[string]any) {
+	s.Attributes = assignExtensionMap(attrs)
+}
+
+// AttributesMap returns a deep copy of the sample attributes map.
+func (s Sample) AttributesMap() map[string]any {
+	return cloneExtensionMap(s.Attributes)
+}
+
+// SetAttributes clones the provided map into the supply item attributes field.
+func (s *SupplyItem) SetAttributes(attrs map[string]any) {
+	s.Attributes = assignExtensionMap(attrs)
+}
+
+// AttributesMap returns a deep copy of the supply item attributes map.
+func (s SupplyItem) AttributesMap() map[string]any {
+	return cloneExtensionMap(s.Attributes)
 }

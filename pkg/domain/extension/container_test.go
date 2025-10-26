@@ -199,6 +199,20 @@ func TestKnownHooksAndParse(t *testing.T) {
 	}
 }
 
+func TestCloneMapIndependence(t *testing.T) {
+	original := map[string]any{
+		"slice": []any{map[string]any{"k": "v"}},
+	}
+	cloned := CloneMap(original)
+	if cloned == nil {
+		t.Fatalf("expected cloned map")
+	}
+	cloned["slice"].([]any)[0].(map[string]any)["k"] = "mutated"
+	if original["slice"].([]any)[0].(map[string]any)["k"] != "v" {
+		t.Fatalf("expected original map untouched")
+	}
+}
+
 func TestSpecMetadata(t *testing.T) {
 	spec, ok := Spec(HookOrganismAttributes)
 	if !ok {
