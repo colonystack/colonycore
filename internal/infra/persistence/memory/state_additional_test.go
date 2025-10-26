@@ -40,7 +40,9 @@ func TestSnapshotAllEntities(t *testing.T) {
 			return err
 		}
 		// Create organism with attributes
-		o, err := tx.CreateOrganism(domain.Organism{Name: "Spec", Species: "Frog", Attributes: map[string]any{"color": "green"}})
+		organismInput := domain.Organism{Name: "Spec", Species: "Frog"}
+		organismInput.SetAttributes(map[string]any{"color": "green"})
+		o, err := tx.CreateOrganism(organismInput)
 		if err != nil {
 			return err
 		}
@@ -82,8 +84,9 @@ func TestSnapshotAllEntities(t *testing.T) {
 	}
 	// Ensure organism attributes remain isolated (deep copy validated indirectly by modifying snapshot copy)
 	snapOrg := snap.Organisms[organism.ID]
-	snapOrg.Attributes["color"] = "blue"
-	if store.ListOrganisms()[0].Attributes["color"] != "green" {
+	attrs := snapOrg.AttributesMap()
+	attrs["color"] = "blue"
+	if store.ListOrganisms()[0].AttributesMap()["color"] != "green" {
 		t.Fatalf("expected deep copy isolation")
 	}
 }
@@ -168,7 +171,7 @@ func TestImportStateAppliesRelationshipMigrations(t *testing.T) {
 	}
 
 	observations := store.ListObservations()
-	if len(observations) != 1 || observations[0].Data == nil {
+	if len(observations) != 1 || observations[0].DataMap() == nil {
 		t.Fatalf("expected valid observation with data map initialised, got %+v", observations)
 	}
 
@@ -258,14 +261,14 @@ func TestMigrateSnapshotCleansDataVariants(t *testing.T) {
 	if len(migrated.Observations) != 1 {
 		t.Fatalf("expected single observation, got %+v", migrated.Observations)
 	}
-	if migrated.Observations["observation-valid"].Data == nil {
+	if migrated.Observations["observation-valid"].DataMap() == nil {
 		t.Fatalf("expected observation data map to be initialised")
 	}
 
 	if len(migrated.Samples) != 1 {
 		t.Fatalf("expected single valid sample, got %+v", migrated.Samples)
 	}
-	if migrated.Samples["sample-valid"].Attributes == nil {
+	if migrated.Samples["sample-valid"].AttributesMap() == nil {
 		t.Fatalf("expected sample attributes map to be initialised")
 	}
 
@@ -280,7 +283,7 @@ func TestMigrateSnapshotCleansDataVariants(t *testing.T) {
 		t.Fatalf("expected project facility IDs filtered")
 	}
 
-	if migrated.Supplies["supply-valid"].Attributes == nil {
+	if migrated.Supplies["supply-valid"].AttributesMap() == nil {
 		t.Fatalf("expected supply attributes map initialised")
 	}
 	if len(migrated.Supplies["supply-valid"].FacilityIDs) != 1 || migrated.Supplies["supply-valid"].FacilityIDs[0] != facilityID {

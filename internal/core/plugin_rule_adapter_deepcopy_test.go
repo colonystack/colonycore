@@ -17,7 +17,7 @@ func TestOrganismViewAttributesDeepCopy(t *testing.T) {
 	}
 
 	org := domainOrganismFixture() // use existing test helper if available; fallback create minimal
-	org.Attributes = original
+	org.SetAttributes(original)
 
 	view := newOrganismView(org)
 

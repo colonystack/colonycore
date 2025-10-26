@@ -199,7 +199,7 @@ func newOrganismView(org domain.Organism) organismView {
 		housingID:  cloneOptionalString(org.HousingID),
 		protocolID: cloneOptionalString(org.ProtocolID),
 		projectID:  cloneOptionalString(org.ProjectID),
-		attributes: cloneAttributes(org.Attributes),
+		attributes: cloneAttributes(org.AttributesMap()),
 	}
 }
 
@@ -354,7 +354,7 @@ func newFacilityView(facility domain.Facility) facilityView {
 		name:                 facility.Name,
 		zone:                 facility.Zone,
 		accessPolicy:         facility.AccessPolicy,
-		environmentBaselines: cloneAttributes(facility.EnvironmentBaselines),
+		environmentBaselines: cloneAttributes(facility.EnvironmentBaselinesMap()),
 		housingUnitIDs:       cloneStringSlice(facility.HousingUnitIDs),
 		projectIDs:           cloneStringSlice(facility.ProjectIDs),
 	}
@@ -479,7 +479,7 @@ func newObservationView(observation domain.Observation) observationView {
 		cohortID:    cloneOptionalString(observation.CohortID),
 		recordedAt:  observation.RecordedAt,
 		observer:    observation.Observer,
-		data:        cloneAttributes(observation.Data),
+		data:        cloneAttributes(observation.DataMap()),
 		notes:       cloneOptionalString(observation.Notes),
 	}
 }
@@ -551,7 +551,7 @@ func newSampleView(sample domain.Sample) sampleView {
 		storageLocation: sample.StorageLocation,
 		assayType:       sample.AssayType,
 		chainOfCustody:  cloneCustodyEvents(sample.ChainOfCustody),
-		attributes:      cloneAttributes(sample.Attributes),
+		attributes:      cloneAttributes(sample.AttributesMap()),
 	}
 }
 
@@ -797,7 +797,7 @@ func newSupplyItemView(item domain.SupplyItem) supplyItemView {
 		facilityIDs:    cloneStringSlice(item.FacilityIDs),
 		projectIDs:     cloneStringSlice(item.ProjectIDs),
 		reorderLevel:   item.ReorderLevel,
-		attributes:     cloneAttributes(item.Attributes),
+		attributes:     cloneAttributes(item.AttributesMap()),
 	}
 }
 

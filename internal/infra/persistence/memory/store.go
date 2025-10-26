@@ -307,8 +307,10 @@ func migrateSnapshot(snapshot Snapshot) Snapshot {
 	}
 
 	for id, observation := range snapshot.Observations {
-		if observation.Data == nil {
-			observation.Data = map[string]any{}
+		if data := observation.DataMap(); data == nil {
+			observation.SetData(map[string]any{})
+		} else {
+			observation.SetData(data)
 		}
 		if observation.ProcedureID != nil && !procedureExists(*observation.ProcedureID) {
 			observation.ProcedureID = nil
@@ -327,8 +329,10 @@ func migrateSnapshot(snapshot Snapshot) Snapshot {
 	}
 
 	for id, sample := range snapshot.Samples {
-		if sample.Attributes == nil {
-			sample.Attributes = map[string]any{}
+		if attrs := sample.AttributesMap(); attrs == nil {
+			sample.SetAttributes(map[string]any{})
+		} else {
+			sample.SetAttributes(attrs)
 		}
 		if sample.FacilityID == "" || !facilityExists(sample.FacilityID) {
 			delete(snapshot.Samples, id)
@@ -387,8 +391,10 @@ func migrateSnapshot(snapshot Snapshot) Snapshot {
 	}
 
 	for id, item := range snapshot.Supplies {
-		if item.Attributes == nil {
-			item.Attributes = map[string]any{}
+		if attrs := item.AttributesMap(); attrs == nil {
+			item.SetAttributes(map[string]any{})
+		} else {
+			item.SetAttributes(attrs)
 		}
 		if filtered, changed := filterIDs(item.FacilityIDs, facilityExists); changed {
 			item.FacilityIDs = filtered
@@ -400,8 +406,10 @@ func migrateSnapshot(snapshot Snapshot) Snapshot {
 	}
 
 	for id, facility := range snapshot.Facilities {
-		if facility.EnvironmentBaselines == nil {
-			facility.EnvironmentBaselines = map[string]any{}
+		if baselines := facility.EnvironmentBaselinesMap(); baselines == nil {
+			facility.SetEnvironmentBaselines(map[string]any{})
+		} else {
+			facility.SetEnvironmentBaselines(baselines)
 		}
 		snapshot.Facilities[id] = facility
 	}
@@ -508,12 +516,7 @@ func (s memoryState) clone() memoryState {
 
 func cloneOrganism(o Organism) Organism {
 	cp := o
-	if o.Attributes != nil {
-		cp.Attributes = make(map[string]any, len(o.Attributes))
-		for k, v := range o.Attributes {
-			cp.Attributes[k] = v
-		}
-	}
+	cp.SetAttributes(o.AttributesMap())
 	if len(o.ParentIDs) != 0 {
 		cp.ParentIDs = append([]string(nil), o.ParentIDs...)
 	}
@@ -526,6 +529,7 @@ func cloneBreeding(b BreedingUnit) BreedingUnit {
 	cp := b
 	cp.FemaleIDs = append([]string(nil), b.FemaleIDs...)
 	cp.MaleIDs = append([]string(nil), b.MaleIDs...)
+	cp.SetPairingAttributes(b.PairingAttributesMap())
 	return cp
 }
 
@@ -549,12 +553,7 @@ func cloneProject(p Project) Project {
 
 func cloneFacility(f Facility) Facility {
 	cp := f
-	if f.EnvironmentBaselines != nil {
-		cp.EnvironmentBaselines = make(map[string]any, len(f.EnvironmentBaselines))
-		for k, v := range f.EnvironmentBaselines {
-			cp.EnvironmentBaselines[k] = v
-		}
-	}
+	cp.SetEnvironmentBaselines(f.EnvironmentBaselinesMap())
 	cp.HousingUnitIDs = append([]string(nil), f.HousingUnitIDs...)
 	cp.ProjectIDs = append([]string(nil), f.ProjectIDs...)
 	return cp
@@ -571,24 +570,14 @@ func cloneTreatment(t Treatment) Treatment {
 
 func cloneObservation(o Observation) Observation {
 	cp := o
-	if o.Data != nil {
-		cp.Data = make(map[string]any, len(o.Data))
-		for k, v := range o.Data {
-			cp.Data[k] = v
-		}
-	}
+	cp.SetData(o.DataMap())
 	return cp
 }
 
 func cloneSample(s Sample) Sample {
 	cp := s
 	cp.ChainOfCustody = append([]domain.SampleCustodyEvent(nil), s.ChainOfCustody...)
-	if s.Attributes != nil {
-		cp.Attributes = make(map[string]any, len(s.Attributes))
-		for k, v := range s.Attributes {
-			cp.Attributes[k] = v
-		}
-	}
+	cp.SetAttributes(s.AttributesMap())
 	return cp
 }
 
@@ -754,12 +743,7 @@ func cloneSupplyItem(s SupplyItem) SupplyItem {
 	}
 	cp.FacilityIDs = append([]string(nil), s.FacilityIDs...)
 	cp.ProjectIDs = append([]string(nil), s.ProjectIDs...)
-	if s.Attributes != nil {
-		cp.Attributes = make(map[string]any, len(s.Attributes))
-		for k, v := range s.Attributes {
-			cp.Attributes[k] = v
-		}
-	}
+	cp.SetAttributes(s.AttributesMap())
 	return cp
 }
 
@@ -1132,8 +1116,10 @@ func (tx *transaction) CreateOrganism(o Organism) (Organism, error) {
 	}
 	o.CreatedAt = tx.now
 	o.UpdatedAt = tx.now
-	if o.Attributes == nil {
-		o.Attributes = map[string]any{}
+	if attrs := o.AttributesMap(); attrs == nil {
+		o.SetAttributes(map[string]any{})
+	} else {
+		o.SetAttributes(attrs)
 	}
 	tx.state.organisms[o.ID] = cloneOrganism(o)
 	tx.recordChange(Change{Entity: domain.EntityOrganism, Action: domain.ActionCreate, After: cloneOrganism(o)})
@@ -1294,8 +1280,10 @@ func (tx *transaction) CreateFacility(f Facility) (Facility, error) {
 	f.UpdatedAt = tx.now
 	f.HousingUnitIDs = nil
 	f.ProjectIDs = nil
-	if f.EnvironmentBaselines == nil {
-		f.EnvironmentBaselines = map[string]any{}
+	if baselines := f.EnvironmentBaselinesMap(); baselines == nil {
+		f.SetEnvironmentBaselines(map[string]any{})
+	} else {
+		f.SetEnvironmentBaselines(baselines)
 	}
 	tx.state.facilities[f.ID] = cloneFacility(f)
 	created := decorateFacility(&tx.state, f)
@@ -1314,8 +1302,10 @@ func (tx *transaction) UpdateFacility(id string, mutator func(*Facility) error) 
 	if err := mutator(&current); err != nil {
 		return Facility{}, err
 	}
-	if current.EnvironmentBaselines == nil {
-		current.EnvironmentBaselines = map[string]any{}
+	if baselines := current.EnvironmentBaselinesMap(); baselines == nil {
+		current.SetEnvironmentBaselines(map[string]any{})
+	} else {
+		current.SetEnvironmentBaselines(baselines)
 	}
 	current.HousingUnitIDs = nil
 	current.ProjectIDs = nil
@@ -1578,8 +1568,10 @@ func (tx *transaction) CreateObservation(o Observation) (Observation, error) {
 	}
 	o.CreatedAt = tx.now
 	o.UpdatedAt = tx.now
-	if o.Data == nil {
-		o.Data = map[string]any{}
+	if data := o.DataMap(); data == nil {
+		o.SetData(map[string]any{})
+	} else {
+		o.SetData(data)
 	}
 	tx.state.observations[o.ID] = cloneObservation(o)
 	tx.recordChange(Change{Entity: domain.EntityObservation, Action: domain.ActionCreate, After: cloneObservation(o)})
@@ -1614,8 +1606,10 @@ func (tx *transaction) UpdateObservation(id string, mutator func(*Observation) e
 			return Observation{}, fmt.Errorf("cohort %q not found for observation", *current.CohortID)
 		}
 	}
-	if current.Data == nil {
-		current.Data = map[string]any{}
+	if data := current.DataMap(); data == nil {
+		current.SetData(map[string]any{})
+	} else {
+		current.SetData(data)
 	}
 	current.ID = id
 	current.UpdatedAt = tx.now
@@ -1664,8 +1658,10 @@ func (tx *transaction) CreateSample(s Sample) (Sample, error) {
 	}
 	s.CreatedAt = tx.now
 	s.UpdatedAt = tx.now
-	if s.Attributes == nil {
-		s.Attributes = map[string]any{}
+	if attrs := s.AttributesMap(); attrs == nil {
+		s.SetAttributes(map[string]any{})
+	} else {
+		s.SetAttributes(attrs)
 	}
 	tx.state.samples[s.ID] = cloneSample(s)
 	tx.recordChange(Change{Entity: domain.EntitySample, Action: domain.ActionCreate, After: cloneSample(s)})
@@ -1701,8 +1697,10 @@ func (tx *transaction) UpdateSample(id string, mutator func(*Sample) error) (Sam
 			return Sample{}, fmt.Errorf("cohort %q not found for sample", *current.CohortID)
 		}
 	}
-	if current.Attributes == nil {
-		current.Attributes = map[string]any{}
+	if attrs := current.AttributesMap(); attrs == nil {
+		current.SetAttributes(map[string]any{})
+	} else {
+		current.SetAttributes(attrs)
 	}
 	current.ID = id
 	current.UpdatedAt = tx.now
@@ -1929,8 +1927,10 @@ func (tx *transaction) CreateSupplyItem(s SupplyItem) (SupplyItem, error) {
 	}
 	s.CreatedAt = tx.now
 	s.UpdatedAt = tx.now
-	if s.Attributes == nil {
-		s.Attributes = map[string]any{}
+	if attrs := s.AttributesMap(); attrs == nil {
+		s.SetAttributes(map[string]any{})
+	} else {
+		s.SetAttributes(attrs)
 	}
 	tx.state.supplies[s.ID] = cloneSupplyItem(s)
 	tx.recordChange(Change{Entity: domain.EntitySupplyItem, Action: domain.ActionCreate, After: cloneSupplyItem(s)})
@@ -1959,8 +1959,10 @@ func (tx *transaction) UpdateSupplyItem(id string, mutator func(*SupplyItem) err
 			return SupplyItem{}, fmt.Errorf("project %q not found for supply item", projectID)
 		}
 	}
-	if current.Attributes == nil {
-		current.Attributes = map[string]any{}
+	if attrs := current.AttributesMap(); attrs == nil {
+		current.SetAttributes(map[string]any{})
+	} else {
+		current.SetAttributes(attrs)
 	}
 	if current.ExpiresAt != nil {
 		t := *current.ExpiresAt

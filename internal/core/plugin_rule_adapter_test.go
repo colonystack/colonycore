@@ -306,14 +306,15 @@ func TestNewViewAccessors(t *testing.T) {
 	}
 
 	procID := "proc"
-	observation := newObservationView(domain.Observation{
+	observationDomain := domain.Observation{
 		Base:        domain.Base{ID: "observation", CreatedAt: now},
 		RecordedAt:  now,
 		Observer:    "tech",
 		ProcedureID: &procID,
-		Data:        map[string]any{"score": 1},
 		Notes:       strPtr("text"),
-	})
+	}
+	observationDomain.SetData(map[string]any{"score": 1})
+	observation := newObservationView(observationDomain)
 	if observation.Observer() == "" || observation.Notes() == "" {
 		t.Fatal("observation view should expose observer")
 	}
@@ -325,7 +326,7 @@ func TestNewViewAccessors(t *testing.T) {
 	}
 
 	organID := "org"
-	sample := newSampleView(domain.Sample{
+	sampleDomain := domain.Sample{
 		Base:            domain.Base{ID: "sample", CreatedAt: now},
 		Identifier:      "S1",
 		SourceType:      "organism",
@@ -335,14 +336,15 @@ func TestNewViewAccessors(t *testing.T) {
 		Status:          domain.SampleStatusStored,
 		StorageLocation: "freezer",
 		AssayType:       "assay",
-		Attributes:      map[string]any{"k": "v"},
 		ChainOfCustody: []domain.SampleCustodyEvent{{
 			Actor:     "tech",
 			Location:  "lab",
 			Timestamp: now,
 			Notes:     strPtr("note"),
 		}},
-	})
+	}
+	sampleDomain.SetAttributes(map[string]any{"k": "v"})
+	sample := newSampleView(sampleDomain)
 	if sample.Identifier() == "" || sample.AssayType() == "" || sample.StorageLocation() == "" {
 		t.Fatal("sample view should expose base fields")
 	}
@@ -378,7 +380,7 @@ func TestNewViewAccessors(t *testing.T) {
 		t.Fatal("permit view should consider validity window active")
 	}
 
-	supply := newSupplyItemView(domain.SupplyItem{
+	supplyDomain := domain.SupplyItem{
 		Base:           domain.Base{ID: "supply", CreatedAt: now, UpdatedAt: now},
 		SKU:            "SKU",
 		Name:           "Feed",
@@ -389,8 +391,9 @@ func TestNewViewAccessors(t *testing.T) {
 		FacilityIDs:    []string{"facility"},
 		ProjectIDs:     []string{"project"},
 		ReorderLevel:   2,
-		Attributes:     map[string]any{"k": "v"},
-	})
+	}
+	supplyDomain.SetAttributes(map[string]any{"k": "v"})
+	supply := newSupplyItemView(supplyDomain)
 	if supply.SKU() == "" || supply.Name() == "" || supply.Description() == "" || supply.Unit() == "" || supply.LotNumber() == "" {
 		t.Fatal("supply view should expose base fields")
 	}
@@ -558,11 +561,10 @@ func TestOrganismViewContextualAccessors(t *testing.T) {
 			CreatedAt: time.Now(),
 			UpdatedAt: time.Now(),
 		},
-		Name:       "Test Organism",
-		Species:    "TestSpecies",
-		Line:       "TestLine",
-		Stage:      "adult",
-		Attributes: map[string]any{"test": "value"},
+		Name:    "Test Organism",
+		Species: "TestSpecies",
+		Line:    "TestLine",
+		Stage:   "adult",
 	}
 
 	organismView := newOrganismView(*domainOrganism)

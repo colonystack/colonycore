@@ -151,10 +151,14 @@ func TestMemoryStoreCRUDAndQueries(t *testing.T) {
 		if organism.ID != organismAID {
 			continue
 		}
-		if organism.Attributes["skin_color_index"].(int) != 5 {
-			t.Fatalf("expected cloned attributes value 5, got %v", organism.Attributes["skin_color_index"])
+		attrs := organism.AttributesMap()
+		if attrs["skin_color_index"].(int) != 5 {
+			t.Fatalf("expected cloned attributes value 5, got %v", attrs["skin_color_index"])
 		}
-		organism.Attributes["skin_color_index"] = 1
+		attrs["skin_color_index"] = 1
+		if organism.AttributesMap()["skin_color_index"].(int) != 5 {
+			t.Fatalf("expected organism attributes clone to remain unchanged")
+		}
 		copyCheckDone = true
 	}
 	if !copyCheckDone {
@@ -162,8 +166,8 @@ func TestMemoryStoreCRUDAndQueries(t *testing.T) {
 	}
 	if refreshed, ok := store.GetOrganism(organismAID); !ok {
 		t.Fatalf("expected organism %s to exist", organismAID)
-	} else if refreshed.Attributes["skin_color_index"].(int) != 5 {
-		t.Fatalf("expected store attributes to remain 5, got %v", refreshed.Attributes["skin_color_index"])
+	} else if refreshed.AttributesMap()["skin_color_index"].(int) != 5 {
+		t.Fatalf("expected store attributes to remain 5, got %v", refreshed.AttributesMap()["skin_color_index"])
 	}
 
 	housingList := store.ListHousingUnits()

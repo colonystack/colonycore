@@ -33,8 +33,8 @@ func TestDatasetPersistentStoreAdapter(t *testing.T) {
 		HousingID:  &housingRef,
 		ProtocolID: &protocolRef,
 		ProjectID:  &projectRef,
-		Attributes: junkAttr,
 	}
+	organism.SetAttributes(junkAttr)
 	unit := domain.HousingUnit{Base: domain.Base{ID: housingID}, Name: "Hab", Environment: "humid"}
 	protocol := domain.Protocol{Base: domain.Base{ID: protocolID}, Code: "P", Title: "Protocol", Description: strPtr("Desc"), MaxSubjects: 10}
 	project := domain.Project{Base: domain.Base{ID: projectID}, Code: "PR", Title: "Project", Description: strPtr("Research")}
@@ -75,7 +75,7 @@ func TestDatasetPersistentStoreAdapter(t *testing.T) {
 	}
 	attrs := adaptedOrg.Attributes()
 	attrs["flag"] = false
-	if fake.organisms[0].Attributes["flag"].(bool) != true {
+	if fake.organisms[0].AttributesMap()["flag"].(bool) != true {
 		t.Fatalf("expected original organism attributes untouched")
 	}
 	if _, ok := adapter.GetOrganism("missing"); ok {

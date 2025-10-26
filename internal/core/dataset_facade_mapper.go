@@ -27,7 +27,7 @@ func facadeOrganismFromDomain(org domain.Organism) datasetapi.Organism {
 		HousingID:  org.HousingID,
 		ProtocolID: org.ProtocolID,
 		ProjectID:  org.ProjectID,
-		Attributes: org.Attributes,
+		Attributes: org.AttributesMap(),
 	})
 }
 
@@ -145,7 +145,7 @@ func facadeBreedingUnitFromDomain(unit domain.BreedingUnit) datasetapi.BreedingU
 		TargetStrainID:    unit.TargetStrainID,
 		PairingIntent:     unit.PairingIntent,
 		PairingNotes:      unit.PairingNotes,
-		PairingAttributes: unit.PairingAttributes,
+		PairingAttributes: unit.PairingAttributesMap(),
 		FemaleIDs:         unit.FemaleIDs,
 		MaleIDs:           unit.MaleIDs,
 	})
@@ -195,7 +195,7 @@ func facadeFacilityFromDomain(facility domain.Facility) datasetapi.Facility {
 		Name:                 facility.Name,
 		Zone:                 facility.Zone,
 		AccessPolicy:         facility.AccessPolicy,
-		EnvironmentBaselines: facility.EnvironmentBaselines,
+		EnvironmentBaselines: facility.EnvironmentBaselinesMap(),
 		HousingUnitIDs:       facility.HousingUnitIDs,
 		ProjectIDs:           facility.ProjectIDs,
 	})
@@ -244,7 +244,7 @@ func facadeObservationFromDomain(observation domain.Observation) datasetapi.Obse
 		CohortID:    observation.CohortID,
 		RecordedAt:  observation.RecordedAt,
 		Observer:    observation.Observer,
-		Data:        observation.Data,
+		Data:        observation.DataMap(),
 		Notes:       observation.Notes,
 	})
 }
@@ -273,7 +273,7 @@ func facadeSampleFromDomain(sample domain.Sample) datasetapi.Sample {
 		StorageLocation: sample.StorageLocation,
 		AssayType:       sample.AssayType,
 		ChainOfCustody:  custodyEventsToData(sample.ChainOfCustody),
-		Attributes:      sample.Attributes,
+		Attributes:      sample.AttributesMap(),
 	})
 }
 
@@ -326,7 +326,7 @@ func facadeSupplyItemFromDomain(item domain.SupplyItem) datasetapi.SupplyItem {
 		FacilityIDs:    item.FacilityIDs,
 		ProjectIDs:     item.ProjectIDs,
 		ReorderLevel:   item.ReorderLevel,
-		Attributes:     item.Attributes,
+		Attributes:     item.AttributesMap(),
 	})
 }
 

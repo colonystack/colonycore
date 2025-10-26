@@ -43,8 +43,8 @@ func TestFacadeOrganismFromDomainCopiesData(t *testing.T) {
 		HousingID:  &housing,
 		ProtocolID: &protocol,
 		ProjectID:  &project,
-		Attributes: map[string]any{testAttributeKey: testAttributeOriginalValue},
 	}
+	org.SetAttributes(map[string]any{testAttributeKey: testAttributeOriginalValue})
 
 	converted := facadeOrganismFromDomain(org)
 
@@ -64,7 +64,7 @@ func TestFacadeOrganismFromDomainCopiesData(t *testing.T) {
 
 	attrs := converted.Attributes()
 	attrs[testAttributeKey] = testLiteralMutated
-	if org.Attributes[testAttributeKey] != testAttributeOriginalValue {
+	if org.AttributesMap()[testAttributeKey] != testAttributeOriginalValue {
 		t.Fatalf("original attributes mutated: %+v", org.Attributes)
 	}
 	if cohortID, ok := converted.CohortID(); !ok || cohortID != cohort {
@@ -118,21 +118,21 @@ func TestFacadeCollectionsCloneSlices(t *testing.T) {
 	targetStrainID := "strain-2"
 	targetStrainSnapshot := targetStrainID
 	breeding := domain.BreedingUnit{
-		Base:              domain.Base{ID: "B"},
-		Name:              "Breed",
-		Strategy:          "Pair",
-		HousingID:         &cohortID,
-		ProtocolID:        &cohortID,
-		LineID:            &lineID,
-		StrainID:          &strainID,
-		TargetLineID:      &targetLineID,
-		TargetStrainID:    &targetStrainID,
-		PairingIntent:     strPtr("outcross"),
-		PairingNotes:      strPtr("Documented pairing"),
-		PairingAttributes: map[string]any{"purpose": "lineage"},
-		FemaleIDs:         []string{"f1"},
-		MaleIDs:           []string{"m1"},
+		Base:           domain.Base{ID: "B"},
+		Name:           "Breed",
+		Strategy:       "Pair",
+		HousingID:      &cohortID,
+		ProtocolID:     &cohortID,
+		LineID:         &lineID,
+		StrainID:       &strainID,
+		TargetLineID:   &targetLineID,
+		TargetStrainID: &targetStrainID,
+		PairingIntent:  strPtr("outcross"),
+		PairingNotes:   strPtr("Documented pairing"),
+		FemaleIDs:      []string{"f1"},
+		MaleIDs:        []string{"m1"},
 	}
+	breeding.SetPairingAttributes(map[string]any{"purpose": "lineage"})
 	procProject := testProjectID
 	procedure := domain.Procedure{
 		Base:           domain.Base{ID: "PROC", UpdatedAt: now},
@@ -193,7 +193,7 @@ func TestFacadeCollectionsCloneSlices(t *testing.T) {
 	}
 	attr := breedingUnits[0].PairingAttributes()
 	attr["purpose"] = testLiteralMutated
-	if breeding.PairingAttributes["purpose"] != "lineage" {
+	if breeding.PairingAttributesMap()["purpose"] != "lineage" {
 		t.Fatalf("expected pairing attributes to be cloned")
 	}
 	procIDs := procedures[0].OrganismIDs()

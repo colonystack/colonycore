@@ -47,20 +47,22 @@ func TestMemStore_FullCRUDAndErrors(t *testing.T) { //nolint:gocyclo // exhausti
 
 	// Create all entities
 	runTx(t, store, func(tx domain.Transaction) error {
-		o1, _ := tx.CreateOrganism(domain.Organism{Name: "Alpha", Species: "Frog", Attributes: map[string]any{"a": 1}})
+		orgAInput := domain.Organism{Name: "Alpha", Species: "Frog"}
+		orgAInput.SetAttributes(map[string]any{"a": 1})
+		o1, _ := tx.CreateOrganism(orgAInput)
 		o2, _ := tx.CreateOrganism(domain.Organism{Name: "Beta", Species: "Frog"})
 		orgA, orgB = o1, o2
 		c, _ := tx.CreateCohort(domain.Cohort{Name: "C1", Purpose: "testing"})
 		cohort = c
 		pj, _ := tx.CreateProject(domain.Project{Code: "PRJ1", Title: "Proj"})
 		project = pj
-		f, _ := tx.CreateFacility(domain.Facility{
-			Name:                 "Vivarium",
-			Zone:                 "Zone-A",
-			AccessPolicy:         "badge",
-			EnvironmentBaselines: map[string]any{"temperature": "22C"},
-			ProjectIDs:           []string{project.ID},
-		})
+		fInput := domain.Facility{
+			Name:         "Vivarium",
+			Zone:         "Zone-A",
+			AccessPolicy: "badge",
+		}
+		fInput.SetEnvironmentBaselines(map[string]any{"temperature": "22C"})
+		f, _ := tx.CreateFacility(fInput)
 		facility = f
 		h, _ := tx.CreateHousingUnit(domain.HousingUnit{Name: "H1", Capacity: 2, Environment: "dry", FacilityID: facility.ID})
 		housing = h
@@ -77,10 +79,12 @@ func TestMemStore_FullCRUDAndErrors(t *testing.T) { //nolint:gocyclo // exhausti
 		t, _ := tx.CreateTreatment(domain.Treatment{Name: "Dose", Status: domain.TreatmentStatusPlanned, ProcedureID: procedure.ID, OrganismIDs: []string{o1.ID}, CohortIDs: []string{cohort.ID}, DosagePlan: "10mg"})
 		treatment = t
 		now := time.Now().UTC()
-		ob, _ := tx.CreateObservation(domain.Observation{ProcedureID: &procedure.ID, OrganismID: &o1.ID, RecordedAt: now, Observer: "tech", Data: map[string]any{"score": 5}})
+		obInput := domain.Observation{ProcedureID: &procedure.ID, OrganismID: &o1.ID, RecordedAt: now, Observer: "tech"}
+		obInput.SetData(map[string]any{"score": 5})
+		ob, _ := tx.CreateObservation(obInput)
 		observation = ob
 		custody := []domain.SampleCustodyEvent{{Actor: "tech", Location: "bench", Timestamp: now}}
-		sa, _ := tx.CreateSample(domain.Sample{
+		sampleInput := domain.Sample{
 			Identifier:      "S1",
 			SourceType:      "blood",
 			OrganismID:      &o1.ID,
@@ -90,8 +94,9 @@ func TestMemStore_FullCRUDAndErrors(t *testing.T) { //nolint:gocyclo // exhausti
 			StorageLocation: "freezer",
 			AssayType:       "PCR",
 			ChainOfCustody:  custody,
-			Attributes:      map[string]any{"volume_ml": 1.0},
-		})
+		}
+		sampleInput.SetAttributes(map[string]any{"volume_ml": 1.0})
+		sa, _ := tx.CreateSample(sampleInput)
 		sample = sa
 		per, _ := tx.CreatePermit(domain.Permit{
 			PermitNumber:      "PER-1",
@@ -106,7 +111,7 @@ func TestMemStore_FullCRUDAndErrors(t *testing.T) { //nolint:gocyclo // exhausti
 		})
 		permit = per
 		expiry := time.Now().Add(48 * time.Hour)
-		s, _ := tx.CreateSupplyItem(domain.SupplyItem{
+		supplyInput := domain.SupplyItem{
 			SKU:            "SKU1",
 			Name:           "Feed",
 			Description:    strPtr("daily feed"),
@@ -117,8 +122,9 @@ func TestMemStore_FullCRUDAndErrors(t *testing.T) { //nolint:gocyclo // exhausti
 			FacilityIDs:    []string{facility.ID},
 			ProjectIDs:     []string{project.ID},
 			ReorderLevel:   10,
-			Attributes:     map[string]any{"supplier": "Acme"},
-		})
+		}
+		supplyInput.SetAttributes(map[string]any{"supplier": "Acme"})
+		s, _ := tx.CreateSupplyItem(supplyInput)
 		supply = s
 		if _, ok := tx.FindFacility(facility.ID); !ok {
 			return fmt.Errorf("expected facility lookup success")
@@ -242,7 +248,16 @@ func TestMemStore_FullCRUDAndErrors(t *testing.T) { //nolint:gocyclo // exhausti
 
 	// Successful updates
 	runTx(t, store, func(tx domain.Transaction) error {
-		_, _ = tx.UpdateOrganism(orgA.ID, func(o *domain.Organism) error { o.Name = "Alpha2"; o.Attributes["a"] = 2; return nil })
+		_, _ = tx.UpdateOrganism(orgA.ID, func(o *domain.Organism) error {
+			o.Name = "Alpha2"
+			attrs := o.AttributesMap()
+			if attrs == nil {
+				attrs = map[string]any{}
+			}
+			attrs["a"] = 2
+			o.SetAttributes(attrs)
+			return nil
+		})
 		_, _ = tx.UpdateCohort(cohort.ID, func(c *domain.Cohort) error { c.Purpose = "updated"; return nil })
 		_, _ = tx.UpdateHousingUnit(housing.ID, func(h *domain.HousingUnit) error { h.Environment = "humid"; h.Capacity = 3; return nil })
 		_, _ = tx.UpdateBreedingUnit(breeding.ID, func(b *domain.BreedingUnit) error { b.FemaleIDs = append(b.FemaleIDs, orgB.ID); return nil })
@@ -251,14 +266,28 @@ func TestMemStore_FullCRUDAndErrors(t *testing.T) { //nolint:gocyclo // exhausti
 		_, _ = tx.UpdateProject(project.ID, func(p *domain.Project) error { p.Description = strPtr("d"); return nil })
 		_, _ = tx.UpdateFacility(facility.ID, func(f *domain.Facility) error {
 			f.AccessPolicy = "training"
-			f.EnvironmentBaselines["humidity"] = "55%"
+			baselines := f.EnvironmentBaselinesMap()
+			if baselines == nil {
+				baselines = map[string]any{}
+			}
+			baselines["humidity"] = "55%"
+			f.SetEnvironmentBaselines(baselines)
 			return nil
 		})
 		_, _ = tx.UpdateTreatment(treatment.ID, func(t *domain.Treatment) error {
 			t.AdministrationLog = append(t.AdministrationLog, "follow-up")
 			return nil
 		})
-		_, _ = tx.UpdateObservation(observation.ID, func(o *domain.Observation) error { o.Notes = strPtr("checked"); o.Data["score"] = 6; return nil })
+		_, _ = tx.UpdateObservation(observation.ID, func(o *domain.Observation) error {
+			o.Notes = strPtr("checked")
+			data := o.DataMap()
+			if data == nil {
+				data = map[string]any{}
+			}
+			data["score"] = 6
+			o.SetData(data)
+			return nil
+		})
 		_, _ = tx.UpdateSample(sample.ID, func(s *domain.Sample) error { s.Status = domain.SampleStatusConsumed; return nil })
 		_, _ = tx.UpdatePermit(permit.ID, func(p *domain.Permit) error { p.Notes = strPtr("updated"); return nil })
 		_, _ = tx.UpdateSupplyItem(supply.ID, func(s *domain.SupplyItem) error { s.QuantityOnHand = 40; return nil })
@@ -381,13 +410,14 @@ func TestSQLiteStore_Persist_Reload_Full(t *testing.T) {
 		}
 		projectID = project.ID
 
-		facility, err := tx.CreateFacility(domain.Facility{
-			Name:                 "Vivarium",
-			Zone:                 "Zone-A",
-			AccessPolicy:         "badge",
-			EnvironmentBaselines: map[string]any{"temperature": "22C"},
-			ProjectIDs:           []string{project.ID},
-		})
+		facilityInput := domain.Facility{
+			Name:         "Vivarium",
+			Zone:         "Zone-A",
+			AccessPolicy: "badge",
+			ProjectIDs:   []string{project.ID},
+		}
+		facilityInput.SetEnvironmentBaselines(map[string]any{"temperature": "22C"})
+		facility, err := tx.CreateFacility(facilityInput)
 		if err != nil {
 			return err
 		}
@@ -427,7 +457,7 @@ func TestSQLiteStore_Persist_Reload_Full(t *testing.T) {
 		cohortID = cohort.ID
 
 		cohortPtr := cohortID
-		organism, err := tx.CreateOrganism(domain.Organism{
+		organismInput := domain.Organism{
 			Name:       "Persisted",
 			Species:    "Test",
 			Stage:      domain.StageJuvenile,
@@ -435,8 +465,9 @@ func TestSQLiteStore_Persist_Reload_Full(t *testing.T) {
 			HousingID:  &housingPtr,
 			ProjectID:  &projectPtr,
 			ProtocolID: &protocolPtr,
-			Attributes: map[string]any{"tag": "alpha"},
-		})
+		}
+		organismInput.SetAttributes(map[string]any{"tag": "alpha"})
+		organism, err := tx.CreateOrganism(organismInput)
 		if err != nil {
 			return err
 		}
@@ -467,20 +498,21 @@ func TestSQLiteStore_Persist_Reload_Full(t *testing.T) {
 		}
 		treatmentID = treatment.ID
 
-		observation, err := tx.CreateObservation(domain.Observation{
+		observationInput := domain.Observation{
 			ProcedureID: &procedure.ID,
 			OrganismID:  &organism.ID,
 			RecordedAt:  now,
 			Observer:    "tech",
-			Data:        map[string]any{"score": 5},
-		})
+		}
+		observationInput.SetData(map[string]any{"score": 5})
+		observation, err := tx.CreateObservation(observationInput)
 		if err != nil {
 			return err
 		}
 		observationID = observation.ID
 
 		custody := []domain.SampleCustodyEvent{{Actor: "tech", Location: "bench", Timestamp: now}}
-		sample, err := tx.CreateSample(domain.Sample{
+		sampleInput2 := domain.Sample{
 			Identifier:      "S-1",
 			SourceType:      "blood",
 			OrganismID:      &organism.ID,
@@ -490,8 +522,9 @@ func TestSQLiteStore_Persist_Reload_Full(t *testing.T) {
 			StorageLocation: "freezer",
 			AssayType:       "PCR",
 			ChainOfCustody:  custody,
-			Attributes:      map[string]any{"volume_ml": 1.0},
-		})
+		}
+		sampleInput2.SetAttributes(map[string]any{"volume_ml": 1.0})
+		sample, err := tx.CreateSample(sampleInput2)
 		if err != nil {
 			return err
 		}
@@ -514,7 +547,7 @@ func TestSQLiteStore_Persist_Reload_Full(t *testing.T) {
 		permitID = permit.ID
 
 		expiry := now.Add(24 * time.Hour)
-		supply, err := tx.CreateSupplyItem(domain.SupplyItem{
+		supplyInput2 := domain.SupplyItem{
 			SKU:            "SKU-1",
 			Name:           "Diet Blocks",
 			Description:    strPtr("nutrient feed"),
@@ -525,8 +558,9 @@ func TestSQLiteStore_Persist_Reload_Full(t *testing.T) {
 			FacilityIDs:    []string{facility.ID},
 			ProjectIDs:     []string{project.ID},
 			ReorderLevel:   25,
-			Attributes:     map[string]any{"supplier": "Acme"},
-		})
+		}
+		supplyInput2.SetAttributes(map[string]any{"supplier": "Acme"})
+		supply, err := tx.CreateSupplyItem(supplyInput2)
 		if err != nil {
 			return err
 		}
@@ -573,7 +607,7 @@ func TestSQLiteStore_Persist_Reload_Full(t *testing.T) {
 	if got, ok := reloaded.GetPermit(permitID); !ok || got.PermitNumber != "PER-1" {
 		t.Fatalf("expected permit persisted")
 	}
-	if got, ok := reloaded.GetOrganism(organismID); !ok || got.Attributes["tag"] != "alpha" {
+	if got, ok := reloaded.GetOrganism(organismID); !ok || got.AttributesMap()["tag"] != "alpha" {
 		t.Fatalf("expected organism attributes persisted")
 	}
 	if got := reloaded.ListProjects(); len(got) != 1 || got[0].ID != projectID {
@@ -1076,14 +1110,14 @@ func TestSQLiteMigrateSnapshotCleansDataVariants(t *testing.T) {
 	if len(migrated.Observations) != 1 {
 		t.Fatalf("expected single observation, got %+v", migrated.Observations)
 	}
-	if migrated.Observations["observation-valid"].Data == nil {
+	if migrated.Observations["observation-valid"].DataMap() == nil {
 		t.Fatalf("expected observation data map to be initialised")
 	}
 
 	if len(migrated.Samples) != 1 {
 		t.Fatalf("expected single valid sample, got %+v", migrated.Samples)
 	}
-	if migrated.Samples["sample-valid"].Attributes == nil {
+	if migrated.Samples["sample-valid"].AttributesMap() == nil {
 		t.Fatalf("expected sample attributes map to be initialised")
 	}
 
@@ -1098,7 +1132,7 @@ func TestSQLiteMigrateSnapshotCleansDataVariants(t *testing.T) {
 		t.Fatalf("expected project facility IDs filtered")
 	}
 
-	if migrated.Supplies["supply-valid"].Attributes == nil {
+	if migrated.Supplies["supply-valid"].AttributesMap() == nil {
 		t.Fatalf("expected supply attributes map initialised")
 	}
 	if len(migrated.Supplies["supply-valid"].FacilityIDs) != 1 || migrated.Supplies["supply-valid"].FacilityIDs[0] != facilityID {
@@ -1109,7 +1143,7 @@ func TestSQLiteMigrateSnapshotCleansDataVariants(t *testing.T) {
 	}
 
 	facility := migrated.Facilities[facilityID]
-	if facility.EnvironmentBaselines == nil {
+	if facility.EnvironmentBaselinesMap() == nil {
 		t.Fatalf("expected facility baselines map initialised")
 	}
 	if len(facility.HousingUnitIDs) != 1 || facility.HousingUnitIDs[0] != "housing-valid" {

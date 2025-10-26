@@ -114,7 +114,7 @@ func seedMemoryStore(t *testing.T, store *memory.Store) memoryIDs {
 		cohortPtr := ids.cohortID
 
 		attrs := map[string]any{"skin_color_index": 5}
-		organismAVal, err := tx.CreateOrganism(domain.Organism{
+		organismAInput := domain.Organism{
 			Name:       "Alpha",
 			Species:    "Test Frog",
 			Stage:      domain.StageJuvenile,
@@ -122,19 +122,21 @@ func seedMemoryStore(t *testing.T, store *memory.Store) memoryIDs {
 			ProtocolID: &protocolPtr,
 			CohortID:   &cohortPtr,
 			HousingID:  &housingPtr,
-			Attributes: attrs,
-		})
+		}
+		organismAInput.SetAttributes(attrs)
+		organismAVal, err := tx.CreateOrganism(organismAInput)
 		organismA := must(t, organismAVal, err)
 		ids.organismAID = organismA.ID
 
 		attrs["skin_color_index"] = 9
 
-		organismBVal, err := tx.CreateOrganism(domain.Organism{
+		organismBInput := domain.Organism{
 			Name:     "Beta",
 			Species:  "Test Toad",
 			Stage:    domain.StageAdult,
 			CohortID: &cohortPtr,
-		})
+		}
+		organismBVal, err := tx.CreateOrganism(organismBInput)
 		organismB := must(t, organismBVal, err)
 		ids.organismBID = organismB.ID
 
@@ -201,7 +203,7 @@ func seedMemoryStore(t *testing.T, store *memory.Store) memoryIDs {
 		}
 
 		custody := []domain.SampleCustodyEvent{{Actor: "tech", Location: "bench", Timestamp: time.Now().UTC(), Notes: strPtr("collected")}}
-		sampleVal, err := tx.CreateSample(domain.Sample{
+		sampleInput := domain.Sample{
 			Identifier:      "S-1",
 			SourceType:      "blood",
 			OrganismID:      &ids.organismAID,
@@ -211,8 +213,9 @@ func seedMemoryStore(t *testing.T, store *memory.Store) memoryIDs {
 			StorageLocation: "freezer-1",
 			AssayType:       "PCR",
 			ChainOfCustody:  custody,
-			Attributes:      map[string]any{"volume_ml": 1.5},
-		})
+		}
+		sampleInput.SetAttributes(map[string]any{"volume_ml": 1.5})
+		sampleVal, err := tx.CreateSample(sampleInput)
 		sample := must(t, sampleVal, err)
 		ids.sampleID = sample.ID
 
@@ -246,7 +249,7 @@ func seedMemoryStore(t *testing.T, store *memory.Store) memoryIDs {
 		requireMissing(t, ok, "unexpected permit lookup success")
 
 		expiry := time.Now().Add(48 * time.Hour)
-		supplyVal, err := tx.CreateSupplyItem(domain.SupplyItem{
+		supplyInput := domain.SupplyItem{
 			SKU:            "SKU-1",
 			Name:           "Diet Blocks",
 			Description:    strPtr("nutrient feed"),
@@ -257,8 +260,9 @@ func seedMemoryStore(t *testing.T, store *memory.Store) memoryIDs {
 			FacilityIDs:    []string{ids.facilityID},
 			ProjectIDs:     []string{ids.projectID},
 			ReorderLevel:   20,
-			Attributes:     map[string]any{"supplier": "Acme"},
-		})
+		}
+		supplyInput.SetAttributes(map[string]any{"supplier": "Acme"})
+		supplyVal, err := tx.CreateSupplyItem(supplyInput)
 		supply := must(t, supplyVal, err)
 		ids.supplyItemID = supply.ID
 
@@ -346,10 +350,14 @@ func verifyMemoryStorePostCreate(t *testing.T, store *memory.Store, ids memoryID
 		if organism.ID != ids.organismAID {
 			continue
 		}
-		if organism.Attributes["skin_color_index"].(int) != 5 {
-			t.Fatalf("expected cloned attributes value 5, got %v", organism.Attributes["skin_color_index"])
+		attrs := organism.AttributesMap()
+		if attrs["skin_color_index"].(int) != 5 {
+			t.Fatalf("expected cloned attributes value 5, got %v", attrs["skin_color_index"])
 		}
-		organism.Attributes["skin_color_index"] = 1
+		attrs["skin_color_index"] = 1
+		if organism.AttributesMap()["skin_color_index"].(int) != 5 {
+			t.Fatalf("expected organism attributes clone to remain unchanged")
+		}
 		copyCheckDone = true
 	}
 	if !copyCheckDone {
@@ -358,8 +366,8 @@ func verifyMemoryStorePostCreate(t *testing.T, store *memory.Store, ids memoryID
 
 	refreshedVal, ok := store.GetOrganism(ids.organismAID)
 	refreshed := mustGet(t, refreshedVal, ok, "expected organism to exist")
-	if refreshed.Attributes["skin_color_index"].(int) != 5 {
-		t.Fatalf("expected store attributes to remain 5, got %v", refreshed.Attributes["skin_color_index"])
+	if refreshed.AttributesMap()["skin_color_index"].(int) != 5 {
+		t.Fatalf("expected store attributes to remain 5, got %v", refreshed.AttributesMap()["skin_color_index"])
 	}
 
 	housingList := store.ListHousingUnits()
@@ -437,10 +445,12 @@ func exerciseMemoryUpdates(t *testing.T, store *memory.Store, ids memoryIDs) {
 		mustNoErr(t, err)
 		_, err = tx.UpdateFacility(ids.facilityID, func(f *domain.Facility) error {
 			f.AccessPolicy = "biosafety-training"
-			if f.EnvironmentBaselines == nil {
-				f.EnvironmentBaselines = map[string]any{}
+			baselines := f.EnvironmentBaselinesMap()
+			if baselines == nil {
+				baselines = map[string]any{}
 			}
-			f.EnvironmentBaselines["humidity"] = "55%"
+			baselines["humidity"] = "55%"
+			f.SetEnvironmentBaselines(baselines)
 			return nil
 		})
 		mustNoErr(t, err)
@@ -452,20 +462,24 @@ func exerciseMemoryUpdates(t *testing.T, store *memory.Store, ids memoryIDs) {
 		mustNoErr(t, err)
 		_, err = tx.UpdateObservation(ids.observationID, func(o *domain.Observation) error {
 			o.Notes = strPtr(updatedDesc)
-			if o.Data == nil {
-				o.Data = map[string]any{}
+			data := o.DataMap()
+			if data == nil {
+				data = map[string]any{}
 			}
-			o.Data["score"] = 6
+			data["score"] = 6
+			o.SetData(data)
 			return nil
 		})
 		mustNoErr(t, err)
 		_, err = tx.UpdateSample(ids.sampleID, func(s *domain.Sample) error {
 			s.Status = domain.SampleStatusConsumed
 			s.ChainOfCustody = append(s.ChainOfCustody, domain.SampleCustodyEvent{Actor: "lab", Location: "analysis", Timestamp: time.Now().UTC()})
-			if s.Attributes == nil {
-				s.Attributes = map[string]any{}
+			attrs := s.AttributesMap()
+			if attrs == nil {
+				attrs = map[string]any{}
 			}
-			s.Attributes["volume_ml"] = 1.0
+			attrs["volume_ml"] = 1.0
+			s.SetAttributes(attrs)
 			return nil
 		})
 		mustNoErr(t, err)
@@ -501,7 +515,7 @@ func exerciseMemoryUpdates(t *testing.T, store *memory.Store, ids memoryIDs) {
 	if facility.AccessPolicy != "biosafety-training" {
 		t.Fatalf("expected updated access policy, got %s", facility.AccessPolicy)
 	}
-	if facility.EnvironmentBaselines["humidity"] != "55%" {
+	if facility.EnvironmentBaselinesMap()["humidity"] != "55%" {
 		t.Fatalf("expected humidity baseline to be updated")
 	}
 
