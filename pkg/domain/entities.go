@@ -2,7 +2,10 @@
 // rule evaluation primitives used by colonycore.
 package domain
 
-import "time"
+import (
+	"colonycore/pkg/domain/extension"
+	"time"
+)
 
 // EntityType identifies the type of record stored in the core domain.
 type EntityType string
@@ -190,41 +193,41 @@ type BreedingUnit struct {
 // Line represents a genetic lineage with shared inheritance characteristics.
 type Line struct {
 	Base
-	Code               string         `json:"code"`
-	Name               string         `json:"name"`
-	Description        *string        `json:"description,omitempty"`
-	Origin             string         `json:"origin"`
-	GenotypeMarkerIDs  []string       `json:"genotype_marker_ids"`
-	DefaultAttributes  map[string]any `json:"default_attributes"`
-	DeprecatedAt       *time.Time     `json:"deprecated_at"`
-	DeprecationReason  *string        `json:"deprecation_reason,omitempty"`
-	ExtensionOverrides map[string]any `json:"extension_overrides"`
+	Code               string          `json:"code"`
+	Name               string          `json:"name"`
+	Description        *string         `json:"description,omitempty"`
+	Origin             string          `json:"origin"`
+	GenotypeMarkerIDs  []string        `json:"genotype_marker_ids"`
+	DefaultAttributes  *extension.Slot `json:"default_attributes"`
+	DeprecatedAt       *time.Time      `json:"deprecated_at"`
+	DeprecationReason  *string         `json:"deprecation_reason,omitempty"`
+	ExtensionOverrides *extension.Slot `json:"extension_overrides"`
 }
 
 // Strain represents a managed sub-population derived from a line.
 type Strain struct {
 	Base
-	Code              string         `json:"code"`
-	Name              string         `json:"name"`
-	LineID            string         `json:"line_id"`
-	Description       *string        `json:"description,omitempty"`
-	Generation        *string        `json:"generation,omitempty"`
-	GenotypeMarkerIDs []string       `json:"genotype_marker_ids"`
-	Attributes        map[string]any `json:"attributes"`
-	RetiredAt         *time.Time     `json:"retired_at"`
-	RetirementReason  *string        `json:"retirement_reason,omitempty"`
+	Code              string          `json:"code"`
+	Name              string          `json:"name"`
+	LineID            string          `json:"line_id"`
+	Description       *string         `json:"description,omitempty"`
+	Generation        *string         `json:"generation,omitempty"`
+	GenotypeMarkerIDs []string        `json:"genotype_marker_ids"`
+	Attributes        *extension.Slot `json:"attributes"`
+	RetiredAt         *time.Time      `json:"retired_at"`
+	RetirementReason  *string         `json:"retirement_reason,omitempty"`
 }
 
 // GenotypeMarker captures assay metadata for genetic markers used in lineage tracking.
 type GenotypeMarker struct {
 	Base
-	Name           string         `json:"name"`
-	Locus          string         `json:"locus"`
-	Alleles        []string       `json:"alleles"`
-	AssayMethod    string         `json:"assay_method"`
-	Interpretation string         `json:"interpretation"`
-	Version        string         `json:"version"`
-	Attributes     map[string]any `json:"attributes"`
+	Name           string          `json:"name"`
+	Locus          string          `json:"locus"`
+	Alleles        []string        `json:"alleles"`
+	AssayMethod    string          `json:"assay_method"`
+	Interpretation string          `json:"interpretation"`
+	Version        string          `json:"version"`
+	Attributes     *extension.Slot `json:"attributes"`
 }
 
 // Procedure captures scheduled or completed animal procedures.
