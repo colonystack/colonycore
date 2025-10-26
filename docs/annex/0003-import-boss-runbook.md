@@ -17,7 +17,7 @@ make import-boss
 # targeted run (use Go import paths, not file-system paths)
 $(go env GOPATH)/bin/import-boss \
   --verify-only \
-  --input-dirs colonycore/internal/core,colonycore/pkg/extension
+  --input-dirs colonycore/internal/core,colonycore/pkg/domain/extension
 ```
 
 Key flags:
