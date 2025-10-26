@@ -21,27 +21,119 @@ type Hook string
 // out in the entity model planning docs so the JSON representation remains
 // stable across generators and runtime adapters.
 const (
-	HookOrganismAttributes         Hook = "entity.organism.attributes"
-	HookBreedingUnitPairing        Hook = "entity.breeding_unit.pairing"
-	HookFacilityDefaultAttributes  Hook = "entity.facility.default_attributes"
-	HookFacilityExtensionOverrides Hook = "entity.facility.extension_overrides"
-	HookStrainAttributes           Hook = "entity.strain.attributes"
-	HookGenotypeMarkerAttributes   Hook = "entity.genotype_marker.attributes"
-	HookObservationData            Hook = "entity.observation.data"
-	HookSampleAttributes           Hook = "entity.sample.attributes"
-	HookSupplyItemAttributes       Hook = "entity.supply_item.attributes"
+	// HookOrganismAttributes aligns with domain.Organism.Attributes and captures
+	// species-agnostic plugin fields declared in RFC-0001 §4 and ADR-0003.
+	HookOrganismAttributes Hook = "entity.organism.attributes"
+	// HookFacilityEnvironmentBaselines mirrors domain.Facility.EnvironmentBaselines
+	// for plugins that publish environmental defaults and monitoring metadata.
+	HookFacilityEnvironmentBaselines Hook = "entity.facility.environment_baselines"
+	// HookBreedingUnitPairingAttributes maps to domain.BreedingUnit.PairingAttributes
+	// and stores plugin-provided pairing metadata.
+	HookBreedingUnitPairingAttributes Hook = "entity.breeding_unit.pairing_attributes"
+	// HookLineDefaultAttributes aligns with domain.Line.DefaultAttributes to seed
+	// plugin-defined defaults for descendants.
+	HookLineDefaultAttributes Hook = "entity.line.default_attributes"
+	// HookLineExtensionOverrides mirrors domain.Line.ExtensionOverrides, enabling
+	// plugins to override upstream defaults for downstream hooks.
+	HookLineExtensionOverrides Hook = "entity.line.extension_overrides"
+	// HookStrainAttributes captures domain.Strain.Attributes for plugin-managed
+	// strain metadata extensions.
+	HookStrainAttributes Hook = "entity.strain.attributes"
+	// HookGenotypeMarkerAttributes links to domain.GenotypeMarker.Attributes and
+	// stores plugin-specific assay payloads.
+	HookGenotypeMarkerAttributes Hook = "entity.genotype_marker.attributes"
+	// HookObservationData corresponds to domain.Observation.Data for structured
+	// measurements emitted by plugins.
+	HookObservationData Hook = "entity.observation.data"
+	// HookSampleAttributes mirrors domain.Sample.Attributes for chain-of-custody
+	// and assay metadata extensions.
+	HookSampleAttributes Hook = "entity.sample.attributes"
+	// HookSupplyItemAttributes maps to domain.SupplyItem.Attributes for inventory
+	// extensions contributed by plugins.
+	HookSupplyItemAttributes Hook = "entity.supply_item.attributes"
 )
 
-var hookRegistry = map[Hook]struct{}{
-	HookOrganismAttributes:         {},
-	HookBreedingUnitPairing:        {},
-	HookFacilityDefaultAttributes:  {},
-	HookFacilityExtensionOverrides: {},
-	HookStrainAttributes:           {},
-	HookGenotypeMarkerAttributes:   {},
-	HookObservationData:            {},
-	HookSampleAttributes:           {},
-	HookSupplyItemAttributes:       {},
+// DataShape describes the top-level JSON shape expected for a hook payload.
+type DataShape string
+
+const (
+	// ShapeObject indicates the payload is expected to be a JSON object.
+	ShapeObject DataShape = "object"
+	// ShapeArray indicates the payload is expected to be a JSON array.
+	ShapeArray DataShape = "array"
+	// ShapeScalar indicates the payload is expected to be a scalar JSON value.
+	ShapeScalar DataShape = "scalar"
+)
+
+// HookSpec documents the entity contract surfaced through a hook.
+type HookSpec struct {
+	Entity      string
+	Field       string
+	Description string
+	Shape       DataShape
+}
+
+var hookRegistry = map[Hook]HookSpec{
+	HookOrganismAttributes: {
+		Entity:      "organism",
+		Field:       "attributes",
+		Description: "Species-agnostic extension bag for organism fields (RFC-0001 §4, ADR-0003).",
+		Shape:       ShapeObject,
+	},
+	HookFacilityEnvironmentBaselines: {
+		Entity:      "facility",
+		Field:       "environment_baselines",
+		Description: "Environmental defaults and monitoring metadata emitted by plugins.",
+		Shape:       ShapeObject,
+	},
+	HookBreedingUnitPairingAttributes: {
+		Entity:      "breeding_unit",
+		Field:       "pairing_attributes",
+		Description: "Pairing metadata (fertility notes, lineage context) supplied by plugins.",
+		Shape:       ShapeObject,
+	},
+	HookLineDefaultAttributes: {
+		Entity:      "line",
+		Field:       "default_attributes",
+		Description: "Default lineage attributes inherited by downstream strains or organisms.",
+		Shape:       ShapeObject,
+	},
+	HookLineExtensionOverrides: {
+		Entity:      "line",
+		Field:       "extension_overrides",
+		Description: "Override values applied to downstream extension hooks for this line.",
+		Shape:       ShapeObject,
+	},
+	HookStrainAttributes: {
+		Entity:      "strain",
+		Field:       "attributes",
+		Description: "Strain-level metadata extensions (versions, husbandry qualities).",
+		Shape:       ShapeObject,
+	},
+	HookGenotypeMarkerAttributes: {
+		Entity:      "genotype_marker",
+		Field:       "attributes",
+		Description: "Assay-specific attributes for genotype markers (interpretation, thresholds).",
+		Shape:       ShapeObject,
+	},
+	HookObservationData: {
+		Entity:      "observation",
+		Field:       "data",
+		Description: "Structured measurement payloads recorded during procedures or husbandry.",
+		Shape:       ShapeObject,
+	},
+	HookSampleAttributes: {
+		Entity:      "sample",
+		Field:       "attributes",
+		Description: "Chain-of-custody and assay metadata supplied by plugins.",
+		Shape:       ShapeObject,
+	},
+	HookSupplyItemAttributes: {
+		Entity:      "supply_item",
+		Field:       "attributes",
+		Description: "Inventory metadata extensions for supply items.",
+		Shape:       ShapeObject,
+	},
 }
 
 // PluginID captures the logical plugin contributing to a hook payload.
@@ -78,6 +170,12 @@ func ParseHook(value string) (Hook, error) {
 		return "", fmt.Errorf("%w: %s", ErrUnknownHook, value)
 	}
 	return h, nil
+}
+
+// Spec returns metadata describing the hook contract.
+func Spec(h Hook) (HookSpec, bool) {
+	spec, ok := hookRegistry[h]
+	return spec, ok
 }
 
 // Container stores plugin-provided payloads keyed by hook and plugin.

@@ -199,12 +199,29 @@ func TestKnownHooksAndParse(t *testing.T) {
 	}
 }
 
+func TestSpecMetadata(t *testing.T) {
+	spec, ok := Spec(HookOrganismAttributes)
+	if !ok {
+		t.Fatalf("expected spec for hook %q", HookOrganismAttributes)
+	}
+	if spec.Entity != "organism" {
+		t.Fatalf("unexpected entity: %s", spec.Entity)
+	}
+	if spec.Field != "attributes" {
+		t.Fatalf("unexpected field: %s", spec.Field)
+	}
+	if spec.Shape != ShapeObject {
+		t.Fatalf("unexpected shape: %s", spec.Shape)
+	}
+}
+
 func TestKnownHooksSnapshot(t *testing.T) {
 	expected := []Hook{
-		HookBreedingUnitPairing,
-		HookFacilityDefaultAttributes,
-		HookFacilityExtensionOverrides,
+		HookBreedingUnitPairingAttributes,
+		HookFacilityEnvironmentBaselines,
 		HookGenotypeMarkerAttributes,
+		HookLineDefaultAttributes,
+		HookLineExtensionOverrides,
 		HookObservationData,
 		HookOrganismAttributes,
 		HookSampleAttributes,
