@@ -50,6 +50,7 @@ func (g *GenotypeMarker) EnsureAttributes() *extension.Slot {
 func (o *Organism) SetAttributes(attrs map[string]any) {
 	o.Attributes = assignExtensionMap(attrs)
 	o.attributesSlot = nil
+	o.extensions = nil
 }
 
 // AttributesMap returns a deep copy of the organism attributes map.
@@ -61,6 +62,7 @@ func (o Organism) AttributesMap() map[string]any {
 func (f *Facility) SetEnvironmentBaselines(baselines map[string]any) {
 	f.EnvironmentBaselines = assignExtensionMap(baselines)
 	f.environmentBaselinesSlot = nil
+	f.extensions = nil
 }
 
 // EnvironmentBaselinesMap returns a deep copy of the facility environment baselines.
@@ -72,6 +74,7 @@ func (f Facility) EnvironmentBaselinesMap() map[string]any {
 func (b *BreedingUnit) SetPairingAttributes(attrs map[string]any) {
 	b.PairingAttributes = assignExtensionMap(attrs)
 	b.pairingAttributesSlot = nil
+	b.extensions = nil
 }
 
 // PairingAttributesMap returns a deep copy of the breeding unit pairing attributes.
@@ -83,6 +86,7 @@ func (b BreedingUnit) PairingAttributesMap() map[string]any {
 func (o *Observation) SetData(data map[string]any) {
 	o.Data = assignExtensionMap(data)
 	o.dataSlot = nil
+	o.extensions = nil
 }
 
 // DataMap returns a deep copy of the observation data map.
@@ -94,6 +98,7 @@ func (o Observation) DataMap() map[string]any {
 func (s *Sample) SetAttributes(attrs map[string]any) {
 	s.Attributes = assignExtensionMap(attrs)
 	s.attributesSlot = nil
+	s.extensions = nil
 }
 
 // AttributesMap returns a deep copy of the sample attributes map.
@@ -105,6 +110,7 @@ func (s Sample) AttributesMap() map[string]any {
 func (s *SupplyItem) SetAttributes(attrs map[string]any) {
 	s.Attributes = assignExtensionMap(attrs)
 	s.attributesSlot = nil
+	s.extensions = nil
 }
 
 // AttributesMap returns a deep copy of the supply item attributes map.

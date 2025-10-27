@@ -77,6 +77,9 @@ func TestOrganismSetAttributesSlotClonesInput(t *testing.T) {
 	if organism.attributesSlot == slot {
 		t.Fatalf("expected organism to store slot clone, not original pointer")
 	}
+	if organism.extensions == nil {
+		t.Fatalf("expected organism extension container to be initialised")
+	}
 
 	// Mutate original inputs; cached slot should remain unchanged.
 	input["flag"] = false
@@ -98,6 +101,395 @@ func TestOrganismSetAttributesSlotClonesInput(t *testing.T) {
 	}
 	if organism.Attributes != nil || organism.attributesSlot != nil {
 		t.Fatalf("expected attributes and slot to clear when setting nil")
+	}
+	if organism.extensions != nil {
+		t.Fatalf("expected extension container cleared on nil slot")
+	}
+}
+
+func TestEnsureExtensionContainerIdempotent(t *testing.T) {
+	t.Run("organism", func(t *testing.T) {
+		var o Organism
+		first := o.ensureExtensionContainer()
+		if first == nil {
+			t.Fatalf("expected container instance for zero-value organism")
+		}
+		if again := o.ensureExtensionContainer(); again != first {
+			t.Fatalf("expected ensure to reuse container instance")
+		}
+		if l := len(first.Plugins(extension.HookOrganismAttributes)); l != 0 {
+			t.Fatalf("expected no plugins for nil attributes, got %d", l)
+		}
+		o.SetAttributes(map[string]any{"flag": true})
+		second := o.ensureExtensionContainer()
+		if second == nil || second == first {
+			t.Fatalf("expected container to refresh after attribute update")
+		}
+		if payload, ok := second.Get(extension.HookOrganismAttributes, extension.PluginCore); !ok || payload.(map[string]any)["flag"] != true {
+			t.Fatalf("expected refreshed container to reflect attributes")
+		}
+	})
+
+	t.Run("facility", func(t *testing.T) {
+		var f Facility
+		base := f.ensureExtensionContainer()
+		if base == nil {
+			t.Fatalf("expected container instance for zero-value facility")
+		}
+		f.SetEnvironmentBaselines(map[string]any{"temp": 20})
+		refreshed := f.ensureExtensionContainer()
+		if refreshed == nil || refreshed == base {
+			t.Fatalf("expected refreshed container for facility")
+		}
+		if payload, ok := refreshed.Get(extension.HookFacilityEnvironmentBaselines, extension.PluginCore); !ok || payload.(map[string]any)["temp"] != 20 {
+			t.Fatalf("expected facility container to mirror baselines")
+		}
+		if final := f.ensureExtensionContainer(); final != refreshed {
+			t.Fatalf("expected idempotent ensure for facility")
+		}
+	})
+
+	t.Run("breeding", func(t *testing.T) {
+		var b BreedingUnit
+		_ = b.ensureExtensionContainer()
+		b.SetPairingAttributes(map[string]any{"note": "x"})
+		refreshed := b.ensureExtensionContainer()
+		if refreshed == nil {
+			t.Fatalf("expected breeding container to initialise")
+		}
+		if payload, ok := refreshed.Get(extension.HookBreedingUnitPairingAttributes, extension.PluginCore); !ok || payload.(map[string]any)["note"] != "x" {
+			t.Fatalf("expected breeding container to mirror pairing attributes")
+		}
+		if final := b.ensureExtensionContainer(); final != refreshed {
+			t.Fatalf("expected idempotent ensure for breeding unit")
+		}
+	})
+
+	t.Run("observation", func(t *testing.T) {
+		var o Observation
+		_ = o.ensureExtensionContainer()
+		o.SetData(map[string]any{"metric": 1})
+		refreshed := o.ensureExtensionContainer()
+		if refreshed == nil {
+			t.Fatalf("expected observation container to initialise")
+		}
+		if payload, ok := refreshed.Get(extension.HookObservationData, extension.PluginCore); !ok || payload.(map[string]any)["metric"] != 1 {
+			t.Fatalf("expected observation container to reflect data map")
+		}
+		if final := o.ensureExtensionContainer(); final != refreshed {
+			t.Fatalf("expected idempotent ensure for observation")
+		}
+	})
+
+	t.Run("sample", func(t *testing.T) {
+		var s Sample
+		_ = s.ensureExtensionContainer()
+		s.SetAttributes(map[string]any{"batch": "A"})
+		refreshed := s.ensureExtensionContainer()
+		if refreshed == nil {
+			t.Fatalf("expected sample container to initialise")
+		}
+		if payload, ok := refreshed.Get(extension.HookSampleAttributes, extension.PluginCore); !ok || payload.(map[string]any)["batch"] != "A" {
+			t.Fatalf("expected sample container to mirror attributes")
+		}
+		if final := s.ensureExtensionContainer(); final != refreshed {
+			t.Fatalf("expected idempotent ensure for sample")
+		}
+	})
+
+	t.Run("supply", func(t *testing.T) {
+		var s SupplyItem
+		_ = s.ensureExtensionContainer()
+		s.SetAttributes(map[string]any{"flag": true})
+		refreshed := s.ensureExtensionContainer()
+		if refreshed == nil {
+			t.Fatalf("expected supply container to initialise")
+		}
+		if payload, ok := refreshed.Get(extension.HookSupplyItemAttributes, extension.PluginCore); !ok || payload.(map[string]any)["flag"] != true {
+			t.Fatalf("expected supply container to mirror attributes")
+		}
+		if final := s.ensureExtensionContainer(); final != refreshed {
+			t.Fatalf("expected idempotent ensure for supply item")
+		}
+	})
+}
+
+func TestFacilitySlotLifecycle(t *testing.T) {
+	var facility Facility
+	facility.SetEnvironmentBaselines(map[string]any{"temp": "20C"})
+
+	first := facility.EnsureEnvironmentBaselinesSlot()
+	if facility.environmentBaselinesSlot != first {
+		t.Fatalf("expected facility slot cache to be populated")
+	}
+	if again := facility.EnsureEnvironmentBaselinesSlot(); again != first {
+		t.Fatalf("expected facility ensure to reuse cached slot")
+	}
+
+	facility.SetEnvironmentBaselines(map[string]any{"temp": "21C"})
+	if facility.environmentBaselinesSlot != nil {
+		t.Fatalf("expected facility slot cache reset after map setter")
+	}
+
+	second := facility.EnsureEnvironmentBaselinesSlot()
+	if first == second {
+		t.Fatalf("expected facility ensure to rebuild slot after reset")
+	}
+	payload, _ := second.Get(extension.PluginCore)
+	if payload.(map[string]any)["temp"] != "21C" {
+		t.Fatalf("expected facility slot to mirror new map value")
+	}
+
+	external := extension.NewSlot(extension.HookFacilityEnvironmentBaselines)
+	if err := external.Set(extension.PluginCore, map[string]any{"temp": "22C"}); err != nil {
+		t.Fatalf("set external payload: %v", err)
+	}
+	if err := facility.SetEnvironmentBaselinesSlot(external); err != nil {
+		t.Fatalf("SetEnvironmentBaselinesSlot: %v", err)
+	}
+	if facility.environmentBaselinesSlot == external {
+		t.Fatalf("expected facility to clone incoming slot")
+	}
+	if facility.EnvironmentBaselines["temp"] != "22C" {
+		t.Fatalf("expected facility map to reflect slot payload")
+	}
+	if facility.extensions == nil {
+		t.Fatalf("expected facility extension container to be initialised")
+	}
+
+	// Mutate external slot; cached clone should remain unchanged.
+	if err := external.Set(extension.PluginCore, map[string]any{"temp": "mutated"}); err != nil {
+		t.Fatalf("mutate external slot: %v", err)
+	}
+	payload, _ = facility.EnsureEnvironmentBaselinesSlot().Get(extension.PluginCore)
+	if payload.(map[string]any)["temp"] != "22C" {
+		t.Fatalf("expected cloned slot to remain unchanged after external mutation")
+	}
+
+	if err := facility.SetEnvironmentBaselinesSlot(nil); err != nil {
+		t.Fatalf("SetEnvironmentBaselinesSlot nil: %v", err)
+	}
+	if facility.EnvironmentBaselines != nil || facility.environmentBaselinesSlot != nil {
+		t.Fatalf("expected facility slot and map cleared when nil provided")
+	}
+	if facility.extensions != nil {
+		t.Fatalf("expected facility extension container cleared on nil slot")
+	}
+}
+
+func TestBreedingUnitSlotLifecycle(t *testing.T) {
+	var unit BreedingUnit
+	unit.SetPairingAttributes(map[string]any{"note": "init"})
+
+	first := unit.EnsurePairingAttributesSlot()
+	if unit.pairingAttributesSlot != first {
+		t.Fatalf("expected breeding unit slot cache to populate")
+	}
+	if again := unit.EnsurePairingAttributesSlot(); again != first {
+		t.Fatalf("expected breeding unit ensure to reuse cached slot")
+	}
+
+	unit.SetPairingAttributes(map[string]any{"note": "updated"})
+	if unit.pairingAttributesSlot != nil {
+		t.Fatalf("expected slot cache reset after map setter")
+	}
+
+	second := unit.EnsurePairingAttributesSlot()
+	if first == second {
+		t.Fatalf("expected fresh slot after reset")
+	}
+	payload, _ := second.Get(extension.PluginCore)
+	if payload.(map[string]any)["note"] != "updated" {
+		t.Fatalf("expected slot payload to mirror updated map")
+	}
+
+	incoming := extension.NewSlot(extension.HookBreedingUnitPairingAttributes)
+	if err := incoming.Set(extension.PluginCore, map[string]any{"note": "slot"}); err != nil {
+		t.Fatalf("set incoming slot: %v", err)
+	}
+	if err := unit.SetPairingAttributesSlot(incoming); err != nil {
+		t.Fatalf("SetPairingAttributesSlot: %v", err)
+	}
+	if unit.pairingAttributesSlot == incoming {
+		t.Fatalf("expected breeding unit to clone incoming slot")
+	}
+	if unit.PairingAttributesMap()["note"] != "slot" {
+		t.Fatalf("expected map to reflect cloned slot payload")
+	}
+	if unit.extensions == nil {
+		t.Fatalf("expected breeding unit extension container to be initialised")
+	}
+
+	if err := unit.SetPairingAttributesSlot(nil); err != nil {
+		t.Fatalf("SetPairingAttributesSlot nil: %v", err)
+	}
+	if unit.PairingAttributes != nil || unit.pairingAttributesSlot != nil {
+		t.Fatalf("expected breeding unit slot and map cleared when nil provided")
+	}
+	if unit.extensions != nil {
+		t.Fatalf("expected breeding unit extension container cleared on nil slot")
+	}
+}
+
+func TestObservationSlotLifecycle(t *testing.T) {
+	var obs Observation
+	obs.SetData(map[string]any{"metric": 1})
+
+	first := obs.EnsureObservationDataSlot()
+	if obs.dataSlot != first {
+		t.Fatalf("expected observation slot cache to populate")
+	}
+	if again := obs.EnsureObservationDataSlot(); again != first {
+		t.Fatalf("expected observation ensure to reuse cached slot")
+	}
+
+	obs.SetData(map[string]any{"metric": 2})
+	if obs.dataSlot != nil {
+		t.Fatalf("expected slot cache reset after map setter")
+	}
+
+	second := obs.EnsureObservationDataSlot()
+	if first == second {
+		t.Fatalf("expected fresh slot after reset")
+	}
+	payload, _ := second.Get(extension.PluginCore)
+	if payload.(map[string]any)["metric"] != 2 {
+		t.Fatalf("expected slot payload to mirror updated map")
+	}
+
+	incoming := extension.NewSlot(extension.HookObservationData)
+	if err := incoming.Set(extension.PluginCore, map[string]any{"metric": 3}); err != nil {
+		t.Fatalf("set incoming slot: %v", err)
+	}
+	if err := obs.SetObservationDataSlot(incoming); err != nil {
+		t.Fatalf("SetObservationDataSlot: %v", err)
+	}
+	if obs.dataSlot == incoming {
+		t.Fatalf("expected observation to clone incoming slot")
+	}
+	if obs.DataMap()["metric"] != 3 {
+		t.Fatalf("expected map to reflect cloned slot payload")
+	}
+	if obs.extensions == nil {
+		t.Fatalf("expected observation extension container to be initialised")
+	}
+
+	if err := obs.SetObservationDataSlot(nil); err != nil {
+		t.Fatalf("SetObservationDataSlot nil: %v", err)
+	}
+	if obs.Data != nil || obs.dataSlot != nil {
+		t.Fatalf("expected observation slot and map cleared when nil provided")
+	}
+	if obs.extensions != nil {
+		t.Fatalf("expected observation extension container cleared on nil slot")
+	}
+}
+
+func TestSampleSlotLifecycle(t *testing.T) {
+	var sample Sample
+	sample.SetAttributes(map[string]any{"batch": "A"})
+
+	first := sample.EnsureSampleAttributesSlot()
+	if sample.attributesSlot != first {
+		t.Fatalf("expected sample slot cache to populate")
+	}
+	if again := sample.EnsureSampleAttributesSlot(); again != first {
+		t.Fatalf("expected sample ensure to reuse cached slot")
+	}
+
+	sample.SetAttributes(map[string]any{"batch": "B"})
+	if sample.attributesSlot != nil {
+		t.Fatalf("expected slot cache reset after map setter")
+	}
+
+	second := sample.EnsureSampleAttributesSlot()
+	if first == second {
+		t.Fatalf("expected fresh sample slot after reset")
+	}
+	payload, _ := second.Get(extension.PluginCore)
+	if payload.(map[string]any)["batch"] != "B" {
+		t.Fatalf("expected slot payload to mirror updated map")
+	}
+
+	incoming := extension.NewSlot(extension.HookSampleAttributes)
+	if err := incoming.Set(extension.PluginCore, map[string]any{"batch": "C"}); err != nil {
+		t.Fatalf("set incoming slot: %v", err)
+	}
+	if err := sample.SetSampleAttributesSlot(incoming); err != nil {
+		t.Fatalf("SetSampleAttributesSlot: %v", err)
+	}
+	if sample.attributesSlot == incoming {
+		t.Fatalf("expected sample to clone incoming slot")
+	}
+	if sample.AttributesMap()["batch"] != "C" {
+		t.Fatalf("expected map to reflect cloned slot payload")
+	}
+	if sample.extensions == nil {
+		t.Fatalf("expected sample extension container to be initialised")
+	}
+
+	if err := sample.SetSampleAttributesSlot(nil); err != nil {
+		t.Fatalf("SetSampleAttributesSlot nil: %v", err)
+	}
+	if sample.Attributes != nil || sample.attributesSlot != nil {
+		t.Fatalf("expected sample slot and map cleared when nil provided")
+	}
+	if sample.extensions != nil {
+		t.Fatalf("expected sample extension container cleared on nil slot")
+	}
+}
+
+func TestSupplyItemSlotLifecycle(t *testing.T) {
+	var supply SupplyItem
+	supply.SetAttributes(map[string]any{"flag": true})
+
+	first := supply.EnsureSupplyItemAttributesSlot()
+	if supply.attributesSlot != first {
+		t.Fatalf("expected supply slot cache to populate")
+	}
+	if again := supply.EnsureSupplyItemAttributesSlot(); again != first {
+		t.Fatalf("expected supply ensure to reuse cached slot")
+	}
+
+	supply.SetAttributes(map[string]any{"flag": false})
+	if supply.attributesSlot != nil {
+		t.Fatalf("expected slot cache reset after map setter")
+	}
+
+	second := supply.EnsureSupplyItemAttributesSlot()
+	if first == second {
+		t.Fatalf("expected fresh supply slot after reset")
+	}
+	payload, _ := second.Get(extension.PluginCore)
+	if payload.(map[string]any)["flag"] != false {
+		t.Fatalf("expected slot payload to mirror updated map")
+	}
+
+	incoming := extension.NewSlot(extension.HookSupplyItemAttributes)
+	if err := incoming.Set(extension.PluginCore, map[string]any{"flag": "slot"}); err != nil {
+		t.Fatalf("set incoming slot: %v", err)
+	}
+	if err := supply.SetSupplyItemAttributesSlot(incoming); err != nil {
+		t.Fatalf("SetSupplyItemAttributesSlot: %v", err)
+	}
+	if supply.attributesSlot == incoming {
+		t.Fatalf("expected supply to clone incoming slot")
+	}
+	if supply.AttributesMap()["flag"] != "slot" {
+		t.Fatalf("expected map to reflect cloned slot payload")
+	}
+	if supply.extensions == nil {
+		t.Fatalf("expected supply extension container to be initialised")
+	}
+
+	if err := supply.SetSupplyItemAttributesSlot(nil); err != nil {
+		t.Fatalf("SetSupplyItemAttributesSlot nil: %v", err)
+	}
+	if supply.Attributes != nil || supply.attributesSlot != nil {
+		t.Fatalf("expected supply slot and map cleared when nil provided")
+	}
+	if supply.extensions != nil {
+		t.Fatalf("expected supply extension container cleared on nil slot")
 	}
 }
 
