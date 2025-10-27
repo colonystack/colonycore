@@ -4,27 +4,33 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"os"
 
 	"colonycore/internal/validation"
 )
 
 func main() {
-	if len(os.Args) < 2 {
-		fmt.Fprintf(os.Stderr, "Usage: %s <plugin-directory>\n", os.Args[0])
-		os.Exit(1)
+	os.Exit(run(os.Args, os.Stderr, validation.ValidatePluginDirectory))
+}
+
+func run(args []string, stderr io.Writer, validate func(string) []validation.Error) int {
+	if len(args) < 2 {
+		fmt.Fprintf(stderr, "Usage: %s <plugin-directory>\n", args[0])
+		return 1
 	}
 
-	pluginDir := os.Args[1]
-	errors := validation.ValidatePluginDirectory(pluginDir)
+	pluginDir := args[1]
+	errors := validate(pluginDir)
 
 	if len(errors) > 0 {
-		fmt.Fprintf(os.Stderr, "❌ Found %d hexagonal architecture violations:\n\n", len(errors))
+		fmt.Fprintf(stderr, "❌ Found %d hexagonal architecture violations:\n\n", len(errors))
 		for _, err := range errors {
-			fmt.Fprintf(os.Stderr, "🚨 %s:%d\n", err.File, err.Line)
-			fmt.Fprintf(os.Stderr, "   %s\n", err.Message)
-			fmt.Fprintf(os.Stderr, "   Code: %s\n\n", err.Code)
+			fmt.Fprintf(stderr, "🚨 %s:%d\n", err.File, err.Line)
+			fmt.Fprintf(stderr, "   %s\n", err.Message)
+			fmt.Fprintf(stderr, "   Code: %s\n\n", err.Code)
 		}
-		os.Exit(1)
+		return 1
 	}
+	return 0
 }
