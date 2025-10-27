@@ -134,11 +134,26 @@ func TestSetRejectsInvalidInputs(t *testing.T) {
 	}
 }
 
+func TestContainerSetRejectsInvalidShape(t *testing.T) {
+	container := NewContainer()
+	if err := container.Set(HookOrganismAttributes, PluginID("frog"), []string{"not", "object"}); err == nil {
+		t.Fatalf("expected shape validation error")
+	}
+}
+
 func TestUnmarshalRejectsEmptyPlugin(t *testing.T) {
 	var container Container
 	data := []byte(`{"` + string(HookOrganismAttributes) + `":{"":{}}}`)
 	if err := container.UnmarshalJSON(data); err != ErrEmptyPlugin {
 		t.Fatalf("expected ErrEmptyPlugin, got %v", err)
+	}
+}
+
+func TestContainerUnmarshalRejectsInvalidShape(t *testing.T) {
+	data := []byte(`{"` + string(HookOrganismAttributes) + `":{"plugin":["not","object"]}}`)
+	var container Container
+	if err := container.UnmarshalJSON(data); err == nil {
+		t.Fatalf("expected shape validation error during unmarshal")
 	}
 }
 
@@ -223,6 +238,9 @@ func TestSpecMetadata(t *testing.T) {
 	}
 	if spec.Field != "attributes" {
 		t.Fatalf("unexpected field: %s", spec.Field)
+	}
+	if spec.DomainField != "domain.Organism.Attributes" {
+		t.Fatalf("unexpected domain field: %s", spec.DomainField)
 	}
 	if spec.Shape != ShapeObject {
 		t.Fatalf("unexpected shape: %s", spec.Shape)

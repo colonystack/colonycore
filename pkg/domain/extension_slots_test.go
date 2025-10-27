@@ -187,11 +187,7 @@ func TestExtensionSlotBridgeRejectsNonCorePlugins(t *testing.T) {
 
 func TestExtensionSlotBridgeRejectsNonObjectPayload(t *testing.T) {
 	slot := extension.NewSlot(extension.HookOrganismAttributes)
-	if err := slot.Set(extension.PluginCore, "scalar"); err != nil {
-		t.Fatalf("expected to set scalar payload for test: %v", err)
-	}
-	var organism Organism
-	if err := organism.SetAttributesSlot(slot); err == nil {
+	if err := slot.Set(extension.PluginCore, "scalar"); err == nil {
 		t.Fatalf("expected scalar payload to be rejected")
 	}
 }

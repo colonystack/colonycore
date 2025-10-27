@@ -16,7 +16,9 @@ func main() {
 
 func run(args []string, stderr io.Writer, validate func(string) []validation.Error) int {
 	if len(args) < 2 {
-		fmt.Fprintf(stderr, "Usage: %s <plugin-directory>\n", args[0])
+		if _, err := fmt.Fprintf(stderr, "Usage: %s <plugin-directory>\n", args[0]); err != nil {
+			return 1
+		}
 		return 1
 	}
 
@@ -24,11 +26,19 @@ func run(args []string, stderr io.Writer, validate func(string) []validation.Err
 	errors := validate(pluginDir)
 
 	if len(errors) > 0 {
-		fmt.Fprintf(stderr, "❌ Found %d hexagonal architecture violations:\n\n", len(errors))
+		if _, err := fmt.Fprintf(stderr, "❌ Found %d hexagonal architecture violations:\n\n", len(errors)); err != nil {
+			return 1
+		}
 		for _, err := range errors {
-			fmt.Fprintf(stderr, "🚨 %s:%d\n", err.File, err.Line)
-			fmt.Fprintf(stderr, "   %s\n", err.Message)
-			fmt.Fprintf(stderr, "   Code: %s\n\n", err.Code)
+			if _, writeErr := fmt.Fprintf(stderr, "🚨 %s:%d\n", err.File, err.Line); writeErr != nil {
+				return 1
+			}
+			if _, writeErr := fmt.Fprintf(stderr, "   %s\n", err.Message); writeErr != nil {
+				return 1
+			}
+			if _, writeErr := fmt.Fprintf(stderr, "   Code: %s\n\n", err.Code); writeErr != nil {
+				return 1
+			}
 		}
 		return 1
 	}

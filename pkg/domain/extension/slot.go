@@ -48,8 +48,14 @@ func (s *Slot) ensureMap() {
 
 // Set stores a payload for the given plugin identifier.
 func (s *Slot) Set(plugin PluginID, payload any) error {
+	if s.hook == "" {
+		return ErrUnboundSlot
+	}
 	if plugin == "" {
 		return ErrEmptyPlugin
+	}
+	if err := validateHookPayload(s.hook, payload); err != nil {
+		return err
 	}
 	s.ensureMap()
 	s.values[plugin.String()] = cloneValue(payload)
@@ -144,10 +150,16 @@ func (s *Slot) UnmarshalJSON(data []byte) error {
 		s.values = map[string]any{}
 		return nil
 	}
+	if s.hook == "" {
+		return ErrUnboundSlot
+	}
 	s.values = make(map[string]any, len(raw))
 	for plugin, value := range raw {
 		if plugin == "" {
 			return ErrEmptyPlugin
+		}
+		if err := validateHookPayload(s.hook, value); err != nil {
+			return err
 		}
 		s.values[plugin] = cloneValue(value)
 	}

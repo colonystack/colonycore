@@ -26,6 +26,20 @@ func TestSlotSetGet(t *testing.T) {
 	}
 }
 
+func TestSlotSetRejectsInvalidShape(t *testing.T) {
+	slot := NewSlot(HookOrganismAttributes)
+	if err := slot.Set(PluginID("frog"), []string{"invalid"}); err == nil {
+		t.Fatalf("expected shape validation error")
+	}
+}
+
+func TestSlotSetRequiresHookBinding(t *testing.T) {
+	var slot Slot
+	if err := slot.Set(PluginID("frog"), map[string]any{"field": testValue}); err != ErrUnboundSlot {
+		t.Fatalf("expected ErrUnboundSlot, got %v", err)
+	}
+}
+
 func TestSlotClone(t *testing.T) {
 	slot := NewSlot(HookStrainAttributes)
 	_ = slot.Set(PluginID("frog"), map[string]any{"field": testValue})
@@ -151,6 +165,20 @@ func TestSlotUnmarshalEdgeCases(t *testing.T) {
 	}
 	if len(slot.Raw()) != 0 {
 		t.Fatalf("expected empty raw map after empty object")
+	}
+}
+
+func TestSlotUnmarshalRequiresHookBinding(t *testing.T) {
+	var slot Slot
+	if err := json.Unmarshal([]byte(`{"plugin":{}}`), &slot); err != ErrUnboundSlot {
+		t.Fatalf("expected ErrUnboundSlot, got %v", err)
+	}
+}
+
+func TestSlotUnmarshalRejectsInvalidShape(t *testing.T) {
+	slot := NewSlot(HookSampleAttributes)
+	if err := json.Unmarshal([]byte(`{"plugin":["invalid"]}`), slot); err == nil {
+		t.Fatalf("expected shape validation error")
 	}
 }
 

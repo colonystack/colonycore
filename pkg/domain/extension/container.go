@@ -67,70 +67,81 @@ const (
 
 // HookSpec documents the entity contract surfaced through a hook.
 type HookSpec struct {
-	Entity      string
-	Field       string
-	Description string
-	Shape       DataShape
+	Entity      string    // canonical entity slug used by entity-model.json
+	Field       string    // canonical field name within the entity model
+	DomainField string    // Go struct field reference (pkg/domain/entities.go)
+	Description string    // human readable summary pulled into docs
+	Shape       DataShape // expected JSON data shape for the payload
 }
 
 var hookRegistry = map[Hook]HookSpec{
 	HookOrganismAttributes: {
 		Entity:      "organism",
 		Field:       "attributes",
+		DomainField: "domain.Organism.Attributes",
 		Description: "Species-agnostic extension bag for organism fields (RFC-0001 §4, ADR-0003).",
 		Shape:       ShapeObject,
 	},
 	HookFacilityEnvironmentBaselines: {
 		Entity:      "facility",
 		Field:       "environment_baselines",
+		DomainField: "domain.Facility.EnvironmentBaselines",
 		Description: "Environmental defaults and monitoring metadata emitted by plugins.",
 		Shape:       ShapeObject,
 	},
 	HookBreedingUnitPairingAttributes: {
 		Entity:      "breeding_unit",
 		Field:       "pairing_attributes",
+		DomainField: "domain.BreedingUnit.PairingAttributes",
 		Description: "Pairing metadata (fertility notes, lineage context) supplied by plugins.",
 		Shape:       ShapeObject,
 	},
 	HookLineDefaultAttributes: {
 		Entity:      "line",
 		Field:       "default_attributes",
+		DomainField: "domain.Line.DefaultAttributes",
 		Description: "Default lineage attributes inherited by downstream strains or organisms.",
 		Shape:       ShapeObject,
 	},
 	HookLineExtensionOverrides: {
 		Entity:      "line",
 		Field:       "extension_overrides",
+		DomainField: "domain.Line.ExtensionOverrides",
 		Description: "Override values applied to downstream extension hooks for this line.",
 		Shape:       ShapeObject,
 	},
 	HookStrainAttributes: {
 		Entity:      "strain",
 		Field:       "attributes",
+		DomainField: "domain.Strain.Attributes",
 		Description: "Strain-level metadata extensions (versions, husbandry qualities).",
 		Shape:       ShapeObject,
 	},
 	HookGenotypeMarkerAttributes: {
 		Entity:      "genotype_marker",
 		Field:       "attributes",
+		DomainField: "domain.GenotypeMarker.Attributes",
 		Description: "Assay-specific attributes for genotype markers (interpretation, thresholds).",
 		Shape:       ShapeObject,
 	},
 	HookObservationData: {
 		Entity:      "observation",
 		Field:       "data",
+		DomainField: "domain.Observation.Data",
 		Description: "Structured measurement payloads recorded during procedures or husbandry.",
 		Shape:       ShapeObject,
 	},
 	HookSampleAttributes: {
 		Entity:      "sample",
 		Field:       "attributes",
+		DomainField: "domain.Sample.Attributes",
 		Description: "Chain-of-custody and assay metadata supplied by plugins.",
 		Shape:       ShapeObject,
 	},
 	HookSupplyItemAttributes: {
 		Entity:      "supply_item",
 		Field:       "attributes",
+		DomainField: "domain.SupplyItem.Attributes",
 		Description: "Inventory metadata extensions for supply items.",
 		Shape:       ShapeObject,
 	},
@@ -153,6 +164,9 @@ var ErrUnknownHook = errors.New("extension: unknown hook identifier")
 
 // ErrEmptyPlugin indicates an empty plugin identifier was supplied.
 var ErrEmptyPlugin = errors.New("extension: plugin identifier must not be empty")
+
+// ErrUnboundSlot indicates a slot attempted to store payloads without a hook binding.
+var ErrUnboundSlot = errors.New("extension: slot hook not bound")
 
 // KnownHooks returns the sorted list of registered hook identifiers.
 func KnownHooks() []Hook {
@@ -180,6 +194,60 @@ func ParseHook(value string) (Hook, error) {
 func Spec(h Hook) (HookSpec, bool) {
 	spec, ok := hookRegistry[h]
 	return spec, ok
+}
+
+// validateHookPayload ensures the payload adheres to the expected JSON shape
+// declared for the hook. Nil payloads are permitted to ease migrations where
+// plugins clear extension slots.
+func validateHookPayload(h Hook, payload any) error {
+	spec, ok := Spec(h)
+	if !ok {
+		return fmt.Errorf("%w: %s", ErrUnknownHook, h)
+	}
+	if payload == nil {
+		return nil
+	}
+	switch spec.Shape {
+	case ShapeObject:
+		if !isJSONObject(payload) {
+			return fmt.Errorf("extension: hook %s (%s.%s) expects object payload, got %T", h, spec.Entity, spec.Field, payload)
+		}
+	case ShapeArray:
+		if !isJSONArray(payload) {
+			return fmt.Errorf("extension: hook %s (%s.%s) expects array payload, got %T", h, spec.Entity, spec.Field, payload)
+		}
+	case ShapeScalar:
+		if isJSONObject(payload) || isJSONArray(payload) {
+			return fmt.Errorf("extension: hook %s (%s.%s) expects scalar payload, got %T", h, spec.Entity, spec.Field, payload)
+		}
+	default:
+		return fmt.Errorf("extension: hook %s has unsupported data shape %q", h, spec.Shape)
+	}
+	return nil
+}
+
+func isJSONObject(value any) bool {
+	if value == nil {
+		return false
+	}
+	v := reflect.ValueOf(value)
+	if v.Kind() != reflect.Map {
+		return false
+	}
+	return v.Type().Key().Kind() == reflect.String
+}
+
+func isJSONArray(value any) bool {
+	if value == nil {
+		return false
+	}
+	v := reflect.ValueOf(value)
+	switch v.Kind() {
+	case reflect.Slice, reflect.Array:
+		return true
+	default:
+		return false
+	}
 }
 
 // Container stores plugin-provided payloads keyed by hook and plugin.
@@ -235,8 +303,8 @@ func (c *Container) mergeHookPayload(hook Hook, plugins map[string]any) error {
 // Set stores a payload for the given hook and plugin combination.
 // Payloads are deep-copied to shield the container from external mutation.
 func (c *Container) Set(hook Hook, plugin PluginID, value any) error {
-	if !IsKnownHook(hook) {
-		return fmt.Errorf("%w: %s", ErrUnknownHook, hook)
+	if err := validateHookPayload(hook, value); err != nil {
+		return err
 	}
 	if plugin == "" {
 		return ErrEmptyPlugin
@@ -357,6 +425,9 @@ func (c *Container) UnmarshalJSON(data []byte) error {
 		for plugin, value := range entries {
 			if plugin == "" {
 				return ErrEmptyPlugin
+			}
+			if err := validateHookPayload(hook, value); err != nil {
+				return err
 			}
 			c.payload[hook][plugin] = cloneValue(value)
 		}
