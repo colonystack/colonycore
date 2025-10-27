@@ -127,18 +127,19 @@ type Base struct {
 // Organism represents an individual animal tracked by the system.
 type Organism struct {
 	Base
-	Name       string         `json:"name"`
-	Species    string         `json:"species"`
-	Line       string         `json:"line"`
-	LineID     *string        `json:"line_id"`
-	StrainID   *string        `json:"strain_id"`
-	ParentIDs  []string       `json:"parent_ids"`
-	Stage      LifecycleStage `json:"stage"`
-	CohortID   *string        `json:"cohort_id"`
-	HousingID  *string        `json:"housing_id"`
-	ProtocolID *string        `json:"protocol_id"`
-	ProjectID  *string        `json:"project_id"`
-	Attributes map[string]any `json:"attributes"`
+	Name           string          `json:"name"`
+	Species        string          `json:"species"`
+	Line           string          `json:"line"`
+	LineID         *string         `json:"line_id"`
+	StrainID       *string         `json:"strain_id"`
+	ParentIDs      []string        `json:"parent_ids"`
+	Stage          LifecycleStage  `json:"stage"`
+	CohortID       *string         `json:"cohort_id"`
+	HousingID      *string         `json:"housing_id"`
+	ProtocolID     *string         `json:"protocol_id"`
+	ProjectID      *string         `json:"project_id"`
+	Attributes     map[string]any  `json:"attributes"`
+	attributesSlot *extension.Slot `json:"-"`
 }
 
 // Cohort represents a managed group of organisms.
@@ -163,31 +164,33 @@ type HousingUnit struct {
 // Facility aggregates housing units with shared biosecurity controls.
 type Facility struct {
 	Base
-	Code                 string         `json:"code"`
-	Name                 string         `json:"name"`
-	Zone                 string         `json:"zone"`
-	AccessPolicy         string         `json:"access_policy"`
-	EnvironmentBaselines map[string]any `json:"environment_baselines"`
-	HousingUnitIDs       []string       `json:"housing_unit_ids"`
-	ProjectIDs           []string       `json:"project_ids"`
+	Code                     string          `json:"code"`
+	Name                     string          `json:"name"`
+	Zone                     string          `json:"zone"`
+	AccessPolicy             string          `json:"access_policy"`
+	EnvironmentBaselines     map[string]any  `json:"environment_baselines"`
+	HousingUnitIDs           []string        `json:"housing_unit_ids"`
+	ProjectIDs               []string        `json:"project_ids"`
+	environmentBaselinesSlot *extension.Slot `json:"-"`
 }
 
 // BreedingUnit tracks configured pairings or groups intended for reproduction.
 type BreedingUnit struct {
 	Base
-	Name              string         `json:"name"`
-	Strategy          string         `json:"strategy"`
-	HousingID         *string        `json:"housing_id"`
-	ProtocolID        *string        `json:"protocol_id"`
-	LineID            *string        `json:"line_id"`
-	StrainID          *string        `json:"strain_id"`
-	TargetLineID      *string        `json:"target_line_id"`
-	TargetStrainID    *string        `json:"target_strain_id"`
-	PairingIntent     *string        `json:"pairing_intent,omitempty"`
-	PairingNotes      *string        `json:"pairing_notes,omitempty"`
-	PairingAttributes map[string]any `json:"pairing_attributes"`
-	FemaleIDs         []string       `json:"female_ids"`
-	MaleIDs           []string       `json:"male_ids"`
+	Name                  string          `json:"name"`
+	Strategy              string          `json:"strategy"`
+	HousingID             *string         `json:"housing_id"`
+	ProtocolID            *string         `json:"protocol_id"`
+	LineID                *string         `json:"line_id"`
+	StrainID              *string         `json:"strain_id"`
+	TargetLineID          *string         `json:"target_line_id"`
+	TargetStrainID        *string         `json:"target_strain_id"`
+	PairingIntent         *string         `json:"pairing_intent,omitempty"`
+	PairingNotes          *string         `json:"pairing_notes,omitempty"`
+	PairingAttributes     map[string]any  `json:"pairing_attributes"`
+	FemaleIDs             []string        `json:"female_ids"`
+	MaleIDs               []string        `json:"male_ids"`
+	pairingAttributesSlot *extension.Slot `json:"-"`
 }
 
 // Line represents a genetic lineage with shared inheritance characteristics.
@@ -260,13 +263,14 @@ type Treatment struct {
 // Observation records structured or free-form notes captured during workflows.
 type Observation struct {
 	Base
-	ProcedureID *string        `json:"procedure_id"`
-	OrganismID  *string        `json:"organism_id"`
-	CohortID    *string        `json:"cohort_id"`
-	RecordedAt  time.Time      `json:"recorded_at"`
-	Observer    string         `json:"observer"`
-	Data        map[string]any `json:"data"`
-	Notes       *string        `json:"notes,omitempty"`
+	ProcedureID *string         `json:"procedure_id"`
+	OrganismID  *string         `json:"organism_id"`
+	CohortID    *string         `json:"cohort_id"`
+	RecordedAt  time.Time       `json:"recorded_at"`
+	Observer    string          `json:"observer"`
+	Data        map[string]any  `json:"data"`
+	Notes       *string         `json:"notes,omitempty"`
+	dataSlot    *extension.Slot `json:"-"`
 }
 
 // Sample tracks material derived from organisms or cohorts.
@@ -283,6 +287,7 @@ type Sample struct {
 	AssayType       string               `json:"assay_type"`
 	ChainOfCustody  []SampleCustodyEvent `json:"chain_of_custody"`
 	Attributes      map[string]any       `json:"attributes"`
+	attributesSlot  *extension.Slot      `json:"-"`
 }
 
 // SampleCustodyEvent logs a change in possession or storage for a sample.
@@ -333,17 +338,18 @@ type Project struct {
 // SupplyItem models inventory resources consumed by projects or facilities.
 type SupplyItem struct {
 	Base
-	SKU            string         `json:"sku"`
-	Name           string         `json:"name"`
-	Description    *string        `json:"description,omitempty"`
-	QuantityOnHand int            `json:"quantity_on_hand"`
-	Unit           string         `json:"unit"`
-	LotNumber      *string        `json:"lot_number,omitempty"`
-	ExpiresAt      *time.Time     `json:"expires_at"`
-	FacilityIDs    []string       `json:"facility_ids"`
-	ProjectIDs     []string       `json:"project_ids"`
-	ReorderLevel   int            `json:"reorder_level"`
-	Attributes     map[string]any `json:"attributes"`
+	SKU            string          `json:"sku"`
+	Name           string          `json:"name"`
+	Description    *string         `json:"description,omitempty"`
+	QuantityOnHand int             `json:"quantity_on_hand"`
+	Unit           string          `json:"unit"`
+	LotNumber      *string         `json:"lot_number,omitempty"`
+	ExpiresAt      *time.Time      `json:"expires_at"`
+	FacilityIDs    []string        `json:"facility_ids"`
+	ProjectIDs     []string        `json:"project_ids"`
+	ReorderLevel   int             `json:"reorder_level"`
+	Attributes     map[string]any  `json:"attributes"`
+	attributesSlot *extension.Slot `json:"-"`
 }
 
 // Change describes a mutation applied to an entity during a transaction.

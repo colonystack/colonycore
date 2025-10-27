@@ -29,6 +29,78 @@ func TestOrganismSetAttributesClonesInputAndOutput(t *testing.T) {
 	}
 }
 
+func TestOrganismEnsureAttributesSlotCaching(t *testing.T) {
+	var organism Organism
+	organism.SetAttributes(map[string]any{"flag": true})
+
+	first := organism.EnsureAttributesSlot()
+	if first == nil {
+		t.Fatalf("expected cached slot instance")
+	}
+	if organism.attributesSlot != first {
+		t.Fatalf("expected slot to be cached on organism")
+	}
+
+	second := organism.EnsureAttributesSlot()
+	if second != first {
+		t.Fatalf("expected repeated ensure to reuse cached slot")
+	}
+
+	organism.SetAttributes(map[string]any{"flag": false})
+	if organism.attributesSlot != nil {
+		t.Fatalf("expected slot cache to reset after map setter")
+	}
+	replacement := organism.EnsureAttributesSlot()
+	if replacement == first {
+		t.Fatalf("expected ensure to build fresh slot after reset")
+	}
+	payload, ok := replacement.Get(extension.PluginCore)
+	if !ok {
+		t.Fatalf("expected payload on replacement slot")
+	}
+	if payload.(map[string]any)["flag"] != false {
+		t.Fatalf("expected replacement slot to reflect updated map")
+	}
+}
+
+func TestOrganismSetAttributesSlotClonesInput(t *testing.T) {
+	slot := extension.NewSlot(extension.HookOrganismAttributes)
+	input := map[string]any{"flag": true}
+	if err := slot.Set(extension.PluginCore, input); err != nil {
+		t.Fatalf("set payload: %v", err)
+	}
+
+	var organism Organism
+	if err := organism.SetAttributesSlot(slot); err != nil {
+		t.Fatalf("SetAttributesSlot: %v", err)
+	}
+	if organism.attributesSlot == slot {
+		t.Fatalf("expected organism to store slot clone, not original pointer")
+	}
+
+	// Mutate original inputs; cached slot should remain unchanged.
+	input["flag"] = false
+	if err := slot.Set(extension.PluginCore, map[string]any{"flag": "mutated"}); err != nil {
+		t.Fatalf("mutate original slot: %v", err)
+	}
+
+	cached := organism.EnsureAttributesSlot()
+	payload, ok := cached.Get(extension.PluginCore)
+	if !ok {
+		t.Fatalf("expected cached payload")
+	}
+	if payload.(map[string]any)["flag"] != true {
+		t.Fatalf("expected cached slot to remain unchanged after input mutation")
+	}
+
+	if err := organism.SetAttributesSlot(nil); err != nil {
+		t.Fatalf("SetAttributesSlot nil: %v", err)
+	}
+	if organism.Attributes != nil || organism.attributesSlot != nil {
+		t.Fatalf("expected attributes and slot to clear when setting nil")
+	}
+}
+
 func TestFacilityEnvironmentBaselinesHelpersClone(t *testing.T) {
 	input := map[string]any{"temp": []int{20}}
 
