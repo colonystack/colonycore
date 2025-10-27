@@ -294,7 +294,7 @@ func TestMigrateSnapshotCleansDataVariants(t *testing.T) {
 	}
 
 	facility := migrated.Facilities[facilityID]
-	if facility.EnvironmentBaselines == nil {
+	if facility.EnvironmentBaselinesMap() == nil {
 		t.Fatalf("expected facility baselines map initialised")
 	}
 	if len(facility.HousingUnitIDs) != 1 || facility.HousingUnitIDs[0] != "housing-valid" {

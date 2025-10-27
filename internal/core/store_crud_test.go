@@ -67,7 +67,7 @@ func TestMemoryStoreCRUDAndQueries(t *testing.T) {
 		cohortPtr := cohortID
 
 		attrs := map[string]any{"skin_color_index": 5}
-		organismA, err := tx.CreateOrganism(domain.Organism{
+		organismAInput := domain.Organism{
 			Name:       "Alpha",
 			Species:    "Test Frog",
 			Stage:      domain.StageJuvenile,
@@ -75,8 +75,9 @@ func TestMemoryStoreCRUDAndQueries(t *testing.T) {
 			ProtocolID: &protocolPtr,
 			CohortID:   &cohortPtr,
 			HousingID:  &housingPtr,
-			Attributes: attrs,
-		})
+		}
+		organismAInput.SetAttributes(attrs)
+		organismA, err := tx.CreateOrganism(organismAInput)
 		if err != nil {
 			return err
 		}
@@ -84,12 +85,13 @@ func TestMemoryStoreCRUDAndQueries(t *testing.T) {
 
 		attrs["skin_color_index"] = 9
 
-		organismB, err := tx.CreateOrganism(domain.Organism{
+		organismBInput := domain.Organism{
 			Name:     "Beta",
 			Species:  "Test Toad",
 			Stage:    domain.StageAdult,
 			CohortID: &cohortPtr,
-		})
+		}
+		organismB, err := tx.CreateOrganism(organismBInput)
 		if err != nil {
 			return err
 		}

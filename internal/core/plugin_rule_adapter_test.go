@@ -253,16 +253,17 @@ func (r *nilViewRule) Evaluate(_ context.Context, view pluginapi.RuleView, _ []p
 
 func TestNewViewAccessors(t *testing.T) {
 	now := time.Now()
-	facility := newFacilityView(domain.Facility{
-		Base:                 domain.Base{ID: "facility", CreatedAt: now, UpdatedAt: now},
-		Code:                 "FAC-99",
-		Name:                 "Facility",
-		Zone:                 "Quarantine Zone",
-		AccessPolicy:         "Restricted",
-		EnvironmentBaselines: map[string]any{"temp": 21},
-		HousingUnitIDs:       []string{"H1"},
-		ProjectIDs:           []string{"P1"},
-	})
+	domainFacility := domain.Facility{
+		Base:           domain.Base{ID: "facility", CreatedAt: now, UpdatedAt: now},
+		Code:           "FAC-99",
+		Name:           "Facility",
+		Zone:           "Quarantine Zone",
+		AccessPolicy:   "Restricted",
+		HousingUnitIDs: []string{"H1"},
+		ProjectIDs:     []string{"P1"},
+	}
+	domainFacility.SetEnvironmentBaselines(map[string]any{"temp": 21})
+	facility := newFacilityView(domainFacility)
 	if facility.Name() == "" || facility.Zone() == "" || facility.AccessPolicy() == "" {
 		t.Fatal("facility view should expose base fields")
 	}
@@ -448,8 +449,8 @@ func TestOrganismViewAccessors(t *testing.T) {
 		HousingID:  &housingID,
 		ProtocolID: &protocolID,
 		ProjectID:  &projectID,
-		Attributes: attributes,
 	}
+	domainOrg.SetAttributes(attributes)
 
 	view := newOrganismView(domainOrg)
 

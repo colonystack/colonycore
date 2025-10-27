@@ -369,10 +369,12 @@ func TestServiceFacilityLifecycle(t *testing.T) {
 	}
 	updated, res, err := svc.UpdateFacility(ctx, facility.ID, func(f *domain.Facility) error {
 		f.Zone = "ZoneA"
-		if f.EnvironmentBaselines == nil {
-			f.EnvironmentBaselines = map[string]any{}
+		baselines := f.EnvironmentBaselinesMap()
+		if baselines == nil {
+			baselines = map[string]any{}
 		}
-		f.EnvironmentBaselines["temperature"] = "22C"
+		baselines["temperature"] = "22C"
+		f.SetEnvironmentBaselines(baselines)
 		return nil
 	})
 	if err != nil {
@@ -381,7 +383,7 @@ func TestServiceFacilityLifecycle(t *testing.T) {
 	if res.HasBlocking() {
 		t.Fatalf("unexpected facility update violations: %+v", res.Violations)
 	}
-	if updated.Zone != "ZoneA" || updated.EnvironmentBaselines["temperature"] != "22C" {
+	if updated.Zone != "ZoneA" || updated.EnvironmentBaselinesMap()["temperature"] != "22C" {
 		t.Fatalf("expected facility update to apply, got %+v", updated)
 	}
 	if res, err := svc.DeleteFacility(ctx, facility.ID); err != nil {

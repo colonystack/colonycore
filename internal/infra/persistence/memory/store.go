@@ -516,7 +516,9 @@ func (s memoryState) clone() memoryState {
 
 func cloneOrganism(o Organism) Organism {
 	cp := o
-	cp.SetAttributes(o.AttributesMap())
+	if err := cp.SetAttributesSlot(o.EnsureAttributesSlot()); err != nil {
+		panic(fmt.Errorf("memory: clone organism attributes: %w", err))
+	}
 	if len(o.ParentIDs) != 0 {
 		cp.ParentIDs = append([]string(nil), o.ParentIDs...)
 	}
@@ -529,7 +531,9 @@ func cloneBreeding(b BreedingUnit) BreedingUnit {
 	cp := b
 	cp.FemaleIDs = append([]string(nil), b.FemaleIDs...)
 	cp.MaleIDs = append([]string(nil), b.MaleIDs...)
-	cp.SetPairingAttributes(b.PairingAttributesMap())
+	if err := cp.SetPairingAttributesSlot(b.EnsurePairingAttributesSlot()); err != nil {
+		panic(fmt.Errorf("memory: clone breeding attributes: %w", err))
+	}
 	return cp
 }
 
@@ -553,7 +557,9 @@ func cloneProject(p Project) Project {
 
 func cloneFacility(f Facility) Facility {
 	cp := f
-	cp.SetEnvironmentBaselines(f.EnvironmentBaselinesMap())
+	if err := cp.SetEnvironmentBaselinesSlot(f.EnsureEnvironmentBaselinesSlot()); err != nil {
+		panic(fmt.Errorf("memory: clone facility baselines: %w", err))
+	}
 	cp.HousingUnitIDs = append([]string(nil), f.HousingUnitIDs...)
 	cp.ProjectIDs = append([]string(nil), f.ProjectIDs...)
 	return cp
@@ -570,14 +576,18 @@ func cloneTreatment(t Treatment) Treatment {
 
 func cloneObservation(o Observation) Observation {
 	cp := o
-	cp.SetData(o.DataMap())
+	if err := cp.SetObservationDataSlot(o.EnsureObservationDataSlot()); err != nil {
+		panic(fmt.Errorf("memory: clone observation data: %w", err))
+	}
 	return cp
 }
 
 func cloneSample(s Sample) Sample {
 	cp := s
 	cp.ChainOfCustody = append([]domain.SampleCustodyEvent(nil), s.ChainOfCustody...)
-	cp.SetAttributes(s.AttributesMap())
+	if err := cp.SetSampleAttributesSlot(s.EnsureSampleAttributesSlot()); err != nil {
+		panic(fmt.Errorf("memory: clone sample attributes: %w", err))
+	}
 	return cp
 }
 
@@ -743,7 +753,9 @@ func cloneSupplyItem(s SupplyItem) SupplyItem {
 	}
 	cp.FacilityIDs = append([]string(nil), s.FacilityIDs...)
 	cp.ProjectIDs = append([]string(nil), s.ProjectIDs...)
-	cp.SetAttributes(s.AttributesMap())
+	if err := cp.SetSupplyItemAttributesSlot(s.EnsureSupplyItemAttributesSlot()); err != nil {
+		panic(fmt.Errorf("memory: clone supply attributes: %w", err))
+	}
 	return cp
 }
 

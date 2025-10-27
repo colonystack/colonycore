@@ -53,13 +53,14 @@ func seedMemoryStore(t *testing.T, store *memory.Store) memoryIDs {
 		project := must(t, projectVal, err)
 		ids.projectID = project.ID
 
-		facilityVal, err := tx.CreateFacility(domain.Facility{
-			Name:                 "Vivarium",
-			Zone:                 "Zone-A",
-			AccessPolicy:         "badge-required",
-			EnvironmentBaselines: map[string]any{"temperature": "22C"},
-			ProjectIDs:           []string{ids.projectID},
-		})
+		facilityInput := domain.Facility{
+			Name:         "Vivarium",
+			Zone:         "Zone-A",
+			AccessPolicy: "badge-required",
+			ProjectIDs:   []string{ids.projectID},
+		}
+		facilityInput.SetEnvironmentBaselines(map[string]any{"temperature": "22C"})
+		facilityVal, err := tx.CreateFacility(facilityInput)
 		facility := must(t, facilityVal, err)
 		ids.facilityID = facility.ID
 

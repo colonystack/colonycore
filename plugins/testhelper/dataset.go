@@ -84,8 +84,8 @@ func Organism(cfg OrganismFixtureConfig) datasetapi.Organism {
 		HousingID:  cloneOptionalString(cfg.HousingID),
 		ProtocolID: cloneOptionalString(cfg.ProtocolID),
 		ProjectID:  cloneOptionalString(cfg.ProjectID),
-		Attributes: cloneAttributes(cfg.Attributes),
 	}
+	domainOrganism.SetAttributes(cloneAttributes(cfg.Attributes))
 
 	return datasetapi.NewOrganism(datasetapi.OrganismData{
 		Base:       baseDataFromDomain(domainOrganism.Base),
@@ -100,7 +100,7 @@ func Organism(cfg OrganismFixtureConfig) datasetapi.Organism {
 		HousingID:  domainOrganism.HousingID,
 		ProtocolID: domainOrganism.ProtocolID,
 		ProjectID:  domainOrganism.ProjectID,
-		Attributes: domainOrganism.Attributes,
+		Attributes: domainOrganism.AttributesMap(),
 	})
 }
 
