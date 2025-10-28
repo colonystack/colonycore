@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"colonycore/pkg/domain"
+	"colonycore/pkg/domain/extension"
 )
 
 // TestOrganismViewAttributesDeepCopy ensures that nested reference types returned
@@ -71,4 +72,32 @@ func TestOrganismViewAttributesDeepCopy(t *testing.T) {
 func domainOrganismFixture() domain.Organism {
 	now := time.Now().UTC()
 	return domain.Organism{Base: domain.Base{ID: "o1", CreatedAt: now, UpdatedAt: now}}
+}
+
+func TestCoreExtensionMapHelpers(t *testing.T) {
+	if data := coreExtensionMap(nil); data != nil {
+		t.Fatalf("expected nil map for nil slot")
+	}
+
+	slot := extension.NewSlot(extension.HookOrganismAttributes)
+	if err := slot.Set(extension.PluginID("external.plugin"), map[string]any{"flag": true}); err != nil {
+		t.Fatalf("set payload: %v", err)
+	}
+	if data := coreExtensionMap(slot); data != nil {
+		t.Fatalf("expected nil map when core payload missing")
+	}
+
+	valid := extension.NewSlot(extension.HookOrganismAttributes)
+	if err := valid.Set(extension.PluginCore, map[string]any{"flag": true}); err != nil {
+		t.Fatalf("set core payload: %v", err)
+	}
+	data := coreExtensionMap(valid)
+	if data["flag"] != true {
+		t.Fatalf("expected cloned payload to include flag")
+	}
+	data["flag"] = false
+	result := coreExtensionMap(valid)
+	if result["flag"] != true {
+		t.Fatalf("expected subsequent clone to remain unchanged")
+	}
 }
