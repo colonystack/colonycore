@@ -142,8 +142,8 @@ func TestObservationViewData(t *testing.T) {
 		Base: domain.Base{
 			ID: "observation-1",
 		},
-		Data: data,
 	}
+	observation.SetData(data)
 
 	view := newObservationView(observation)
 
@@ -168,8 +168,8 @@ func TestObservationViewHasStructuredPayload(t *testing.T) {
 		Base: domain.Base{
 			ID: "observation-1",
 		},
-		Data: dataWithStructure,
 	}
+	observation.SetData(dataWithStructure)
 
 	view := newObservationView(observation)
 	if !view.HasStructuredPayload() {
@@ -181,7 +181,6 @@ func TestObservationViewHasStructuredPayload(t *testing.T) {
 		Base: domain.Base{
 			ID: "observation-2",
 		},
-		Data: nil,
 	}
 	viewEmpty := newObservationView(observationEmpty)
 	if viewEmpty.HasStructuredPayload() {

@@ -65,7 +65,7 @@ func TestFacadeOrganismFromDomainCopiesData(t *testing.T) {
 	attrs := converted.Attributes()
 	attrs[testAttributeKey] = testLiteralMutated
 	if org.AttributesMap()[testAttributeKey] != testAttributeOriginalValue {
-		t.Fatalf("original attributes mutated: %+v", org.Attributes)
+		t.Fatalf("original attributes mutated: %+v", org.AttributesMap())
 	}
 	if cohortID, ok := converted.CohortID(); !ok || cohortID != cohort {
 		t.Fatalf("expected cohort id clone")

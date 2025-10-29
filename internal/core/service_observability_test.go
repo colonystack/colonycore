@@ -167,12 +167,13 @@ func TestServiceObservabilityComplianceEntities(t *testing.T) {
 		t.Fatalf("update treatment: %v", err)
 	}
 
-	obs, _, err := svc.CreateObservation(ctx, domain.Observation{
+	observationInput := domain.Observation{
 		ProcedureID: &procedure.ID,
 		RecordedAt:  time.Now().UTC(),
 		Observer:    "tech",
-		Data:        map[string]any{"key": "value"},
-	})
+	}
+	observationInput.SetData(map[string]any{"key": "value"})
+	obs, _, err := svc.CreateObservation(ctx, observationInput)
 	if err != nil {
 		t.Fatalf("create observation: %v", err)
 	}

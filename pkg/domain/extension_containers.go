@@ -11,9 +11,15 @@ func (o *Organism) ensureExtensionContainer() *extension.Container {
 		return o.extensions
 	}
 	container := extension.NewContainer()
-	if o.Attributes != nil {
-		if err := container.Set(extension.HookOrganismAttributes, extension.PluginCore, cloneExtensionMap(o.Attributes)); err != nil {
-			panic(fmt.Errorf("domain: organism extension container: %w", err))
+	if o.attributesSlot != nil {
+		for _, plugin := range o.attributesSlot.Plugins() {
+			payload, ok := o.attributesSlot.Get(plugin)
+			if !ok {
+				continue
+			}
+			if err := container.Set(extension.HookOrganismAttributes, plugin, payload); err != nil {
+				panic(fmt.Errorf("domain: organism extension container: %w", err))
+			}
 		}
 	}
 	o.extensions = &container
@@ -25,9 +31,15 @@ func (f *Facility) ensureExtensionContainer() *extension.Container {
 		return f.extensions
 	}
 	container := extension.NewContainer()
-	if f.EnvironmentBaselines != nil {
-		if err := container.Set(extension.HookFacilityEnvironmentBaselines, extension.PluginCore, cloneExtensionMap(f.EnvironmentBaselines)); err != nil {
-			panic(fmt.Errorf("domain: facility extension container: %w", err))
+	if f.environmentBaselinesSlot != nil {
+		for _, plugin := range f.environmentBaselinesSlot.Plugins() {
+			payload, ok := f.environmentBaselinesSlot.Get(plugin)
+			if !ok {
+				continue
+			}
+			if err := container.Set(extension.HookFacilityEnvironmentBaselines, plugin, payload); err != nil {
+				panic(fmt.Errorf("domain: facility extension container: %w", err))
+			}
 		}
 	}
 	f.extensions = &container
@@ -39,9 +51,15 @@ func (b *BreedingUnit) ensureExtensionContainer() *extension.Container {
 		return b.extensions
 	}
 	container := extension.NewContainer()
-	if b.PairingAttributes != nil {
-		if err := container.Set(extension.HookBreedingUnitPairingAttributes, extension.PluginCore, cloneExtensionMap(b.PairingAttributes)); err != nil {
-			panic(fmt.Errorf("domain: breeding unit extension container: %w", err))
+	if b.pairingAttributesSlot != nil {
+		for _, plugin := range b.pairingAttributesSlot.Plugins() {
+			payload, ok := b.pairingAttributesSlot.Get(plugin)
+			if !ok {
+				continue
+			}
+			if err := container.Set(extension.HookBreedingUnitPairingAttributes, plugin, payload); err != nil {
+				panic(fmt.Errorf("domain: breeding unit extension container: %w", err))
+			}
 		}
 	}
 	b.extensions = &container
@@ -53,9 +71,15 @@ func (o *Observation) ensureExtensionContainer() *extension.Container {
 		return o.extensions
 	}
 	container := extension.NewContainer()
-	if o.Data != nil {
-		if err := container.Set(extension.HookObservationData, extension.PluginCore, cloneExtensionMap(o.Data)); err != nil {
-			panic(fmt.Errorf("domain: observation extension container: %w", err))
+	if o.dataSlot != nil {
+		for _, plugin := range o.dataSlot.Plugins() {
+			payload, ok := o.dataSlot.Get(plugin)
+			if !ok {
+				continue
+			}
+			if err := container.Set(extension.HookObservationData, plugin, payload); err != nil {
+				panic(fmt.Errorf("domain: observation extension container: %w", err))
+			}
 		}
 	}
 	o.extensions = &container
@@ -67,9 +91,15 @@ func (s *Sample) ensureExtensionContainer() *extension.Container {
 		return s.extensions
 	}
 	container := extension.NewContainer()
-	if s.Attributes != nil {
-		if err := container.Set(extension.HookSampleAttributes, extension.PluginCore, cloneExtensionMap(s.Attributes)); err != nil {
-			panic(fmt.Errorf("domain: sample extension container: %w", err))
+	if s.attributesSlot != nil {
+		for _, plugin := range s.attributesSlot.Plugins() {
+			payload, ok := s.attributesSlot.Get(plugin)
+			if !ok {
+				continue
+			}
+			if err := container.Set(extension.HookSampleAttributes, plugin, payload); err != nil {
+				panic(fmt.Errorf("domain: sample extension container: %w", err))
+			}
 		}
 	}
 	s.extensions = &container
@@ -81,9 +111,15 @@ func (s *SupplyItem) ensureExtensionContainer() *extension.Container {
 		return s.extensions
 	}
 	container := extension.NewContainer()
-	if s.Attributes != nil {
-		if err := container.Set(extension.HookSupplyItemAttributes, extension.PluginCore, cloneExtensionMap(s.Attributes)); err != nil {
-			panic(fmt.Errorf("domain: supply item extension container: %w", err))
+	if s.attributesSlot != nil {
+		for _, plugin := range s.attributesSlot.Plugins() {
+			payload, ok := s.attributesSlot.Get(plugin)
+			if !ok {
+				continue
+			}
+			if err := container.Set(extension.HookSupplyItemAttributes, plugin, payload); err != nil {
+				panic(fmt.Errorf("domain: supply item extension container: %w", err))
+			}
 		}
 	}
 	s.extensions = &container

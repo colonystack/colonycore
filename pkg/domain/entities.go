@@ -4,6 +4,7 @@ package domain
 
 import (
 	"colonycore/pkg/domain/extension"
+	"encoding/json"
 	"time"
 )
 
@@ -138,7 +139,6 @@ type Organism struct {
 	HousingID      *string              `json:"housing_id"`
 	ProtocolID     *string              `json:"protocol_id"`
 	ProjectID      *string              `json:"project_id"`
-	Attributes     map[string]any       `json:"attributes"`
 	attributesSlot *extension.Slot      `json:"-"`
 	extensions     *extension.Container `json:"-"`
 }
@@ -169,7 +169,6 @@ type Facility struct {
 	Name                     string               `json:"name"`
 	Zone                     string               `json:"zone"`
 	AccessPolicy             string               `json:"access_policy"`
-	EnvironmentBaselines     map[string]any       `json:"environment_baselines"`
 	HousingUnitIDs           []string             `json:"housing_unit_ids"`
 	ProjectIDs               []string             `json:"project_ids"`
 	environmentBaselinesSlot *extension.Slot      `json:"-"`
@@ -189,7 +188,6 @@ type BreedingUnit struct {
 	TargetStrainID        *string              `json:"target_strain_id"`
 	PairingIntent         *string              `json:"pairing_intent,omitempty"`
 	PairingNotes          *string              `json:"pairing_notes,omitempty"`
-	PairingAttributes     map[string]any       `json:"pairing_attributes"`
 	FemaleIDs             []string             `json:"female_ids"`
 	MaleIDs               []string             `json:"male_ids"`
 	pairingAttributesSlot *extension.Slot      `json:"-"`
@@ -271,7 +269,6 @@ type Observation struct {
 	CohortID    *string              `json:"cohort_id"`
 	RecordedAt  time.Time            `json:"recorded_at"`
 	Observer    string               `json:"observer"`
-	Data        map[string]any       `json:"data"`
 	Notes       *string              `json:"notes,omitempty"`
 	dataSlot    *extension.Slot      `json:"-"`
 	extensions  *extension.Container `json:"-"`
@@ -290,7 +287,6 @@ type Sample struct {
 	StorageLocation string               `json:"storage_location"`
 	AssayType       string               `json:"assay_type"`
 	ChainOfCustody  []SampleCustodyEvent `json:"chain_of_custody"`
-	Attributes      map[string]any       `json:"attributes"`
 	attributesSlot  *extension.Slot      `json:"-"`
 	extensions      *extension.Container `json:"-"`
 }
@@ -353,9 +349,182 @@ type SupplyItem struct {
 	FacilityIDs    []string             `json:"facility_ids"`
 	ProjectIDs     []string             `json:"project_ids"`
 	ReorderLevel   int                  `json:"reorder_level"`
-	Attributes     map[string]any       `json:"attributes"`
 	attributesSlot *extension.Slot      `json:"-"`
 	extensions     *extension.Container `json:"-"`
+}
+
+type organismAlias Organism
+
+// MarshalJSON ensures organism attributes are serialised via the core plugin payload.
+func (o Organism) MarshalJSON() ([]byte, error) {
+	type payload struct {
+		organismAlias
+		Attributes map[string]any `json:"attributes,omitempty"`
+	}
+	return json.Marshal(payload{
+		organismAlias: organismAlias(o),
+		Attributes:    o.AttributesMap(),
+	})
+}
+
+// UnmarshalJSON hydrates organism extension slots from the JSON payload.
+func (o *Organism) UnmarshalJSON(data []byte) error {
+	type payload struct {
+		organismAlias
+		Attributes map[string]any `json:"attributes"`
+	}
+	var aux payload
+	if err := json.Unmarshal(data, &aux); err != nil {
+		return err
+	}
+	*o = Organism(aux.organismAlias)
+	o.SetAttributes(aux.Attributes)
+	return nil
+}
+
+type facilityAlias Facility
+
+// MarshalJSON ensures facility environment baselines are serialised via the core plugin payload.
+func (f Facility) MarshalJSON() ([]byte, error) {
+	type payload struct {
+		facilityAlias
+		EnvironmentBaselines map[string]any `json:"environment_baselines,omitempty"`
+	}
+	return json.Marshal(payload{
+		facilityAlias:        facilityAlias(f),
+		EnvironmentBaselines: f.EnvironmentBaselinesMap(),
+	})
+}
+
+// UnmarshalJSON hydrates facility extension slots from the JSON payload.
+func (f *Facility) UnmarshalJSON(data []byte) error {
+	type payload struct {
+		facilityAlias
+		EnvironmentBaselines map[string]any `json:"environment_baselines"`
+	}
+	var aux payload
+	if err := json.Unmarshal(data, &aux); err != nil {
+		return err
+	}
+	*f = Facility(aux.facilityAlias)
+	f.SetEnvironmentBaselines(aux.EnvironmentBaselines)
+	return nil
+}
+
+type breedingUnitAlias BreedingUnit
+
+// MarshalJSON ensures breeding unit pairing attributes are serialised via the core plugin payload.
+func (b BreedingUnit) MarshalJSON() ([]byte, error) {
+	type payload struct {
+		breedingUnitAlias
+		PairingAttributes map[string]any `json:"pairing_attributes,omitempty"`
+	}
+	return json.Marshal(payload{
+		breedingUnitAlias: breedingUnitAlias(b),
+		PairingAttributes: b.PairingAttributesMap(),
+	})
+}
+
+// UnmarshalJSON hydrates breeding unit extension slots from the JSON payload.
+func (b *BreedingUnit) UnmarshalJSON(data []byte) error {
+	type payload struct {
+		breedingUnitAlias
+		PairingAttributes map[string]any `json:"pairing_attributes"`
+	}
+	var aux payload
+	if err := json.Unmarshal(data, &aux); err != nil {
+		return err
+	}
+	*b = BreedingUnit(aux.breedingUnitAlias)
+	b.SetPairingAttributes(aux.PairingAttributes)
+	return nil
+}
+
+type observationAlias Observation
+
+// MarshalJSON ensures observation data are serialised via the core plugin payload.
+func (o Observation) MarshalJSON() ([]byte, error) {
+	type payload struct {
+		observationAlias
+		Data map[string]any `json:"data,omitempty"`
+	}
+	return json.Marshal(payload{
+		observationAlias: observationAlias(o),
+		Data:             o.DataMap(),
+	})
+}
+
+// UnmarshalJSON hydrates observation extension slots from the JSON payload.
+func (o *Observation) UnmarshalJSON(data []byte) error {
+	type payload struct {
+		observationAlias
+		Data map[string]any `json:"data"`
+	}
+	var aux payload
+	if err := json.Unmarshal(data, &aux); err != nil {
+		return err
+	}
+	*o = Observation(aux.observationAlias)
+	o.SetData(aux.Data)
+	return nil
+}
+
+type sampleAlias Sample
+
+// MarshalJSON ensures sample attributes are serialised via the core plugin payload.
+func (s Sample) MarshalJSON() ([]byte, error) {
+	type payload struct {
+		sampleAlias
+		Attributes map[string]any `json:"attributes,omitempty"`
+	}
+	return json.Marshal(payload{
+		sampleAlias: sampleAlias(s),
+		Attributes:  s.AttributesMap(),
+	})
+}
+
+// UnmarshalJSON hydrates sample extension slots from the JSON payload.
+func (s *Sample) UnmarshalJSON(data []byte) error {
+	type payload struct {
+		sampleAlias
+		Attributes map[string]any `json:"attributes"`
+	}
+	var aux payload
+	if err := json.Unmarshal(data, &aux); err != nil {
+		return err
+	}
+	*s = Sample(aux.sampleAlias)
+	s.SetAttributes(aux.Attributes)
+	return nil
+}
+
+type supplyAlias SupplyItem
+
+// MarshalJSON ensures supply item attributes are serialised via the core plugin payload.
+func (s SupplyItem) MarshalJSON() ([]byte, error) {
+	type payload struct {
+		supplyAlias
+		Attributes map[string]any `json:"attributes,omitempty"`
+	}
+	return json.Marshal(payload{
+		supplyAlias: supplyAlias(s),
+		Attributes:  s.AttributesMap(),
+	})
+}
+
+// UnmarshalJSON hydrates supply item extension slots from the JSON payload.
+func (s *SupplyItem) UnmarshalJSON(data []byte) error {
+	type payload struct {
+		supplyAlias
+		Attributes map[string]any `json:"attributes"`
+	}
+	var aux payload
+	if err := json.Unmarshal(data, &aux); err != nil {
+		return err
+	}
+	*s = SupplyItem(aux.supplyAlias)
+	s.SetAttributes(aux.Attributes)
+	return nil
 }
 
 // Change describes a mutation applied to an entity during a transaction.

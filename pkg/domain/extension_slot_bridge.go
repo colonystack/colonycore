@@ -1,51 +1,6 @@
 package domain
 
-import (
-	"fmt"
-
-	"colonycore/pkg/domain/extension"
-)
-
-// slotFromMap initialises an extension slot bound to the provided hook and
-// seeds it with the flattened legacy attribute map as the core payload.
-func slotFromMap(hook extension.Hook, values map[string]any) *extension.Slot {
-	slot := extension.NewSlot(hook)
-	if values == nil {
-		return slot
-	}
-	cloned := assignExtensionMap(values)
-	// store the legacy payload under the synthetic "core" plugin identifier so
-	// future phases can promote real plugin payloads without losing data.
-	_ = slot.Set(extension.PluginCore, cloned)
-	return slot
-}
-
-// mapFromSlot extracts the legacy attribute map from an extension slot. The
-// bridge expects the payload to live under the synthetic "core" plugin; any
-// additional plugin entries are rejected so we do not silently drop data while
-// the legacy map representation remains in use.
-func mapFromSlot(hook extension.Hook, slot *extension.Slot) (map[string]any, error) {
-	if slot == nil {
-		return nil, nil
-	}
-	if err := slot.BindHook(hook); err != nil {
-		return nil, err
-	}
-	for _, plugin := range slot.Plugins() {
-		if plugin != extension.PluginCore {
-			return nil, fmt.Errorf("domain: hook %s: unsupported plugin payload %q while legacy maps are active", hook, plugin)
-		}
-	}
-	payload, ok := slot.Get(extension.PluginCore)
-	if !ok || payload == nil {
-		return nil, nil
-	}
-	result, ok := payload.(map[string]any)
-	if !ok {
-		return nil, fmt.Errorf("domain: hook %s: core payload must be JSON object, got %T", hook, payload)
-	}
-	return assignExtensionMap(result), nil
-}
+import "colonycore/pkg/domain/extension"
 
 // EnsureAttributesSlot exposes the organism attribute bag through an
 // extension.Slot while keeping the legacy map field authoritative.
@@ -63,13 +18,11 @@ func (o *Organism) EnsureAttributesSlot() *extension.Slot {
 func (o *Organism) SetAttributesSlot(slot *extension.Slot) error {
 	if slot == nil {
 		o.attributesSlot = nil
-		o.Attributes = nil
 		o.extensions = nil
 		return nil
 	}
 	clone := slot.Clone()
-	attrs, err := mapFromSlot(extension.HookOrganismAttributes, clone)
-	if err != nil {
+	if err := clone.BindHook(extension.HookOrganismAttributes); err != nil {
 		return err
 	}
 	container, err := containerFromSlot(extension.HookOrganismAttributes, clone)
@@ -77,7 +30,6 @@ func (o *Organism) SetAttributesSlot(slot *extension.Slot) error {
 		return err
 	}
 	o.attributesSlot = clone
-	o.Attributes = attrs
 	o.extensions = container
 	return nil
 }
@@ -98,13 +50,11 @@ func (f *Facility) EnsureEnvironmentBaselinesSlot() *extension.Slot {
 func (f *Facility) SetEnvironmentBaselinesSlot(slot *extension.Slot) error {
 	if slot == nil {
 		f.environmentBaselinesSlot = nil
-		f.EnvironmentBaselines = nil
 		f.extensions = nil
 		return nil
 	}
 	clone := slot.Clone()
-	baselines, err := mapFromSlot(extension.HookFacilityEnvironmentBaselines, clone)
-	if err != nil {
+	if err := clone.BindHook(extension.HookFacilityEnvironmentBaselines); err != nil {
 		return err
 	}
 	container, err := containerFromSlot(extension.HookFacilityEnvironmentBaselines, clone)
@@ -112,7 +62,6 @@ func (f *Facility) SetEnvironmentBaselinesSlot(slot *extension.Slot) error {
 		return err
 	}
 	f.environmentBaselinesSlot = clone
-	f.EnvironmentBaselines = baselines
 	f.extensions = container
 	return nil
 }
@@ -133,13 +82,11 @@ func (b *BreedingUnit) EnsurePairingAttributesSlot() *extension.Slot {
 func (b *BreedingUnit) SetPairingAttributesSlot(slot *extension.Slot) error {
 	if slot == nil {
 		b.pairingAttributesSlot = nil
-		b.PairingAttributes = nil
 		b.extensions = nil
 		return nil
 	}
 	clone := slot.Clone()
-	attrs, err := mapFromSlot(extension.HookBreedingUnitPairingAttributes, clone)
-	if err != nil {
+	if err := clone.BindHook(extension.HookBreedingUnitPairingAttributes); err != nil {
 		return err
 	}
 	container, err := containerFromSlot(extension.HookBreedingUnitPairingAttributes, clone)
@@ -147,7 +94,6 @@ func (b *BreedingUnit) SetPairingAttributesSlot(slot *extension.Slot) error {
 		return err
 	}
 	b.pairingAttributesSlot = clone
-	b.PairingAttributes = attrs
 	b.extensions = container
 	return nil
 }
@@ -166,13 +112,11 @@ func (o *Observation) EnsureObservationDataSlot() *extension.Slot {
 func (o *Observation) SetObservationDataSlot(slot *extension.Slot) error {
 	if slot == nil {
 		o.dataSlot = nil
-		o.Data = nil
 		o.extensions = nil
 		return nil
 	}
 	clone := slot.Clone()
-	data, err := mapFromSlot(extension.HookObservationData, clone)
-	if err != nil {
+	if err := clone.BindHook(extension.HookObservationData); err != nil {
 		return err
 	}
 	container, err := containerFromSlot(extension.HookObservationData, clone)
@@ -180,7 +124,6 @@ func (o *Observation) SetObservationDataSlot(slot *extension.Slot) error {
 		return err
 	}
 	o.dataSlot = clone
-	o.Data = data
 	o.extensions = container
 	return nil
 }
@@ -199,13 +142,11 @@ func (s *Sample) EnsureSampleAttributesSlot() *extension.Slot {
 func (s *Sample) SetSampleAttributesSlot(slot *extension.Slot) error {
 	if slot == nil {
 		s.attributesSlot = nil
-		s.Attributes = nil
 		s.extensions = nil
 		return nil
 	}
 	clone := slot.Clone()
-	attrs, err := mapFromSlot(extension.HookSampleAttributes, clone)
-	if err != nil {
+	if err := clone.BindHook(extension.HookSampleAttributes); err != nil {
 		return err
 	}
 	container, err := containerFromSlot(extension.HookSampleAttributes, clone)
@@ -213,7 +154,6 @@ func (s *Sample) SetSampleAttributesSlot(slot *extension.Slot) error {
 		return err
 	}
 	s.attributesSlot = clone
-	s.Attributes = attrs
 	s.extensions = container
 	return nil
 }
@@ -232,13 +172,11 @@ func (s *SupplyItem) EnsureSupplyItemAttributesSlot() *extension.Slot {
 func (s *SupplyItem) SetSupplyItemAttributesSlot(slot *extension.Slot) error {
 	if slot == nil {
 		s.attributesSlot = nil
-		s.Attributes = nil
 		s.extensions = nil
 		return nil
 	}
 	clone := slot.Clone()
-	attrs, err := mapFromSlot(extension.HookSupplyItemAttributes, clone)
-	if err != nil {
+	if err := clone.BindHook(extension.HookSupplyItemAttributes); err != nil {
 		return err
 	}
 	container, err := containerFromSlot(extension.HookSupplyItemAttributes, clone)
@@ -246,7 +184,6 @@ func (s *SupplyItem) SetSupplyItemAttributesSlot(slot *extension.Slot) error {
 		return err
 	}
 	s.attributesSlot = clone
-	s.Attributes = attrs
 	s.extensions = container
 	return nil
 }

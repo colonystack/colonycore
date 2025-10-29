@@ -496,13 +496,14 @@ func TestServiceEmitsChangesForNewEntities(t *testing.T) {
 	assertSingleChange(t, collector.take(), domain.EntityTreatment, domain.ActionDelete)
 
 	now := time.Now().UTC()
-	observation, res, err := svc.CreateObservation(ctx, domain.Observation{
+	observationInput := domain.Observation{
 		ProcedureID: &procedure.ID,
 		OrganismID:  &organism.ID,
 		RecordedAt:  now,
 		Observer:    "tech",
-		Data:        map[string]any{"score": 5},
-	})
+	}
+	observationInput.SetData(map[string]any{"score": 5})
+	observation, res, err := svc.CreateObservation(ctx, observationInput)
 	if err != nil {
 		t.Fatalf("create observation: %v", err)
 	}

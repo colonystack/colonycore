@@ -99,8 +99,8 @@ func TestOrganismSetAttributesSlotClonesInput(t *testing.T) {
 	if err := organism.SetAttributesSlot(nil); err != nil {
 		t.Fatalf("SetAttributesSlot nil: %v", err)
 	}
-	if organism.Attributes != nil || organism.attributesSlot != nil {
-		t.Fatalf("expected attributes and slot to clear when setting nil")
+	if organism.AttributesMap() != nil || organism.attributesSlot != nil {
+		t.Fatalf("expected attributes view and slot to clear when setting nil")
 	}
 	if organism.extensions != nil {
 		t.Fatalf("expected extension container cleared on nil slot")
@@ -250,7 +250,7 @@ func TestFacilitySlotLifecycle(t *testing.T) {
 	if facility.environmentBaselinesSlot == external {
 		t.Fatalf("expected facility to clone incoming slot")
 	}
-	if facility.EnvironmentBaselines["temp"] != "22C" {
+	if facility.EnvironmentBaselinesMap()["temp"] != "22C" {
 		t.Fatalf("expected facility map to reflect slot payload")
 	}
 	if facility.extensions == nil {
@@ -269,8 +269,8 @@ func TestFacilitySlotLifecycle(t *testing.T) {
 	if err := facility.SetEnvironmentBaselinesSlot(nil); err != nil {
 		t.Fatalf("SetEnvironmentBaselinesSlot nil: %v", err)
 	}
-	if facility.EnvironmentBaselines != nil || facility.environmentBaselinesSlot != nil {
-		t.Fatalf("expected facility slot and map cleared when nil provided")
+	if facility.EnvironmentBaselinesMap() != nil || facility.environmentBaselinesSlot != nil {
+		t.Fatalf("expected facility slot and view cleared when nil provided")
 	}
 	if facility.extensions != nil {
 		t.Fatalf("expected facility extension container cleared on nil slot")
@@ -323,8 +323,8 @@ func TestBreedingUnitSlotLifecycle(t *testing.T) {
 	if err := unit.SetPairingAttributesSlot(nil); err != nil {
 		t.Fatalf("SetPairingAttributesSlot nil: %v", err)
 	}
-	if unit.PairingAttributes != nil || unit.pairingAttributesSlot != nil {
-		t.Fatalf("expected breeding unit slot and map cleared when nil provided")
+	if unit.PairingAttributesMap() != nil || unit.pairingAttributesSlot != nil {
+		t.Fatalf("expected breeding unit slot and view cleared when nil provided")
 	}
 	if unit.extensions != nil {
 		t.Fatalf("expected breeding unit extension container cleared on nil slot")
@@ -377,8 +377,8 @@ func TestObservationSlotLifecycle(t *testing.T) {
 	if err := obs.SetObservationDataSlot(nil); err != nil {
 		t.Fatalf("SetObservationDataSlot nil: %v", err)
 	}
-	if obs.Data != nil || obs.dataSlot != nil {
-		t.Fatalf("expected observation slot and map cleared when nil provided")
+	if obs.DataMap() != nil || obs.dataSlot != nil {
+		t.Fatalf("expected observation slot and view cleared when nil provided")
 	}
 	if obs.extensions != nil {
 		t.Fatalf("expected observation extension container cleared on nil slot")
@@ -431,8 +431,8 @@ func TestSampleSlotLifecycle(t *testing.T) {
 	if err := sample.SetSampleAttributesSlot(nil); err != nil {
 		t.Fatalf("SetSampleAttributesSlot nil: %v", err)
 	}
-	if sample.Attributes != nil || sample.attributesSlot != nil {
-		t.Fatalf("expected sample slot and map cleared when nil provided")
+	if sample.AttributesMap() != nil || sample.attributesSlot != nil {
+		t.Fatalf("expected sample slot and view cleared when nil provided")
 	}
 	if sample.extensions != nil {
 		t.Fatalf("expected sample extension container cleared on nil slot")
@@ -485,8 +485,8 @@ func TestSupplyItemSlotLifecycle(t *testing.T) {
 	if err := supply.SetSupplyItemAttributesSlot(nil); err != nil {
 		t.Fatalf("SetSupplyItemAttributesSlot nil: %v", err)
 	}
-	if supply.Attributes != nil || supply.attributesSlot != nil {
-		t.Fatalf("expected supply slot and map cleared when nil provided")
+	if supply.AttributesMap() != nil || supply.attributesSlot != nil {
+		t.Fatalf("expected supply slot and view cleared when nil provided")
 	}
 	if supply.extensions != nil {
 		t.Fatalf("expected supply extension container cleared on nil slot")
@@ -641,11 +641,15 @@ func TestExtensionSlotBridgeRejectsNonCorePlugins(t *testing.T) {
 		t.Fatalf("expected slot set to succeed, got %v", err)
 	}
 	var organism Organism
-	if err := organism.SetAttributesSlot(slot); err == nil {
-		t.Fatalf("expected non-core payload to be rejected")
+	if err := organism.SetAttributesSlot(slot); err != nil {
+		t.Fatalf("expected non-core payload to be accepted: %v", err)
 	}
 	if organism.AttributesMap() != nil {
-		t.Fatalf("expected organism attributes to remain nil when payload rejected")
+		t.Fatalf("expected organism attributes map to be nil when only external plugins provided")
+	}
+	payload := organism.EnsureAttributesSlot()
+	if len(payload.Plugins()) != 1 || payload.Plugins()[0] != extension.PluginID("external.plugin") {
+		t.Fatalf("expected external plugin payload to persist, got %+v", payload.Plugins())
 	}
 }
 

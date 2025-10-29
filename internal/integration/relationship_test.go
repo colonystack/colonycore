@@ -164,13 +164,14 @@ func TestIntegrationEntityRelationships(t *testing.T) {
 			}
 
 			procedureID := procedure.ID
-			observation, res, err := svc.CreateObservation(ctx, domain.Observation{
+			observationInput := domain.Observation{
 				ProcedureID: &procedureID,
 				Observer:    "Tech",
 				RecordedAt:  now,
-				Data:        map[string]any{"weight": 12.5},
 				Notes:       strPtr("baseline observation"),
-			})
+			}
+			observationInput.SetData(map[string]any{"weight": 12.5})
+			observation, res, err := svc.CreateObservation(ctx, observationInput)
 			if err != nil {
 				t.Fatalf("create observation: %v", err)
 			}

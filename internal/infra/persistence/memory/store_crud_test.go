@@ -186,14 +186,15 @@ func seedMemoryStore(t *testing.T, store *memory.Store) memoryIDs {
 		}
 
 		recorded := time.Now().UTC()
-		observationVal, err := tx.CreateObservation(domain.Observation{
+		observationInput := domain.Observation{
 			ProcedureID: &ids.procedureID,
 			OrganismID:  &ids.organismAID,
 			RecordedAt:  recorded,
 			Observer:    "tech",
-			Data:        map[string]any{"score": 5},
 			Notes:       strPtr("baseline"),
-		})
+		}
+		observationInput.SetData(map[string]any{"score": 5})
+		observationVal, err := tx.CreateObservation(observationInput)
 		observation := must(t, observationVal, err)
 		ids.observationID = observation.ID
 
