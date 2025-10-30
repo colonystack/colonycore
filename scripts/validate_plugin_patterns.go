@@ -16,7 +16,11 @@ func main() {
 
 func run(args []string, stderr io.Writer, validate func(string) []validation.Error) int {
 	if len(args) < 2 {
-		if _, err := fmt.Fprintf(stderr, "Usage: %s <plugin-directory>\n", args[0]); err != nil {
+		progName := "validate_plugin_patterns"
+		if len(args) > 0 {
+			progName = args[0]
+		}
+		if _, err := fmt.Fprintf(stderr, "Usage: %s <plugin-directory>\n", progName); err != nil {
 			return 1
 		}
 		return 1

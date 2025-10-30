@@ -119,3 +119,137 @@ func TestContainerSetOnZeroValueInitialisesMap(t *testing.T) {
 		t.Fatalf("unexpected payload: %+v", payload)
 	}
 }
+
+// TestIsJSONArray tests the isJSONArray helper function with 0% coverage
+func TestIsJSONArray(t *testing.T) {
+	// Test with nil
+	if isJSONArray(nil) {
+		t.Errorf("Expected isJSONArray(nil) to be false")
+	}
+
+	// Test with slice
+	if !isJSONArray([]string{"a", "b"}) {
+		t.Errorf("Expected isJSONArray(slice) to be true")
+	}
+
+	// Test with array
+	arr := [3]int{1, 2, 3}
+	if !isJSONArray(arr) {
+		t.Errorf("Expected isJSONArray(array) to be true")
+	}
+
+	// Test with non-array types
+	if isJSONArray("string") {
+		t.Errorf("Expected isJSONArray(string) to be false")
+	}
+
+	if isJSONArray(42) {
+		t.Errorf("Expected isJSONArray(int) to be false")
+	}
+
+	if isJSONArray(map[string]int{"k": 1}) {
+		t.Errorf("Expected isJSONArray(map) to be false")
+	}
+}
+
+// TestPluginsEdgeCases tests additional edge cases for the Plugins method
+func TestPluginsEdgeCases(t *testing.T) {
+	// Test with multiple plugins to ensure sorting works
+	container := NewContainer()
+
+	if err := container.Set(HookOrganismAttributes, PluginID("zebra"), map[string]any{"z": 1}); err != nil {
+		t.Fatalf("unexpected Set error: %v", err)
+	}
+	if err := container.Set(HookOrganismAttributes, PluginID("alpha"), map[string]any{"a": 1}); err != nil {
+		t.Fatalf("unexpected Set error: %v", err)
+	}
+	if err := container.Set(HookOrganismAttributes, PluginID("beta"), map[string]any{"b": 1}); err != nil {
+		t.Fatalf("unexpected Set error: %v", err)
+	}
+
+	plugins := container.Plugins(HookOrganismAttributes)
+	if len(plugins) != 3 {
+		t.Fatalf("Expected 3 plugins, got %d", len(plugins))
+	}
+
+	// Verify sorting
+	expected := []PluginID{"alpha", "beta", "zebra"}
+	for i, plugin := range plugins {
+		if plugin != expected[i] {
+			t.Errorf("Expected plugin %d to be %s, got %s", i, expected[i], plugin)
+		}
+	}
+}
+
+// TestContainerMarshalJSONEdgeCases tests edge cases in JSON marshaling
+func TestContainerMarshalJSONEdgeCases(t *testing.T) {
+	// Test marshaling empty container
+	container := NewContainer()
+	data, err := json.Marshal(container)
+	if err != nil {
+		t.Fatalf("Expected empty container to marshal successfully: %v", err)
+	}
+
+	// Should produce empty object
+	if string(data) != "{}" {
+		t.Errorf("Expected empty container to marshal to '{}', got %s", string(data))
+	}
+
+	// Test marshaling container with data
+	if err := container.Set(HookOrganismAttributes, PluginCore, map[string]any{"test": true}); err != nil {
+		t.Fatalf("Expected container with data to set successfully: %v", err)
+	}
+
+	data2, err := json.Marshal(container)
+	if err != nil {
+		t.Fatalf("Expected container with data to marshal successfully: %v", err)
+	}
+
+	// Should contain the hook and plugin data
+	var result map[string]any
+	if err := json.Unmarshal(data2, &result); err != nil {
+		t.Fatalf("Failed to unmarshal result: %v", err)
+	}
+
+	if result[string(HookOrganismAttributes)] == nil {
+		t.Errorf("Expected marshaled container to include hook data")
+	}
+}
+
+// TestValidateHookPayloadCoverage tests validateHookPayload function coverage
+func TestValidateHookPayloadCoverage(t *testing.T) {
+	container := NewContainer()
+
+	// Test setting invalid payload types to trigger validateHookPayload error paths
+	// These should be rejected by the validation
+
+	// Test with string instead of map[string]any
+	err := container.Set(HookOrganismAttributes, PluginCore, "invalid-string")
+	if err == nil {
+		t.Error("Expected error when setting string payload")
+	}
+
+	// Test with integer
+	err = container.Set(HookOrganismAttributes, PluginCore, 42)
+	if err == nil {
+		t.Error("Expected error when setting integer payload")
+	}
+
+	// Test with slice instead of map
+	err = container.Set(HookOrganismAttributes, PluginCore, []string{"invalid"})
+	if err == nil {
+		t.Error("Expected error when setting slice payload")
+	}
+
+	// Test with nil (this should be allowed)
+	err = container.Set(HookOrganismAttributes, PluginCore, nil)
+	if err != nil {
+		t.Errorf("Expected nil payload to be allowed, got error: %v", err)
+	}
+
+	// Test with valid map[string]any (should work)
+	err = container.Set(HookOrganismAttributes, PluginCore, map[string]any{"valid": true})
+	if err != nil {
+		t.Errorf("Expected valid map payload to work, got error: %v", err)
+	}
+}

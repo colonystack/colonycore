@@ -201,3 +201,144 @@ func TestDerefTime(t *testing.T) {
 		t.Errorf("Expected derefTime to return nil for nil pointer, got %v", zeroTime)
 	}
 }
+
+// TestTreatmentProcedureID tests the ProcedureID method with 0% coverage
+func TestTreatmentProcedureID(t *testing.T) {
+	treatmentData := TreatmentData{
+		Base: BaseData{
+			ID: "treatment-1",
+		},
+		Name:        "Test Treatment",
+		ProcedureID: "procedure-1",
+	}
+	const clonedProcedureID = "procedure-1"
+
+	treatment := NewTreatment(treatmentData)
+	if treatment.ProcedureID() != clonedProcedureID {
+		t.Errorf("Expected ProcedureID 'procedure-1', got %v", treatment.ProcedureID())
+	}
+}
+
+// TestObservationHasStructuredPayload tests the HasStructuredPayload method with 0% coverage
+func TestObservationHasStructuredPayload(t *testing.T) {
+	// Test with structured data
+	obsData := ObservationData{
+		Base: BaseData{
+			ID: "obs-1",
+		},
+		Observer: "Tech",
+		Data:     map[string]any{"weight": 50.5},
+	}
+	obs := NewObservation(obsData)
+	if !obs.HasStructuredPayload() {
+		t.Errorf("Expected HasStructuredPayload to be true for non-empty data")
+	}
+
+	// Test with nil data
+	obsDataEmpty := ObservationData{
+		Base: BaseData{
+			ID: "obs-2",
+		},
+		Observer: "Tech",
+	}
+	obsEmpty := NewObservation(obsDataEmpty)
+	if obsEmpty.HasStructuredPayload() {
+		t.Errorf("Expected HasStructuredPayload to be false for nil data")
+	}
+}
+
+// TestObservationHasNarrativeNotes tests the HasNarrativeNotes method with 0% coverage
+func TestObservationHasNarrativeNotes(t *testing.T) {
+	// Test with notes
+	obsData := ObservationData{
+		Base: BaseData{
+			ID: "obs-1",
+		},
+		Observer: "Tech",
+		Notes:    stringPtr("These are some notes"),
+	}
+	obs := NewObservation(obsData)
+	if !obs.HasNarrativeNotes() {
+		t.Errorf("Expected HasNarrativeNotes to be true for non-empty notes")
+	}
+
+	// Test without notes
+	obsDataEmpty := ObservationData{
+		Base: BaseData{
+			ID: "obs-2",
+		},
+		Observer: "Tech",
+	}
+	obsEmpty := NewObservation(obsDataEmpty)
+	if obsEmpty.HasNarrativeNotes() {
+		t.Errorf("Expected HasNarrativeNotes to be false for nil notes")
+	}
+}
+
+// TestSampleSourceType tests the SourceType method with 0% coverage
+func TestSampleSourceType(t *testing.T) {
+	sampleData := SampleData{
+		Base: BaseData{
+			ID: "sample-1",
+		},
+		Identifier: "S-001",
+		SourceType: "blood",
+	}
+	sample := NewSample(sampleData)
+	if sample.SourceType() != "blood" {
+		t.Errorf("Expected SourceType 'blood', got %v", sample.SourceType())
+	}
+}
+
+// TestSampleFacilityID tests the FacilityID method with 0% coverage
+func TestSampleFacilityID(t *testing.T) {
+	sampleData := SampleData{
+		Base: BaseData{
+			ID: "sample-1",
+		},
+		Identifier: "S-001",
+		FacilityID: "facility-1",
+	}
+	sample := NewSample(sampleData)
+	if sample.FacilityID() != "facility-1" {
+		t.Errorf("Expected FacilityID 'facility-1', got %v", sample.FacilityID())
+	}
+}
+
+// TestSampleCollectedAt tests the CollectedAt method with 0% coverage
+func TestSampleCollectedAt(t *testing.T) {
+	testTime := time.Now()
+	sampleData := SampleData{
+		Base: BaseData{
+			ID: "sample-1",
+		},
+		Identifier:  "S-001",
+		CollectedAt: testTime,
+	}
+	sample := NewSample(sampleData)
+	if !sample.CollectedAt().Equal(testTime) {
+		t.Errorf("Expected CollectedAt to be %v, got %v", testTime, sample.CollectedAt())
+	}
+}
+
+// TestSupplyItemDescription tests the Description method with 0% coverage
+func TestSupplyItemDescription(t *testing.T) {
+	description := "Test description"
+	supplyData := SupplyItemData{
+		Base: BaseData{
+			ID: "supply-1",
+		},
+		SKU:         "SKU-001",
+		Name:        "Test Item",
+		Description: &description,
+	}
+	supply := NewSupplyItem(supplyData)
+	actualDesc := supply.Description()
+	if actualDesc != description {
+		t.Errorf("Expected Description '%s', got %v", description, actualDesc)
+	}
+}
+
+func stringPtr(s string) *string {
+	return &s
+}
