@@ -110,6 +110,10 @@ func (o stubOrganism) HousingID() (string, bool) {
 func (stubOrganism) ProtocolID() (string, bool) { return "", false }
 func (stubOrganism) ProjectID() (string, bool)  { return "", false }
 func (stubOrganism) Attributes() map[string]any { return nil }
+func (stubOrganism) Extensions() pluginapi.ExtensionSet {
+	return pluginapi.NewExtensionSet(nil)
+}
+func (stubOrganism) CoreAttributes() map[string]any { return nil }
 
 // Contextual lifecycle stage accessors
 func (stubOrganism) GetCurrentStage() pluginapi.LifecycleStageRef {

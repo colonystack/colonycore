@@ -37,7 +37,7 @@ func TestOrganismViewAttributesDeepCopy(t *testing.T) {
 	lsMap["m"] = "updated"
 	strSlice := ls[1].([]string)
 	if len(strSlice) > 0 {
-		strSlice[0] = "mutated"
+		strSlice[0] = testLiteralMutated
 	}
 
 	// Fetch again to ensure underlying data remains unchanged

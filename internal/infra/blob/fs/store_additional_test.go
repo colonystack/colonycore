@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	coreblob "colonycore/internal/blob/core"
@@ -62,3 +63,50 @@ func TestStoreDriverAndPresignAndDelete(t *testing.T) {
 		t.Fatalf("expected delete false for missing, err=%v deleted=%v", err, deleted)
 	}
 }
+
+func TestCloneMetadataAndLocalURL(t *testing.T) {
+	if cloneMetadata(nil) != nil {
+		t.Fatalf("expected nil clone for nil input")
+	}
+	original := map[string]string{"k": "v"}
+	cloned := cloneMetadata(original)
+	if cloned["k"] != "v" {
+		t.Fatalf("unexpected clone value")
+	}
+	cloned["k"] = "mutated"
+	if original["k"] != "v" {
+		t.Fatalf("expected original to remain unchanged")
+	}
+
+	store, err := New(t.TempDir())
+	if err != nil {
+		t.Fatalf("new store: %v", err)
+	}
+	if got := store.localURL("nested/path"); got != "http://local.blob/nested/path" {
+		t.Fatalf("unexpected local url %s", got)
+	}
+}
+
+func TestWriteAndReadMetaErrors(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "meta.json")
+
+	originalMarshal := jsonMarshal
+	jsonMarshal = func(any) ([]byte, error) { return nil, assertError("marshal fail") }
+	t.Cleanup(func() { jsonMarshal = originalMarshal })
+
+	if err := writeJSON(path, metaFile{}); err == nil || !strings.Contains(err.Error(), "marshal fail") {
+		t.Fatalf("expected marshal fail error, got %v", err)
+	}
+
+	if err := os.WriteFile(path, []byte("not-json"), 0o600); err != nil {
+		t.Fatalf("write invalid meta: %v", err)
+	}
+	if _, err := readMeta(path); err == nil {
+		t.Fatalf("expected readMeta error for invalid json")
+	}
+}
+
+type assertError string
+
+func (e assertError) Error() string { return string(e) }

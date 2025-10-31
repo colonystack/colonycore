@@ -221,13 +221,14 @@ func TestTreatmentProcedureID(t *testing.T) {
 
 // TestObservationHasStructuredPayload tests the HasStructuredPayload method with 0% coverage
 func TestObservationHasStructuredPayload(t *testing.T) {
+	hooks := NewExtensionHookContext()
 	// Test with structured data
 	obsData := ObservationData{
 		Base: BaseData{
 			ID: "obs-1",
 		},
-		Observer: "Tech",
-		Data:     map[string]any{"weight": 50.5},
+		Observer:   "Tech",
+		Extensions: newCoreExtensionSet(hooks.ObservationData(), map[string]any{"weight": 50.5}),
 	}
 	obs := NewObservation(obsData)
 	if !obs.HasStructuredPayload() {
@@ -239,7 +240,8 @@ func TestObservationHasStructuredPayload(t *testing.T) {
 		Base: BaseData{
 			ID: "obs-2",
 		},
-		Observer: "Tech",
+		Observer:   "Tech",
+		Extensions: newCoreExtensionSet(hooks.ObservationData(), nil),
 	}
 	obsEmpty := NewObservation(obsDataEmpty)
 	if obsEmpty.HasStructuredPayload() {

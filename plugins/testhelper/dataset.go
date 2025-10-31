@@ -87,6 +87,20 @@ func Organism(cfg OrganismFixtureConfig) datasetapi.Organism {
 	}
 	domainOrganism.SetAttributes(cloneAttributes(cfg.Attributes))
 
+	coreExtensions := domainOrganism.AttributesMap()
+	var extensionSet datasetapi.ExtensionSet
+	if len(coreExtensions) > 0 {
+		hook := datasetapi.NewExtensionHookContext().OrganismAttributes()
+		contributor := datasetapi.NewExtensionContributorContext().Core()
+		extensionSet = datasetapi.NewExtensionSet(map[string]map[string]any{
+			hook.String(): {
+				contributor.String(): cloneAttributes(coreExtensions),
+			},
+		})
+	} else {
+		extensionSet = datasetapi.NewExtensionSet(nil)
+	}
+
 	return datasetapi.NewOrganism(datasetapi.OrganismData{
 		Base:       baseDataFromDomain(domainOrganism.Base),
 		Name:       domainOrganism.Name,
@@ -100,7 +114,7 @@ func Organism(cfg OrganismFixtureConfig) datasetapi.Organism {
 		HousingID:  domainOrganism.HousingID,
 		ProtocolID: domainOrganism.ProtocolID,
 		ProjectID:  domainOrganism.ProjectID,
-		Attributes: domainOrganism.AttributesMap(),
+		Extensions: extensionSet,
 	})
 }
 

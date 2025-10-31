@@ -35,6 +35,17 @@ func TestCLIInvalidPath(t *testing.T) {
 	}
 }
 
+func TestCLIFlagParseError(t *testing.T) {
+	out, errOut := &bytes.Buffer{}, &bytes.Buffer{}
+	code := cli([]string{"-unknown"}, out, errOut)
+	if code != 2 {
+		t.Fatalf("expected flag parse error exit code 2, got %d", code)
+	}
+	if !strings.Contains(errOut.String(), "flag provided but not defined") {
+		t.Fatalf("expected flag parse error message, got %s", errOut.String())
+	}
+}
+
 // TestParseRegistryErrors covers structural parse error conditions.
 func TestParseRegistryErrors(t *testing.T) {
 	cases := []string{
@@ -93,6 +104,46 @@ func TestUnsupportedListField(t *testing.T) {
 	}
 	if err := run(tmp.Name()); err == nil {
 		t.Fatalf("expected unsupported list field error")
+	}
+}
+
+func TestRunAllScalarFields(t *testing.T) {
+	content := strings.Join([]string{
+		"documents:",
+		"  - id: RFC-4",
+		"    type: RFC",
+		"    title: Example",
+		"    status: Draft",
+		"    created: 2025-01-01",
+		"    date: 2025-01-01",
+		"    last_updated: 2025-01-02",
+		"    quorum: simple",
+		"    target_release: v1",
+		"    path: docs/rfc/rfc-0004.md",
+		"    authors:",
+		"      - Alice",
+		"    stakeholders:",
+		"      - Bob",
+		"    reviewers:",
+		"      - Carol",
+		"    owners:",
+		"      - Ops",
+		"    deciders:",
+		"      - Board",
+		"    linked_annexes:",
+		"      - ANNEX-1",
+		"    linked_adrs:",
+		"      - ADR-1",
+		"    linked_rfcs:",
+		"      - RFC-2",
+	}, "\n") + "\n"
+	rel := "test_registry_full.yaml"
+	if err := os.WriteFile(rel, []byte(content), 0o600); err != nil {
+		t.Fatalf("write rel: %v", err)
+	}
+	defer func() { _ = os.Remove(rel) }()
+	if err := run(rel); err != nil {
+		t.Fatalf("expected run success with full scalar coverage, got %v", err)
 	}
 }
 

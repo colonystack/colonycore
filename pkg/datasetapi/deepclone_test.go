@@ -14,7 +14,8 @@ func TestDeepCloneAdditionalBranches(t *testing.T) {
 		"emptyMap":   map[string]any{},
 		"emptySlice": []any{},
 	}
-	org := NewOrganism(OrganismData{Base: BaseData{ID: "clone", CreatedAt: time.Now().UTC()}, Attributes: nested})
+	hook := NewExtensionHookContext().OrganismAttributes()
+	org := NewOrganism(OrganismData{Base: BaseData{ID: "clone", CreatedAt: time.Now().UTC()}, Extensions: newCoreExtensionSet(hook, nested)})
 	attrs := org.Attributes()
 	attrs["mapslice"].([]map[string]any)[0]["k"] = mutatedLiteral
 	attrs["mixed"].([]any)[0].([]string)[0] = mutatedLiteral

@@ -10,6 +10,8 @@ import (
 	"time"
 )
 
+var extensionHooks = NewExtensionHookContext()
+
 const (
 	// Procedure status constants
 	statusInProgress = "in_progress"
@@ -96,7 +98,7 @@ type OrganismData struct {
 	HousingID  *string
 	ProtocolID *string
 	ProjectID  *string
-	Attributes map[string]any
+	Extensions ExtensionSet
 }
 
 // CohortData describes the fields required to construct a Cohort facade.
@@ -120,32 +122,32 @@ type HousingUnitData struct {
 
 // FacilityData describes the fields required to construct a Facility facade.
 type FacilityData struct {
-	Base                 BaseData
-	Code                 string
-	Name                 string
-	Zone                 string
-	AccessPolicy         string
-	EnvironmentBaselines map[string]any
-	HousingUnitIDs       []string
-	ProjectIDs           []string
+	Base           BaseData
+	Code           string
+	Name           string
+	Zone           string
+	AccessPolicy   string
+	Extensions     ExtensionSet
+	HousingUnitIDs []string
+	ProjectIDs     []string
 }
 
 // BreedingUnitData describes the fields required to construct a BreedingUnit facade.
 type BreedingUnitData struct {
-	Base              BaseData
-	Name              string
-	Strategy          string
-	HousingID         *string
-	ProtocolID        *string
-	LineID            *string
-	StrainID          *string
-	TargetLineID      *string
-	TargetStrainID    *string
-	PairingIntent     *string
-	PairingNotes      *string
-	PairingAttributes map[string]any
-	FemaleIDs         []string
-	MaleIDs           []string
+	Base           BaseData
+	Name           string
+	Strategy       string
+	HousingID      *string
+	ProtocolID     *string
+	LineID         *string
+	StrainID       *string
+	TargetLineID   *string
+	TargetStrainID *string
+	PairingIntent  *string
+	PairingNotes   *string
+	Extensions     ExtensionSet
+	FemaleIDs      []string
+	MaleIDs        []string
 }
 
 // ProcedureData describes the fields required to construct a Procedure facade.
@@ -182,7 +184,7 @@ type ObservationData struct {
 	CohortID    *string
 	RecordedAt  time.Time
 	Observer    string
-	Data        map[string]any
+	Extensions  ExtensionSet
 	Notes       *string
 }
 
@@ -199,7 +201,7 @@ type SampleData struct {
 	StorageLocation string
 	AssayType       string
 	ChainOfCustody  []SampleCustodyEventData
-	Attributes      map[string]any
+	Extensions      ExtensionSet
 }
 
 // SampleCustodyEventData represents an entry in a sample custody chain.
@@ -259,7 +261,7 @@ type SupplyItemData struct {
 	FacilityIDs    []string
 	ProjectIDs     []string
 	ReorderLevel   int
-	Attributes     map[string]any
+	Extensions     ExtensionSet
 }
 
 // Organism exposes read-only organism metadata to dataset plugins.
@@ -279,6 +281,8 @@ type Organism interface {
 	ProtocolID() (string, bool)
 	ProjectID() (string, bool)
 	Attributes() map[string]any
+	Extensions() ExtensionSet
+	CoreAttributes() map[string]any
 
 	// Contextual lifecycle stage accessors
 	GetCurrentStage() LifecycleStageRef
@@ -331,6 +335,8 @@ type Facility interface {
 	Zone() string
 	AccessPolicy() string
 	EnvironmentBaselines() map[string]any
+	Extensions() ExtensionSet
+	CoreEnvironmentBaselines() map[string]any
 	HousingUnitIDs() []string
 	ProjectIDs() []string
 
@@ -356,6 +362,8 @@ type BreedingUnit interface {
 	PairingIntent() string
 	PairingNotes() string
 	PairingAttributes() map[string]any
+	Extensions() ExtensionSet
+	CorePairingAttributes() map[string]any
 	FemaleIDs() []string
 	MaleIDs() []string
 
@@ -417,6 +425,7 @@ type Observation interface {
 	RecordedAt() time.Time
 	Observer() string
 	Data() map[string]any
+	Extensions() ExtensionSet
 	Notes() string
 
 	// Contextual data shape accessors
@@ -441,6 +450,8 @@ type Sample interface {
 	AssayType() string
 	ChainOfCustody() []SampleCustodyEvent
 	Attributes() map[string]any
+	Extensions() ExtensionSet
+	CoreAttributes() map[string]any
 
 	// Contextual sample accessors
 	GetSource() SampleSourceRef
@@ -524,6 +535,8 @@ type SupplyItem interface {
 	ProjectIDs() []string
 	ReorderLevel() int
 	Attributes() map[string]any
+	Extensions() ExtensionSet
+	CoreAttributes() map[string]any
 
 	// Contextual inventory accessors
 	GetInventoryStatus(reference time.Time) SupplyStatusRef
@@ -551,36 +564,42 @@ func (b base) UpdatedAt() time.Time { return b.updatedAt }
 
 type organism struct {
 	base
-	name       string
-	species    string
-	line       string
-	lineID     *string
-	strainID   *string
-	parentIDs  []string
-	stage      LifecycleStage
-	cohortID   *string
-	housingID  *string
-	protocolID *string
-	projectID  *string
-	attributes map[string]any
+	name           string
+	species        string
+	line           string
+	lineID         *string
+	strainID       *string
+	parentIDs      []string
+	stage          LifecycleStage
+	cohortID       *string
+	housingID      *string
+	protocolID     *string
+	projectID      *string
+	extensions     ExtensionSet
+	coreAttributes map[string]any
 }
 
 // NewOrganism constructs a read-only Organism facade.
 func NewOrganism(data OrganismData) Organism {
+	ext := data.Extensions
+	if ext == nil {
+		ext = NewExtensionSet(nil)
+	}
 	return organism{
-		base:       newBase(data.Base),
-		name:       data.Name,
-		species:    data.Species,
-		line:       data.Line,
-		lineID:     cloneOptionalString(data.LineID),
-		strainID:   cloneOptionalString(data.StrainID),
-		parentIDs:  append([]string(nil), data.ParentIDs...),
-		stage:      data.Stage,
-		cohortID:   cloneOptionalString(data.CohortID),
-		housingID:  cloneOptionalString(data.HousingID),
-		protocolID: cloneOptionalString(data.ProtocolID),
-		projectID:  cloneOptionalString(data.ProjectID),
-		attributes: cloneAttributes(data.Attributes),
+		base:           newBase(data.Base),
+		name:           data.Name,
+		species:        data.Species,
+		line:           data.Line,
+		lineID:         cloneOptionalString(data.LineID),
+		strainID:       cloneOptionalString(data.StrainID),
+		parentIDs:      append([]string(nil), data.ParentIDs...),
+		stage:          data.Stage,
+		cohortID:       cloneOptionalString(data.CohortID),
+		housingID:      cloneOptionalString(data.HousingID),
+		protocolID:     cloneOptionalString(data.ProtocolID),
+		projectID:      cloneOptionalString(data.ProjectID),
+		extensions:     ext,
+		coreAttributes: extractCoreMap(ext, extensionHooks.OrganismAttributes()),
 	}
 }
 
@@ -615,7 +634,13 @@ func (o organism) ProjectID() (string, bool) {
 	return derefString(o.projectID)
 }
 func (o organism) Attributes() map[string]any {
-	return cloneAttributes(o.attributes)
+	return o.CoreAttributes()
+}
+func (o organism) Extensions() ExtensionSet {
+	return o.extensions
+}
+func (o organism) CoreAttributes() map[string]any {
+	return cloneAttributes(o.coreAttributes)
 }
 
 // Contextual lifecycle stage accessors
@@ -685,7 +710,7 @@ func (o organism) MarshalJSON() ([]byte, error) {
 		HousingID:  cloneOptionalString(o.housingID),
 		ProtocolID: cloneOptionalString(o.protocolID),
 		ProjectID:  cloneOptionalString(o.projectID),
-		Attributes: cloneAttributes(o.attributes),
+		Attributes: o.CoreAttributes(),
 	})
 }
 
@@ -863,26 +888,32 @@ func (h housingUnit) MarshalJSON() ([]byte, error) {
 
 type facility struct {
 	base
-	code                 string
-	name                 string
-	zone                 string
-	accessPolicy         string
-	environmentBaselines map[string]any
-	housingUnitIDs       []string
-	projectIDs           []string
+	code           string
+	name           string
+	zone           string
+	accessPolicy   string
+	extensions     ExtensionSet
+	coreBaselines  map[string]any
+	housingUnitIDs []string
+	projectIDs     []string
 }
 
 // NewFacility constructs a read-only Facility facade.
 func NewFacility(data FacilityData) Facility {
+	ext := data.Extensions
+	if ext == nil {
+		ext = NewExtensionSet(nil)
+	}
 	return facility{
-		base:                 newBase(data.Base),
-		code:                 data.Code,
-		name:                 data.Name,
-		zone:                 data.Zone,
-		accessPolicy:         data.AccessPolicy,
-		environmentBaselines: cloneAttributes(data.EnvironmentBaselines),
-		housingUnitIDs:       cloneStringSlice(data.HousingUnitIDs),
-		projectIDs:           cloneStringSlice(data.ProjectIDs),
+		base:           newBase(data.Base),
+		code:           data.Code,
+		name:           data.Name,
+		zone:           data.Zone,
+		accessPolicy:   data.AccessPolicy,
+		extensions:     ext,
+		coreBaselines:  extractCoreMap(ext, extensionHooks.FacilityEnvironmentBaselines()),
+		housingUnitIDs: cloneStringSlice(data.HousingUnitIDs),
+		projectIDs:     cloneStringSlice(data.ProjectIDs),
 	}
 }
 
@@ -891,7 +922,13 @@ func (f facility) Name() string         { return f.name }
 func (f facility) Zone() string         { return f.zone }
 func (f facility) AccessPolicy() string { return f.accessPolicy }
 func (f facility) EnvironmentBaselines() map[string]any {
-	return cloneAttributes(f.environmentBaselines)
+	return f.CoreEnvironmentBaselines()
+}
+func (f facility) Extensions() ExtensionSet {
+	return f.extensions
+}
+func (f facility) CoreEnvironmentBaselines() map[string]any {
+	return cloneAttributes(f.coreBaselines)
 }
 func (f facility) HousingUnitIDs() []string { return cloneStringSlice(f.housingUnitIDs) }
 func (f facility) ProjectIDs() []string     { return cloneStringSlice(f.projectIDs) }
@@ -957,7 +994,7 @@ func (f facility) MarshalJSON() ([]byte, error) {
 		Name:                 f.name,
 		Zone:                 f.zone,
 		AccessPolicy:         f.accessPolicy,
-		EnvironmentBaselines: cloneAttributes(f.environmentBaselines),
+		EnvironmentBaselines: f.CoreEnvironmentBaselines(),
 		HousingUnitIDs:       cloneStringSlice(f.housingUnitIDs),
 		ProjectIDs:           cloneStringSlice(f.projectIDs),
 	})
@@ -965,38 +1002,44 @@ func (f facility) MarshalJSON() ([]byte, error) {
 
 type breedingUnit struct {
 	base
-	name              string
-	strategy          string
-	housingID         *string
-	protocolID        *string
-	lineID            *string
-	strainID          *string
-	targetLineID      *string
-	targetStrainID    *string
-	pairingIntent     *string
-	pairingNotes      *string
-	pairingAttributes map[string]any
-	femaleIDs         []string
-	maleIDs           []string
+	name             string
+	strategy         string
+	housingID        *string
+	protocolID       *string
+	lineID           *string
+	strainID         *string
+	targetLineID     *string
+	targetStrainID   *string
+	pairingIntent    *string
+	pairingNotes     *string
+	extensions       ExtensionSet
+	corePairingAttrs map[string]any
+	femaleIDs        []string
+	maleIDs          []string
 }
 
 // NewBreedingUnit constructs a read-only BreedingUnit facade.
 func NewBreedingUnit(data BreedingUnitData) BreedingUnit {
+	ext := data.Extensions
+	if ext == nil {
+		ext = NewExtensionSet(nil)
+	}
 	return breedingUnit{
-		base:              newBase(data.Base),
-		name:              data.Name,
-		strategy:          data.Strategy,
-		housingID:         cloneOptionalString(data.HousingID),
-		protocolID:        cloneOptionalString(data.ProtocolID),
-		lineID:            cloneOptionalString(data.LineID),
-		strainID:          cloneOptionalString(data.StrainID),
-		targetLineID:      cloneOptionalString(data.TargetLineID),
-		targetStrainID:    cloneOptionalString(data.TargetStrainID),
-		pairingIntent:     cloneOptionalString(data.PairingIntent),
-		pairingNotes:      cloneOptionalString(data.PairingNotes),
-		pairingAttributes: cloneAttributes(data.PairingAttributes),
-		femaleIDs:         cloneStringSlice(data.FemaleIDs),
-		maleIDs:           cloneStringSlice(data.MaleIDs),
+		base:             newBase(data.Base),
+		name:             data.Name,
+		strategy:         data.Strategy,
+		housingID:        cloneOptionalString(data.HousingID),
+		protocolID:       cloneOptionalString(data.ProtocolID),
+		lineID:           cloneOptionalString(data.LineID),
+		strainID:         cloneOptionalString(data.StrainID),
+		targetLineID:     cloneOptionalString(data.TargetLineID),
+		targetStrainID:   cloneOptionalString(data.TargetStrainID),
+		pairingIntent:    cloneOptionalString(data.PairingIntent),
+		pairingNotes:     cloneOptionalString(data.PairingNotes),
+		extensions:       ext,
+		corePairingAttrs: extractCoreMap(ext, extensionHooks.BreedingUnitPairingAttributes()),
+		femaleIDs:        cloneStringSlice(data.FemaleIDs),
+		maleIDs:          cloneStringSlice(data.MaleIDs),
 	}
 }
 
@@ -1033,7 +1076,13 @@ func (b breedingUnit) PairingNotes() string {
 	return ""
 }
 func (b breedingUnit) PairingAttributes() map[string]any {
-	return cloneAttributes(b.pairingAttributes)
+	return b.CorePairingAttributes()
+}
+func (b breedingUnit) Extensions() ExtensionSet {
+	return b.extensions
+}
+func (b breedingUnit) CorePairingAttributes() map[string]any {
+	return cloneAttributes(b.corePairingAttrs)
 }
 func (b breedingUnit) FemaleIDs() []string {
 	return cloneStringSlice(b.femaleIDs)
@@ -1101,7 +1150,7 @@ func (b breedingUnit) MarshalJSON() ([]byte, error) {
 		TargetStrainID:    cloneOptionalString(b.targetStrainID),
 		PairingIntent:     cloneOptionalString(b.pairingIntent),
 		PairingNotes:      cloneOptionalString(b.pairingNotes),
-		PairingAttributes: cloneAttributes(b.pairingAttributes),
+		PairingAttributes: b.CorePairingAttributes(),
 		FemaleIDs:         cloneStringSlice(b.femaleIDs),
 		MaleIDs:           cloneStringSlice(b.maleIDs),
 	})
@@ -1304,12 +1353,17 @@ type observation struct {
 	cohortID    *string
 	recordedAt  time.Time
 	observer    string
-	data        map[string]any
+	extensions  ExtensionSet
+	coreData    map[string]any
 	notes       *string
 }
 
 // NewObservation constructs a read-only Observation facade.
 func NewObservation(data ObservationData) Observation {
+	ext := data.Extensions
+	if ext == nil {
+		ext = NewExtensionSet(nil)
+	}
 	return observation{
 		base:        newBase(data.Base),
 		procedureID: cloneOptionalString(data.ProcedureID),
@@ -1317,7 +1371,8 @@ func NewObservation(data ObservationData) Observation {
 		cohortID:    cloneOptionalString(data.CohortID),
 		recordedAt:  data.RecordedAt,
 		observer:    data.Observer,
-		data:        cloneAttributes(data.Data),
+		extensions:  ext,
+		coreData:    extractCoreMap(ext, extensionHooks.ObservationData()),
 		notes:       cloneOptionalString(data.Notes),
 	}
 }
@@ -1336,7 +1391,13 @@ func (o observation) CohortID() (string, bool) {
 
 func (o observation) RecordedAt() time.Time { return o.recordedAt }
 func (o observation) Observer() string      { return o.observer }
-func (o observation) Data() map[string]any  { return cloneAttributes(o.data) }
+func (o observation) Data() map[string]any  { return o.CoreData() }
+func (o observation) Extensions() ExtensionSet {
+	return o.extensions
+}
+func (o observation) CoreData() map[string]any {
+	return cloneAttributes(o.coreData)
+}
 func (o observation) Notes() string {
 	if v, ok := derefString(o.notes); ok {
 		return v
@@ -1347,7 +1408,7 @@ func (o observation) Notes() string {
 // Contextual data shape accessors
 func (o observation) GetDataShape() ObservationShapeRef {
 	narrative, _ := derefString(o.notes)
-	return inferObservationShape(len(o.data) > 0, strings.TrimSpace(narrative) != "")
+	return inferObservationShape(len(o.coreData) > 0, strings.TrimSpace(narrative) != "")
 }
 
 func (o observation) HasStructuredPayload() bool {
@@ -1383,7 +1444,7 @@ func (o observation) MarshalJSON() ([]byte, error) {
 		CohortID:    cloneOptionalString(o.cohortID),
 		RecordedAt:  o.recordedAt,
 		Observer:    o.observer,
-		Data:        cloneAttributes(o.data),
+		Data:        o.CoreData(),
 		Notes:       cloneOptionalString(o.notes),
 	})
 }
@@ -1400,11 +1461,16 @@ type sample struct {
 	storageLocation string
 	assayType       string
 	chainOfCustody  []custodyEvent
-	attributes      map[string]any
+	extensions      ExtensionSet
+	coreAttributes  map[string]any
 }
 
 // NewSample constructs a read-only Sample facade.
 func NewSample(data SampleData) Sample {
+	ext := data.Extensions
+	if ext == nil {
+		ext = NewExtensionSet(nil)
+	}
 	return sample{
 		base:            newBase(data.Base),
 		identifier:      data.Identifier,
@@ -1417,7 +1483,8 @@ func NewSample(data SampleData) Sample {
 		storageLocation: data.StorageLocation,
 		assayType:       data.AssayType,
 		chainOfCustody:  buildCustodyEvents(data.ChainOfCustody),
-		attributes:      cloneAttributes(data.Attributes),
+		extensions:      ext,
+		coreAttributes:  extractCoreMap(ext, extensionHooks.SampleAttributes()),
 	}
 }
 
@@ -1429,8 +1496,10 @@ func (s sample) Status() string          { return s.status }
 func (s sample) StorageLocation() string { return s.storageLocation }
 func (s sample) AssayType() string       { return s.assayType }
 func (s sample) Attributes() map[string]any {
-	return cloneAttributes(s.attributes)
+	return s.CoreAttributes()
 }
+func (s sample) Extensions() ExtensionSet       { return s.extensions }
+func (s sample) CoreAttributes() map[string]any { return cloneAttributes(s.coreAttributes) }
 
 func (s sample) OrganismID() (string, bool) {
 	return derefString(s.organismID)
@@ -1519,7 +1588,7 @@ func (s sample) MarshalJSON() ([]byte, error) {
 		StorageLocation: s.storageLocation,
 		AssayType:       s.assayType,
 		ChainOfCustody:  serializeCustodyEvents(s.chainOfCustody),
-		Attributes:      cloneAttributes(s.attributes),
+		Attributes:      s.CoreAttributes(),
 	})
 }
 
@@ -1811,11 +1880,16 @@ type supplyItem struct {
 	facilityIDs    []string
 	projectIDs     []string
 	reorderLevel   int
-	attributes     map[string]any
+	extensions     ExtensionSet
+	coreAttributes map[string]any
 }
 
 // NewSupplyItem constructs a read-only SupplyItem facade.
 func NewSupplyItem(data SupplyItemData) SupplyItem {
+	ext := data.Extensions
+	if ext == nil {
+		ext = NewExtensionSet(nil)
+	}
 	return supplyItem{
 		base:           newBase(data.Base),
 		sku:            data.SKU,
@@ -1828,7 +1902,8 @@ func NewSupplyItem(data SupplyItemData) SupplyItem {
 		facilityIDs:    cloneStringSlice(data.FacilityIDs),
 		projectIDs:     cloneStringSlice(data.ProjectIDs),
 		reorderLevel:   data.ReorderLevel,
-		attributes:     cloneAttributes(data.Attributes),
+		extensions:     ext,
+		coreAttributes: extractCoreMap(ext, extensionHooks.SupplyItemAttributes()),
 	}
 }
 
@@ -1856,7 +1931,13 @@ func (s supplyItem) ProjectIDs() []string {
 }
 func (s supplyItem) ReorderLevel() int { return s.reorderLevel }
 func (s supplyItem) Attributes() map[string]any {
-	return cloneAttributes(s.attributes)
+	return s.CoreAttributes()
+}
+func (s supplyItem) Extensions() ExtensionSet {
+	return s.extensions
+}
+func (s supplyItem) CoreAttributes() map[string]any {
+	return cloneAttributes(s.coreAttributes)
 }
 
 func (s supplyItem) ExpiresAt() (*time.Time, bool) {
@@ -1907,7 +1988,7 @@ func (s supplyItem) MarshalJSON() ([]byte, error) {
 		FacilityIDs:    cloneStringSlice(s.facilityIDs),
 		ProjectIDs:     cloneStringSlice(s.projectIDs),
 		ReorderLevel:   s.reorderLevel,
-		Attributes:     cloneAttributes(s.attributes),
+		Attributes:     s.CoreAttributes(),
 	})
 }
 
@@ -1984,6 +2065,21 @@ func serializeCustodyEvents(events []custodyEvent) []map[string]any {
 		out[i] = entry
 	}
 	return out
+}
+
+func extractCoreMap(set ExtensionSet, hook HookRef) map[string]any {
+	if set == nil {
+		return nil
+	}
+	value, ok := set.Core(hook)
+	if !ok || value == nil {
+		return nil
+	}
+	m, ok := value.(map[string]any)
+	if !ok {
+		return nil
+	}
+	return cloneAttributes(m)
 }
 
 func cloneAttributes(attrs map[string]any) map[string]any {

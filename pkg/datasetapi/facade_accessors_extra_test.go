@@ -8,6 +8,7 @@ import (
 func TestSupplyItemAccessors(t *testing.T) {
 	now := time.Now().UTC()
 	expires := now.Add(24 * time.Hour)
+	hook := NewExtensionHookContext().SupplyItemAttributes()
 
 	data := SupplyItemData{
 		Base:           BaseData{ID: "supply", CreatedAt: now, UpdatedAt: now},
@@ -21,7 +22,7 @@ func TestSupplyItemAccessors(t *testing.T) {
 		FacilityIDs:    []string{"fac"},
 		ProjectIDs:     []string{"proj"},
 		ReorderLevel:   5,
-		Attributes:     map[string]any{"color": "blue"},
+		Extensions:     newCoreExtensionSet(hook, map[string]any{"color": "blue"}),
 	}
 
 	item := NewSupplyItem(data)

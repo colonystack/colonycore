@@ -154,10 +154,45 @@ func TestRunFailedWriter(t *testing.T) {
 	}
 }
 
+func TestRunViolationWriterFailures(t *testing.T) {
+	mockErrors := []validation.Error{
+		{File: "file.go", Line: 1, Message: "msg", Code: "code"},
+	}
+	for name, failAt := range map[string]int{
+		"header": 1,
+		"file":   2,
+		"msg":    3,
+		"code":   4,
+	} {
+		t.Run(name, func(t *testing.T) {
+			writer := &limitedWriter{failAt: failAt}
+			exit := run([]string{"cmd", "dir"}, writer, func(string) []validation.Error {
+				return mockErrors
+			})
+			if exit != 1 {
+				t.Fatalf("expected exit code 1 when writer fails at %s (call %d), got %d", name, failAt, exit)
+			}
+		})
+	}
+}
+
 type failingWriter struct{}
 
 func (f *failingWriter) Write(_ []byte) (n int, err error) {
 	return 0, bytes.ErrTooLarge
+}
+
+type limitedWriter struct {
+	failAt int
+	writes int
+}
+
+func (w *limitedWriter) Write(p []byte) (int, error) {
+	w.writes++
+	if w.failAt > 0 && w.writes == w.failAt {
+		return 0, bytes.ErrTooLarge
+	}
+	return len(p), nil
 }
 
 // TestMainFunctionLogic ensures main function logic works correctly

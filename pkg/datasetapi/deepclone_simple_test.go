@@ -10,7 +10,8 @@ func TestDeepCloneMapSlice(t *testing.T) {
 	attrs := map[string]any{
 		"maps": []map[string]any{{"k": "v"}, {}},
 	}
-	org := NewOrganism(OrganismData{Base: BaseData{ID: "c", CreatedAt: time.Now().UTC()}, Attributes: attrs})
+	hook := NewExtensionHookContext().OrganismAttributes()
+	org := NewOrganism(OrganismData{Base: BaseData{ID: "c", CreatedAt: time.Now().UTC()}, Extensions: newCoreExtensionSet(hook, attrs)})
 	ret := org.Attributes()
 	// mutate returned
 	ret["maps"].([]map[string]any)[0]["k"] = "mut"

@@ -1,6 +1,8 @@
 package core
 
 import (
+	"fmt"
+
 	"colonycore/pkg/datasetapi"
 	"colonycore/pkg/domain"
 )
@@ -14,6 +16,11 @@ func baseDataFromDomain(base domain.Base) datasetapi.BaseData {
 }
 
 func facadeOrganismFromDomain(org domain.Organism) datasetapi.Organism {
+	container, err := org.OrganismExtensions()
+	if err != nil {
+		panic(fmt.Errorf("core: organism extensions: %w", err))
+	}
+	extSet := datasetapi.NewExtensionSet(container.Raw())
 	return datasetapi.NewOrganism(datasetapi.OrganismData{
 		Base:       baseDataFromDomain(org.Base),
 		Name:       org.Name,
@@ -27,7 +34,7 @@ func facadeOrganismFromDomain(org domain.Organism) datasetapi.Organism {
 		HousingID:  org.HousingID,
 		ProtocolID: org.ProtocolID,
 		ProjectID:  org.ProjectID,
-		Attributes: org.CoreAttributes(),
+		Extensions: extSet,
 	})
 }
 
@@ -133,21 +140,26 @@ func facadeCohortsFromDomain(cohorts []domain.Cohort) []datasetapi.Cohort {
 }
 
 func facadeBreedingUnitFromDomain(unit domain.BreedingUnit) datasetapi.BreedingUnit {
+	container, err := unit.BreedingUnitExtensions()
+	if err != nil {
+		panic(fmt.Errorf("core: breeding unit extensions: %w", err))
+	}
+	extSet := datasetapi.NewExtensionSet(container.Raw())
 	return datasetapi.NewBreedingUnit(datasetapi.BreedingUnitData{
-		Base:              baseDataFromDomain(unit.Base),
-		Name:              unit.Name,
-		Strategy:          unit.Strategy,
-		HousingID:         unit.HousingID,
-		ProtocolID:        unit.ProtocolID,
-		LineID:            unit.LineID,
-		StrainID:          unit.StrainID,
-		TargetLineID:      unit.TargetLineID,
-		TargetStrainID:    unit.TargetStrainID,
-		PairingIntent:     unit.PairingIntent,
-		PairingNotes:      unit.PairingNotes,
-		PairingAttributes: unit.PairingAttributes(),
-		FemaleIDs:         unit.FemaleIDs,
-		MaleIDs:           unit.MaleIDs,
+		Base:           baseDataFromDomain(unit.Base),
+		Name:           unit.Name,
+		Strategy:       unit.Strategy,
+		HousingID:      unit.HousingID,
+		ProtocolID:     unit.ProtocolID,
+		LineID:         unit.LineID,
+		StrainID:       unit.StrainID,
+		TargetLineID:   unit.TargetLineID,
+		TargetStrainID: unit.TargetStrainID,
+		PairingIntent:  unit.PairingIntent,
+		PairingNotes:   unit.PairingNotes,
+		Extensions:     extSet,
+		FemaleIDs:      unit.FemaleIDs,
+		MaleIDs:        unit.MaleIDs,
 	})
 }
 
@@ -189,15 +201,20 @@ func facadeProceduresFromDomain(procs []domain.Procedure) []datasetapi.Procedure
 }
 
 func facadeFacilityFromDomain(facility domain.Facility) datasetapi.Facility {
+	container, err := facility.FacilityExtensions()
+	if err != nil {
+		panic(fmt.Errorf("core: facility extensions: %w", err))
+	}
+	extSet := datasetapi.NewExtensionSet(container.Raw())
 	return datasetapi.NewFacility(datasetapi.FacilityData{
-		Base:                 baseDataFromDomain(facility.Base),
-		Code:                 facility.Code,
-		Name:                 facility.Name,
-		Zone:                 facility.Zone,
-		AccessPolicy:         facility.AccessPolicy,
-		EnvironmentBaselines: facility.EnvironmentBaselines(),
-		HousingUnitIDs:       facility.HousingUnitIDs,
-		ProjectIDs:           facility.ProjectIDs,
+		Base:           baseDataFromDomain(facility.Base),
+		Code:           facility.Code,
+		Name:           facility.Name,
+		Zone:           facility.Zone,
+		AccessPolicy:   facility.AccessPolicy,
+		Extensions:     extSet,
+		HousingUnitIDs: facility.HousingUnitIDs,
+		ProjectIDs:     facility.ProjectIDs,
 	})
 }
 
@@ -237,6 +254,11 @@ func facadeTreatmentsFromDomain(treatments []domain.Treatment) []datasetapi.Trea
 }
 
 func facadeObservationFromDomain(observation domain.Observation) datasetapi.Observation {
+	container, err := observation.ObservationExtensions()
+	if err != nil {
+		panic(fmt.Errorf("core: observation extensions: %w", err))
+	}
+	extSet := datasetapi.NewExtensionSet(container.Raw())
 	return datasetapi.NewObservation(datasetapi.ObservationData{
 		Base:        baseDataFromDomain(observation.Base),
 		ProcedureID: observation.ProcedureID,
@@ -244,7 +266,7 @@ func facadeObservationFromDomain(observation domain.Observation) datasetapi.Obse
 		CohortID:    observation.CohortID,
 		RecordedAt:  observation.RecordedAt,
 		Observer:    observation.Observer,
-		Data:        observation.ObservationData(),
+		Extensions:  extSet,
 		Notes:       observation.Notes,
 	})
 }
@@ -261,6 +283,11 @@ func facadeObservationsFromDomain(observations []domain.Observation) []datasetap
 }
 
 func facadeSampleFromDomain(sample domain.Sample) datasetapi.Sample {
+	container, err := sample.SampleExtensions()
+	if err != nil {
+		panic(fmt.Errorf("core: sample extensions: %w", err))
+	}
+	extSet := datasetapi.NewExtensionSet(container.Raw())
 	return datasetapi.NewSample(datasetapi.SampleData{
 		Base:            baseDataFromDomain(sample.Base),
 		Identifier:      sample.Identifier,
@@ -273,7 +300,7 @@ func facadeSampleFromDomain(sample domain.Sample) datasetapi.Sample {
 		StorageLocation: sample.StorageLocation,
 		AssayType:       sample.AssayType,
 		ChainOfCustody:  custodyEventsToData(sample.ChainOfCustody),
-		Attributes:      sample.SampleAttributes(),
+		Extensions:      extSet,
 	})
 }
 
@@ -314,6 +341,11 @@ func facadePermitsFromDomain(permits []domain.Permit) []datasetapi.Permit {
 }
 
 func facadeSupplyItemFromDomain(item domain.SupplyItem) datasetapi.SupplyItem {
+	container, err := item.SupplyItemExtensions()
+	if err != nil {
+		panic(fmt.Errorf("core: supply item extensions: %w", err))
+	}
+	extSet := datasetapi.NewExtensionSet(container.Raw())
 	return datasetapi.NewSupplyItem(datasetapi.SupplyItemData{
 		Base:           baseDataFromDomain(item.Base),
 		SKU:            item.SKU,
@@ -326,7 +358,7 @@ func facadeSupplyItemFromDomain(item domain.SupplyItem) datasetapi.SupplyItem {
 		FacilityIDs:    item.FacilityIDs,
 		ProjectIDs:     item.ProjectIDs,
 		ReorderLevel:   item.ReorderLevel,
-		Attributes:     item.SupplyAttributes(),
+		Extensions:     extSet,
 	})
 }
 

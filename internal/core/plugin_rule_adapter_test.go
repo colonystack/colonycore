@@ -164,6 +164,106 @@ func (v stubDomainView) FindSupplyItem(id string) (domain.SupplyItem, bool) {
 	return domain.SupplyItem{}, false
 }
 
+func TestSampleViewAccessors(t *testing.T) {
+	now := time.Date(2024, 5, 10, 12, 0, 0, 0, time.UTC)
+	orgID := "org-1"
+	note := "logged"
+	testSampleColor := "red"
+	sample := domain.Sample{
+		Base: domain.Base{
+			ID:        "sample-1",
+			CreatedAt: now,
+			UpdatedAt: now,
+		},
+		Identifier:      "S-1",
+		SourceType:      "Organism",
+		OrganismID:      &orgID,
+		FacilityID:      "facility-1",
+		CollectedAt:     now,
+		Status:          domain.SampleStatusStored,
+		StorageLocation: "Freezer A",
+		AssayType:       "PCR",
+		ChainOfCustody: []domain.SampleCustodyEvent{
+			{
+				Actor:     "tech",
+				Location:  "lab",
+				Timestamp: now,
+				Notes:     &note,
+			},
+		},
+	}
+	if err := sample.ApplySampleAttributes(map[string]any{"color": testSampleColor}); err != nil {
+		t.Fatalf("apply sample attributes: %v", err)
+	}
+
+	view := newSampleView(sample)
+
+	if view.ID() != sample.ID {
+		t.Fatalf("expected ID %s, got %s", sample.ID, view.ID())
+	}
+	if view.Identifier() != sample.Identifier {
+		t.Fatalf("expected identifier %s, got %s", sample.Identifier, view.Identifier())
+	}
+	if view.FacilityID() != sample.FacilityID {
+		t.Fatalf("expected facility %s, got %s", sample.FacilityID, view.FacilityID())
+	}
+	if ident, ok := view.OrganismID(); !ok || ident != orgID {
+		t.Fatalf("expected organism id %s, got %s (ok=%v)", orgID, ident, ok)
+	}
+	if _, ok := view.CohortID(); ok {
+		t.Fatalf("expected cohort id to be missing")
+	}
+	if !view.CollectedAt().Equal(sample.CollectedAt) {
+		t.Fatalf("expected collected at %v, got %v", sample.CollectedAt, view.CollectedAt())
+	}
+	if view.Status() != string(sample.Status) {
+		t.Fatalf("expected status %s, got %s", sample.Status, view.Status())
+	}
+	if view.StorageLocation() != sample.StorageLocation {
+		t.Fatalf("expected storage location %s, got %s", sample.StorageLocation, view.StorageLocation())
+	}
+	if view.AssayType() != sample.AssayType {
+		t.Fatalf("expected assay type %s, got %s", sample.AssayType, view.AssayType())
+	}
+
+	custody := view.ChainOfCustody()
+	if len(custody) != 1 || custody[0]["actor"] != "tech" {
+		t.Fatalf("unexpected custody data: %+v", custody)
+	}
+	custody[0]["actor"] = testLiteralMutated
+	if view.ChainOfCustody()[0]["actor"] != "tech" {
+		t.Fatalf("expected custody clone to be immutable")
+	}
+
+	attrs := view.Attributes()
+	if attrs["color"] != testSampleColor {
+		t.Fatalf("expected attribute color %s, got %v", testSampleColor, attrs["color"])
+	}
+	attrs["color"] = "blue"
+	if view.Attributes()["color"] != testSampleColor {
+		t.Fatalf("expected attribute clone to remain %s", testSampleColor)
+	}
+
+	hookCtx := pluginapi.NewExtensionHookContext()
+	corePayload, ok := view.Extensions().Core(hookCtx.SampleAttributes())
+	if !ok {
+		t.Fatalf("expected core sample attributes payload")
+	}
+	if corePayload.(map[string]any)["color"] != testSampleColor {
+		t.Fatalf("expected extension payload color %s, got %v", testSampleColor, corePayload)
+	}
+
+	sourceCtx := pluginapi.NewSampleContext()
+	if !view.GetSource().Equals(sourceCtx.Sources().Organism()) {
+		t.Fatalf("expected sample source organism")
+	}
+	if !view.GetStatus().Equals(sourceCtx.Statuses().Stored()) {
+		t.Fatalf("expected sample status stored")
+	}
+	if !view.IsAvailable() {
+		t.Fatalf("expected stored sample to be available")
+	}
+}
 func TestAdaptPluginRuleBridgesDomainInterfaces(t *testing.T) {
 	housingID := "housing-1"
 	organismID := "organism-1"
@@ -492,7 +592,7 @@ func TestOrganismViewAccessors(t *testing.T) {
 	}
 
 	attrs := view.Attributes()
-	attrs["key"] = "mutated"
+	attrs["key"] = testLiteralMutated
 	if refreshed := view.Attributes()["key"]; refreshed != "value" {
 		t.Fatalf("expected attributes copy to remain unchanged, got %v", refreshed)
 	}
