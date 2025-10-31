@@ -363,7 +363,7 @@ func (o Organism) MarshalJSON() ([]byte, error) {
 	}
 	return json.Marshal(payload{
 		organismAlias: organismAlias(o),
-		Attributes:    o.AttributesMap(),
+		Attributes:    (&o).CoreAttributes(),
 	})
 }
 
@@ -378,8 +378,7 @@ func (o *Organism) UnmarshalJSON(data []byte) error {
 		return err
 	}
 	*o = Organism(aux.organismAlias)
-	o.SetAttributes(aux.Attributes)
-	return nil
+	return o.SetCoreAttributes(aux.Attributes)
 }
 
 type facilityAlias Facility
@@ -392,7 +391,7 @@ func (f Facility) MarshalJSON() ([]byte, error) {
 	}
 	return json.Marshal(payload{
 		facilityAlias:        facilityAlias(f),
-		EnvironmentBaselines: f.EnvironmentBaselinesMap(),
+		EnvironmentBaselines: (&f).EnvironmentBaselines(),
 	})
 }
 
@@ -407,8 +406,7 @@ func (f *Facility) UnmarshalJSON(data []byte) error {
 		return err
 	}
 	*f = Facility(aux.facilityAlias)
-	f.SetEnvironmentBaselines(aux.EnvironmentBaselines)
-	return nil
+	return f.ApplyEnvironmentBaselines(aux.EnvironmentBaselines)
 }
 
 type breedingUnitAlias BreedingUnit
@@ -421,7 +419,7 @@ func (b BreedingUnit) MarshalJSON() ([]byte, error) {
 	}
 	return json.Marshal(payload{
 		breedingUnitAlias: breedingUnitAlias(b),
-		PairingAttributes: b.PairingAttributesMap(),
+		PairingAttributes: (&b).PairingAttributes(),
 	})
 }
 
@@ -436,8 +434,7 @@ func (b *BreedingUnit) UnmarshalJSON(data []byte) error {
 		return err
 	}
 	*b = BreedingUnit(aux.breedingUnitAlias)
-	b.SetPairingAttributes(aux.PairingAttributes)
-	return nil
+	return b.ApplyPairingAttributes(aux.PairingAttributes)
 }
 
 type observationAlias Observation
@@ -450,7 +447,7 @@ func (o Observation) MarshalJSON() ([]byte, error) {
 	}
 	return json.Marshal(payload{
 		observationAlias: observationAlias(o),
-		Data:             o.DataMap(),
+		Data:             (&o).ObservationData(),
 	})
 }
 
@@ -465,8 +462,7 @@ func (o *Observation) UnmarshalJSON(data []byte) error {
 		return err
 	}
 	*o = Observation(aux.observationAlias)
-	o.SetData(aux.Data)
-	return nil
+	return o.ApplyObservationData(aux.Data)
 }
 
 type sampleAlias Sample
@@ -479,7 +475,7 @@ func (s Sample) MarshalJSON() ([]byte, error) {
 	}
 	return json.Marshal(payload{
 		sampleAlias: sampleAlias(s),
-		Attributes:  s.AttributesMap(),
+		Attributes:  (&s).SampleAttributes(),
 	})
 }
 
@@ -494,8 +490,7 @@ func (s *Sample) UnmarshalJSON(data []byte) error {
 		return err
 	}
 	*s = Sample(aux.sampleAlias)
-	s.SetAttributes(aux.Attributes)
-	return nil
+	return s.ApplySampleAttributes(aux.Attributes)
 }
 
 type supplyAlias SupplyItem
@@ -508,7 +503,7 @@ func (s SupplyItem) MarshalJSON() ([]byte, error) {
 	}
 	return json.Marshal(payload{
 		supplyAlias: supplyAlias(s),
-		Attributes:  s.AttributesMap(),
+		Attributes:  (&s).SupplyAttributes(),
 	})
 }
 
@@ -523,8 +518,7 @@ func (s *SupplyItem) UnmarshalJSON(data []byte) error {
 		return err
 	}
 	*s = SupplyItem(aux.supplyAlias)
-	s.SetAttributes(aux.Attributes)
-	return nil
+	return s.ApplySupplyAttributes(aux.Attributes)
 }
 
 // Change describes a mutation applied to an entity during a transaction.

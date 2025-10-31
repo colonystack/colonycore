@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"colonycore/pkg/domain"
-	"colonycore/pkg/domain/extension"
 	"colonycore/pkg/pluginapi"
 )
 
@@ -200,7 +199,7 @@ func newOrganismView(org domain.Organism) organismView {
 		housingID:  cloneOptionalString(org.HousingID),
 		protocolID: cloneOptionalString(org.ProtocolID),
 		projectID:  cloneOptionalString(org.ProjectID),
-		attributes: cloneAttributes(coreExtensionMap(org.EnsureAttributesSlot())),
+		attributes: cloneAttributes(org.CoreAttributes()),
 	}
 }
 
@@ -355,7 +354,7 @@ func newFacilityView(facility domain.Facility) facilityView {
 		name:                 facility.Name,
 		zone:                 facility.Zone,
 		accessPolicy:         facility.AccessPolicy,
-		environmentBaselines: cloneAttributes(coreExtensionMap(facility.EnsureEnvironmentBaselinesSlot())),
+		environmentBaselines: cloneAttributes(facility.EnvironmentBaselines()),
 		housingUnitIDs:       cloneStringSlice(facility.HousingUnitIDs),
 		projectIDs:           cloneStringSlice(facility.ProjectIDs),
 	}
@@ -480,7 +479,7 @@ func newObservationView(observation domain.Observation) observationView {
 		cohortID:    cloneOptionalString(observation.CohortID),
 		recordedAt:  observation.RecordedAt,
 		observer:    observation.Observer,
-		data:        cloneAttributes(coreExtensionMap(observation.EnsureObservationDataSlot())),
+		data:        cloneAttributes(observation.ObservationData()),
 		notes:       cloneOptionalString(observation.Notes),
 	}
 }
@@ -552,7 +551,7 @@ func newSampleView(sample domain.Sample) sampleView {
 		storageLocation: sample.StorageLocation,
 		assayType:       sample.AssayType,
 		chainOfCustody:  cloneCustodyEvents(sample.ChainOfCustody),
-		attributes:      cloneAttributes(coreExtensionMap(sample.EnsureSampleAttributesSlot())),
+		attributes:      cloneAttributes(sample.SampleAttributes()),
 	}
 }
 
@@ -798,7 +797,7 @@ func newSupplyItemView(item domain.SupplyItem) supplyItemView {
 		facilityIDs:    cloneStringSlice(item.FacilityIDs),
 		projectIDs:     cloneStringSlice(item.ProjectIDs),
 		reorderLevel:   item.ReorderLevel,
-		attributes:     cloneAttributes(coreExtensionMap(item.EnsureSupplyItemAttributesSlot())),
+		attributes:     cloneAttributes(item.SupplyAttributes()),
 	}
 }
 
@@ -1066,21 +1065,6 @@ func derefTime(src *time.Time) (*time.Time, bool) {
 	}
 	value := *src
 	return &value, true
-}
-
-func coreExtensionMap(slot *extension.Slot) map[string]any {
-	if slot == nil {
-		return nil
-	}
-	payload, ok := slot.Get(extension.PluginCore)
-	if !ok || payload == nil {
-		return nil
-	}
-	result, ok := payload.(map[string]any)
-	if !ok {
-		return nil
-	}
-	return extension.CloneMap(result)
 }
 
 func cloneAttributes(attrs map[string]any) map[string]any {

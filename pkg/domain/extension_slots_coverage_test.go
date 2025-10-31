@@ -11,9 +11,9 @@ func TestSetAttributesErrorPanics(t *testing.T) {
 	// since the current implementation doesn't fail in normal cases
 	// We'll test the successful path to improve coverage
 	var organism Organism
-	organism.SetAttributes(map[string]any{"test": "value"})
+	organism.SetAttributes(map[string]any{"test": testAttrValue})
 
-	if organism.AttributesMap()["test"] != "value" {
+	if organism.AttributesMap()["test"] != testAttrValue {
 		t.Errorf("Expected successful set attributes")
 	}
 }
@@ -168,8 +168,8 @@ func TestSetAttributesPanicRecovery(t *testing.T) {
 	var organism Organism
 
 	// Test successful path first
-	organism.SetAttributes(map[string]any{"test": "value"})
-	if organism.AttributesMap()["test"] != "value" {
+	organism.SetAttributes(map[string]any{"test": testAttrValue})
+	if organism.AttributesMap()["test"] != testAttrValue {
 		t.Errorf("Expected successful set attributes")
 	}
 }
@@ -290,7 +290,7 @@ func TestExtensionContainerRegeneration(t *testing.T) {
 func TestSlotHookBinding(t *testing.T) {
 	// Test that slots maintain proper hook binding
 	var organism Organism
-	organism.SetAttributes(map[string]any{"test": "value"})
+	organism.SetAttributes(map[string]any{"test": testAttrValue})
 
 	slot1 := organism.EnsureAttributesSlot()
 	if slot1.Hook() != extension.HookOrganismAttributes {

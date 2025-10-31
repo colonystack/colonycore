@@ -3,7 +3,6 @@ package core
 import (
 	"colonycore/pkg/datasetapi"
 	"colonycore/pkg/domain"
-	"colonycore/pkg/domain/extension"
 )
 
 func baseDataFromDomain(base domain.Base) datasetapi.BaseData {
@@ -28,7 +27,7 @@ func facadeOrganismFromDomain(org domain.Organism) datasetapi.Organism {
 		HousingID:  org.HousingID,
 		ProtocolID: org.ProtocolID,
 		ProjectID:  org.ProjectID,
-		Attributes: flattenSlot(org.EnsureAttributesSlot()),
+		Attributes: org.CoreAttributes(),
 	})
 }
 
@@ -146,7 +145,7 @@ func facadeBreedingUnitFromDomain(unit domain.BreedingUnit) datasetapi.BreedingU
 		TargetStrainID:    unit.TargetStrainID,
 		PairingIntent:     unit.PairingIntent,
 		PairingNotes:      unit.PairingNotes,
-		PairingAttributes: flattenSlot(unit.EnsurePairingAttributesSlot()),
+		PairingAttributes: unit.PairingAttributes(),
 		FemaleIDs:         unit.FemaleIDs,
 		MaleIDs:           unit.MaleIDs,
 	})
@@ -196,7 +195,7 @@ func facadeFacilityFromDomain(facility domain.Facility) datasetapi.Facility {
 		Name:                 facility.Name,
 		Zone:                 facility.Zone,
 		AccessPolicy:         facility.AccessPolicy,
-		EnvironmentBaselines: flattenSlot(facility.EnsureEnvironmentBaselinesSlot()),
+		EnvironmentBaselines: facility.EnvironmentBaselines(),
 		HousingUnitIDs:       facility.HousingUnitIDs,
 		ProjectIDs:           facility.ProjectIDs,
 	})
@@ -245,7 +244,7 @@ func facadeObservationFromDomain(observation domain.Observation) datasetapi.Obse
 		CohortID:    observation.CohortID,
 		RecordedAt:  observation.RecordedAt,
 		Observer:    observation.Observer,
-		Data:        flattenSlot(observation.EnsureObservationDataSlot()),
+		Data:        observation.ObservationData(),
 		Notes:       observation.Notes,
 	})
 }
@@ -274,7 +273,7 @@ func facadeSampleFromDomain(sample domain.Sample) datasetapi.Sample {
 		StorageLocation: sample.StorageLocation,
 		AssayType:       sample.AssayType,
 		ChainOfCustody:  custodyEventsToData(sample.ChainOfCustody),
-		Attributes:      flattenSlot(sample.EnsureSampleAttributesSlot()),
+		Attributes:      sample.SampleAttributes(),
 	})
 }
 
@@ -327,7 +326,7 @@ func facadeSupplyItemFromDomain(item domain.SupplyItem) datasetapi.SupplyItem {
 		FacilityIDs:    item.FacilityIDs,
 		ProjectIDs:     item.ProjectIDs,
 		ReorderLevel:   item.ReorderLevel,
-		Attributes:     flattenSlot(item.EnsureSupplyItemAttributesSlot()),
+		Attributes:     item.SupplyAttributes(),
 	})
 }
 
@@ -356,19 +355,4 @@ func custodyEventsToData(events []domain.SampleCustodyEvent) []datasetapi.Sample
 		}
 	}
 	return out
-}
-
-func flattenSlot(slot *extension.Slot) map[string]any {
-	if slot == nil {
-		return nil
-	}
-	value, ok := slot.Get(extension.PluginCore)
-	if !ok {
-		return nil
-	}
-	payload, ok := value.(map[string]any)
-	if !ok {
-		return nil
-	}
-	return extension.CloneMap(payload)
 }

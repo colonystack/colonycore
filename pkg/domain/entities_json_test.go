@@ -332,6 +332,8 @@ func TestObservationUnmarshalJSON(t *testing.T) {
 	}
 }
 
+const testVolumeAttribute = "5ml"
+
 func TestSampleMarshalJSON(t *testing.T) {
 	sample := Sample{
 		Base:       Base{ID: "test-sample"},
@@ -340,7 +342,7 @@ func TestSampleMarshalJSON(t *testing.T) {
 	}
 
 	sample.SetAttributes(map[string]any{
-		"volume":     "5ml",
+		"volume":     testVolumeAttribute,
 		"processing": "frozen",
 	})
 
@@ -359,8 +361,8 @@ func TestSampleMarshalJSON(t *testing.T) {
 		t.Fatalf("Expected attributes in JSON output")
 	}
 
-	if attributes["volume"] != "5ml" {
-		t.Errorf("Expected volume '5ml', got %v", attributes["volume"])
+	if attributes["volume"] != testVolumeAttribute {
+		t.Errorf("Expected volume '%v', got %v", testVolumeAttribute, attributes["volume"])
 	}
 }
 
@@ -370,7 +372,7 @@ func TestSampleUnmarshalJSON(t *testing.T) {
 		"identifier": "SAMPLE-001",
 		"source_type": "blood",
 		"attributes": {
-			"volume": "5ml",
+			"volume": "` + testVolumeAttribute + `",
 			"processing": "frozen"
 		}
 	}`
@@ -385,7 +387,7 @@ func TestSampleUnmarshalJSON(t *testing.T) {
 	}
 
 	attrs := sample.AttributesMap()
-	if attrs["volume"] != "5ml" {
+	if attrs["volume"] != testVolumeAttribute {
 		t.Errorf("Expected volume '5ml', got %v", attrs["volume"])
 	}
 }
