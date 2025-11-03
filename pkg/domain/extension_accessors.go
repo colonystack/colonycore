@@ -1,6 +1,10 @@
 package domain
 
-import "colonycore/pkg/domain/extension"
+import (
+	"fmt"
+
+	"colonycore/pkg/domain/extension"
+)
 
 // cloneHookMap retrieves a defensive copy of the payload stored for the given
 // hook and plugin combination. The second return value reports whether a
@@ -197,6 +201,56 @@ func (b *BreedingUnit) PairingAttributes() map[string]any {
 		return values
 	}
 	return nil
+}
+
+// LineExtensions returns a deep copy of the line extension container.
+func (l *Line) LineExtensions() (extension.Container, error) {
+	container := l.ensureExtensionContainer()
+	return cloneContainer(container)
+}
+
+// SetLineExtensions replaces all line extension hooks and rebinds the slots.
+func (l *Line) SetLineExtensions(container extension.Container) error {
+	clone, err := cloneContainer(&container)
+	if err != nil {
+		return err
+	}
+	for _, hook := range clone.Hooks() {
+		if hook != extension.HookLineDefaultAttributes && hook != extension.HookLineExtensionOverrides {
+			return fmt.Errorf("domain: unsupported hook %q for line extensions", hook)
+		}
+	}
+	if len(clone.Hooks()) == 0 {
+		l.extensions = nil
+		l.defaultAttributesSlot = nil
+		l.extensionOverridesSlot = nil
+		return nil
+	}
+	l.extensions = &clone
+	l.rebindLineSlots()
+	return nil
+}
+
+// StrainExtensions returns a deep copy of the strain extension container.
+func (s *Strain) StrainExtensions() (extension.Container, error) {
+	container := s.ensureExtensionContainer()
+	return cloneContainer(container)
+}
+
+// SetStrainExtensions replaces the strain extension container.
+func (s *Strain) SetStrainExtensions(container extension.Container) error {
+	return replaceExtensionContainer(&s.extensions, &s.attributesSlot, extension.HookStrainAttributes, container)
+}
+
+// GenotypeMarkerExtensions returns a deep copy of the genotype marker extension container.
+func (g *GenotypeMarker) GenotypeMarkerExtensions() (extension.Container, error) {
+	container := g.ensureExtensionContainer()
+	return cloneContainer(container)
+}
+
+// SetGenotypeMarkerExtensions replaces the genotype marker extension container.
+func (g *GenotypeMarker) SetGenotypeMarkerExtensions(container extension.Container) error {
+	return replaceExtensionContainer(&g.extensions, &g.attributesSlot, extension.HookGenotypeMarkerAttributes, container)
 }
 
 // ApplyPairingAttributes stores the provided pairing attributes payload. A nil

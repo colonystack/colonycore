@@ -688,6 +688,12 @@ func TestLineAndStrainEnsureSlots(t *testing.T) {
 	if line.EnsureDefaultAttributes() != defaultSlot {
 		t.Fatalf("expected EnsureDefaultAttributes to return same slot pointer")
 	}
+	if err := line.SetDefaultAttributesSlot(defaultSlot); err != nil {
+		t.Fatalf("SetDefaultAttributesSlot: %v", err)
+	}
+	if line.defaultAttributesSlot == nil {
+		t.Fatalf("expected default attributes slot to be rebound")
+	}
 
 	overrideSlot := line.EnsureExtensionOverrides()
 	if overrideSlot == nil {
@@ -702,11 +708,26 @@ func TestLineAndStrainEnsureSlots(t *testing.T) {
 	if line.EnsureExtensionOverrides() != overrideSlot {
 		t.Fatalf("expected EnsureExtensionOverrides to be idempotent")
 	}
+	if err := line.SetExtensionOverridesSlot(overrideSlot); err != nil {
+		t.Fatalf("SetExtensionOverridesSlot: %v", err)
+	}
+	if line.extensionOverridesSlot == nil {
+		t.Fatalf("expected extension overrides slot to be rebound")
+	}
 
 	strain := &Strain{}
 	strainSlot := strain.EnsureAttributes()
 	if strainSlot.Hook() != extension.HookStrainAttributes {
 		t.Fatalf("expected strain hook %q", extension.HookStrainAttributes)
+	}
+	if err := strainSlot.Set(extension.PluginCore, map[string]any{"note": "strain"}); err != nil {
+		t.Fatalf("set strain slot: %v", err)
+	}
+	if err := strain.SetAttributesSlot(strainSlot); err != nil {
+		t.Fatalf("SetAttributesSlot (strain): %v", err)
+	}
+	if strain.attributesSlot == nil {
+		t.Fatalf("expected strain slot to be rebound after set")
 	}
 
 	genotype := &GenotypeMarker{}
@@ -714,11 +735,20 @@ func TestLineAndStrainEnsureSlots(t *testing.T) {
 	if genotypeSlot.Hook() != extension.HookGenotypeMarkerAttributes {
 		t.Fatalf("expected genotype marker hook %q", extension.HookGenotypeMarkerAttributes)
 	}
+	if err := genotypeSlot.Set(extension.PluginCore, map[string]any{"note": "geno"}); err != nil {
+		t.Fatalf("set genotype slot: %v", err)
+	}
+	if err := genotype.SetAttributesSlot(genotypeSlot); err != nil {
+		t.Fatalf("SetAttributesSlot (genotype): %v", err)
+	}
+	if genotype.attributesSlot == nil {
+		t.Fatalf("expected genotype slot to be rebound after set")
+	}
 
 	// Simulate JSON unmarshalling that loses hook binding.
 	unboundSlot := extension.NewSlot("")
-	strain.Attributes = unboundSlot
-	genotype.Attributes = unboundSlot.Clone()
+	strain.attributesSlot = unboundSlot
+	genotype.attributesSlot = unboundSlot.Clone()
 	if strain.EnsureAttributes().Hook() != extension.HookStrainAttributes {
 		t.Fatalf("expected EnsureAttributes to rebind strain hook")
 	}

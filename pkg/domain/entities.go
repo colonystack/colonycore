@@ -197,41 +197,44 @@ type BreedingUnit struct {
 // Line represents a genetic lineage with shared inheritance characteristics.
 type Line struct {
 	Base
-	Code               string          `json:"code"`
-	Name               string          `json:"name"`
-	Description        *string         `json:"description,omitempty"`
-	Origin             string          `json:"origin"`
-	GenotypeMarkerIDs  []string        `json:"genotype_marker_ids"`
-	DefaultAttributes  *extension.Slot `json:"default_attributes"`
-	DeprecatedAt       *time.Time      `json:"deprecated_at"`
-	DeprecationReason  *string         `json:"deprecation_reason,omitempty"`
-	ExtensionOverrides *extension.Slot `json:"extension_overrides"`
+	Code                   string               `json:"code"`
+	Name                   string               `json:"name"`
+	Description            *string              `json:"description,omitempty"`
+	Origin                 string               `json:"origin"`
+	GenotypeMarkerIDs      []string             `json:"genotype_marker_ids"`
+	defaultAttributesSlot  *extension.Slot      `json:"-"`
+	extensionOverridesSlot *extension.Slot      `json:"-"`
+	extensions             *extension.Container `json:"-"`
+	DeprecatedAt           *time.Time           `json:"deprecated_at"`
+	DeprecationReason      *string              `json:"deprecation_reason,omitempty"`
 }
 
 // Strain represents a managed sub-population derived from a line.
 type Strain struct {
 	Base
-	Code              string          `json:"code"`
-	Name              string          `json:"name"`
-	LineID            string          `json:"line_id"`
-	Description       *string         `json:"description,omitempty"`
-	Generation        *string         `json:"generation,omitempty"`
-	GenotypeMarkerIDs []string        `json:"genotype_marker_ids"`
-	Attributes        *extension.Slot `json:"attributes"`
-	RetiredAt         *time.Time      `json:"retired_at"`
-	RetirementReason  *string         `json:"retirement_reason,omitempty"`
+	Code              string               `json:"code"`
+	Name              string               `json:"name"`
+	LineID            string               `json:"line_id"`
+	Description       *string              `json:"description,omitempty"`
+	Generation        *string              `json:"generation,omitempty"`
+	GenotypeMarkerIDs []string             `json:"genotype_marker_ids"`
+	attributesSlot    *extension.Slot      `json:"-"`
+	extensions        *extension.Container `json:"-"`
+	RetiredAt         *time.Time           `json:"retired_at"`
+	RetirementReason  *string              `json:"retirement_reason,omitempty"`
 }
 
 // GenotypeMarker captures assay metadata for genetic markers used in lineage tracking.
 type GenotypeMarker struct {
 	Base
-	Name           string          `json:"name"`
-	Locus          string          `json:"locus"`
-	Alleles        []string        `json:"alleles"`
-	AssayMethod    string          `json:"assay_method"`
-	Interpretation string          `json:"interpretation"`
-	Version        string          `json:"version"`
-	Attributes     *extension.Slot `json:"attributes"`
+	Name           string               `json:"name"`
+	Locus          string               `json:"locus"`
+	Alleles        []string             `json:"alleles"`
+	AssayMethod    string               `json:"assay_method"`
+	Interpretation string               `json:"interpretation"`
+	Version        string               `json:"version"`
+	attributesSlot *extension.Slot      `json:"-"`
+	extensions     *extension.Container `json:"-"`
 }
 
 // Procedure captures scheduled or completed animal procedures.
@@ -519,6 +522,187 @@ func (s *SupplyItem) UnmarshalJSON(data []byte) error {
 	}
 	*s = SupplyItem(aux.supplyAlias)
 	return s.ApplySupplyAttributes(aux.Attributes)
+}
+
+type lineAlias Line
+
+// MarshalJSON ensures line extension slots are serialised as hook-indexed maps.
+func (l Line) MarshalJSON() ([]byte, error) {
+	type payload struct {
+		lineAlias
+		DefaultAttributes  map[string]any `json:"default_attributes"`
+		ExtensionOverrides map[string]any `json:"extension_overrides"`
+	}
+
+	var defaultPayload map[string]any
+	if l.defaultAttributesSlot != nil {
+		defaultPayload = l.defaultAttributesSlot.Raw()
+	} else if l.extensions != nil && len(l.extensions.Plugins(extension.HookLineDefaultAttributes)) > 0 {
+		defaultPayload = slotFromContainer(extension.HookLineDefaultAttributes, l.extensions).Raw()
+	}
+
+	var overridePayload map[string]any
+	if l.extensionOverridesSlot != nil {
+		overridePayload = l.extensionOverridesSlot.Raw()
+	} else if l.extensions != nil && len(l.extensions.Plugins(extension.HookLineExtensionOverrides)) > 0 {
+		overridePayload = slotFromContainer(extension.HookLineExtensionOverrides, l.extensions).Raw()
+	}
+
+	return json.Marshal(payload{
+		lineAlias:          lineAlias(l),
+		DefaultAttributes:  defaultPayload,
+		ExtensionOverrides: overridePayload,
+	})
+}
+
+// UnmarshalJSON hydrates line extension slots from the JSON payload.
+func (l *Line) UnmarshalJSON(data []byte) error {
+	type payload struct {
+		lineAlias
+		DefaultAttributes  map[string]any `json:"default_attributes"`
+		ExtensionOverrides map[string]any `json:"extension_overrides"`
+	}
+	var aux payload
+	if err := json.Unmarshal(data, &aux); err != nil {
+		return err
+	}
+	*l = Line(aux.lineAlias)
+	l.extensions = nil
+	l.defaultAttributesSlot = nil
+	l.extensionOverridesSlot = nil
+
+	if aux.DefaultAttributes != nil {
+		slot := extension.NewSlot(extension.HookLineDefaultAttributes)
+		for plugin, value := range aux.DefaultAttributes {
+			if err := slot.Set(extension.PluginID(plugin), value); err != nil {
+				return err
+			}
+		}
+		if err := l.SetDefaultAttributesSlot(slot); err != nil {
+			return err
+		}
+	} else if err := l.SetDefaultAttributesSlot(nil); err != nil {
+		return err
+	}
+
+	if aux.ExtensionOverrides != nil {
+		slot := extension.NewSlot(extension.HookLineExtensionOverrides)
+		for plugin, value := range aux.ExtensionOverrides {
+			if err := slot.Set(extension.PluginID(plugin), value); err != nil {
+				return err
+			}
+		}
+		if err := l.SetExtensionOverridesSlot(slot); err != nil {
+			return err
+		}
+	} else if err := l.SetExtensionOverridesSlot(nil); err != nil {
+		return err
+	}
+	return nil
+}
+
+type strainAlias Strain
+
+// MarshalJSON ensures strain attributes slot is serialised via hook-indexed map.
+func (s Strain) MarshalJSON() ([]byte, error) {
+	type payload struct {
+		strainAlias
+		Attributes map[string]any `json:"attributes"`
+	}
+
+	var attributes map[string]any
+	if s.attributesSlot != nil {
+		attributes = s.attributesSlot.Raw()
+	} else if s.extensions != nil && len(s.extensions.Plugins(extension.HookStrainAttributes)) > 0 {
+		attributes = slotFromContainer(extension.HookStrainAttributes, s.extensions).Raw()
+	}
+
+	return json.Marshal(payload{
+		strainAlias: strainAlias(s),
+		Attributes:  attributes,
+	})
+}
+
+// UnmarshalJSON hydrates strain extension slot from the payload.
+func (s *Strain) UnmarshalJSON(data []byte) error {
+	type payload struct {
+		strainAlias
+		Attributes map[string]any `json:"attributes"`
+	}
+	var aux payload
+	if err := json.Unmarshal(data, &aux); err != nil {
+		return err
+	}
+	*s = Strain(aux.strainAlias)
+	s.extensions = nil
+	s.attributesSlot = nil
+
+	if aux.Attributes != nil {
+		slot := extension.NewSlot(extension.HookStrainAttributes)
+		for plugin, value := range aux.Attributes {
+			if err := slot.Set(extension.PluginID(plugin), value); err != nil {
+				return err
+			}
+		}
+		if err := s.SetAttributesSlot(slot); err != nil {
+			return err
+		}
+	} else if err := s.SetAttributesSlot(nil); err != nil {
+		return err
+	}
+	return nil
+}
+
+type genotypeMarkerAlias GenotypeMarker
+
+// MarshalJSON ensures genotype marker attributes are serialised via hook-indexed map.
+func (g GenotypeMarker) MarshalJSON() ([]byte, error) {
+	type payload struct {
+		genotypeMarkerAlias
+		Attributes map[string]any `json:"attributes"`
+	}
+
+	var attributes map[string]any
+	if g.attributesSlot != nil {
+		attributes = g.attributesSlot.Raw()
+	} else if g.extensions != nil && len(g.extensions.Plugins(extension.HookGenotypeMarkerAttributes)) > 0 {
+		attributes = slotFromContainer(extension.HookGenotypeMarkerAttributes, g.extensions).Raw()
+	}
+
+	return json.Marshal(payload{
+		genotypeMarkerAlias: genotypeMarkerAlias(g),
+		Attributes:          attributes,
+	})
+}
+
+// UnmarshalJSON hydrates genotype marker attributes from the JSON payload.
+func (g *GenotypeMarker) UnmarshalJSON(data []byte) error {
+	type payload struct {
+		genotypeMarkerAlias
+		Attributes map[string]any `json:"attributes"`
+	}
+	var aux payload
+	if err := json.Unmarshal(data, &aux); err != nil {
+		return err
+	}
+	*g = GenotypeMarker(aux.genotypeMarkerAlias)
+	g.extensions = nil
+	g.attributesSlot = nil
+
+	if aux.Attributes != nil {
+		slot := extension.NewSlot(extension.HookGenotypeMarkerAttributes)
+		for plugin, value := range aux.Attributes {
+			if err := slot.Set(extension.PluginID(plugin), value); err != nil {
+				return err
+			}
+		}
+		if err := g.SetAttributesSlot(slot); err != nil {
+			return err
+		}
+	} else if err := g.SetAttributesSlot(nil); err != nil {
+		return err
+	}
+	return nil
 }
 
 // Change describes a mutation applied to an entity during a transaction.

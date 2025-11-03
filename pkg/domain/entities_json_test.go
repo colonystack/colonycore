@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"testing"
 	"time"
+
+	"colonycore/pkg/domain/extension"
 )
 
 const (
@@ -717,5 +719,371 @@ func TestJSONUnmarshalAdditionalErrorPaths(t *testing.T) {
 	attrs := organism.AttributesMap()
 	if attrs == nil || attrs["test"] != testAttrValue {
 		t.Errorf("Expected attributes to be set from JSON, got %v", attrs)
+	}
+}
+
+func TestLineMarshalUnmarshalJSON(t *testing.T) {
+	now := time.Now().UTC()
+	line := Line{
+		Base: Base{
+			ID:        "line-1",
+			CreatedAt: now.Add(-time.Hour),
+			UpdatedAt: now,
+		},
+		Code:              "L-001",
+		Name:              "Line One",
+		Origin:            "in-house",
+		GenotypeMarkerIDs: []string{"gm-1"},
+	}
+
+	defaultSlot := line.EnsureDefaultAttributes()
+	if err := defaultSlot.Set(extension.PluginCore, map[string]any{"seed": true}); err != nil {
+		t.Fatalf("set default core slot: %v", err)
+	}
+	if err := defaultSlot.Set(extension.PluginID("plugin.a"), map[string]any{"note": "alpha"}); err != nil {
+		t.Fatalf("set default plugin slot: %v", err)
+	}
+	if err := line.SetDefaultAttributesSlot(defaultSlot); err != nil {
+		t.Fatalf("SetDefaultAttributesSlot: %v", err)
+	}
+
+	overrideSlot := line.EnsureExtensionOverrides()
+	if err := overrideSlot.Set(extension.PluginID("plugin.override"), map[string]any{"limit": "strict"}); err != nil {
+		t.Fatalf("set override slot: %v", err)
+	}
+	if err := line.SetExtensionOverridesSlot(overrideSlot); err != nil {
+		t.Fatalf("SetExtensionOverridesSlot: %v", err)
+	}
+
+	data, err := json.Marshal(line)
+	if err != nil {
+		t.Fatalf("marshal line: %v", err)
+	}
+
+	var serialized map[string]any
+	if err := json.Unmarshal(data, &serialized); err != nil {
+		t.Fatalf("unmarshal line payload: %v", err)
+	}
+	if serialized["code"] != "L-001" {
+		t.Fatalf("expected code L-001, got %v", serialized["code"])
+	}
+	defAttributes, ok := serialized["default_attributes"].(map[string]any)
+	if !ok || len(defAttributes) != 2 {
+		t.Fatalf("expected default_attributes with two entries, got %v", serialized["default_attributes"])
+	}
+	if _, ok := defAttributes[string(extension.PluginCore)]; !ok {
+		t.Fatalf("expected core payload present")
+	}
+	if _, ok := defAttributes["plugin.a"]; !ok {
+		t.Fatalf("expected plugin.a payload present")
+	}
+	overrides, ok := serialized["extension_overrides"].(map[string]any)
+	if !ok || len(overrides) != 1 {
+		t.Fatalf("expected extension_overrides with one entry, got %v", overrides)
+	}
+
+	var decoded Line
+	if err := json.Unmarshal(data, &decoded); err != nil {
+		t.Fatalf("decode line: %v", err)
+	}
+	if decoded.Code != line.Code {
+		t.Fatalf("expected decoded code %v, got %v", line.Code, decoded.Code)
+	}
+
+	container, err := decoded.LineExtensions()
+	if err != nil {
+		t.Fatalf("LineExtensions: %v", err)
+	}
+	if len(container.Plugins(extension.HookLineDefaultAttributes)) != 2 {
+		t.Fatalf("expected two default plugin payloads after decode, got %d", len(container.Plugins(extension.HookLineDefaultAttributes)))
+	}
+	if len(container.Plugins(extension.HookLineExtensionOverrides)) != 1 {
+		t.Fatalf("expected one override plugin payload after decode, got %d", len(container.Plugins(extension.HookLineExtensionOverrides)))
+	}
+
+	if err := decoded.SetDefaultAttributesSlot(nil); err != nil {
+		t.Fatalf("SetDefaultAttributesSlot nil: %v", err)
+	}
+	remainder, err := decoded.LineExtensions()
+	if err != nil {
+		t.Fatalf("LineExtensions after clear: %v", err)
+	}
+	if len(remainder.Hooks()) != 1 || remainder.Hooks()[0] != extension.HookLineExtensionOverrides {
+		t.Fatalf("expected only overrides hook to remain, got %v", remainder.Hooks())
+	}
+
+	if err := decoded.SetExtensionOverridesSlot(nil); err != nil {
+		t.Fatalf("SetExtensionOverridesSlot nil: %v", err)
+	}
+	if decoded.extensions != nil {
+		t.Fatalf("expected extensions cleared after removing overrides, got %v", decoded.extensions)
+	}
+
+	if err := decoded.SetDefaultAttributesSlot(nil); err != nil {
+		t.Fatalf("SetDefaultAttributesSlot nil on empty container: %v", err)
+	}
+}
+
+func TestStrainMarshalUnmarshalJSON(t *testing.T) {
+	now := time.Now().UTC()
+	strain := Strain{
+		Base: Base{
+			ID:        "strain-1",
+			CreatedAt: now.Add(-2 * time.Hour),
+			UpdatedAt: now,
+		},
+		Code:              "S-001",
+		Name:              "Strain One",
+		LineID:            "line-1",
+		GenotypeMarkerIDs: []string{"gm-1", "gm-2"},
+	}
+
+	slot := strain.EnsureAttributes()
+	if err := slot.Set(extension.PluginCore, map[string]any{"note": "core"}); err != nil {
+		t.Fatalf("set strain core slot: %v", err)
+	}
+	if err := slot.Set(extension.PluginID("plugin.s"), map[string]any{"note": "external"}); err != nil {
+		t.Fatalf("set strain plugin slot: %v", err)
+	}
+	if err := strain.SetAttributesSlot(slot); err != nil {
+		t.Fatalf("SetAttributesSlot: %v", err)
+	}
+
+	payload, err := json.Marshal(strain)
+	if err != nil {
+		t.Fatalf("marshal strain: %v", err)
+	}
+
+	var encoded map[string]any
+	if err := json.Unmarshal(payload, &encoded); err != nil {
+		t.Fatalf("decode strain JSON: %v", err)
+	}
+	attrs, ok := encoded["attributes"].(map[string]any)
+	if !ok || len(attrs) != 2 {
+		t.Fatalf("expected attributes with both plugins, got %v", attrs)
+	}
+
+	var restored Strain
+	if err := json.Unmarshal(payload, &restored); err != nil {
+		t.Fatalf("unmarshal strain: %v", err)
+	}
+	clone, err := restored.StrainExtensions()
+	if err != nil {
+		t.Fatalf("StrainExtensions: %v", err)
+	}
+	if len(clone.Plugins(extension.HookStrainAttributes)) != 2 {
+		t.Fatalf("expected two plugin payloads after restore, got %d", len(clone.Plugins(extension.HookStrainAttributes)))
+	}
+
+	if err := restored.SetStrainExtensions(extension.NewContainer()); err != nil {
+		t.Fatalf("SetStrainExtensions empty: %v", err)
+	}
+	if restored.attributesSlot != nil || restored.extensions != nil {
+		t.Fatalf("expected strain extension state cleared, got slot=%v container=%v", restored.attributesSlot, restored.extensions)
+	}
+}
+
+func TestGenotypeMarkerMarshalUnmarshalJSON(t *testing.T) {
+	now := time.Now().UTC()
+	marker := GenotypeMarker{
+		Base: Base{
+			ID:        "marker-1",
+			CreatedAt: now.Add(-3 * time.Hour),
+			UpdatedAt: now,
+		},
+		Name:           "Marker One",
+		Locus:          "chr1:100-200",
+		Alleles:        []string{"A", "B"},
+		AssayMethod:    "PCR",
+		Interpretation: "call",
+		Version:        "v1",
+	}
+
+	slot := marker.EnsureAttributes()
+	if err := slot.Set(extension.PluginCore, map[string]any{"threshold": 0.5}); err != nil {
+		t.Fatalf("set marker core slot: %v", err)
+	}
+	if err := slot.Set(extension.PluginID("plugin.m"), map[string]any{"lab": "central"}); err != nil {
+		t.Fatalf("set marker plugin slot: %v", err)
+	}
+	if err := marker.SetAttributesSlot(slot); err != nil {
+		t.Fatalf("SetAttributesSlot: %v", err)
+	}
+
+	data, err := json.Marshal(marker)
+	if err != nil {
+		t.Fatalf("marshal marker: %v", err)
+	}
+
+	var encoded map[string]any
+	if err := json.Unmarshal(data, &encoded); err != nil {
+		t.Fatalf("decode marker JSON: %v", err)
+	}
+	mattrs, ok := encoded["attributes"].(map[string]any)
+	if !ok || len(mattrs) != 2 {
+		t.Fatalf("expected two plugin payloads, got %v", encoded["attributes"])
+	}
+
+	var decoded GenotypeMarker
+	if err := json.Unmarshal(data, &decoded); err != nil {
+		t.Fatalf("unmarshal marker: %v", err)
+	}
+	clone, err := decoded.GenotypeMarkerExtensions()
+	if err != nil {
+		t.Fatalf("GenotypeMarkerExtensions: %v", err)
+	}
+	if len(clone.Plugins(extension.HookGenotypeMarkerAttributes)) != 2 {
+		t.Fatalf("expected plugin attributes preserved, got %d", len(clone.Plugins(extension.HookGenotypeMarkerAttributes)))
+	}
+
+	if err := decoded.SetGenotypeMarkerExtensions(extension.NewContainer()); err != nil {
+		t.Fatalf("SetGenotypeMarkerExtensions empty: %v", err)
+	}
+	if decoded.attributesSlot != nil || decoded.extensions != nil {
+		t.Fatalf("expected genotype marker extension state cleared")
+	}
+}
+
+func TestLineMarshalJSONWithContainerWithoutSlots(t *testing.T) {
+	line := Line{Code: "bare-line", Name: "Bare", Origin: "wild"}
+	container := extension.NewContainer()
+	if err := container.Set(extension.HookLineDefaultAttributes, extension.PluginCore, map[string]any{"seed": true}); err != nil {
+		t.Fatalf("set container: %v", err)
+	}
+	if err := container.Set(extension.HookLineExtensionOverrides, extension.PluginID("plugin.override"), map[string]any{"depth": 1}); err != nil {
+		t.Fatalf("set overrides in container: %v", err)
+	}
+	line.extensions = &container
+
+	payload, err := json.Marshal(line)
+	if err != nil {
+		t.Fatalf("marshal line with container: %v", err)
+	}
+	var encoded map[string]any
+	if err := json.Unmarshal(payload, &encoded); err != nil {
+		t.Fatalf("decode line JSON: %v", err)
+	}
+	if _, ok := encoded["default_attributes"].(map[string]any); !ok {
+		t.Fatalf("expected default_attributes serialized from container")
+	}
+	if _, ok := encoded["extension_overrides"].(map[string]any); !ok {
+		t.Fatalf("expected extension_overrides serialized from container")
+	}
+	if line.defaultAttributesSlot != nil || line.extensionOverridesSlot != nil {
+		t.Fatalf("expected slots to remain nil, got default=%v override=%v", line.defaultAttributesSlot, line.extensionOverridesSlot)
+	}
+}
+
+func TestLineUnmarshalJSONWithoutAttributesClearsSlots(t *testing.T) {
+	jsonData := `{"id":"line-plain","code":"LP-1","name":"Plain Line","origin":"wild"}`
+
+	var line Line
+	if err := json.Unmarshal([]byte(jsonData), &line); err != nil {
+		t.Fatalf("unmarshal plain line: %v", err)
+	}
+	if line.defaultAttributesSlot != nil || line.extensionOverridesSlot != nil {
+		t.Fatalf("expected no slots after unmarshalling without extension fields")
+	}
+	if line.extensions != nil {
+		t.Fatalf("expected extension container nil")
+	}
+}
+
+func TestStrainMarshalJSONWithContainerWithoutSlot(t *testing.T) {
+	strain := Strain{Code: "S-bare", Name: "Bare Strain", LineID: "line"}
+	container := extension.NewContainer()
+	if err := container.Set(extension.HookStrainAttributes, extension.PluginCore, map[string]any{"note": "core"}); err != nil {
+		t.Fatalf("set strain container: %v", err)
+	}
+	strain.extensions = &container
+
+	payload, err := json.Marshal(strain)
+	if err != nil {
+		t.Fatalf("marshal strain with container: %v", err)
+	}
+	var encoded map[string]any
+	if err := json.Unmarshal(payload, &encoded); err != nil {
+		t.Fatalf("decode strain JSON: %v", err)
+	}
+	if _, ok := encoded["attributes"].(map[string]any); !ok {
+		t.Fatalf("expected attributes serialized from container")
+	}
+	if strain.attributesSlot != nil {
+		t.Fatalf("expected attributes slot to remain nil")
+	}
+}
+
+func TestStrainUnmarshalJSONWithoutAttributesClearsState(t *testing.T) {
+	jsonData := `{"id":"strain-plain","code":"SP-1","name":"Plain Strain","line_id":"line"}`
+
+	var strain Strain
+	if err := json.Unmarshal([]byte(jsonData), &strain); err != nil {
+		t.Fatalf("unmarshal strain without attributes: %v", err)
+	}
+	if strain.attributesSlot != nil || strain.extensions != nil {
+		t.Fatalf("expected strain extension state to remain nil")
+	}
+}
+
+func TestGenotypeMarkerMarshalJSONWithContainerWithoutSlot(t *testing.T) {
+	marker := GenotypeMarker{Name: "Bare Marker", Locus: "chr1:1-10", Alleles: []string{"A"}, AssayMethod: "PCR", Interpretation: "call", Version: "v0"}
+	container := extension.NewContainer()
+	if err := container.Set(extension.HookGenotypeMarkerAttributes, extension.PluginCore, map[string]any{"note": "core"}); err != nil {
+		t.Fatalf("set marker container: %v", err)
+	}
+	marker.extensions = &container
+
+	payload, err := json.Marshal(marker)
+	if err != nil {
+		t.Fatalf("marshal marker: %v", err)
+	}
+	var encoded map[string]any
+	if err := json.Unmarshal(payload, &encoded); err != nil {
+		t.Fatalf("decode marker JSON: %v", err)
+	}
+	if _, ok := encoded["attributes"].(map[string]any); !ok {
+		t.Fatalf("expected attributes serialized from container")
+	}
+	if marker.attributesSlot != nil {
+		t.Fatalf("expected attributes slot to remain nil when only container present")
+	}
+}
+
+func TestGenotypeMarkerUnmarshalJSONWithoutAttributesClearsState(t *testing.T) {
+	jsonData := `{"id":"marker-plain","name":"Plain Marker","locus":"chr1:1-10","alleles":["A"],"assay_method":"PCR","interpretation":"call","version":"v1"}`
+
+	var marker GenotypeMarker
+	if err := json.Unmarshal([]byte(jsonData), &marker); err != nil {
+		t.Fatalf("unmarshal marker without attributes: %v", err)
+	}
+	if marker.attributesSlot != nil || marker.extensions != nil {
+		t.Fatalf("expected marker extension state cleared")
+	}
+}
+
+func TestLineUnmarshalJSONInvalidAttributes(t *testing.T) {
+	jsonData := `{"id":"bad-line","code":"BL","name":"Bad","origin":"lab","default_attributes":{"` + extension.PluginCore.String() + `":["invalid"]}}`
+
+	var line Line
+	if err := json.Unmarshal([]byte(jsonData), &line); err == nil {
+		t.Fatalf("expected error when default attributes use invalid payload shape")
+	}
+}
+
+func TestStrainUnmarshalJSONInvalidAttributes(t *testing.T) {
+	jsonData := `{"id":"bad-strain","code":"BS","name":"Bad","line_id":"line","attributes":{"` + extension.PluginCore.String() + `":["invalid"]}}`
+
+	var strain Strain
+	if err := json.Unmarshal([]byte(jsonData), &strain); err == nil {
+		t.Fatalf("expected error when strain attributes use invalid payload shape")
+	}
+}
+
+func TestGenotypeMarkerUnmarshalJSONInvalidAttributes(t *testing.T) {
+	jsonData := `{"id":"bad-marker","name":"Bad","locus":"chr1","alleles":["A"],"assay_method":"PCR","interpretation":"call","version":"v1","attributes":{"` + extension.PluginCore.String() + `":["invalid"]}}`
+
+	var marker GenotypeMarker
+	if err := json.Unmarshal([]byte(jsonData), &marker); err == nil {
+		t.Fatalf("expected error when genotype marker attributes use invalid payload shape")
 	}
 }

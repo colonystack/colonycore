@@ -1,59 +1,53 @@
 package domain
 
-import (
-	"fmt"
-
-	"colonycore/pkg/domain/extension"
-)
+import "colonycore/pkg/domain/extension"
 
 // EnsureDefaultAttributes returns the line default attributes slot, initialising
 // it with the correct hook identifier when needed.
 func (l *Line) EnsureDefaultAttributes() *extension.Slot {
-	if l.DefaultAttributes == nil {
-		l.DefaultAttributes = extension.NewSlot(extension.HookLineDefaultAttributes)
-		return l.DefaultAttributes
+	if l.defaultAttributesSlot == nil {
+		l.defaultAttributesSlot = slotFromContainer(extension.HookLineDefaultAttributes, l.ensureExtensionContainer())
+	} else {
+		_ = l.defaultAttributesSlot.BindHook(extension.HookLineDefaultAttributes)
 	}
-	_ = l.DefaultAttributes.BindHook(extension.HookLineDefaultAttributes)
-	return l.DefaultAttributes
+	return l.defaultAttributesSlot
 }
 
 // EnsureExtensionOverrides returns the line extension overrides slot, ensuring
 // it is bound to the correct hook.
 func (l *Line) EnsureExtensionOverrides() *extension.Slot {
-	if l.ExtensionOverrides == nil {
-		l.ExtensionOverrides = extension.NewSlot(extension.HookLineExtensionOverrides)
-		return l.ExtensionOverrides
+	if l.extensionOverridesSlot == nil {
+		l.extensionOverridesSlot = slotFromContainer(extension.HookLineExtensionOverrides, l.ensureExtensionContainer())
+	} else {
+		_ = l.extensionOverridesSlot.BindHook(extension.HookLineExtensionOverrides)
 	}
-	_ = l.ExtensionOverrides.BindHook(extension.HookLineExtensionOverrides)
-	return l.ExtensionOverrides
+	return l.extensionOverridesSlot
 }
 
 // EnsureAttributes returns the strain attributes slot, initialising it if necessary.
 func (s *Strain) EnsureAttributes() *extension.Slot {
-	if s.Attributes == nil {
-		s.Attributes = extension.NewSlot(extension.HookStrainAttributes)
-		return s.Attributes
+	if s.attributesSlot == nil {
+		s.attributesSlot = slotFromContainer(extension.HookStrainAttributes, s.ensureExtensionContainer())
+	} else {
+		_ = s.attributesSlot.BindHook(extension.HookStrainAttributes)
 	}
-	_ = s.Attributes.BindHook(extension.HookStrainAttributes)
-	return s.Attributes
+	return s.attributesSlot
 }
 
 // EnsureAttributes returns the genotype marker attributes slot, initialising it if necessary.
 func (g *GenotypeMarker) EnsureAttributes() *extension.Slot {
-	if g.Attributes == nil {
-		g.Attributes = extension.NewSlot(extension.HookGenotypeMarkerAttributes)
-		return g.Attributes
+	if g.attributesSlot == nil {
+		g.attributesSlot = slotFromContainer(extension.HookGenotypeMarkerAttributes, g.ensureExtensionContainer())
+	} else {
+		_ = g.attributesSlot.BindHook(extension.HookGenotypeMarkerAttributes)
 	}
-	_ = g.Attributes.BindHook(extension.HookGenotypeMarkerAttributes)
-	return g.Attributes
+	return g.attributesSlot
 }
 
 // SetAttributes clones the provided map into the organism attributes field.
 // Deprecated: use SetCoreAttributes instead.
 func (o *Organism) SetAttributes(attrs map[string]any) {
-	if err := o.SetCoreAttributes(cloneExtensionMap(attrs)); err != nil {
-		panic(fmt.Errorf("domain: set organism attributes: %w", err))
-	}
+	panicOnExtension(o.SetCoreAttributes(cloneExtensionMap(attrs)), "domain: set organism attributes")
 	o.attributesSlot = nil
 }
 
@@ -66,9 +60,7 @@ func (o Organism) AttributesMap() map[string]any {
 // SetEnvironmentBaselines clones the provided map into the facility baselines field.
 // Deprecated: use ApplyEnvironmentBaselines instead.
 func (f *Facility) SetEnvironmentBaselines(baselines map[string]any) {
-	if err := f.ApplyEnvironmentBaselines(cloneExtensionMap(baselines)); err != nil {
-		panic(fmt.Errorf("domain: set facility environment baselines: %w", err))
-	}
+	panicOnExtension(f.ApplyEnvironmentBaselines(cloneExtensionMap(baselines)), "domain: set facility environment baselines")
 	f.environmentBaselinesSlot = nil
 }
 
@@ -81,9 +73,7 @@ func (f Facility) EnvironmentBaselinesMap() map[string]any {
 // SetPairingAttributes clones the provided map into the breeding unit pairing field.
 // Deprecated: use ApplyPairingAttributes instead.
 func (b *BreedingUnit) SetPairingAttributes(attrs map[string]any) {
-	if err := b.ApplyPairingAttributes(cloneExtensionMap(attrs)); err != nil {
-		panic(fmt.Errorf("domain: set breeding unit pairing attributes: %w", err))
-	}
+	panicOnExtension(b.ApplyPairingAttributes(cloneExtensionMap(attrs)), "domain: set breeding unit pairing attributes")
 	b.pairingAttributesSlot = nil
 }
 
@@ -96,9 +86,7 @@ func (b BreedingUnit) PairingAttributesMap() map[string]any {
 // SetData clones the provided map into the observation data field.
 // Deprecated: use ApplyObservationData instead.
 func (o *Observation) SetData(data map[string]any) {
-	if err := o.ApplyObservationData(cloneExtensionMap(data)); err != nil {
-		panic(fmt.Errorf("domain: set observation data: %w", err))
-	}
+	panicOnExtension(o.ApplyObservationData(cloneExtensionMap(data)), "domain: set observation data")
 	o.dataSlot = nil
 }
 
@@ -111,9 +99,7 @@ func (o Observation) DataMap() map[string]any {
 // SetAttributes clones the provided map into the sample attributes field.
 // Deprecated: use ApplySampleAttributes instead.
 func (s *Sample) SetAttributes(attrs map[string]any) {
-	if err := s.ApplySampleAttributes(cloneExtensionMap(attrs)); err != nil {
-		panic(fmt.Errorf("domain: set sample attributes: %w", err))
-	}
+	panicOnExtension(s.ApplySampleAttributes(cloneExtensionMap(attrs)), "domain: set sample attributes")
 	s.attributesSlot = nil
 }
 
@@ -126,9 +112,7 @@ func (s Sample) AttributesMap() map[string]any {
 // SetAttributes clones the provided map into the supply item attributes field.
 // Deprecated: use ApplySupplyAttributes instead.
 func (s *SupplyItem) SetAttributes(attrs map[string]any) {
-	if err := s.ApplySupplyAttributes(cloneExtensionMap(attrs)); err != nil {
-		panic(fmt.Errorf("domain: set supply item attributes: %w", err))
-	}
+	panicOnExtension(s.ApplySupplyAttributes(cloneExtensionMap(attrs)), "domain: set supply item attributes")
 	s.attributesSlot = nil
 }
 

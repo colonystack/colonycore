@@ -1,27 +1,13 @@
 package domain
 
-import (
-	"fmt"
-
-	"colonycore/pkg/domain/extension"
-)
+import "colonycore/pkg/domain/extension"
 
 func (o *Organism) ensureExtensionContainer() *extension.Container {
 	if o.extensions != nil {
 		return o.extensions
 	}
 	container := extension.NewContainer()
-	if o.attributesSlot != nil {
-		for _, plugin := range o.attributesSlot.Plugins() {
-			payload, ok := o.attributesSlot.Get(plugin)
-			if !ok {
-				continue
-			}
-			if err := container.Set(extension.HookOrganismAttributes, plugin, payload); err != nil {
-				panic(fmt.Errorf("domain: organism extension container: %w", err))
-			}
-		}
-	}
+	populateContainerFromMap(&container, extension.HookOrganismAttributes, "domain: organism extension container", slotRaw(o.attributesSlot))
 	o.extensions = &container
 	return o.extensions
 }
@@ -31,17 +17,7 @@ func (f *Facility) ensureExtensionContainer() *extension.Container {
 		return f.extensions
 	}
 	container := extension.NewContainer()
-	if f.environmentBaselinesSlot != nil {
-		for _, plugin := range f.environmentBaselinesSlot.Plugins() {
-			payload, ok := f.environmentBaselinesSlot.Get(plugin)
-			if !ok {
-				continue
-			}
-			if err := container.Set(extension.HookFacilityEnvironmentBaselines, plugin, payload); err != nil {
-				panic(fmt.Errorf("domain: facility extension container: %w", err))
-			}
-		}
-	}
+	populateContainerFromMap(&container, extension.HookFacilityEnvironmentBaselines, "domain: facility extension container", slotRaw(f.environmentBaselinesSlot))
 	f.extensions = &container
 	return f.extensions
 }
@@ -51,17 +27,7 @@ func (b *BreedingUnit) ensureExtensionContainer() *extension.Container {
 		return b.extensions
 	}
 	container := extension.NewContainer()
-	if b.pairingAttributesSlot != nil {
-		for _, plugin := range b.pairingAttributesSlot.Plugins() {
-			payload, ok := b.pairingAttributesSlot.Get(plugin)
-			if !ok {
-				continue
-			}
-			if err := container.Set(extension.HookBreedingUnitPairingAttributes, plugin, payload); err != nil {
-				panic(fmt.Errorf("domain: breeding unit extension container: %w", err))
-			}
-		}
-	}
+	populateContainerFromMap(&container, extension.HookBreedingUnitPairingAttributes, "domain: breeding unit extension container", slotRaw(b.pairingAttributesSlot))
 	b.extensions = &container
 	return b.extensions
 }
@@ -71,17 +37,7 @@ func (o *Observation) ensureExtensionContainer() *extension.Container {
 		return o.extensions
 	}
 	container := extension.NewContainer()
-	if o.dataSlot != nil {
-		for _, plugin := range o.dataSlot.Plugins() {
-			payload, ok := o.dataSlot.Get(plugin)
-			if !ok {
-				continue
-			}
-			if err := container.Set(extension.HookObservationData, plugin, payload); err != nil {
-				panic(fmt.Errorf("domain: observation extension container: %w", err))
-			}
-		}
-	}
+	populateContainerFromMap(&container, extension.HookObservationData, "domain: observation extension container", slotRaw(o.dataSlot))
 	o.extensions = &container
 	return o.extensions
 }
@@ -91,17 +47,7 @@ func (s *Sample) ensureExtensionContainer() *extension.Container {
 		return s.extensions
 	}
 	container := extension.NewContainer()
-	if s.attributesSlot != nil {
-		for _, plugin := range s.attributesSlot.Plugins() {
-			payload, ok := s.attributesSlot.Get(plugin)
-			if !ok {
-				continue
-			}
-			if err := container.Set(extension.HookSampleAttributes, plugin, payload); err != nil {
-				panic(fmt.Errorf("domain: sample extension container: %w", err))
-			}
-		}
-	}
+	populateContainerFromMap(&container, extension.HookSampleAttributes, "domain: sample extension container", slotRaw(s.attributesSlot))
 	s.extensions = &container
 	return s.extensions
 }
@@ -111,19 +57,62 @@ func (s *SupplyItem) ensureExtensionContainer() *extension.Container {
 		return s.extensions
 	}
 	container := extension.NewContainer()
-	if s.attributesSlot != nil {
-		for _, plugin := range s.attributesSlot.Plugins() {
-			payload, ok := s.attributesSlot.Get(plugin)
-			if !ok {
-				continue
-			}
-			if err := container.Set(extension.HookSupplyItemAttributes, plugin, payload); err != nil {
-				panic(fmt.Errorf("domain: supply item extension container: %w", err))
-			}
-		}
-	}
+	populateContainerFromMap(&container, extension.HookSupplyItemAttributes, "domain: supply item extension container", slotRaw(s.attributesSlot))
 	s.extensions = &container
 	return s.extensions
+}
+
+func (l *Line) ensureExtensionContainer() *extension.Container {
+	if l.extensions != nil {
+		return l.extensions
+	}
+	container := extension.NewContainer()
+	populateContainerFromMap(&container, extension.HookLineDefaultAttributes, "domain: line default attributes container", slotRaw(l.defaultAttributesSlot))
+	populateContainerFromMap(&container, extension.HookLineExtensionOverrides, "domain: line extension overrides container", slotRaw(l.extensionOverridesSlot))
+	l.extensions = &container
+	return l.extensions
+}
+
+func (l *Line) rebindLineSlots() {
+	if l.extensions == nil {
+		l.defaultAttributesSlot = nil
+		l.extensionOverridesSlot = nil
+		return
+	}
+
+	defaultSlot := slotFromContainer(extension.HookLineDefaultAttributes, l.extensions)
+	if len(defaultSlot.Plugins()) == 0 {
+		l.defaultAttributesSlot = nil
+	} else {
+		l.defaultAttributesSlot = defaultSlot
+	}
+
+	overrideSlot := slotFromContainer(extension.HookLineExtensionOverrides, l.extensions)
+	if len(overrideSlot.Plugins()) == 0 {
+		l.extensionOverridesSlot = nil
+	} else {
+		l.extensionOverridesSlot = overrideSlot
+	}
+}
+
+func (s *Strain) ensureExtensionContainer() *extension.Container {
+	if s.extensions != nil {
+		return s.extensions
+	}
+	container := extension.NewContainer()
+	populateContainerFromMap(&container, extension.HookStrainAttributes, "domain: strain attributes container", slotRaw(s.attributesSlot))
+	s.extensions = &container
+	return s.extensions
+}
+
+func (g *GenotypeMarker) ensureExtensionContainer() *extension.Container {
+	if g.extensions != nil {
+		return g.extensions
+	}
+	container := extension.NewContainer()
+	populateContainerFromMap(&container, extension.HookGenotypeMarkerAttributes, "domain: genotype marker attributes container", slotRaw(g.attributesSlot))
+	g.extensions = &container
+	return g.extensions
 }
 
 func slotFromContainer(hook extension.Hook, container *extension.Container) *extension.Slot {
@@ -136,9 +125,7 @@ func slotFromContainer(hook extension.Hook, container *extension.Container) *ext
 		if !ok {
 			continue
 		}
-		if err := slot.Set(plugin, payload); err != nil {
-			panic(fmt.Errorf("domain: hydrate slot from container (hook=%s, plugin=%s): %w", hook, plugin, err))
-		}
+		panicOnExtension(slot.Set(plugin, payload), "domain: hydrate slot from container (hook=%s, plugin=%s)", hook, plugin)
 	}
 	return slot
 }

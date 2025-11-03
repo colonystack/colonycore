@@ -67,83 +67,83 @@ const (
 
 // HookSpec documents the entity contract surfaced through a hook.
 type HookSpec struct {
-	Entity      string    // canonical entity slug used by entity-model.json
-	Field       string    // canonical field name within the entity model
-	DomainField string    // Go struct field reference (pkg/domain/entities.go)
-	Description string    // human readable summary pulled into docs
-	Shape       DataShape // expected JSON data shape for the payload
+	Entity       string    // canonical entity slug used by entity-model.json
+	Field        string    // canonical field name within the entity model
+	DomainMember string    // Go struct field or method reference (pkg/domain/entities.go)
+	Description  string    // human readable summary pulled into docs
+	Shape        DataShape // expected JSON data shape for the payload
 }
 
 var hookRegistry = map[Hook]HookSpec{
 	HookOrganismAttributes: {
-		Entity:      "organism",
-		Field:       "attributes",
-		DomainField: "domain.Organism.Attributes",
-		Description: "Species-agnostic extension bag for organism fields (RFC-0001 §4, ADR-0003).",
-		Shape:       ShapeObject,
+		Entity:       "organism",
+		Field:        "attributes",
+		DomainMember: "domain.Organism.CoreAttributes",
+		Description:  "Species-agnostic extension bag for organism fields (RFC-0001 §4, ADR-0003).",
+		Shape:        ShapeObject,
 	},
 	HookFacilityEnvironmentBaselines: {
-		Entity:      "facility",
-		Field:       "environment_baselines",
-		DomainField: "domain.Facility.EnvironmentBaselines",
-		Description: "Environmental defaults and monitoring metadata emitted by plugins.",
-		Shape:       ShapeObject,
+		Entity:       "facility",
+		Field:        "environment_baselines",
+		DomainMember: "domain.Facility.EnvironmentBaselines",
+		Description:  "Environmental defaults and monitoring metadata emitted by plugins.",
+		Shape:        ShapeObject,
 	},
 	HookBreedingUnitPairingAttributes: {
-		Entity:      "breeding_unit",
-		Field:       "pairing_attributes",
-		DomainField: "domain.BreedingUnit.PairingAttributes",
-		Description: "Pairing metadata (fertility notes, lineage context) supplied by plugins.",
-		Shape:       ShapeObject,
+		Entity:       "breeding_unit",
+		Field:        "pairing_attributes",
+		DomainMember: "domain.BreedingUnit.PairingAttributes",
+		Description:  "Pairing metadata (fertility notes, lineage context) supplied by plugins.",
+		Shape:        ShapeObject,
 	},
 	HookLineDefaultAttributes: {
-		Entity:      "line",
-		Field:       "default_attributes",
-		DomainField: "domain.Line.DefaultAttributes",
-		Description: "Default lineage attributes inherited by downstream strains or organisms.",
-		Shape:       ShapeObject,
+		Entity:       "line",
+		Field:        "default_attributes",
+		DomainMember: "domain.Line.EnsureDefaultAttributes",
+		Description:  "Default lineage attributes inherited by downstream strains or organisms.",
+		Shape:        ShapeObject,
 	},
 	HookLineExtensionOverrides: {
-		Entity:      "line",
-		Field:       "extension_overrides",
-		DomainField: "domain.Line.ExtensionOverrides",
-		Description: "Override values applied to downstream extension hooks for this line.",
-		Shape:       ShapeObject,
+		Entity:       "line",
+		Field:        "extension_overrides",
+		DomainMember: "domain.Line.EnsureExtensionOverrides",
+		Description:  "Override values applied to downstream extension hooks for this line.",
+		Shape:        ShapeObject,
 	},
 	HookStrainAttributes: {
-		Entity:      "strain",
-		Field:       "attributes",
-		DomainField: "domain.Strain.Attributes",
-		Description: "Strain-level metadata extensions (versions, husbandry qualities).",
-		Shape:       ShapeObject,
+		Entity:       "strain",
+		Field:        "attributes",
+		DomainMember: "domain.Strain.EnsureAttributes",
+		Description:  "Strain-level metadata extensions (versions, husbandry qualities).",
+		Shape:        ShapeObject,
 	},
 	HookGenotypeMarkerAttributes: {
-		Entity:      "genotype_marker",
-		Field:       "attributes",
-		DomainField: "domain.GenotypeMarker.Attributes",
-		Description: "Assay-specific attributes for genotype markers (interpretation, thresholds).",
-		Shape:       ShapeObject,
+		Entity:       "genotype_marker",
+		Field:        "attributes",
+		DomainMember: "domain.GenotypeMarker.EnsureAttributes",
+		Description:  "Assay-specific attributes for genotype markers (interpretation, thresholds).",
+		Shape:        ShapeObject,
 	},
 	HookObservationData: {
-		Entity:      "observation",
-		Field:       "data",
-		DomainField: "domain.Observation.Data",
-		Description: "Structured measurement payloads recorded during procedures or husbandry.",
-		Shape:       ShapeObject,
+		Entity:       "observation",
+		Field:        "data",
+		DomainMember: "domain.Observation.ObservationData",
+		Description:  "Structured measurement payloads recorded during procedures or husbandry.",
+		Shape:        ShapeObject,
 	},
 	HookSampleAttributes: {
-		Entity:      "sample",
-		Field:       "attributes",
-		DomainField: "domain.Sample.Attributes",
-		Description: "Chain-of-custody and assay metadata supplied by plugins.",
-		Shape:       ShapeObject,
+		Entity:       "sample",
+		Field:        "attributes",
+		DomainMember: "domain.Sample.SampleAttributes",
+		Description:  "Chain-of-custody and assay metadata supplied by plugins.",
+		Shape:        ShapeObject,
 	},
 	HookSupplyItemAttributes: {
-		Entity:      "supply_item",
-		Field:       "attributes",
-		DomainField: "domain.SupplyItem.Attributes",
-		Description: "Inventory metadata extensions for supply items.",
-		Shape:       ShapeObject,
+		Entity:       "supply_item",
+		Field:        "attributes",
+		DomainMember: "domain.SupplyItem.SupplyAttributes",
+		Description:  "Inventory metadata extensions for supply items.",
+		Shape:        ShapeObject,
 	},
 }
 

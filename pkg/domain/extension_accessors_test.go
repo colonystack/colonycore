@@ -287,7 +287,7 @@ func TestSupplyItemExtensionsLifecycle(t *testing.T) {
 		t.Fatalf("ApplySupplyAttributes: %v", err)
 	}
 	itemAttributes := item.SupplyAttributes()
-	itemAttributes["vendor"] = "mutated"
+	itemAttributes["vendor"] = testMutated
 	if refreshed := item.SupplyAttributes(); refreshed["vendor"] != "acme" {
 		t.Fatalf("expected stored vendor to remain immutable: %+v", refreshed)
 	}
@@ -344,5 +344,114 @@ func TestBreedingUnitExtensionsLifecycle(t *testing.T) {
 	}
 	if attrs := unit.PairingAttributes(); attrs != nil {
 		t.Fatalf("expected attributes cleared after empty container assignment")
+	}
+}
+
+func TestLineExtensionsRoundTrip(t *testing.T) {
+	var line Line
+	container := extension.NewContainer()
+	if err := container.Set(extension.HookLineDefaultAttributes, extension.PluginCore, map[string]any{"seed": true}); err != nil {
+		t.Fatalf("set default attributes: %v", err)
+	}
+	if err := container.Set(extension.HookLineExtensionOverrides, extension.PluginID("external"), map[string]any{"override": 1}); err != nil {
+		t.Fatalf("set overrides: %v", err)
+	}
+	if err := line.SetLineExtensions(container); err != nil {
+		t.Fatalf("SetLineExtensions: %v", err)
+	}
+
+	cloned, err := line.LineExtensions()
+	if err != nil {
+		t.Fatalf("LineExtensions: %v", err)
+	}
+	defaultPayload, ok := cloneHookMap(&cloned, extension.HookLineDefaultAttributes, extension.PluginCore)
+	if !ok || defaultPayload["seed"] != true {
+		t.Fatalf("unexpected default payload %+v", defaultPayload)
+	}
+	defaultPayload["seed"] = false
+	slot := line.EnsureDefaultAttributes()
+	if stored, ok := slot.Get(extension.PluginCore); !ok || stored.(map[string]any)["seed"] != true {
+		t.Fatalf("expected stored default payload unchanged, got %+v", stored)
+	}
+
+	overrideSlot := line.EnsureExtensionOverrides()
+	overridePayload, ok := overrideSlot.Get(extension.PluginID("external"))
+	if !ok || overridePayload.(map[string]any)["override"] != 1 {
+		t.Fatalf("unexpected override payload %+v", overridePayload)
+	}
+
+	if err := line.SetLineExtensions(extension.NewContainer()); err != nil {
+		t.Fatalf("SetLineExtensions empty: %v", err)
+	}
+	if line.defaultAttributesSlot != nil || line.extensionOverridesSlot != nil {
+		t.Fatalf("expected line slots cleared after empty assignment")
+	}
+
+	bad := extension.NewContainer()
+	if err := bad.Set(extension.HookOrganismAttributes, extension.PluginCore, map[string]any{"oops": true}); err != nil {
+		t.Fatalf("set bad container: %v", err)
+	}
+	if err := line.SetLineExtensions(bad); err == nil {
+		t.Fatalf("expected error for unsupported hook assignment")
+	}
+}
+
+func TestStrainExtensionsRoundTrip(t *testing.T) {
+	var strain Strain
+	container := extension.NewContainer()
+	if err := container.Set(extension.HookStrainAttributes, extension.PluginCore, map[string]any{"note": "strain"}); err != nil {
+		t.Fatalf("set strain container: %v", err)
+	}
+	if err := strain.SetStrainExtensions(container); err != nil {
+		t.Fatalf("SetStrainExtensions: %v", err)
+	}
+	cloned, err := strain.StrainExtensions()
+	if err != nil {
+		t.Fatalf("StrainExtensions: %v", err)
+	}
+	payload, ok := cloneHookMap(&cloned, extension.HookStrainAttributes, extension.PluginCore)
+	if !ok || payload["note"] != "strain" {
+		t.Fatalf("unexpected strain payload %+v", payload)
+	}
+	payload["note"] = testMutated
+	if stored, ok := strain.attributesSlot.Get(extension.PluginCore); !ok || stored.(map[string]any)["note"] != "strain" {
+		t.Fatalf("expected stored strain payload unchanged")
+	}
+
+	if err := strain.SetStrainExtensions(extension.NewContainer()); err != nil {
+		t.Fatalf("SetStrainExtensions empty: %v", err)
+	}
+	if strain.attributesSlot != nil || strain.extensions != nil {
+		t.Fatalf("expected strain slots cleared after empty assignment")
+	}
+}
+
+func TestGenotypeMarkerExtensionsRoundTrip(t *testing.T) {
+	var marker GenotypeMarker
+	container := extension.NewContainer()
+	if err := container.Set(extension.HookGenotypeMarkerAttributes, extension.PluginCore, map[string]any{"note": "marker"}); err != nil {
+		t.Fatalf("set genotype container: %v", err)
+	}
+	if err := marker.SetGenotypeMarkerExtensions(container); err != nil {
+		t.Fatalf("SetGenotypeMarkerExtensions: %v", err)
+	}
+	cloned, err := marker.GenotypeMarkerExtensions()
+	if err != nil {
+		t.Fatalf("GenotypeMarkerExtensions: %v", err)
+	}
+	payload, ok := cloneHookMap(&cloned, extension.HookGenotypeMarkerAttributes, extension.PluginCore)
+	if !ok || payload["note"] != "marker" {
+		t.Fatalf("unexpected genotype payload %+v", payload)
+	}
+	payload["note"] = testMutated
+	if stored, ok := marker.attributesSlot.Get(extension.PluginCore); !ok || stored.(map[string]any)["note"] != "marker" {
+		t.Fatalf("expected stored genotype payload unchanged")
+	}
+
+	if err := marker.SetGenotypeMarkerExtensions(extension.NewContainer()); err != nil {
+		t.Fatalf("SetGenotypeMarkerExtensions empty: %v", err)
+	}
+	if marker.attributesSlot != nil || marker.extensions != nil {
+		t.Fatalf("expected genotype slots cleared after empty assignment")
 	}
 }

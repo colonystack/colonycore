@@ -239,8 +239,8 @@ func TestSpecMetadata(t *testing.T) {
 	if spec.Field != "attributes" {
 		t.Fatalf("unexpected field: %s", spec.Field)
 	}
-	if spec.DomainField != "domain.Organism.Attributes" {
-		t.Fatalf("unexpected domain field: %s", spec.DomainField)
+	if spec.DomainMember != "domain.Organism.CoreAttributes" {
+		t.Fatalf("unexpected domain member: %s", spec.DomainMember)
 	}
 	if spec.Shape != ShapeObject {
 		t.Fatalf("unexpected shape: %s", spec.Shape)

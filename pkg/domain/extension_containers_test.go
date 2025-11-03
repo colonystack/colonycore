@@ -150,6 +150,84 @@ func TestExtensionContainerCoverageSupplyItem(t *testing.T) {
 	}
 }
 
+func TestExtensionContainerCoverageLine(t *testing.T) {
+	var line Line
+	defaultSlot := line.EnsureDefaultAttributes()
+	if err := defaultSlot.Set(extension.PluginCore, map[string]any{"seed": true}); err != nil {
+		t.Fatalf("set default slot: %v", err)
+	}
+	if err := line.SetDefaultAttributesSlot(defaultSlot); err != nil {
+		t.Fatalf("SetDefaultAttributesSlot: %v", err)
+	}
+	container := line.ensureExtensionContainer()
+	if container == nil {
+		t.Fatalf("Expected non-nil line extension container")
+	}
+
+	secondCall := line.ensureExtensionContainer()
+	if secondCall != container {
+		t.Errorf("Expected same container instance on second call")
+	}
+
+	var empty Line
+	container2 := empty.ensureExtensionContainer()
+	if container2 == nil {
+		t.Fatalf("Expected non-nil container even with nil slots")
+	}
+}
+
+func TestExtensionContainerCoverageStrain(t *testing.T) {
+	var strain Strain
+	slot := strain.EnsureAttributes()
+	if err := slot.Set(extension.PluginCore, map[string]any{"label": "strain"}); err != nil {
+		t.Fatalf("set strain slot: %v", err)
+	}
+	if err := strain.SetAttributesSlot(slot); err != nil {
+		t.Fatalf("SetAttributesSlot: %v", err)
+	}
+	container := strain.ensureExtensionContainer()
+	if container == nil {
+		t.Fatalf("Expected non-nil strain extension container")
+	}
+
+	second := strain.ensureExtensionContainer()
+	if second != container {
+		t.Errorf("Expected same container instance on subsequent call")
+	}
+
+	var empty Strain
+	container2 := empty.ensureExtensionContainer()
+	if container2 == nil {
+		t.Fatalf("Expected non-nil container even when slot nil")
+	}
+}
+
+func TestExtensionContainerCoverageGenotypeMarker(t *testing.T) {
+	var marker GenotypeMarker
+	slot := marker.EnsureAttributes()
+	if err := slot.Set(extension.PluginCore, map[string]any{"label": "geno"}); err != nil {
+		t.Fatalf("set genotype slot: %v", err)
+	}
+	if err := marker.SetAttributesSlot(slot); err != nil {
+		t.Fatalf("SetAttributesSlot: %v", err)
+	}
+	container := marker.ensureExtensionContainer()
+	if container == nil {
+		t.Fatalf("Expected non-nil genotype extension container")
+	}
+
+	second := marker.ensureExtensionContainer()
+	if second != container {
+		t.Errorf("Expected same container instance on subsequent call")
+	}
+
+	var empty GenotypeMarker
+	container2 := empty.ensureExtensionContainer()
+	if container2 == nil {
+		t.Fatalf("Expected non-nil container even when slot nil")
+	}
+}
+
 func TestSlotFromContainerEdgeCases(t *testing.T) {
 	// Test with container that has empty plugins
 	container := extension.NewContainer()
