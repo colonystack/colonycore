@@ -48,7 +48,9 @@ func TestMemStore_FullCRUDAndErrors(t *testing.T) { //nolint:gocyclo // exhausti
 	// Create all entities
 	runTx(t, store, func(tx domain.Transaction) error {
 		orgAInput := domain.Organism{Name: "Alpha", Species: "Frog"}
-		orgAInput.SetAttributes(map[string]any{"a": 1})
+		if err := orgAInput.SetCoreAttributes(map[string]any{"a": 1}); err != nil {
+			return err
+		}
 		o1, _ := tx.CreateOrganism(orgAInput)
 		o2, _ := tx.CreateOrganism(domain.Organism{Name: "Beta", Species: "Frog"})
 		orgA, orgB = o1, o2
@@ -61,7 +63,9 @@ func TestMemStore_FullCRUDAndErrors(t *testing.T) { //nolint:gocyclo // exhausti
 			Zone:         "Zone-A",
 			AccessPolicy: "badge",
 		}
-		fInput.SetEnvironmentBaselines(map[string]any{"temperature": "22C"})
+		if err := fInput.ApplyEnvironmentBaselines(map[string]any{"temperature": "22C"}); err != nil {
+			return err
+		}
 		f, _ := tx.CreateFacility(fInput)
 		facility = f
 		h, _ := tx.CreateHousingUnit(domain.HousingUnit{Name: "H1", Capacity: 2, Environment: "dry", FacilityID: facility.ID})
@@ -80,7 +84,9 @@ func TestMemStore_FullCRUDAndErrors(t *testing.T) { //nolint:gocyclo // exhausti
 		treatment = t
 		now := time.Now().UTC()
 		obInput := domain.Observation{ProcedureID: &procedure.ID, OrganismID: &o1.ID, RecordedAt: now, Observer: "tech"}
-		obInput.SetData(map[string]any{"score": 5})
+		if err := obInput.ApplyObservationData(map[string]any{"score": 5}); err != nil {
+			return err
+		}
 		ob, _ := tx.CreateObservation(obInput)
 		observation = ob
 		custody := []domain.SampleCustodyEvent{{Actor: "tech", Location: "bench", Timestamp: now}}
@@ -95,7 +101,9 @@ func TestMemStore_FullCRUDAndErrors(t *testing.T) { //nolint:gocyclo // exhausti
 			AssayType:       "PCR",
 			ChainOfCustody:  custody,
 		}
-		sampleInput.SetAttributes(map[string]any{"volume_ml": 1.0})
+		if err := sampleInput.ApplySampleAttributes(map[string]any{"volume_ml": 1.0}); err != nil {
+			return err
+		}
 		sa, _ := tx.CreateSample(sampleInput)
 		sample = sa
 		per, _ := tx.CreatePermit(domain.Permit{
@@ -123,7 +131,9 @@ func TestMemStore_FullCRUDAndErrors(t *testing.T) { //nolint:gocyclo // exhausti
 			ProjectIDs:     []string{project.ID},
 			ReorderLevel:   10,
 		}
-		supplyInput.SetAttributes(map[string]any{"supplier": "Acme"})
+		if err := supplyInput.ApplySupplyAttributes(map[string]any{"supplier": "Acme"}); err != nil {
+			return err
+		}
 		s, _ := tx.CreateSupplyItem(supplyInput)
 		supply = s
 		if _, ok := tx.FindFacility(facility.ID); !ok {
@@ -250,13 +260,12 @@ func TestMemStore_FullCRUDAndErrors(t *testing.T) { //nolint:gocyclo // exhausti
 	runTx(t, store, func(tx domain.Transaction) error {
 		_, _ = tx.UpdateOrganism(orgA.ID, func(o *domain.Organism) error {
 			o.Name = "Alpha2"
-			attrs := o.AttributesMap()
+			attrs := o.CoreAttributes()
 			if attrs == nil {
 				attrs = map[string]any{}
 			}
 			attrs["a"] = 2
-			o.SetAttributes(attrs)
-			return nil
+			return o.SetCoreAttributes(attrs)
 		})
 		_, _ = tx.UpdateCohort(cohort.ID, func(c *domain.Cohort) error { c.Purpose = "updated"; return nil })
 		_, _ = tx.UpdateHousingUnit(housing.ID, func(h *domain.HousingUnit) error { h.Environment = "humid"; h.Capacity = 3; return nil })
@@ -266,13 +275,12 @@ func TestMemStore_FullCRUDAndErrors(t *testing.T) { //nolint:gocyclo // exhausti
 		_, _ = tx.UpdateProject(project.ID, func(p *domain.Project) error { p.Description = strPtr("d"); return nil })
 		_, _ = tx.UpdateFacility(facility.ID, func(f *domain.Facility) error {
 			f.AccessPolicy = "training"
-			baselines := f.EnvironmentBaselinesMap()
+			baselines := f.EnvironmentBaselines()
 			if baselines == nil {
 				baselines = map[string]any{}
 			}
 			baselines["humidity"] = "55%"
-			f.SetEnvironmentBaselines(baselines)
-			return nil
+			return f.ApplyEnvironmentBaselines(baselines)
 		})
 		_, _ = tx.UpdateTreatment(treatment.ID, func(t *domain.Treatment) error {
 			t.AdministrationLog = append(t.AdministrationLog, "follow-up")
@@ -280,13 +288,12 @@ func TestMemStore_FullCRUDAndErrors(t *testing.T) { //nolint:gocyclo // exhausti
 		})
 		_, _ = tx.UpdateObservation(observation.ID, func(o *domain.Observation) error {
 			o.Notes = strPtr("checked")
-			data := o.DataMap()
+			data := o.ObservationData()
 			if data == nil {
 				data = map[string]any{}
 			}
 			data["score"] = 6
-			o.SetData(data)
-			return nil
+			return o.ApplyObservationData(data)
 		})
 		_, _ = tx.UpdateSample(sample.ID, func(s *domain.Sample) error { s.Status = domain.SampleStatusConsumed; return nil })
 		_, _ = tx.UpdatePermit(permit.ID, func(p *domain.Permit) error { p.Notes = strPtr("updated"); return nil })
@@ -466,7 +473,9 @@ func TestSQLiteStore_Persist_Reload_Full(t *testing.T) {
 			ProjectID:  &projectPtr,
 			ProtocolID: &protocolPtr,
 		}
-		organismInput.SetAttributes(map[string]any{"tag": "alpha"})
+		if err := organismInput.SetCoreAttributes(map[string]any{"tag": "alpha"}); err != nil {
+			return err
+		}
 		organism, err := tx.CreateOrganism(organismInput)
 		if err != nil {
 			return err
@@ -504,7 +513,9 @@ func TestSQLiteStore_Persist_Reload_Full(t *testing.T) {
 			RecordedAt:  now,
 			Observer:    "tech",
 		}
-		observationInput.SetData(map[string]any{"score": 5})
+		if err := observationInput.ApplyObservationData(map[string]any{"score": 5}); err != nil {
+			return err
+		}
 		observation, err := tx.CreateObservation(observationInput)
 		if err != nil {
 			return err
@@ -523,7 +534,9 @@ func TestSQLiteStore_Persist_Reload_Full(t *testing.T) {
 			AssayType:       "PCR",
 			ChainOfCustody:  custody,
 		}
-		sampleInput2.SetAttributes(map[string]any{"volume_ml": 1.0})
+		if err := sampleInput2.ApplySampleAttributes(map[string]any{"volume_ml": 1.0}); err != nil {
+			return err
+		}
 		sample, err := tx.CreateSample(sampleInput2)
 		if err != nil {
 			return err
@@ -559,7 +572,9 @@ func TestSQLiteStore_Persist_Reload_Full(t *testing.T) {
 			ProjectIDs:     []string{project.ID},
 			ReorderLevel:   25,
 		}
-		supplyInput2.SetAttributes(map[string]any{"supplier": "Acme"})
+		if err := supplyInput2.ApplySupplyAttributes(map[string]any{"supplier": "Acme"}); err != nil {
+			return err
+		}
 		supply, err := tx.CreateSupplyItem(supplyInput2)
 		if err != nil {
 			return err
@@ -607,7 +622,7 @@ func TestSQLiteStore_Persist_Reload_Full(t *testing.T) {
 	if got, ok := reloaded.GetPermit(permitID); !ok || got.PermitNumber != "PER-1" {
 		t.Fatalf("expected permit persisted")
 	}
-	if got, ok := reloaded.GetOrganism(organismID); !ok || got.AttributesMap()["tag"] != "alpha" {
+	if got, ok := reloaded.GetOrganism(organismID); !ok || got.CoreAttributes()["tag"] != "alpha" {
 		t.Fatalf("expected organism attributes persisted")
 	}
 	if got := reloaded.ListProjects(); len(got) != 1 || got[0].ID != projectID {
@@ -1110,14 +1125,14 @@ func TestSQLiteMigrateSnapshotCleansDataVariants(t *testing.T) {
 	if len(migrated.Observations) != 1 {
 		t.Fatalf("expected single observation, got %+v", migrated.Observations)
 	}
-	if migrated.Observations["observation-valid"].DataMap() == nil {
+	if obs := migrated.Observations["observation-valid"]; (&obs).ObservationData() == nil {
 		t.Fatalf("expected observation data map to be initialised")
 	}
 
 	if len(migrated.Samples) != 1 {
 		t.Fatalf("expected single valid sample, got %+v", migrated.Samples)
 	}
-	if migrated.Samples["sample-valid"].AttributesMap() == nil {
+	if sample := migrated.Samples["sample-valid"]; (&sample).SampleAttributes() == nil {
 		t.Fatalf("expected sample attributes map to be initialised")
 	}
 
@@ -1132,7 +1147,7 @@ func TestSQLiteMigrateSnapshotCleansDataVariants(t *testing.T) {
 		t.Fatalf("expected project facility IDs filtered")
 	}
 
-	if migrated.Supplies["supply-valid"].AttributesMap() == nil {
+	if supply := migrated.Supplies["supply-valid"]; (&supply).SupplyAttributes() == nil {
 		t.Fatalf("expected supply attributes map initialised")
 	}
 	if len(migrated.Supplies["supply-valid"].FacilityIDs) != 1 || migrated.Supplies["supply-valid"].FacilityIDs[0] != facilityID {
@@ -1143,7 +1158,7 @@ func TestSQLiteMigrateSnapshotCleansDataVariants(t *testing.T) {
 	}
 
 	facility := migrated.Facilities[facilityID]
-	if facility.EnvironmentBaselinesMap() == nil {
+	if (&facility).EnvironmentBaselines() == nil {
 		t.Fatalf("expected facility baselines map initialised")
 	}
 	if len(facility.HousingUnitIDs) != 1 || facility.HousingUnitIDs[0] != "housing-valid" {

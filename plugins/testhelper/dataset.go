@@ -85,9 +85,11 @@ func Organism(cfg OrganismFixtureConfig) datasetapi.Organism {
 		ProtocolID: cloneOptionalString(cfg.ProtocolID),
 		ProjectID:  cloneOptionalString(cfg.ProjectID),
 	}
-	domainOrganism.SetAttributes(cloneAttributes(cfg.Attributes))
+	if err := domainOrganism.SetCoreAttributes(cloneAttributes(cfg.Attributes)); err != nil {
+		panic(err)
+	}
 
-	coreExtensions := domainOrganism.AttributesMap()
+	coreExtensions := domainOrganism.CoreAttributes()
 	var extensionSet datasetapi.ExtensionSet
 	if len(coreExtensions) > 0 {
 		hook := datasetapi.NewExtensionHookContext().OrganismAttributes()

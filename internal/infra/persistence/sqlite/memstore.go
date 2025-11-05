@@ -58,6 +58,12 @@ type (
 	PersistentStore = domain.PersistentStore
 )
 
+func mustApply(label string, err error) {
+	if err != nil {
+		panic(fmt.Errorf("sqlite memstore %s: %w", label, err))
+	}
+}
+
 // Infra implementations use domain types directly via their interfaces
 // No constant aliases needed - use domain.EntityType, domain.Action values directly
 
@@ -307,10 +313,10 @@ func migrateSnapshot(snapshot Snapshot) Snapshot {
 	}
 
 	for id, observation := range snapshot.Observations {
-		if data := observation.DataMap(); data == nil {
-			observation.SetData(map[string]any{})
+		if data := observation.ObservationData(); data == nil {
+			mustApply("apply observation data", observation.ApplyObservationData(map[string]any{}))
 		} else {
-			observation.SetData(data)
+			mustApply("apply observation data", observation.ApplyObservationData(data))
 		}
 		if observation.ProcedureID != nil && !procedureExists(*observation.ProcedureID) {
 			observation.ProcedureID = nil
@@ -329,10 +335,10 @@ func migrateSnapshot(snapshot Snapshot) Snapshot {
 	}
 
 	for id, sample := range snapshot.Samples {
-		if attrs := sample.AttributesMap(); attrs == nil {
-			sample.SetAttributes(map[string]any{})
+		if attrs := sample.SampleAttributes(); attrs == nil {
+			mustApply("apply sample attributes", sample.ApplySampleAttributes(map[string]any{}))
 		} else {
-			sample.SetAttributes(attrs)
+			mustApply("apply sample attributes", sample.ApplySampleAttributes(attrs))
 		}
 		if sample.FacilityID == "" || !facilityExists(sample.FacilityID) {
 			delete(snapshot.Samples, id)
@@ -391,10 +397,10 @@ func migrateSnapshot(snapshot Snapshot) Snapshot {
 	}
 
 	for id, item := range snapshot.Supplies {
-		if attrs := item.AttributesMap(); attrs == nil {
-			item.SetAttributes(map[string]any{})
+		if attrs := item.SupplyAttributes(); attrs == nil {
+			mustApply("apply supply attributes", item.ApplySupplyAttributes(map[string]any{}))
 		} else {
-			item.SetAttributes(attrs)
+			mustApply("apply supply attributes", item.ApplySupplyAttributes(attrs))
 		}
 		if filtered, changed := filterIDs(item.FacilityIDs, facilityExists); changed {
 			item.FacilityIDs = filtered
@@ -406,10 +412,10 @@ func migrateSnapshot(snapshot Snapshot) Snapshot {
 	}
 
 	for id, facility := range snapshot.Facilities {
-		if baselines := facility.EnvironmentBaselinesMap(); baselines == nil {
-			facility.SetEnvironmentBaselines(map[string]any{})
+		if baselines := facility.EnvironmentBaselines(); baselines == nil {
+			mustApply("apply facility baselines", facility.ApplyEnvironmentBaselines(map[string]any{}))
 		} else {
-			facility.SetEnvironmentBaselines(baselines)
+			mustApply("apply facility baselines", facility.ApplyEnvironmentBaselines(baselines))
 		}
 		snapshot.Facilities[id] = facility
 	}
@@ -982,10 +988,10 @@ func (tx *transaction) CreateOrganism(o Organism) (Organism, error) {
 	}
 	o.CreatedAt = tx.now
 	o.UpdatedAt = tx.now
-	if attrs := o.AttributesMap(); attrs == nil {
-		o.SetAttributes(map[string]any{})
+	if attrs := o.CoreAttributes(); attrs == nil {
+		mustApply("apply organism attributes", o.SetCoreAttributes(map[string]any{}))
 	} else {
-		o.SetAttributes(attrs)
+		mustApply("apply organism attributes", o.SetCoreAttributes(attrs))
 	}
 	tx.state.organisms[o.ID] = cloneOrganism(o)
 	tx.recordChange(Change{Entity: domain.EntityOrganism, Action: domain.ActionCreate, After: cloneOrganism(o)})
@@ -1128,10 +1134,10 @@ func (tx *transaction) CreateFacility(f Facility) (Facility, error) {
 	f.UpdatedAt = tx.now
 	f.HousingUnitIDs = nil
 	f.ProjectIDs = nil
-	if baselines := f.EnvironmentBaselinesMap(); baselines == nil {
-		f.SetEnvironmentBaselines(map[string]any{})
+	if baselines := f.EnvironmentBaselines(); baselines == nil {
+		mustApply("apply facility baselines", f.ApplyEnvironmentBaselines(map[string]any{}))
 	} else {
-		f.SetEnvironmentBaselines(baselines)
+		mustApply("apply facility baselines", f.ApplyEnvironmentBaselines(baselines))
 	}
 	tx.state.facilities[f.ID] = cloneFacility(f)
 	created := decorateFacility(&tx.state, f)
@@ -1148,10 +1154,10 @@ func (tx *transaction) UpdateFacility(id string, mutator func(*Facility) error) 
 	if err := mutator(&current); err != nil {
 		return Facility{}, err
 	}
-	if baselines := current.EnvironmentBaselinesMap(); baselines == nil {
-		current.SetEnvironmentBaselines(map[string]any{})
+	if baselines := current.EnvironmentBaselines(); baselines == nil {
+		mustApply("apply facility baselines", current.ApplyEnvironmentBaselines(map[string]any{}))
 	} else {
-		current.SetEnvironmentBaselines(baselines)
+		mustApply("apply facility baselines", current.ApplyEnvironmentBaselines(baselines))
 	}
 	current.HousingUnitIDs = nil
 	current.ProjectIDs = nil
@@ -1392,10 +1398,10 @@ func (tx *transaction) CreateObservation(o Observation) (Observation, error) {
 	}
 	o.CreatedAt = tx.now
 	o.UpdatedAt = tx.now
-	if data := o.DataMap(); data == nil {
-		o.SetData(map[string]any{})
+	if data := o.ObservationData(); data == nil {
+		mustApply("apply observation data", o.ApplyObservationData(map[string]any{}))
 	} else {
-		o.SetData(data)
+		mustApply("apply observation data", o.ApplyObservationData(data))
 	}
 	tx.state.observations[o.ID] = cloneObservation(o)
 	tx.recordChange(Change{Entity: domain.EntityObservation, Action: domain.ActionCreate, After: cloneObservation(o)})
@@ -1428,10 +1434,10 @@ func (tx *transaction) UpdateObservation(id string, mutator func(*Observation) e
 			return Observation{}, fmt.Errorf("cohort %q not found for observation", *current.CohortID)
 		}
 	}
-	if data := current.DataMap(); data == nil {
-		current.SetData(map[string]any{})
+	if data := current.ObservationData(); data == nil {
+		mustApply("apply observation data", current.ApplyObservationData(map[string]any{}))
 	} else {
-		current.SetData(data)
+		mustApply("apply observation data", current.ApplyObservationData(data))
 	}
 	current.ID = id
 	current.UpdatedAt = tx.now
@@ -1476,10 +1482,10 @@ func (tx *transaction) CreateSample(s Sample) (Sample, error) {
 	}
 	s.CreatedAt = tx.now
 	s.UpdatedAt = tx.now
-	if attrs := s.AttributesMap(); attrs == nil {
-		s.SetAttributes(map[string]any{})
+	if attrs := s.SampleAttributes(); attrs == nil {
+		mustApply("apply sample attributes", s.ApplySampleAttributes(map[string]any{}))
 	} else {
-		s.SetAttributes(attrs)
+		mustApply("apply sample attributes", s.ApplySampleAttributes(attrs))
 	}
 	tx.state.samples[s.ID] = cloneSample(s)
 	tx.recordChange(Change{Entity: domain.EntitySample, Action: domain.ActionCreate, After: cloneSample(s)})
@@ -1513,10 +1519,10 @@ func (tx *transaction) UpdateSample(id string, mutator func(*Sample) error) (Sam
 			return Sample{}, fmt.Errorf("cohort %q not found for sample", *current.CohortID)
 		}
 	}
-	if attrs := current.AttributesMap(); attrs == nil {
-		current.SetAttributes(map[string]any{})
+	if attrs := current.SampleAttributes(); attrs == nil {
+		mustApply("apply sample attributes", current.ApplySampleAttributes(map[string]any{}))
 	} else {
-		current.SetAttributes(attrs)
+		mustApply("apply sample attributes", current.ApplySampleAttributes(attrs))
 	}
 	current.ID = id
 	current.UpdatedAt = tx.now
@@ -1721,10 +1727,10 @@ func (tx *transaction) CreateSupplyItem(s SupplyItem) (SupplyItem, error) {
 	}
 	s.CreatedAt = tx.now
 	s.UpdatedAt = tx.now
-	if attrs := s.AttributesMap(); attrs == nil {
-		s.SetAttributes(map[string]any{})
+	if attrs := s.SupplyAttributes(); attrs == nil {
+		mustApply("apply supply attributes", s.ApplySupplyAttributes(map[string]any{}))
 	} else {
-		s.SetAttributes(attrs)
+		mustApply("apply supply attributes", s.ApplySupplyAttributes(attrs))
 	}
 	tx.state.supplies[s.ID] = cloneSupplyItem(s)
 	tx.recordChange(Change{Entity: domain.EntitySupplyItem, Action: domain.ActionCreate, After: cloneSupplyItem(s)})
@@ -1751,10 +1757,10 @@ func (tx *transaction) UpdateSupplyItem(id string, mutator func(*SupplyItem) err
 			return SupplyItem{}, fmt.Errorf("project %q not found for supply item", projectID)
 		}
 	}
-	if attrs := current.AttributesMap(); attrs == nil {
-		current.SetAttributes(map[string]any{})
+	if attrs := current.SupplyAttributes(); attrs == nil {
+		mustApply("apply supply attributes", current.ApplySupplyAttributes(map[string]any{}))
 	} else {
-		current.SetAttributes(attrs)
+		mustApply("apply supply attributes", current.ApplySupplyAttributes(attrs))
 	}
 	if current.ExpiresAt != nil {
 		t := *current.ExpiresAt

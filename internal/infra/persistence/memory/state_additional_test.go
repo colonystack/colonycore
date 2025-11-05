@@ -41,7 +41,9 @@ func TestSnapshotAllEntities(t *testing.T) {
 		}
 		// Create organism with attributes
 		organismInput := domain.Organism{Name: "Spec", Species: "Frog"}
-		organismInput.SetAttributes(map[string]any{"color": "green"})
+		if err := organismInput.SetCoreAttributes(map[string]any{"color": "green"}); err != nil {
+			return err
+		}
 		o, err := tx.CreateOrganism(organismInput)
 		if err != nil {
 			return err
@@ -84,9 +86,9 @@ func TestSnapshotAllEntities(t *testing.T) {
 	}
 	// Ensure organism attributes remain isolated (deep copy validated indirectly by modifying snapshot copy)
 	snapOrg := snap.Organisms[organism.ID]
-	attrs := snapOrg.AttributesMap()
+	attrs := snapOrg.CoreAttributes()
 	attrs["color"] = "blue"
-	if store.ListOrganisms()[0].AttributesMap()["color"] != "green" {
+	if store.ListOrganisms()[0].CoreAttributes()["color"] != "green" {
 		t.Fatalf("expected deep copy isolation")
 	}
 }
@@ -171,7 +173,7 @@ func TestImportStateAppliesRelationshipMigrations(t *testing.T) {
 	}
 
 	observations := store.ListObservations()
-	if len(observations) != 1 || observations[0].DataMap() == nil {
+	if len(observations) != 1 || observations[0].ObservationData() == nil {
 		t.Fatalf("expected valid observation with data map initialised, got %+v", observations)
 	}
 
@@ -261,14 +263,14 @@ func TestMigrateSnapshotCleansDataVariants(t *testing.T) {
 	if len(migrated.Observations) != 1 {
 		t.Fatalf("expected single observation, got %+v", migrated.Observations)
 	}
-	if migrated.Observations["observation-valid"].DataMap() == nil {
+	if obs := migrated.Observations["observation-valid"]; (&obs).ObservationData() == nil {
 		t.Fatalf("expected observation data map to be initialised")
 	}
 
 	if len(migrated.Samples) != 1 {
 		t.Fatalf("expected single valid sample, got %+v", migrated.Samples)
 	}
-	if migrated.Samples["sample-valid"].AttributesMap() == nil {
+	if sample := migrated.Samples["sample-valid"]; (&sample).SampleAttributes() == nil {
 		t.Fatalf("expected sample attributes map to be initialised")
 	}
 
@@ -283,7 +285,7 @@ func TestMigrateSnapshotCleansDataVariants(t *testing.T) {
 		t.Fatalf("expected project facility IDs filtered")
 	}
 
-	if migrated.Supplies["supply-valid"].AttributesMap() == nil {
+	if supply := migrated.Supplies["supply-valid"]; (&supply).SupplyAttributes() == nil {
 		t.Fatalf("expected supply attributes map initialised")
 	}
 	if len(migrated.Supplies["supply-valid"].FacilityIDs) != 1 || migrated.Supplies["supply-valid"].FacilityIDs[0] != facilityID {
@@ -294,7 +296,7 @@ func TestMigrateSnapshotCleansDataVariants(t *testing.T) {
 	}
 
 	facility := migrated.Facilities[facilityID]
-	if facility.EnvironmentBaselinesMap() == nil {
+	if (&facility).EnvironmentBaselines() == nil {
 		t.Fatalf("expected facility baselines map initialised")
 	}
 	if len(facility.HousingUnitIDs) != 1 || facility.HousingUnitIDs[0] != "housing-valid" {

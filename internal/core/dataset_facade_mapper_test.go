@@ -44,7 +44,9 @@ func TestFacadeOrganismFromDomainCopiesData(t *testing.T) {
 		ProtocolID: &protocol,
 		ProjectID:  &project,
 	}
-	org.SetAttributes(map[string]any{testAttributeKey: testAttributeOriginalValue})
+	if err := org.SetCoreAttributes(map[string]any{testAttributeKey: testAttributeOriginalValue}); err != nil {
+		t.Fatalf("SetCoreAttributes: %v", err)
+	}
 
 	converted := facadeOrganismFromDomain(org)
 
@@ -64,8 +66,8 @@ func TestFacadeOrganismFromDomainCopiesData(t *testing.T) {
 
 	attrs := converted.Attributes()
 	attrs[testAttributeKey] = testLiteralMutated
-	if org.AttributesMap()[testAttributeKey] != testAttributeOriginalValue {
-		t.Fatalf("original attributes mutated: %+v", org.AttributesMap())
+	if org.CoreAttributes()[testAttributeKey] != testAttributeOriginalValue {
+		t.Fatalf("original attributes mutated: %+v", org.CoreAttributes())
 	}
 	if cohortID, ok := converted.CohortID(); !ok || cohortID != cohort {
 		t.Fatalf("expected cohort id clone")
@@ -193,7 +195,7 @@ func TestFacadeCollectionsCloneSlices(t *testing.T) {
 	}
 	attr := breedingUnits[0].PairingAttributes()
 	attr["purpose"] = testLiteralMutated
-	if breeding.PairingAttributesMap()["purpose"] != "lineage" {
+	if breeding.PairingAttributes()["purpose"] != "lineage" {
 		t.Fatalf("expected pairing attributes to be cloned")
 	}
 	procIDs := procedures[0].OrganismIDs()

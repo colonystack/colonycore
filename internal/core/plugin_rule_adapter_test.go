@@ -444,7 +444,9 @@ func TestNewViewAccessors(t *testing.T) {
 			Notes:     strPtr("note"),
 		}},
 	}
-	sampleDomain.SetAttributes(map[string]any{"k": "v"})
+	if err := sampleDomain.ApplySampleAttributes(map[string]any{"k": "v"}); err != nil {
+		t.Fatalf("ApplySampleAttributes: %v", err)
+	}
 	sample := newSampleView(sampleDomain)
 	if sample.Identifier() == "" || sample.AssayType() == "" || sample.StorageLocation() == "" {
 		t.Fatal("sample view should expose base fields")
@@ -493,7 +495,9 @@ func TestNewViewAccessors(t *testing.T) {
 		ProjectIDs:     []string{"project"},
 		ReorderLevel:   2,
 	}
-	supplyDomain.SetAttributes(map[string]any{"k": "v"})
+	if err := supplyDomain.ApplySupplyAttributes(map[string]any{"k": "v"}); err != nil {
+		t.Fatalf("ApplySupplyAttributes: %v", err)
+	}
 	supply := newSupplyItemView(supplyDomain)
 	if supply.SKU() == "" || supply.Name() == "" || supply.Description() == "" || supply.Unit() == "" || supply.LotNumber() == "" {
 		t.Fatal("supply view should expose base fields")
@@ -550,7 +554,9 @@ func TestOrganismViewAccessors(t *testing.T) {
 		ProtocolID: &protocolID,
 		ProjectID:  &projectID,
 	}
-	domainOrg.SetAttributes(attributes)
+	if err := domainOrg.SetCoreAttributes(attributes); err != nil {
+		t.Fatalf("SetCoreAttributes: %v", err)
+	}
 
 	view := newOrganismView(domainOrg)
 

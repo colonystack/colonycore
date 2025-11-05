@@ -124,7 +124,7 @@ func seedMemoryStore(t *testing.T, store *memory.Store) memoryIDs {
 			CohortID:   &cohortPtr,
 			HousingID:  &housingPtr,
 		}
-		organismAInput.SetAttributes(attrs)
+		mustNoErr(t, organismAInput.SetCoreAttributes(attrs))
 		organismAVal, err := tx.CreateOrganism(organismAInput)
 		organismA := must(t, organismAVal, err)
 		ids.organismAID = organismA.ID
@@ -216,7 +216,7 @@ func seedMemoryStore(t *testing.T, store *memory.Store) memoryIDs {
 			AssayType:       "PCR",
 			ChainOfCustody:  custody,
 		}
-		sampleInput.SetAttributes(map[string]any{"volume_ml": 1.5})
+		mustNoErr(t, sampleInput.ApplySampleAttributes(map[string]any{"volume_ml": 1.5}))
 		sampleVal, err := tx.CreateSample(sampleInput)
 		sample := must(t, sampleVal, err)
 		ids.sampleID = sample.ID
@@ -263,7 +263,7 @@ func seedMemoryStore(t *testing.T, store *memory.Store) memoryIDs {
 			ProjectIDs:     []string{ids.projectID},
 			ReorderLevel:   20,
 		}
-		supplyInput.SetAttributes(map[string]any{"supplier": "Acme"})
+		mustNoErr(t, supplyInput.ApplySupplyAttributes(map[string]any{"supplier": "Acme"}))
 		supplyVal, err := tx.CreateSupplyItem(supplyInput)
 		supply := must(t, supplyVal, err)
 		ids.supplyItemID = supply.ID
@@ -352,12 +352,12 @@ func verifyMemoryStorePostCreate(t *testing.T, store *memory.Store, ids memoryID
 		if organism.ID != ids.organismAID {
 			continue
 		}
-		attrs := organism.AttributesMap()
+		attrs := organism.CoreAttributes()
 		if attrs["skin_color_index"].(int) != 5 {
 			t.Fatalf("expected cloned attributes value 5, got %v", attrs["skin_color_index"])
 		}
 		attrs["skin_color_index"] = 1
-		if organism.AttributesMap()["skin_color_index"].(int) != 5 {
+		if organism.CoreAttributes()["skin_color_index"].(int) != 5 {
 			t.Fatalf("expected organism attributes clone to remain unchanged")
 		}
 		copyCheckDone = true
@@ -368,8 +368,9 @@ func verifyMemoryStorePostCreate(t *testing.T, store *memory.Store, ids memoryID
 
 	refreshedVal, ok := store.GetOrganism(ids.organismAID)
 	refreshed := mustGet(t, refreshedVal, ok, "expected organism to exist")
-	if refreshed.AttributesMap()["skin_color_index"].(int) != 5 {
-		t.Fatalf("expected store attributes to remain 5, got %v", refreshed.AttributesMap()["skin_color_index"])
+	refreshedAttrs := refreshed.CoreAttributes()
+	if refreshedAttrs["skin_color_index"].(int) != 5 {
+		t.Fatalf("expected store attributes to remain 5, got %v", refreshedAttrs["skin_color_index"])
 	}
 
 	housingList := store.ListHousingUnits()
@@ -447,13 +448,12 @@ func exerciseMemoryUpdates(t *testing.T, store *memory.Store, ids memoryIDs) {
 		mustNoErr(t, err)
 		_, err = tx.UpdateFacility(ids.facilityID, func(f *domain.Facility) error {
 			f.AccessPolicy = "biosafety-training"
-			baselines := f.EnvironmentBaselinesMap()
+			baselines := f.EnvironmentBaselines()
 			if baselines == nil {
 				baselines = map[string]any{}
 			}
 			baselines["humidity"] = "55%"
-			f.SetEnvironmentBaselines(baselines)
-			return nil
+			return f.ApplyEnvironmentBaselines(baselines)
 		})
 		mustNoErr(t, err)
 		_, err = tx.UpdateTreatment(ids.treatmentID, func(tr *domain.Treatment) error {
@@ -464,25 +464,23 @@ func exerciseMemoryUpdates(t *testing.T, store *memory.Store, ids memoryIDs) {
 		mustNoErr(t, err)
 		_, err = tx.UpdateObservation(ids.observationID, func(o *domain.Observation) error {
 			o.Notes = strPtr(updatedDesc)
-			data := o.DataMap()
+			data := o.ObservationData()
 			if data == nil {
 				data = map[string]any{}
 			}
 			data["score"] = 6
-			o.SetData(data)
-			return nil
+			return o.ApplyObservationData(data)
 		})
 		mustNoErr(t, err)
 		_, err = tx.UpdateSample(ids.sampleID, func(s *domain.Sample) error {
 			s.Status = domain.SampleStatusConsumed
 			s.ChainOfCustody = append(s.ChainOfCustody, domain.SampleCustodyEvent{Actor: "lab", Location: "analysis", Timestamp: time.Now().UTC()})
-			attrs := s.AttributesMap()
+			attrs := s.SampleAttributes()
 			if attrs == nil {
 				attrs = map[string]any{}
 			}
 			attrs["volume_ml"] = 1.0
-			s.SetAttributes(attrs)
-			return nil
+			return s.ApplySampleAttributes(attrs)
 		})
 		mustNoErr(t, err)
 		_, err = tx.UpdatePermit(ids.permitID, func(p *domain.Permit) error {
@@ -517,7 +515,7 @@ func exerciseMemoryUpdates(t *testing.T, store *memory.Store, ids memoryIDs) {
 	if facility.AccessPolicy != "biosafety-training" {
 		t.Fatalf("expected updated access policy, got %s", facility.AccessPolicy)
 	}
-	if facility.EnvironmentBaselinesMap()["humidity"] != "55%" {
+	if facilityBaselines := facility.EnvironmentBaselines(); facilityBaselines["humidity"] != "55%" {
 		t.Fatalf("expected humidity baseline to be updated")
 	}
 

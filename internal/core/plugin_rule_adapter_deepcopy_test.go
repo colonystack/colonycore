@@ -17,7 +17,9 @@ func TestOrganismViewAttributesDeepCopy(t *testing.T) {
 	}
 
 	org := domainOrganismFixture() // use existing test helper if available; fallback create minimal
-	org.SetAttributes(original)
+	if err := org.SetCoreAttributes(original); err != nil {
+		t.Fatalf("SetCoreAttributes: %v", err)
+	}
 
 	view := newOrganismView(org)
 
@@ -80,7 +82,9 @@ func TestCoreAttributesHelperClone(t *testing.T) {
 	}
 
 	original := map[string]any{"flag": true}
-	org.SetAttributes(original)
+	if err := org.SetCoreAttributes(original); err != nil {
+		t.Fatalf("SetCoreAttributes: %v", err)
+	}
 
 	values := org.CoreAttributes()
 	if values["flag"] != true {
