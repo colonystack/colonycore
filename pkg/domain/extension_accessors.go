@@ -231,6 +231,44 @@ func (l *Line) SetLineExtensions(container extension.Container) error {
 	return nil
 }
 
+// DefaultAttributes returns a defensive copy of the plugin-scoped default attributes payload.
+func (l *Line) DefaultAttributes() map[string]any {
+	slot := l.EnsureDefaultAttributes()
+	payload := slot.Raw()
+	if len(payload) == 0 {
+		return nil
+	}
+	return payload
+}
+
+// ApplyDefaultAttributes replaces the default attribute payloads for all plugins.
+func (l *Line) ApplyDefaultAttributes(attrs map[string]any) error {
+	slot, err := slotFromPluginPayloads(extension.HookLineDefaultAttributes, attrs)
+	if err != nil {
+		return err
+	}
+	return l.SetDefaultAttributesSlot(slot)
+}
+
+// ExtensionOverrides returns a defensive copy of the plugin-scoped extension overrides payload.
+func (l *Line) ExtensionOverrides() map[string]any {
+	slot := l.EnsureExtensionOverrides()
+	payload := slot.Raw()
+	if len(payload) == 0 {
+		return nil
+	}
+	return payload
+}
+
+// ApplyExtensionOverrides replaces the extension override payloads for all plugins.
+func (l *Line) ApplyExtensionOverrides(overrides map[string]any) error {
+	slot, err := slotFromPluginPayloads(extension.HookLineExtensionOverrides, overrides)
+	if err != nil {
+		return err
+	}
+	return l.SetExtensionOverridesSlot(slot)
+}
+
 // StrainExtensions returns a deep copy of the strain extension container.
 func (s *Strain) StrainExtensions() (extension.Container, error) {
 	container := s.ensureExtensionContainer()

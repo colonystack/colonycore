@@ -534,24 +534,10 @@ func (l Line) MarshalJSON() ([]byte, error) {
 		ExtensionOverrides map[string]any `json:"extension_overrides"`
 	}
 
-	var defaultPayload map[string]any
-	if l.defaultAttributesSlot != nil {
-		defaultPayload = l.defaultAttributesSlot.Raw()
-	} else if l.extensions != nil && len(l.extensions.Plugins(extension.HookLineDefaultAttributes)) > 0 {
-		defaultPayload = slotFromContainer(extension.HookLineDefaultAttributes, l.extensions).Raw()
-	}
-
-	var overridePayload map[string]any
-	if l.extensionOverridesSlot != nil {
-		overridePayload = l.extensionOverridesSlot.Raw()
-	} else if l.extensions != nil && len(l.extensions.Plugins(extension.HookLineExtensionOverrides)) > 0 {
-		overridePayload = slotFromContainer(extension.HookLineExtensionOverrides, l.extensions).Raw()
-	}
-
 	return json.Marshal(payload{
 		lineAlias:          lineAlias(l),
-		DefaultAttributes:  defaultPayload,
-		ExtensionOverrides: overridePayload,
+		DefaultAttributes:  (&l).DefaultAttributes(),
+		ExtensionOverrides: (&l).ExtensionOverrides(),
 	})
 }
 
@@ -571,34 +557,19 @@ func (l *Line) UnmarshalJSON(data []byte) error {
 	l.defaultAttributesSlot = nil
 	l.extensionOverridesSlot = nil
 
-	if aux.DefaultAttributes != nil {
-		slot := extension.NewSlot(extension.HookLineDefaultAttributes)
-		for plugin, value := range aux.DefaultAttributes {
-			if err := slot.Set(extension.PluginID(plugin), value); err != nil {
-				return err
-			}
-		}
-		if err := l.SetDefaultAttributesSlot(slot); err != nil {
-			return err
-		}
-	} else if err := l.SetDefaultAttributesSlot(nil); err != nil {
+	defaultSlot, err := slotFromPluginPayloads(extension.HookLineDefaultAttributes, aux.DefaultAttributes)
+	if err != nil {
+		return err
+	}
+	if err := l.SetDefaultAttributesSlot(defaultSlot); err != nil {
 		return err
 	}
 
-	if aux.ExtensionOverrides != nil {
-		slot := extension.NewSlot(extension.HookLineExtensionOverrides)
-		for plugin, value := range aux.ExtensionOverrides {
-			if err := slot.Set(extension.PluginID(plugin), value); err != nil {
-				return err
-			}
-		}
-		if err := l.SetExtensionOverridesSlot(slot); err != nil {
-			return err
-		}
-	} else if err := l.SetExtensionOverridesSlot(nil); err != nil {
+	overrideSlot, err := slotFromPluginPayloads(extension.HookLineExtensionOverrides, aux.ExtensionOverrides)
+	if err != nil {
 		return err
 	}
-	return nil
+	return l.SetExtensionOverridesSlot(overrideSlot)
 }
 
 type strainAlias Strain

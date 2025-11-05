@@ -40,3 +40,16 @@ func populateContainerFromMap(container *extension.Container, hook extension.Hoo
 		panicOnExtension(container.Set(hook, extension.PluginID(plugin), value), label)
 	}
 }
+
+func slotFromPluginPayloads(hook extension.Hook, payloads map[string]any) (*extension.Slot, error) {
+	if len(payloads) == 0 {
+		return nil, nil
+	}
+	slot := extension.NewSlot(hook)
+	for plugin, value := range payloads {
+		if err := slot.Set(extension.PluginID(plugin), value); err != nil {
+			return nil, err
+		}
+	}
+	return slot, nil
+}

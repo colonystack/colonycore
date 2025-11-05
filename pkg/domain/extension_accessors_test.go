@@ -219,17 +219,17 @@ func TestObservationAndSampleHooks(t *testing.T) {
 	now := time.Now()
 
 	observation := Observation{Base: Base{ID: "obs", CreatedAt: now, UpdatedAt: now}}
-	if err := observation.ApplyObservationData(map[string]any{"notes": "value"}); err != nil {
+	if err := observation.ApplyObservationData(map[string]any{"notes": testAttrValue}); err != nil {
 		t.Fatalf("ApplyObservationData: %v", err)
 	}
-	if data := observation.ObservationData(); data["notes"] != "value" {
+	if data := observation.ObservationData(); data["notes"] != testAttrValue {
 		t.Fatalf("unexpected observation data: %+v", data)
 	}
 	oext, err := observation.ObservationExtensions()
 	if err != nil {
 		t.Fatalf("ObservationExtensions: %v", err)
 	}
-	if payload, ok := cloneHookMap(&oext, extension.HookObservationData, extension.PluginCore); !ok || payload["notes"] != "value" {
+	if payload, ok := cloneHookMap(&oext, extension.HookObservationData, extension.PluginCore); !ok || payload["notes"] != testAttrValue {
 		t.Fatalf("unexpected observation container payload: %+v", payload)
 	}
 	container := extension.NewContainer()
@@ -396,6 +396,93 @@ func TestLineExtensionsRoundTrip(t *testing.T) {
 	}
 }
 
+func TestLineDefaultAttributesAccessors(t *testing.T) {
+	var line Line
+	if attrs := line.DefaultAttributes(); attrs != nil {
+		t.Fatalf("expected nil default attributes when unset")
+	}
+
+	input := map[string]any{
+		extension.PluginCore.String(): map[string]any{"seed": "alpha"},
+		"plugin.beta":                 map[string]any{"flag": true},
+	}
+	if err := line.ApplyDefaultAttributes(input); err != nil {
+		t.Fatalf("ApplyDefaultAttributes: %v", err)
+	}
+	attrs := line.DefaultAttributes()
+	if len(attrs) != 2 {
+		t.Fatalf("expected two plugin payloads, got %d", len(attrs))
+	}
+	if attrs[extension.PluginCore.String()].(map[string]any)["seed"] != "alpha" {
+		t.Fatalf("unexpected default payload: %+v", attrs)
+	}
+	input[extension.PluginCore.String()].(map[string]any)["seed"] = "mutated"
+	reloaded := line.DefaultAttributes()
+	if reloaded[extension.PluginCore.String()].(map[string]any)["seed"] != "alpha" {
+		t.Fatalf("expected stored payload immune to caller mutation, got %+v", reloaded)
+	}
+
+	attrs["plugin.beta"].(map[string]any)["flag"] = false
+	verify := line.DefaultAttributes()
+	if verify["plugin.beta"].(map[string]any)["flag"] != true {
+		t.Fatalf("expected cloned payload from accessor, got %+v", verify)
+	}
+
+	if err := line.ApplyDefaultAttributes(map[string]any{}); err != nil {
+		t.Fatalf("ApplyDefaultAttributes empty: %v", err)
+	}
+	if attrs := line.DefaultAttributes(); attrs != nil {
+		t.Fatalf("expected default attributes cleared after empty assignment")
+	}
+	if slot := line.defaultAttributesSlot; slot != nil && len(slot.Plugins()) != 0 {
+		t.Fatalf("expected default attributes slot empty, got plugins %v", slot.Plugins())
+	}
+}
+
+func TestLineExtensionOverrideAccessors(t *testing.T) {
+	var line Line
+	if overrides := line.ExtensionOverrides(); overrides != nil {
+		t.Fatalf("expected nil overrides when unset")
+	}
+
+	const testPluginAttribute = "strict"
+	overrideInput := map[string]any{
+		extension.PluginCore.String(): map[string]any{"threshold": 1},
+		"plugin.gamma":                map[string]any{"mode": testPluginAttribute},
+	}
+	if err := line.ApplyExtensionOverrides(overrideInput); err != nil {
+		t.Fatalf("ApplyExtensionOverrides: %v", err)
+	}
+	overrides := line.ExtensionOverrides()
+	if len(overrides) != 2 {
+		t.Fatalf("expected overrides for two plugins, got %d", len(overrides))
+	}
+	if overrides["plugin.gamma"].(map[string]any)["mode"] != testPluginAttribute {
+		t.Fatalf("unexpected overrides payload: %+v", overrides)
+	}
+
+	overrideInput["plugin.gamma"].(map[string]any)["mode"] = "relaxed"
+	current := line.ExtensionOverrides()
+	if current["plugin.gamma"].(map[string]any)["mode"] != testPluginAttribute {
+		t.Fatalf("expected stored overrides immune to caller mutation, got %+v", current)
+	}
+
+	overrides["plugin.gamma"].(map[string]any)["mode"] = "debug"
+	rebuilt := line.ExtensionOverrides()
+	if rebuilt["plugin.gamma"].(map[string]any)["mode"] != testPluginAttribute {
+		t.Fatalf("expected accessor to return cloned payload, got %+v", rebuilt)
+	}
+
+	if err := line.ApplyExtensionOverrides(nil); err != nil {
+		t.Fatalf("ApplyExtensionOverrides nil: %v", err)
+	}
+	if line.ExtensionOverrides() != nil {
+		t.Fatalf("expected overrides cleared after nil assignment")
+	}
+	if slot := line.extensionOverridesSlot; slot != nil && len(slot.Plugins()) != 0 {
+		t.Fatalf("expected overrides slot empty, got plugins %v", slot.Plugins())
+	}
+}
 func TestStrainExtensionsRoundTrip(t *testing.T) {
 	var strain Strain
 	container := extension.NewContainer()
