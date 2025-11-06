@@ -97,7 +97,7 @@ func TestContainerJSONRoundTrip(t *testing.T) {
 func TestFromRawRejectsUnknownHook(t *testing.T) {
 	_, err := FromRaw(map[string]map[string]any{
 		"entity.unknown": {
-			"frog": map[string]any{"field": "value"},
+			"frog": map[string]any{"field": testValue},
 		},
 	})
 	if err == nil {
@@ -108,7 +108,7 @@ func TestFromRawRejectsUnknownHook(t *testing.T) {
 func TestFromRawStoresPayloads(t *testing.T) {
 	container, err := FromRaw(map[string]map[string]any{
 		string(HookOrganismAttributes): {
-			"frog": map[string]any{"field": "value"},
+			"frog": map[string]any{"field": testValue},
 		},
 	})
 	if err != nil {
@@ -119,7 +119,7 @@ func TestFromRawStoresPayloads(t *testing.T) {
 		t.Fatalf("expected payload to be present")
 	}
 	got := payload.(map[string]any)["field"]
-	if got != "value" {
+	if got != testValue {
 		t.Fatalf("unexpected payload: %v", got)
 	}
 }
@@ -184,13 +184,13 @@ func TestHooksAndPluginsOrdering(t *testing.T) {
 
 func TestRawIsImmutable(t *testing.T) {
 	container := NewContainer()
-	if err := container.Set(HookOrganismAttributes, PluginID("frog"), map[string]any{"field": "value"}); err != nil {
+	if err := container.Set(HookOrganismAttributes, PluginID("frog"), map[string]any{"field": testValue}); err != nil {
 		t.Fatalf("set failed: %v", err)
 	}
 	raw := container.Raw()
 	raw[string(HookOrganismAttributes)]["frog"] = map[string]any{"field": "mutated"}
 	payload, _ := container.Get(HookOrganismAttributes, PluginID("frog"))
-	if payload.(map[string]any)["field"] != "value" {
+	if payload.(map[string]any)["field"] != testValue {
 		t.Fatalf("expected container payload to remain unchanged, got %v", payload)
 	}
 }
@@ -282,7 +282,7 @@ func TestRemoveNoopPaths(t *testing.T) {
 	container := NewContainer()
 	container.Remove(HookOrganismAttributes, PluginID("frog")) // ensure noop on empty
 
-	if err := container.Set(HookOrganismAttributes, PluginID("frog"), map[string]any{"field": "value"}); err != nil {
+	if err := container.Set(HookOrganismAttributes, PluginID("frog"), map[string]any{"field": testValue}); err != nil {
 		t.Fatalf("set failed: %v", err)
 	}
 	container.Remove(HookOrganismAttributes, PluginID("frog"))
@@ -296,7 +296,7 @@ func TestGetAbsentPaths(t *testing.T) {
 	if _, ok := container.Get(HookOrganismAttributes, PluginID("frog")); ok {
 		t.Fatalf("expected empty container to return no payload")
 	}
-	if err := container.Set(HookOrganismAttributes, PluginID("frog"), map[string]any{"field": "value"}); err != nil {
+	if err := container.Set(HookOrganismAttributes, PluginID("frog"), map[string]any{"field": testValue}); err != nil {
 		t.Fatalf("set failed: %v", err)
 	}
 	if _, ok := container.Get(HookOrganismAttributes, PluginID("rat")); ok {

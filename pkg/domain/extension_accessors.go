@@ -128,23 +128,43 @@ func (o *Organism) SetOrganismExtensions(container extension.Container) error {
 // CoreAttributes returns the payload stored in the core plugin slot for an
 // organism. The returned map is a defensive copy and may be nil when unset.
 func (o *Organism) CoreAttributes() map[string]any {
-	container := o.ensureExtensionContainer()
-	if values, ok := cloneHookMap(container, extension.HookOrganismAttributes, extension.PluginCore); ok {
-		return values
-	}
-	return nil
+	return o.CoreAttributesPayload().Map()
+}
+
+// CoreAttributesPayload returns the organism core attributes payload as a typed
+// wrapper.
+func (o *Organism) CoreAttributesPayload() extension.ObjectPayload {
+	payload, err := extension.ObjectFromContainer(
+		o.ensureExtensionContainer(),
+		extension.HookOrganismAttributes,
+		extension.PluginCore,
+	)
+	panicOnExtension(err, "domain: load organism core attributes")
+	return payload
 }
 
 // SetCoreAttributes stores a payload for the organism core attributes slot. A
 // nil payload removes the entry.
 func (o *Organism) SetCoreAttributes(attrs map[string]any) error {
+	payload, err := extension.NewObjectPayload(extension.HookOrganismAttributes, attrs)
+	if err != nil {
+		return err
+	}
+	return o.SetCoreAttributesPayload(payload)
+}
+
+// SetCoreAttributesPayload stores a typed payload for the organism core hook.
+func (o *Organism) SetCoreAttributesPayload(payload extension.ObjectPayload) error {
+	if err := payload.ExpectHook(extension.HookOrganismAttributes); err != nil {
+		return err
+	}
 	return updateHookPayload(
 		func() *extension.Container { return o.ensureExtensionContainer() },
 		&o.extensions,
 		&o.attributesSlot,
 		extension.HookOrganismAttributes,
 		extension.PluginCore,
-		attrs,
+		payload.Map(),
 	)
 }
 
@@ -162,23 +182,43 @@ func (f *Facility) SetFacilityExtensions(container extension.Container) error {
 
 // EnvironmentBaselines returns a copy of the core environment baselines payload.
 func (f *Facility) EnvironmentBaselines() map[string]any {
-	container := f.ensureExtensionContainer()
-	if values, ok := cloneHookMap(container, extension.HookFacilityEnvironmentBaselines, extension.PluginCore); ok {
-		return values
-	}
-	return nil
+	return f.EnvironmentBaselinesPayload().Map()
+}
+
+// EnvironmentBaselinesPayload returns the environment baselines payload as a
+// typed wrapper.
+func (f *Facility) EnvironmentBaselinesPayload() extension.ObjectPayload {
+	payload, err := extension.ObjectFromContainer(
+		f.ensureExtensionContainer(),
+		extension.HookFacilityEnvironmentBaselines,
+		extension.PluginCore,
+	)
+	panicOnExtension(err, "domain: load facility environment baselines")
+	return payload
 }
 
 // ApplyEnvironmentBaselines stores environment baselines for the facility. A
 // nil payload clears the entry.
 func (f *Facility) ApplyEnvironmentBaselines(baselines map[string]any) error {
+	payload, err := extension.NewObjectPayload(extension.HookFacilityEnvironmentBaselines, baselines)
+	if err != nil {
+		return err
+	}
+	return f.ApplyEnvironmentBaselinesPayload(payload)
+}
+
+// ApplyEnvironmentBaselinesPayload persists a typed payload for the facility hook.
+func (f *Facility) ApplyEnvironmentBaselinesPayload(payload extension.ObjectPayload) error {
+	if err := payload.ExpectHook(extension.HookFacilityEnvironmentBaselines); err != nil {
+		return err
+	}
 	return updateHookPayload(
 		func() *extension.Container { return f.ensureExtensionContainer() },
 		&f.extensions,
 		&f.environmentBaselinesSlot,
 		extension.HookFacilityEnvironmentBaselines,
 		extension.PluginCore,
-		baselines,
+		payload.Map(),
 	)
 }
 
@@ -196,11 +236,18 @@ func (b *BreedingUnit) SetBreedingUnitExtensions(container extension.Container) 
 
 // PairingAttributes returns a copy of the core pairing attributes payload.
 func (b *BreedingUnit) PairingAttributes() map[string]any {
-	container := b.ensureExtensionContainer()
-	if values, ok := cloneHookMap(container, extension.HookBreedingUnitPairingAttributes, extension.PluginCore); ok {
-		return values
-	}
-	return nil
+	return b.PairingAttributesPayload().Map()
+}
+
+// PairingAttributesPayload returns the pairing attributes payload as a typed wrapper.
+func (b *BreedingUnit) PairingAttributesPayload() extension.ObjectPayload {
+	payload, err := extension.ObjectFromContainer(
+		b.ensureExtensionContainer(),
+		extension.HookBreedingUnitPairingAttributes,
+		extension.PluginCore,
+	)
+	panicOnExtension(err, "domain: load breeding unit pairing attributes")
+	return payload
 }
 
 // LineExtensions returns a deep copy of the line extension container.
@@ -294,13 +341,25 @@ func (g *GenotypeMarker) SetGenotypeMarkerExtensions(container extension.Contain
 // ApplyPairingAttributes stores the provided pairing attributes payload. A nil
 // payload clears the entry.
 func (b *BreedingUnit) ApplyPairingAttributes(attrs map[string]any) error {
+	payload, err := extension.NewObjectPayload(extension.HookBreedingUnitPairingAttributes, attrs)
+	if err != nil {
+		return err
+	}
+	return b.ApplyPairingAttributesPayload(payload)
+}
+
+// ApplyPairingAttributesPayload persists a typed payload for the pairing hook.
+func (b *BreedingUnit) ApplyPairingAttributesPayload(payload extension.ObjectPayload) error {
+	if err := payload.ExpectHook(extension.HookBreedingUnitPairingAttributes); err != nil {
+		return err
+	}
 	return updateHookPayload(
 		func() *extension.Container { return b.ensureExtensionContainer() },
 		&b.extensions,
 		&b.pairingAttributesSlot,
 		extension.HookBreedingUnitPairingAttributes,
 		extension.PluginCore,
-		attrs,
+		payload.Map(),
 	)
 }
 
@@ -318,23 +377,42 @@ func (o *Observation) SetObservationExtensions(container extension.Container) er
 
 // ObservationData returns a copy of the core observation data payload.
 func (o *Observation) ObservationData() map[string]any {
-	container := o.ensureExtensionContainer()
-	if values, ok := cloneHookMap(container, extension.HookObservationData, extension.PluginCore); ok {
-		return values
-	}
-	return nil
+	return o.ObservationDataPayload().Map()
+}
+
+// ObservationDataPayload returns the observation data payload as a typed wrapper.
+func (o *Observation) ObservationDataPayload() extension.ObjectPayload {
+	payload, err := extension.ObjectFromContainer(
+		o.ensureExtensionContainer(),
+		extension.HookObservationData,
+		extension.PluginCore,
+	)
+	panicOnExtension(err, "domain: load observation data payload")
+	return payload
 }
 
 // ApplyObservationData stores the provided observation data payload. A nil
 // payload clears the entry.
 func (o *Observation) ApplyObservationData(data map[string]any) error {
+	payload, err := extension.NewObjectPayload(extension.HookObservationData, data)
+	if err != nil {
+		return err
+	}
+	return o.ApplyObservationDataPayload(payload)
+}
+
+// ApplyObservationDataPayload persists a typed payload for the observation hook.
+func (o *Observation) ApplyObservationDataPayload(payload extension.ObjectPayload) error {
+	if err := payload.ExpectHook(extension.HookObservationData); err != nil {
+		return err
+	}
 	return updateHookPayload(
 		func() *extension.Container { return o.ensureExtensionContainer() },
 		&o.extensions,
 		&o.dataSlot,
 		extension.HookObservationData,
 		extension.PluginCore,
-		data,
+		payload.Map(),
 	)
 }
 
@@ -351,23 +429,42 @@ func (s *Sample) SetSampleExtensions(container extension.Container) error {
 
 // SampleAttributes returns a copy of the core sample attributes payload.
 func (s *Sample) SampleAttributes() map[string]any {
-	container := s.ensureExtensionContainer()
-	if values, ok := cloneHookMap(container, extension.HookSampleAttributes, extension.PluginCore); ok {
-		return values
-	}
-	return nil
+	return s.SampleAttributesPayload().Map()
+}
+
+// SampleAttributesPayload returns the sample attributes payload as a typed wrapper.
+func (s *Sample) SampleAttributesPayload() extension.ObjectPayload {
+	payload, err := extension.ObjectFromContainer(
+		s.ensureExtensionContainer(),
+		extension.HookSampleAttributes,
+		extension.PluginCore,
+	)
+	panicOnExtension(err, "domain: load sample attributes payload")
+	return payload
 }
 
 // ApplySampleAttributes stores the provided sample attributes payload. A nil
 // payload clears the entry.
 func (s *Sample) ApplySampleAttributes(attrs map[string]any) error {
+	payload, err := extension.NewObjectPayload(extension.HookSampleAttributes, attrs)
+	if err != nil {
+		return err
+	}
+	return s.ApplySampleAttributesPayload(payload)
+}
+
+// ApplySampleAttributesPayload persists a typed payload for the sample hook.
+func (s *Sample) ApplySampleAttributesPayload(payload extension.ObjectPayload) error {
+	if err := payload.ExpectHook(extension.HookSampleAttributes); err != nil {
+		return err
+	}
 	return updateHookPayload(
 		func() *extension.Container { return s.ensureExtensionContainer() },
 		&s.extensions,
 		&s.attributesSlot,
 		extension.HookSampleAttributes,
 		extension.PluginCore,
-		attrs,
+		payload.Map(),
 	)
 }
 
@@ -385,22 +482,41 @@ func (s *SupplyItem) SetSupplyItemExtensions(container extension.Container) erro
 
 // SupplyAttributes returns a copy of the core supply item attributes payload.
 func (s *SupplyItem) SupplyAttributes() map[string]any {
-	container := s.ensureExtensionContainer()
-	if values, ok := cloneHookMap(container, extension.HookSupplyItemAttributes, extension.PluginCore); ok {
-		return values
-	}
-	return nil
+	return s.SupplyAttributesPayload().Map()
+}
+
+// SupplyAttributesPayload returns the supply item attributes payload as a typed wrapper.
+func (s *SupplyItem) SupplyAttributesPayload() extension.ObjectPayload {
+	payload, err := extension.ObjectFromContainer(
+		s.ensureExtensionContainer(),
+		extension.HookSupplyItemAttributes,
+		extension.PluginCore,
+	)
+	panicOnExtension(err, "domain: load supply item attributes payload")
+	return payload
 }
 
 // ApplySupplyAttributes stores the provided supply item attributes payload. A
 // nil payload clears the entry.
 func (s *SupplyItem) ApplySupplyAttributes(attrs map[string]any) error {
+	payload, err := extension.NewObjectPayload(extension.HookSupplyItemAttributes, attrs)
+	if err != nil {
+		return err
+	}
+	return s.ApplySupplyAttributesPayload(payload)
+}
+
+// ApplySupplyAttributesPayload persists a typed payload for the supply hook.
+func (s *SupplyItem) ApplySupplyAttributesPayload(payload extension.ObjectPayload) error {
+	if err := payload.ExpectHook(extension.HookSupplyItemAttributes); err != nil {
+		return err
+	}
 	return updateHookPayload(
 		func() *extension.Container { return s.ensureExtensionContainer() },
 		&s.extensions,
 		&s.attributesSlot,
 		extension.HookSupplyItemAttributes,
 		extension.PluginCore,
-		attrs,
+		payload.Map(),
 	)
 }

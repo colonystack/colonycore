@@ -6,6 +6,8 @@ import (
 	"slices"
 )
 
+const jsonNullLiteral = "null"
+
 // Slot stores plugin-provided payloads for a single extension hook. It wraps
 // JSON object semantics so domain entities can expose typed extension fields
 // without leaking raw maps.
@@ -138,7 +140,7 @@ func (s *Slot) MarshalJSON() ([]byte, error) {
 
 // UnmarshalJSON populates the slot from a wire representation.
 func (s *Slot) UnmarshalJSON(data []byte) error {
-	if string(data) == "null" {
+	if string(data) == jsonNullLiteral {
 		s.values = nil
 		return nil
 	}

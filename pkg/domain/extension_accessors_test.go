@@ -7,6 +7,13 @@ import (
 	"colonycore/pkg/domain/extension"
 )
 
+const (
+	testTypedValue      = "typed"
+	testSampleVolume    = "5ml"
+	testSupplyVendor    = "global"
+	testPairingStrategy = "outcross"
+)
+
 func TestCloneHookMapVariants(t *testing.T) {
 	if _, ok := cloneHookMap(nil, extension.HookOrganismAttributes, extension.PluginCore); ok {
 		t.Fatalf("expected no payload when container is nil")
@@ -80,6 +87,13 @@ func TestOrganismCoreAttributesLifecycle(t *testing.T) {
 	if attrs := organism.CoreAttributes(); attrs != nil {
 		t.Fatalf("expected nil attributes for zero-value organism")
 	}
+	initialPayload := organism.CoreAttributesPayload()
+	if !initialPayload.Defined() {
+		t.Fatalf("expected payload to be initialised for hook")
+	}
+	if !initialPayload.IsEmpty() {
+		t.Fatalf("expected zero-value payload to be empty")
+	}
 
 	input := map[string]any{"energy": 42}
 	if err := organism.SetCoreAttributes(input); err != nil {
@@ -95,12 +109,29 @@ func TestOrganismCoreAttributesLifecycle(t *testing.T) {
 	if refreshed := organism.CoreAttributes(); refreshed["energy"] != 42 {
 		t.Fatalf("expected stored payload to remain immutable, got %v", refreshed["energy"])
 	}
+	payload := organism.CoreAttributesPayload()
+	if payload.Map()["energy"] != 42 {
+		t.Fatalf("expected payload wrapper to match cloned value")
+	}
+	typedUpdate, err := extension.NewObjectPayload(extension.HookOrganismAttributes, map[string]any{"energy": 99})
+	if err != nil {
+		t.Fatalf("NewObjectPayload: %v", err)
+	}
+	if err := organism.SetCoreAttributesPayload(typedUpdate); err != nil {
+		t.Fatalf("SetCoreAttributesPayload: %v", err)
+	}
+	if got := organism.CoreAttributesPayload().Map()["energy"]; got != 99 {
+		t.Fatalf("expected typed payload update to apply, got %v", got)
+	}
 
 	if err := organism.SetCoreAttributes(nil); err != nil {
 		t.Fatalf("SetCoreAttributes nil: %v", err)
 	}
 	if attrs := organism.CoreAttributes(); attrs != nil {
 		t.Fatalf("expected attributes cleared after nil assignment")
+	}
+	if cleared := organism.CoreAttributesPayload(); !cleared.IsEmpty() {
+		t.Fatalf("expected payload wrapper to report empty after nil assignment")
 	}
 }
 
@@ -134,6 +165,21 @@ func TestOrganismExtensionsRoundTrip(t *testing.T) {
 	}
 	if attrs := organism.CoreAttributes(); attrs != nil {
 		t.Fatalf("expected attributes cleared after empty container assign")
+	}
+}
+
+func TestSetCoreAttributesPayloadHookValidation(t *testing.T) {
+	var organism Organism
+	wrong, err := extension.NewObjectPayload(extension.HookFacilityEnvironmentBaselines, map[string]any{"temp": 20})
+	if err != nil {
+		t.Fatalf("NewObjectPayload wrong hook: %v", err)
+	}
+	if err := organism.SetCoreAttributesPayload(wrong); err == nil {
+		t.Fatalf("expected hook mismatch to return error")
+	}
+	var zero extension.ObjectPayload
+	if err := organism.SetCoreAttributesPayload(zero); err == nil {
+		t.Fatalf("expected uninitialised payload to return error")
 	}
 }
 
@@ -185,6 +231,13 @@ func TestFacilityEnvironmentBaselinesLifecycle(t *testing.T) {
 	if again := facility.EnvironmentBaselines()["temp"].([]int)[1]; again != 22 {
 		t.Fatalf("expected stored baseline to remain immutable, got %d", again)
 	}
+	payload := facility.EnvironmentBaselinesPayload()
+	if !payload.Defined() {
+		t.Fatalf("expected payload wrapper defined for facility hook")
+	}
+	if payload.Map()["temp"].([]int)[1] != 22 {
+		t.Fatalf("expected payload wrapper to match stored value")
+	}
 
 	ext, err := facility.FacilityExtensions()
 	if err != nil {
@@ -204,12 +257,28 @@ func TestFacilityEnvironmentBaselinesLifecycle(t *testing.T) {
 	if facility.EnvironmentBaselines()["temp"].([]int)[0] != 18 {
 		t.Fatalf("expected updated baseline applied")
 	}
+	if facility.EnvironmentBaselinesPayload().Map()["temp"].([]int)[0] != 18 {
+		t.Fatalf("expected payload wrapper to reflect updated baseline")
+	}
+	typed, err := extension.NewObjectPayload(extension.HookFacilityEnvironmentBaselines, map[string]any{"temp": []int{15}})
+	if err != nil {
+		t.Fatalf("NewObjectPayload facility: %v", err)
+	}
+	if err := facility.ApplyEnvironmentBaselinesPayload(typed); err != nil {
+		t.Fatalf("ApplyEnvironmentBaselinesPayload: %v", err)
+	}
+	if facility.EnvironmentBaselines()["temp"].([]int)[0] != 15 {
+		t.Fatalf("expected typed payload update applied")
+	}
 
 	if err := facility.SetFacilityExtensions(extension.NewContainer()); err != nil {
 		t.Fatalf("SetFacilityExtensions empty: %v", err)
 	}
 	if facility.EnvironmentBaselines() != nil {
 		t.Fatalf("expected baselines cleared after empty container assignment")
+	}
+	if !facility.EnvironmentBaselinesPayload().IsEmpty() {
+		t.Fatalf("expected payload wrapper to report empty after clear")
 	}
 }
 
@@ -224,6 +293,13 @@ func TestObservationAndSampleHooks(t *testing.T) {
 	}
 	if data := observation.ObservationData(); data["notes"] != testAttrValue {
 		t.Fatalf("unexpected observation data: %+v", data)
+	}
+	dataPayload := observation.ObservationDataPayload()
+	if !dataPayload.Defined() {
+		t.Fatalf("expected observation payload defined")
+	}
+	if dataPayload.Map()["notes"] != testAttrValue {
+		t.Fatalf("expected observation payload wrapper to match data")
 	}
 	oext, err := observation.ObservationExtensions()
 	if err != nil {
@@ -242,25 +318,48 @@ func TestObservationAndSampleHooks(t *testing.T) {
 	if observation.ObservationData()["notes"] != testNotesAttribute {
 		t.Fatalf("expected observation data replaced by container payload")
 	}
+	if observation.ObservationDataPayload().Map()["notes"] != testNotesAttribute {
+		t.Fatalf("expected payload wrapper to reflect container data")
+	}
+	typedObs, err := extension.NewObjectPayload(extension.HookObservationData, map[string]any{"notes": testTypedValue})
+	if err != nil {
+		t.Fatalf("NewObjectPayload observation: %v", err)
+	}
+	if err := observation.ApplyObservationDataPayload(typedObs); err != nil {
+		t.Fatalf("ApplyObservationDataPayload: %v", err)
+	}
+	if observation.ObservationData()["notes"] != testTypedValue {
+		t.Fatalf("expected typed observation payload applied")
+	}
 	if err := observation.ApplyObservationData(nil); err != nil {
 		t.Fatalf("ApplyObservationData nil: %v", err)
 	}
 	if observation.ObservationData() != nil {
 		t.Fatalf("expected observation data cleared on nil")
 	}
+	if !observation.ObservationDataPayload().IsEmpty() {
+		t.Fatalf("expected observation payload wrapper cleared")
+	}
 
 	sample := Sample{Base: Base{ID: "sample", CreatedAt: now, UpdatedAt: now}}
-	if err := sample.ApplySampleAttributes(map[string]any{"volume": "5ml"}); err != nil {
+	if err := sample.ApplySampleAttributes(map[string]any{"volume": testSampleVolume}); err != nil {
 		t.Fatalf("ApplySampleAttributes: %v", err)
 	}
-	if attrs := sample.SampleAttributes(); attrs["volume"] != "5ml" {
+	if attrs := sample.SampleAttributes(); attrs["volume"] != testSampleVolume {
 		t.Fatalf("unexpected sample attrs: %+v", attrs)
+	}
+	samplePayload := sample.SampleAttributesPayload()
+	if !samplePayload.Defined() {
+		t.Fatalf("expected sample payload defined")
+	}
+	if samplePayload.Map()["volume"] != testSampleVolume {
+		t.Fatalf("expected sample payload wrapper to match attributes")
 	}
 	sext, err := sample.SampleExtensions()
 	if err != nil {
 		t.Fatalf("SampleExtensions: %v", err)
 	}
-	if payload, ok := cloneHookMap(&sext, extension.HookSampleAttributes, extension.PluginCore); !ok || payload["volume"] != "5ml" {
+	if payload, ok := cloneHookMap(&sext, extension.HookSampleAttributes, extension.PluginCore); !ok || payload["volume"] != testSampleVolume {
 		t.Fatalf("unexpected sample extension payload: %+v", payload)
 	}
 	container = extension.NewContainer()
@@ -273,11 +372,27 @@ func TestObservationAndSampleHooks(t *testing.T) {
 	if sample.SampleAttributes()["volume"] != "10ml" {
 		t.Fatalf("expected sample attributes replaced by container payload")
 	}
+	if sample.SampleAttributesPayload().Map()["volume"] != "10ml" {
+		t.Fatalf("expected sample payload wrapper to reflect container data")
+	}
+	typedSample, err := extension.NewObjectPayload(extension.HookSampleAttributes, map[string]any{"volume": testTypedValue})
+	if err != nil {
+		t.Fatalf("NewObjectPayload sample: %v", err)
+	}
+	if err := sample.ApplySampleAttributesPayload(typedSample); err != nil {
+		t.Fatalf("ApplySampleAttributesPayload: %v", err)
+	}
+	if sample.SampleAttributes()["volume"] != testTypedValue {
+		t.Fatalf("expected typed sample payload applied")
+	}
 	if err := sample.ApplySampleAttributes(nil); err != nil {
 		t.Fatalf("ApplySampleAttributes nil: %v", err)
 	}
 	if attrs := sample.SampleAttributes(); attrs != nil {
 		t.Fatalf("expected sample attrs cleared on nil")
+	}
+	if !sample.SampleAttributesPayload().IsEmpty() {
+		t.Fatalf("expected sample payload wrapper cleared")
 	}
 }
 
@@ -286,6 +401,13 @@ func TestSupplyItemExtensionsLifecycle(t *testing.T) {
 	if err := item.ApplySupplyAttributes(map[string]any{"vendor": "acme"}); err != nil {
 		t.Fatalf("ApplySupplyAttributes: %v", err)
 	}
+	supplyPayload := item.SupplyAttributesPayload()
+	if !supplyPayload.Defined() {
+		t.Fatalf("expected supply payload defined")
+	}
+	if supplyPayload.Map()["vendor"] != "acme" {
+		t.Fatalf("expected payload wrapper to match attributes")
+	}
 	itemAttributes := item.SupplyAttributes()
 	itemAttributes["vendor"] = testMutated
 	if refreshed := item.SupplyAttributes(); refreshed["vendor"] != "acme" {
@@ -293,21 +415,34 @@ func TestSupplyItemExtensionsLifecycle(t *testing.T) {
 	}
 
 	container := extension.NewContainer()
-	if err := container.Set(extension.HookSupplyItemAttributes, extension.PluginCore, map[string]any{"vendor": "global"}); err != nil {
+	if err := container.Set(extension.HookSupplyItemAttributes, extension.PluginCore, map[string]any{"vendor": testSupplyVendor}); err != nil {
 		t.Fatalf("set container: %v", err)
 	}
 	if err := item.SetSupplyItemExtensions(container); err != nil {
 		t.Fatalf("SetSupplyItemExtensions: %v", err)
 	}
-	if attrs := item.SupplyAttributes(); attrs["vendor"] != "global" {
+	if attrs := item.SupplyAttributes(); attrs["vendor"] != testSupplyVendor {
 		t.Fatalf("expected container payload applied, got %+v", attrs)
 	}
 	sext, err := item.SupplyItemExtensions()
 	if err != nil {
 		t.Fatalf("SupplyItemExtensions: %v", err)
 	}
-	if payload, ok := cloneHookMap(&sext, extension.HookSupplyItemAttributes, extension.PluginCore); !ok || payload["vendor"] != "global" {
+	if payload, ok := cloneHookMap(&sext, extension.HookSupplyItemAttributes, extension.PluginCore); !ok || payload["vendor"] != testSupplyVendor {
 		t.Fatalf("unexpected supply extension payload: %+v", payload)
+	}
+	if item.SupplyAttributesPayload().Map()["vendor"] != testSupplyVendor {
+		t.Fatalf("expected payload wrapper to reflect container data")
+	}
+	typedSupply, err := extension.NewObjectPayload(extension.HookSupplyItemAttributes, map[string]any{"vendor": testTypedValue})
+	if err != nil {
+		t.Fatalf("NewObjectPayload supply: %v", err)
+	}
+	if err := item.ApplySupplyAttributesPayload(typedSupply); err != nil {
+		t.Fatalf("ApplySupplyAttributesPayload: %v", err)
+	}
+	if item.SupplyAttributes()["vendor"] != testTypedValue {
+		t.Fatalf("expected typed supply payload applied")
 	}
 	if err := item.SetSupplyItemExtensions(extension.NewContainer()); err != nil {
 		t.Fatalf("SetSupplyItemExtensions empty: %v", err)
@@ -315,18 +450,28 @@ func TestSupplyItemExtensionsLifecycle(t *testing.T) {
 	if attrs := item.SupplyAttributes(); attrs != nil {
 		t.Fatalf("expected supply attributes cleared after empty container assignment")
 	}
+	if !item.SupplyAttributesPayload().IsEmpty() {
+		t.Fatalf("expected supply payload wrapper cleared")
+	}
 }
 
 func TestBreedingUnitExtensionsLifecycle(t *testing.T) {
 	var unit BreedingUnit
-	if err := unit.ApplyPairingAttributes(map[string]any{"strategy": "outcross"}); err != nil {
+	if err := unit.ApplyPairingAttributes(map[string]any{"strategy": testPairingStrategy}); err != nil {
 		t.Fatalf("ApplyPairingAttributes: %v", err)
+	}
+	pairPayload := unit.PairingAttributesPayload()
+	if !pairPayload.Defined() {
+		t.Fatalf("expected pairing payload defined")
+	}
+	if pairPayload.Map()["strategy"] != testPairingStrategy {
+		t.Fatalf("expected pairing payload wrapper to match data")
 	}
 	bext, err := unit.BreedingUnitExtensions()
 	if err != nil {
 		t.Fatalf("BreedingUnitExtensions: %v", err)
 	}
-	if payload, ok := cloneHookMap(&bext, extension.HookBreedingUnitPairingAttributes, extension.PluginCore); !ok || payload["strategy"] != "outcross" {
+	if payload, ok := cloneHookMap(&bext, extension.HookBreedingUnitPairingAttributes, extension.PluginCore); !ok || payload["strategy"] != testPairingStrategy {
 		t.Fatalf("unexpected breeding payload: %+v", payload)
 	}
 	container := extension.NewContainer()
@@ -339,11 +484,27 @@ func TestBreedingUnitExtensionsLifecycle(t *testing.T) {
 	if attrs := unit.PairingAttributes(); attrs["strategy"] != "inbred" {
 		t.Fatalf("expected pairing attributes replaced, got %+v", attrs)
 	}
+	if unit.PairingAttributesPayload().Map()["strategy"] != "inbred" {
+		t.Fatalf("expected payload wrapper to reflect container payload")
+	}
+	typedPairing, err := extension.NewObjectPayload(extension.HookBreedingUnitPairingAttributes, map[string]any{"strategy": testTypedValue})
+	if err != nil {
+		t.Fatalf("NewObjectPayload pairing: %v", err)
+	}
+	if err := unit.ApplyPairingAttributesPayload(typedPairing); err != nil {
+		t.Fatalf("ApplyPairingAttributesPayload: %v", err)
+	}
+	if unit.PairingAttributes()["strategy"] != testTypedValue {
+		t.Fatalf("expected typed pairing payload applied")
+	}
 	if err := unit.SetBreedingUnitExtensions(extension.NewContainer()); err != nil {
 		t.Fatalf("SetBreedingUnitExtensions empty: %v", err)
 	}
 	if attrs := unit.PairingAttributes(); attrs != nil {
 		t.Fatalf("expected attributes cleared after empty container assignment")
+	}
+	if !unit.PairingAttributesPayload().IsEmpty() {
+		t.Fatalf("expected pairing payload wrapper cleared")
 	}
 }
 
