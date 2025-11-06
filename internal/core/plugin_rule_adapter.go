@@ -193,6 +193,7 @@ func newOrganismView(org domain.Organism) organismView {
 		panic(fmt.Errorf("core: organism extensions: %w", err))
 	}
 	extSet := pluginapi.NewExtensionSet(container.Raw())
+	corePayload := org.CoreAttributesPayload().Map()
 	return organismView{
 		baseView:       newBaseView(org.Base),
 		name:           org.Name,
@@ -207,7 +208,7 @@ func newOrganismView(org domain.Organism) organismView {
 		protocolID:     cloneOptionalString(org.ProtocolID),
 		projectID:      cloneOptionalString(org.ProjectID),
 		extensions:     extSet,
-		coreAttributes: cloneAttributes(org.CoreAttributes()),
+		coreAttributes: cloneAttributes(corePayload),
 	}
 }
 
@@ -368,6 +369,7 @@ func newFacilityView(facility domain.Facility) facilityView {
 		panic(fmt.Errorf("core: facility extensions: %w", err))
 	}
 	extSet := pluginapi.NewExtensionSet(container.Raw())
+	baselines := facility.EnvironmentBaselinesPayload().Map()
 	return facilityView{
 		baseView:       newBaseView(facility.Base),
 		code:           facility.Code,
@@ -375,7 +377,7 @@ func newFacilityView(facility domain.Facility) facilityView {
 		zone:           facility.Zone,
 		accessPolicy:   facility.AccessPolicy,
 		extensions:     extSet,
-		coreBaselines:  cloneAttributes(facility.EnvironmentBaselines()),
+		coreBaselines:  cloneAttributes(baselines),
 		housingUnitIDs: cloneStringSlice(facility.HousingUnitIDs),
 		projectIDs:     cloneStringSlice(facility.ProjectIDs),
 	}
@@ -505,6 +507,7 @@ func newObservationView(observation domain.Observation) observationView {
 		panic(fmt.Errorf("core: observation extensions: %w", err))
 	}
 	extSet := pluginapi.NewExtensionSet(container.Raw())
+	coreData := observation.ObservationDataPayload().Map()
 	return observationView{
 		baseView:    newBaseView(observation.Base),
 		procedureID: cloneOptionalString(observation.ProcedureID),
@@ -513,7 +516,7 @@ func newObservationView(observation domain.Observation) observationView {
 		recordedAt:  observation.RecordedAt,
 		observer:    observation.Observer,
 		extensions:  extSet,
-		coreData:    cloneAttributes(observation.ObservationData()),
+		coreData:    cloneAttributes(coreData),
 		notes:       cloneOptionalString(observation.Notes),
 	}
 }
@@ -587,6 +590,7 @@ func newSampleView(sample domain.Sample) sampleView {
 		panic(fmt.Errorf("core: sample extensions: %w", err))
 	}
 	extSet := pluginapi.NewExtensionSet(container.Raw())
+	corePayload := sample.SampleAttributesPayload().Map()
 	return sampleView{
 		baseView:        newBaseView(sample.Base),
 		identifier:      sample.Identifier,
@@ -600,7 +604,7 @@ func newSampleView(sample domain.Sample) sampleView {
 		assayType:       sample.AssayType,
 		chainOfCustody:  cloneCustodyEvents(sample.ChainOfCustody),
 		extensions:      extSet,
-		coreAttributes:  cloneAttributes(sample.SampleAttributes()),
+		coreAttributes:  cloneAttributes(corePayload),
 	}
 }
 
@@ -846,6 +850,7 @@ func newSupplyItemView(item domain.SupplyItem) supplyItemView {
 		panic(fmt.Errorf("core: supply item extensions: %w", err))
 	}
 	extSet := pluginapi.NewExtensionSet(container.Raw())
+	corePayload := item.SupplyAttributesPayload().Map()
 	return supplyItemView{
 		baseView:       newBaseView(item.Base),
 		sku:            item.SKU,
@@ -859,7 +864,7 @@ func newSupplyItemView(item domain.SupplyItem) supplyItemView {
 		projectIDs:     cloneStringSlice(item.ProjectIDs),
 		reorderLevel:   item.ReorderLevel,
 		extensions:     extSet,
-		coreAttributes: cloneAttributes(item.SupplyAttributes()),
+		coreAttributes: cloneAttributes(corePayload),
 	}
 }
 
