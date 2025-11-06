@@ -283,6 +283,7 @@ type Organism interface {
 	Attributes() map[string]any
 	Extensions() ExtensionSet
 	CoreAttributes() map[string]any
+	CoreAttributesPayload() ExtensionPayload
 
 	// Contextual lifecycle stage accessors
 	GetCurrentStage() LifecycleStageRef
@@ -337,6 +338,7 @@ type Facility interface {
 	EnvironmentBaselines() map[string]any
 	Extensions() ExtensionSet
 	CoreEnvironmentBaselines() map[string]any
+	CoreEnvironmentBaselinesPayload() ExtensionPayload
 	HousingUnitIDs() []string
 	ProjectIDs() []string
 
@@ -364,6 +366,7 @@ type BreedingUnit interface {
 	PairingAttributes() map[string]any
 	Extensions() ExtensionSet
 	CorePairingAttributes() map[string]any
+	CorePairingAttributesPayload() ExtensionPayload
 	FemaleIDs() []string
 	MaleIDs() []string
 
@@ -426,6 +429,8 @@ type Observation interface {
 	Observer() string
 	Data() map[string]any
 	Extensions() ExtensionSet
+	CoreData() map[string]any
+	CoreDataPayload() ExtensionPayload
 	Notes() string
 
 	// Contextual data shape accessors
@@ -452,6 +457,7 @@ type Sample interface {
 	Attributes() map[string]any
 	Extensions() ExtensionSet
 	CoreAttributes() map[string]any
+	CoreAttributesPayload() ExtensionPayload
 
 	// Contextual sample accessors
 	GetSource() SampleSourceRef
@@ -537,6 +543,7 @@ type SupplyItem interface {
 	Attributes() map[string]any
 	Extensions() ExtensionSet
 	CoreAttributes() map[string]any
+	CoreAttributesPayload() ExtensionPayload
 
 	// Contextual inventory accessors
 	GetInventoryStatus(reference time.Time) SupplyStatusRef
@@ -641,6 +648,12 @@ func (o organism) Extensions() ExtensionSet {
 }
 func (o organism) CoreAttributes() map[string]any {
 	return cloneAttributes(o.coreAttributes)
+}
+func (o organism) CoreAttributesPayload() ExtensionPayload {
+	if o.coreAttributes == nil {
+		return NewExtensionPayload(nil)
+	}
+	return NewExtensionPayload(o.coreAttributes)
 }
 
 // Contextual lifecycle stage accessors
@@ -930,6 +943,12 @@ func (f facility) Extensions() ExtensionSet {
 func (f facility) CoreEnvironmentBaselines() map[string]any {
 	return cloneAttributes(f.coreBaselines)
 }
+func (f facility) CoreEnvironmentBaselinesPayload() ExtensionPayload {
+	if f.coreBaselines == nil {
+		return NewExtensionPayload(nil)
+	}
+	return NewExtensionPayload(f.coreBaselines)
+}
 func (f facility) HousingUnitIDs() []string { return cloneStringSlice(f.housingUnitIDs) }
 func (f facility) ProjectIDs() []string     { return cloneStringSlice(f.projectIDs) }
 
@@ -1083,6 +1102,12 @@ func (b breedingUnit) Extensions() ExtensionSet {
 }
 func (b breedingUnit) CorePairingAttributes() map[string]any {
 	return cloneAttributes(b.corePairingAttrs)
+}
+func (b breedingUnit) CorePairingAttributesPayload() ExtensionPayload {
+	if b.corePairingAttrs == nil {
+		return NewExtensionPayload(nil)
+	}
+	return NewExtensionPayload(b.corePairingAttrs)
 }
 func (b breedingUnit) FemaleIDs() []string {
 	return cloneStringSlice(b.femaleIDs)
@@ -1398,6 +1423,12 @@ func (o observation) Extensions() ExtensionSet {
 func (o observation) CoreData() map[string]any {
 	return cloneAttributes(o.coreData)
 }
+func (o observation) CoreDataPayload() ExtensionPayload {
+	if o.coreData == nil {
+		return NewExtensionPayload(nil)
+	}
+	return NewExtensionPayload(o.coreData)
+}
 func (o observation) Notes() string {
 	if v, ok := derefString(o.notes); ok {
 		return v
@@ -1500,6 +1531,12 @@ func (s sample) Attributes() map[string]any {
 }
 func (s sample) Extensions() ExtensionSet       { return s.extensions }
 func (s sample) CoreAttributes() map[string]any { return cloneAttributes(s.coreAttributes) }
+func (s sample) CoreAttributesPayload() ExtensionPayload {
+	if s.coreAttributes == nil {
+		return NewExtensionPayload(nil)
+	}
+	return NewExtensionPayload(s.coreAttributes)
+}
 
 func (s sample) OrganismID() (string, bool) {
 	return derefString(s.organismID)
@@ -1938,6 +1975,12 @@ func (s supplyItem) Extensions() ExtensionSet {
 }
 func (s supplyItem) CoreAttributes() map[string]any {
 	return cloneAttributes(s.coreAttributes)
+}
+func (s supplyItem) CoreAttributesPayload() ExtensionPayload {
+	if s.coreAttributes == nil {
+		return NewExtensionPayload(nil)
+	}
+	return NewExtensionPayload(s.coreAttributes)
 }
 
 func (s supplyItem) ExpiresAt() (*time.Time, bool) {
