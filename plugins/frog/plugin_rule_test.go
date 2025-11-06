@@ -114,6 +114,9 @@ func (stubOrganism) Extensions() pluginapi.ExtensionSet {
 	return pluginapi.NewExtensionSet(nil)
 }
 func (stubOrganism) CoreAttributes() map[string]any { return nil }
+func (stubOrganism) CoreAttributesPayload() pluginapi.ObjectPayload {
+	return pluginapi.NewObjectPayload(nil)
+}
 
 // Contextual lifecycle stage accessors
 func (stubOrganism) GetCurrentStage() pluginapi.LifecycleStageRef {

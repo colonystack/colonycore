@@ -26,6 +26,7 @@ type OrganismView interface {
 	Attributes() map[string]any
 	Extensions() ExtensionSet
 	CoreAttributes() map[string]any
+	CoreAttributesPayload() ObjectPayload
 
 	// Contextual lifecycle stage accessors
 	GetCurrentStage() LifecycleStageRef
@@ -59,6 +60,7 @@ type FacilityView interface {
 	EnvironmentBaselines() map[string]any
 	Extensions() ExtensionSet
 	CoreEnvironmentBaselines() map[string]any
+	CoreEnvironmentBaselinesPayload() ObjectPayload
 	HousingUnitIDs() []string
 	ProjectIDs() []string
 
@@ -96,6 +98,7 @@ type ObservationView interface {
 	Data() map[string]any
 	Extensions() ExtensionSet
 	CoreData() map[string]any
+	CoreDataPayload() ObjectPayload
 	Notes() string
 
 	// Contextual data shape accessors
@@ -120,6 +123,7 @@ type SampleView interface {
 	Attributes() map[string]any
 	Extensions() ExtensionSet
 	CoreAttributes() map[string]any
+	CoreAttributesPayload() ObjectPayload
 
 	// Contextual sample accessors
 	GetSource() SampleSourceRef
@@ -185,6 +189,7 @@ type SupplyItemView interface {
 	Attributes() map[string]any
 	Extensions() ExtensionSet
 	CoreAttributes() map[string]any
+	CoreAttributesPayload() ObjectPayload
 
 	// Contextual inventory accessors
 	GetInventoryStatus(reference time.Time) SupplyStatusRef

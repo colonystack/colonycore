@@ -251,6 +251,12 @@ func (o organismView) Extensions() pluginapi.ExtensionSet {
 func (o organismView) CoreAttributes() map[string]any {
 	return cloneAttributes(o.coreAttributes)
 }
+func (o organismView) CoreAttributesPayload() pluginapi.ObjectPayload {
+	if o.coreAttributes == nil {
+		return pluginapi.NewObjectPayload(nil)
+	}
+	return pluginapi.NewObjectPayload(o.coreAttributes)
+}
 
 // Contextual lifecycle stage accessors
 func (o organismView) GetCurrentStage() pluginapi.LifecycleStageRef {
@@ -395,6 +401,12 @@ func (f facilityView) Extensions() pluginapi.ExtensionSet {
 }
 func (f facilityView) CoreEnvironmentBaselines() map[string]any {
 	return cloneAttributes(f.coreBaselines)
+}
+func (f facilityView) CoreEnvironmentBaselinesPayload() pluginapi.ObjectPayload {
+	if f.coreBaselines == nil {
+		return pluginapi.NewObjectPayload(nil)
+	}
+	return pluginapi.NewObjectPayload(f.coreBaselines)
 }
 func (f facilityView) HousingUnitIDs() []string { return cloneStringSlice(f.housingUnitIDs) }
 func (f facilityView) ProjectIDs() []string     { return cloneStringSlice(f.projectIDs) }
@@ -544,6 +556,12 @@ func (o observationView) Extensions() pluginapi.ExtensionSet {
 func (o observationView) CoreData() map[string]any {
 	return cloneAttributes(o.coreData)
 }
+func (o observationView) CoreDataPayload() pluginapi.ObjectPayload {
+	if o.coreData == nil {
+		return pluginapi.NewObjectPayload(nil)
+	}
+	return pluginapi.NewObjectPayload(o.coreData)
+}
 func (o observationView) Notes() string {
 	if note, ok := derefString(o.notes); ok {
 		return note
@@ -626,6 +644,12 @@ func (s sampleView) Extensions() pluginapi.ExtensionSet {
 }
 func (s sampleView) CoreAttributes() map[string]any {
 	return cloneAttributes(s.coreAttributes)
+}
+func (s sampleView) CoreAttributesPayload() pluginapi.ObjectPayload {
+	if s.coreAttributes == nil {
+		return pluginapi.NewObjectPayload(nil)
+	}
+	return pluginapi.NewObjectPayload(s.coreAttributes)
 }
 
 func (s sampleView) OrganismID() (string, bool) {
@@ -899,6 +923,12 @@ func (s supplyItemView) Extensions() pluginapi.ExtensionSet {
 }
 func (s supplyItemView) CoreAttributes() map[string]any {
 	return cloneAttributes(s.coreAttributes)
+}
+func (s supplyItemView) CoreAttributesPayload() pluginapi.ObjectPayload {
+	if s.coreAttributes == nil {
+		return pluginapi.NewObjectPayload(nil)
+	}
+	return pluginapi.NewObjectPayload(s.coreAttributes)
 }
 
 func (s supplyItemView) ExpiresAt() (*time.Time, bool) {

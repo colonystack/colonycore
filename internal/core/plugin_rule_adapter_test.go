@@ -373,6 +373,10 @@ func TestNewViewAccessors(t *testing.T) {
 	if facility.EnvironmentBaselines()["temp"] != 21 {
 		t.Fatal("facility baselines should round-trip")
 	}
+	facilityPayload := facility.CoreEnvironmentBaselinesPayload()
+	if !facilityPayload.Defined() || facilityPayload.Map()["temp"] != 21 {
+		t.Fatal("facility baseline payload should expose stored values")
+	}
 	if facility.Code() != "FAC-99" {
 		t.Fatalf("expected facility code to round-trip, got %q", facility.Code())
 	}
@@ -425,6 +429,10 @@ func TestNewViewAccessors(t *testing.T) {
 	if !observation.GetDataShape().HasNarrativeNotes() {
 		t.Fatal("observation data shape should report narrative notes")
 	}
+	dataPayload := observation.CoreDataPayload()
+	if !dataPayload.Defined() || dataPayload.Map()["score"] != 1 {
+		t.Fatal("observation payload should expose structured data")
+	}
 
 	organID := "org"
 	sampleDomain := domain.Sample{
@@ -459,6 +467,10 @@ func TestNewViewAccessors(t *testing.T) {
 	}
 	if !sample.GetStatus().IsAvailable() || !sample.GetSource().IsOrganismDerived() {
 		t.Fatal("sample status contextual helper should report availability")
+	}
+	samplePayload := sample.CoreAttributesPayload()
+	if !samplePayload.Defined() || samplePayload.Map()["k"] != "v" {
+		t.Fatal("sample payload should expose stored attributes")
 	}
 
 	permit := newPermitView(domain.Permit{
@@ -510,6 +522,10 @@ func TestNewViewAccessors(t *testing.T) {
 	}
 	if supply.Attributes()["k"] != "v" {
 		t.Fatal("supply attributes should round-trip")
+	}
+	supplyPayload := supply.CoreAttributesPayload()
+	if !supplyPayload.Defined() || supplyPayload.Map()["k"] != "v" {
+		t.Fatal("supply payload should expose stored attributes")
 	}
 }
 
@@ -601,6 +617,13 @@ func TestOrganismViewAccessors(t *testing.T) {
 	attrs["key"] = testLiteralMutated
 	if refreshed := view.Attributes()["key"]; refreshed != "value" {
 		t.Fatalf("expected attributes copy to remain unchanged, got %v", refreshed)
+	}
+	payload := view.CoreAttributesPayload()
+	if !payload.Defined() {
+		t.Fatalf("expected core attributes payload to be defined")
+	}
+	if payload.Map()["key"] != "value" {
+		t.Fatalf("expected payload map to match stored attributes")
 	}
 	parentIDs[0] = "changed"
 	if view.ParentIDs()[0] != "p1" {
