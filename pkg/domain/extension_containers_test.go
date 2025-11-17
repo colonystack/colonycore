@@ -287,16 +287,22 @@ func TestExtensionContainerSlotInteraction(t *testing.T) {
 
 	// Start with attributes
 	mustNoError(t, "SetCoreAttributes", organism.SetCoreAttributes(map[string]any{"initial": testAttrValue}))
-
-	// Get slot and modify it
-	slot := organism.EnsureAttributesSlot()
-	_ = slot.Set(extension.PluginID("external"), map[string]any{"external": "data"})
-	mustNoError(t, "SetAttributesSlot", organism.SetAttributesSlot(slot))
-
 	container := organism.ensureExtensionContainer()
+	if err := container.Set(extension.HookOrganismAttributes, extension.PluginID("external"), map[string]any{"external": "data"}); err != nil {
+		t.Fatalf("set external payload: %v", err)
+	}
+
+	cloned, err := organism.OrganismExtensions()
+	if err != nil {
+		t.Fatalf("OrganismExtensions: %v", err)
+	}
+	var dup Organism
+	if err := dup.SetOrganismExtensions(cloned); err != nil {
+		t.Fatalf("SetOrganismExtensions: %v", err)
+	}
 
 	// Verify container contains both core and external data
-	coreData, hasCore := container.Get(extension.HookOrganismAttributes, extension.PluginCore)
+	coreData, hasCore := dup.ensureExtensionContainer().Get(extension.HookOrganismAttributes, extension.PluginCore)
 	if !hasCore {
 		t.Errorf("Expected core plugin data in container")
 	}
@@ -304,7 +310,7 @@ func TestExtensionContainerSlotInteraction(t *testing.T) {
 		t.Errorf("Expected core data to be preserved")
 	}
 
-	externalData, hasExternal := container.Get(extension.HookOrganismAttributes, extension.PluginID("external"))
+	externalData, hasExternal := dup.ensureExtensionContainer().Get(extension.HookOrganismAttributes, extension.PluginID("external"))
 	if !hasExternal {
 		t.Errorf("Expected external plugin data in container")
 	}

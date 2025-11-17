@@ -522,8 +522,12 @@ func (s memoryState) clone() memoryState {
 
 func cloneOrganism(o Organism) Organism {
 	cp := o
-	if err := cp.SetAttributesSlot(o.EnsureAttributesSlot()); err != nil {
-		panic(fmt.Errorf("memory: clone organism attributes: %w", err))
+	container, err := o.OrganismExtensions()
+	if err != nil {
+		panic(fmt.Errorf("memory: clone organism extensions: %w", err))
+	}
+	if err := cp.SetOrganismExtensions(container); err != nil {
+		panic(fmt.Errorf("memory: set organism extensions: %w", err))
 	}
 	if len(o.ParentIDs) != 0 {
 		cp.ParentIDs = append([]string(nil), o.ParentIDs...)
@@ -537,8 +541,12 @@ func cloneBreeding(b BreedingUnit) BreedingUnit {
 	cp := b
 	cp.FemaleIDs = append([]string(nil), b.FemaleIDs...)
 	cp.MaleIDs = append([]string(nil), b.MaleIDs...)
-	if err := cp.SetPairingAttributesSlot(b.EnsurePairingAttributesSlot()); err != nil {
+	container, err := b.BreedingUnitExtensions()
+	if err != nil {
 		panic(fmt.Errorf("memory: clone breeding attributes: %w", err))
+	}
+	if err := cp.SetBreedingUnitExtensions(container); err != nil {
+		panic(fmt.Errorf("memory: set breeding attributes: %w", err))
 	}
 	return cp
 }
@@ -563,8 +571,12 @@ func cloneProject(p Project) Project {
 
 func cloneFacility(f Facility) Facility {
 	cp := f
-	if err := cp.SetEnvironmentBaselinesSlot(f.EnsureEnvironmentBaselinesSlot()); err != nil {
+	container, err := f.FacilityExtensions()
+	if err != nil {
 		panic(fmt.Errorf("memory: clone facility baselines: %w", err))
+	}
+	if err := cp.SetFacilityExtensions(container); err != nil {
+		panic(fmt.Errorf("memory: set facility baselines: %w", err))
 	}
 	cp.HousingUnitIDs = append([]string(nil), f.HousingUnitIDs...)
 	cp.ProjectIDs = append([]string(nil), f.ProjectIDs...)
@@ -582,8 +594,12 @@ func cloneTreatment(t Treatment) Treatment {
 
 func cloneObservation(o Observation) Observation {
 	cp := o
-	if err := cp.SetObservationDataSlot(o.EnsureObservationDataSlot()); err != nil {
+	container, err := o.ObservationExtensions()
+	if err != nil {
 		panic(fmt.Errorf("memory: clone observation data: %w", err))
+	}
+	if err := cp.SetObservationExtensions(container); err != nil {
+		panic(fmt.Errorf("memory: set observation data: %w", err))
 	}
 	return cp
 }
@@ -591,8 +607,12 @@ func cloneObservation(o Observation) Observation {
 func cloneSample(s Sample) Sample {
 	cp := s
 	cp.ChainOfCustody = append([]domain.SampleCustodyEvent(nil), s.ChainOfCustody...)
-	if err := cp.SetSampleAttributesSlot(s.EnsureSampleAttributesSlot()); err != nil {
+	container, err := s.SampleExtensions()
+	if err != nil {
 		panic(fmt.Errorf("memory: clone sample attributes: %w", err))
+	}
+	if err := cp.SetSampleExtensions(container); err != nil {
+		panic(fmt.Errorf("memory: set sample attributes: %w", err))
 	}
 	return cp
 }
@@ -759,8 +779,12 @@ func cloneSupplyItem(s SupplyItem) SupplyItem {
 	}
 	cp.FacilityIDs = append([]string(nil), s.FacilityIDs...)
 	cp.ProjectIDs = append([]string(nil), s.ProjectIDs...)
-	if err := cp.SetSupplyItemAttributesSlot(s.EnsureSupplyItemAttributesSlot()); err != nil {
+	container, err := s.SupplyItemExtensions()
+	if err != nil {
 		panic(fmt.Errorf("memory: clone supply attributes: %w", err))
+	}
+	if err := cp.SetSupplyItemExtensions(container); err != nil {
+		panic(fmt.Errorf("memory: set supply attributes: %w", err))
 	}
 	return cp
 }
