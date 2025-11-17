@@ -730,33 +730,67 @@ func TestLineAndStrainEnsureSlots(t *testing.T) {
 	}
 }
 
-func TestAssignAndCloneExtensionMap(t *testing.T) {
-	values := map[string]any{
-		"slice": []int{1, 2},
-		"map":   map[string]any{"flag": true},
+func TestEnsureSupplyItemAttributesSlotRebinds(t *testing.T) {
+	var supply SupplyItem
+	slot := supply.EnsureSupplyItemAttributesSlot()
+	if err := slot.Set(extension.PluginCore, map[string]any{"flag": true}); err != nil {
+		t.Fatalf("set slot payload: %v", err)
 	}
-	cloned := cloneExtensionMap(values)
-	if cloned["slice"].([]int)[0] != 1 {
-		t.Fatalf("expected slice clone to retain values")
-	}
-	cloned["slice"].([]int)[0] = 99
-	if values["slice"].([]int)[0] != 1 {
-		t.Fatalf("expected clone to be independent of original")
+	if again := supply.EnsureSupplyItemAttributesSlot(); again != slot {
+		t.Fatalf("expected cached slot reuse")
 	}
 
-	assigned := assignExtensionMap(values)
-	if assigned["map"].(map[string]any)["flag"] != true {
-		t.Fatalf("expected assigned clone to retain flag true")
+	supply.attributesSlot = extension.NewSlot("")
+	if supply.EnsureSupplyItemAttributesSlot().Hook() != extension.HookSupplyItemAttributes {
+		t.Fatalf("expected ensure to rebind hook")
 	}
-	assigned["map"].(map[string]any)["flag"] = false
-	if values["map"].(map[string]any)["flag"] != true {
-		t.Fatalf("expected assigned map to be independent")
+}
+
+func TestLineSetDefaultAttributesSlotClearsOnNil(t *testing.T) {
+	var line Line
+	slot := extension.NewSlot(extension.HookLineDefaultAttributes)
+	if err := slot.Set(extension.PluginCore, map[string]any{"seed": true}); err != nil {
+		t.Fatalf("set default slot: %v", err)
+	}
+	if err := line.SetDefaultAttributesSlot(slot); err != nil {
+		t.Fatalf("SetDefaultAttributesSlot: %v", err)
+	}
+	if line.extensions == nil {
+		t.Fatalf("expected extensions to be initialised")
+	}
+	if err := line.SetDefaultAttributesSlot(nil); err != nil {
+		t.Fatalf("SetDefaultAttributesSlot nil: %v", err)
+	}
+	if line.extensions != nil {
+		t.Fatalf("expected extensions cleared after nil slot")
+	}
+}
+
+func TestEnsureSlotsRebindAfterCorruption(t *testing.T) {
+	var (
+		o   Organism
+		f   Facility
+		b   BreedingUnit
+		obs Observation
+	)
+
+	o.attributesSlot = extension.NewSlot("")
+	if o.EnsureAttributesSlot().Hook() != extension.HookOrganismAttributes {
+		t.Fatalf("organism ensure should rebind hook")
 	}
 
-	if cloneExtensionMap(nil) != nil {
-		t.Fatalf("expected nil clone to remain nil")
+	f.environmentBaselinesSlot = extension.NewSlot("")
+	if f.EnsureEnvironmentBaselinesSlot().Hook() != extension.HookFacilityEnvironmentBaselines {
+		t.Fatalf("facility ensure should rebind hook")
 	}
-	if assignExtensionMap(nil) != nil {
-		t.Fatalf("expected nil assign to remain nil")
+
+	b.pairingAttributesSlot = extension.NewSlot("")
+	if b.EnsurePairingAttributesSlot().Hook() != extension.HookBreedingUnitPairingAttributes {
+		t.Fatalf("breeding ensure should rebind hook")
+	}
+
+	obs.dataSlot = extension.NewSlot("")
+	if obs.EnsureObservationDataSlot().Hook() != extension.HookObservationData {
+		t.Fatalf("observation ensure should rebind hook")
 	}
 }

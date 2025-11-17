@@ -704,3 +704,69 @@ func TestGenotypeMarkerExtensionsRoundTrip(t *testing.T) {
 		t.Fatalf("expected genotype slots cleared after empty assignment")
 	}
 }
+
+func TestAccessorPayloadsRejectMismatchedHooks(t *testing.T) {
+	wrongOrganism, err := extension.NewObjectPayload(extension.HookFacilityEnvironmentBaselines, map[string]any{"temp": 20})
+	if err != nil {
+		t.Fatalf("NewObjectPayload: %v", err)
+	}
+	var organism Organism
+	if err := organism.SetCoreAttributesPayload(wrongOrganism); err == nil {
+		t.Fatalf("expected hook mismatch for organism payload")
+	}
+
+	wrongFacility, err := extension.NewObjectPayload(extension.HookOrganismAttributes, map[string]any{"note": "bad"})
+	if err != nil {
+		t.Fatalf("NewObjectPayload: %v", err)
+	}
+	var facility Facility
+	if err := facility.ApplyEnvironmentBaselinesPayload(wrongFacility); err == nil {
+		t.Fatalf("expected hook mismatch for facility payload")
+	}
+
+	wrongBreeding, err := extension.NewObjectPayload(extension.HookOrganismAttributes, map[string]any{"flag": true})
+	if err != nil {
+		t.Fatalf("NewObjectPayload: %v", err)
+	}
+	var breeding BreedingUnit
+	if err := breeding.ApplyPairingAttributesPayload(wrongBreeding); err == nil {
+		t.Fatalf("expected hook mismatch for breeding payload")
+	}
+
+	wrongObservation, err := extension.NewObjectPayload(extension.HookSampleAttributes, map[string]any{"value": 1})
+	if err != nil {
+		t.Fatalf("NewObjectPayload: %v", err)
+	}
+	var obs Observation
+	if err := obs.ApplyObservationDataPayload(wrongObservation); err == nil {
+		t.Fatalf("expected hook mismatch for observation payload")
+	}
+
+	wrongSample, err := extension.NewObjectPayload(extension.HookObservationData, map[string]any{"value": 1})
+	if err != nil {
+		t.Fatalf("NewObjectPayload: %v", err)
+	}
+	var sample Sample
+	if err := sample.ApplySampleAttributesPayload(wrongSample); err == nil {
+		t.Fatalf("expected hook mismatch for sample payload")
+	}
+
+	wrongSupply, err := extension.NewObjectPayload(extension.HookObservationData, map[string]any{"value": 1})
+	if err != nil {
+		t.Fatalf("NewObjectPayload: %v", err)
+	}
+	var supply SupplyItem
+	if err := supply.ApplySupplyAttributesPayload(wrongSupply); err == nil {
+		t.Fatalf("expected hook mismatch for supply payload")
+	}
+}
+
+func TestLineApplyHelpersRejectInvalidPlugins(t *testing.T) {
+	var line Line
+	if err := line.ApplyDefaultAttributes(map[string]any{"": map[string]any{}}); err == nil {
+		t.Fatalf("expected default attributes error")
+	}
+	if err := line.ApplyExtensionOverrides(map[string]any{"": map[string]any{}}); err == nil {
+		t.Fatalf("expected extension overrides error")
+	}
+}

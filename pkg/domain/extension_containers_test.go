@@ -291,9 +291,8 @@ func TestExtensionContainerSlotInteraction(t *testing.T) {
 	// Get slot and modify it
 	slot := organism.EnsureAttributesSlot()
 	_ = slot.Set(extension.PluginID("external"), map[string]any{"external": "data"})
+	mustNoError(t, "SetAttributesSlot", organism.SetAttributesSlot(slot))
 
-	// Force regeneration of container
-	organism.extensions = nil
 	container := organism.ensureExtensionContainer()
 
 	// Verify container contains both core and external data
@@ -400,20 +399,6 @@ func TestMapAccessorsWithNilExtensions(t *testing.T) {
 	attrs2 := organism.CoreAttributes()
 	if attrs2 != nil {
 		t.Errorf("Expected nil attributes when container has no data")
-	}
-}
-
-func TestMapAccessorsInvalidPayloadTypes(t *testing.T) {
-	// Test handling of invalid payload types in slots
-	var organism Organism
-	slot := extension.NewSlot(extension.HookOrganismAttributes)
-	_ = slot.Set(extension.PluginCore, "invalid-type") // Set string instead of map
-
-	organism.attributesSlot = slot
-
-	attrs := organism.CoreAttributes()
-	if attrs != nil {
-		t.Errorf("Expected nil when payload is not a map[string]any")
 	}
 }
 

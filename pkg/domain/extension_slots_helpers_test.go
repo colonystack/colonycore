@@ -67,3 +67,12 @@ func TestSlotFromPluginPayloadsInvalid(t *testing.T) {
 		t.Fatalf("expected shape validation error")
 	}
 }
+
+func TestPanicOnExtension(t *testing.T) {
+	defer func() {
+		if r := recover(); r == nil {
+			t.Fatalf("expected panic when err is non-nil")
+		}
+	}()
+	panicOnExtension(errors.New("boom"), "label")
+}

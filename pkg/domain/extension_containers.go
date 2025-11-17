@@ -7,7 +7,6 @@ func (o *Organism) ensureExtensionContainer() *extension.Container {
 		return o.extensions
 	}
 	container := extension.NewContainer()
-	populateContainerFromMap(&container, extension.HookOrganismAttributes, "domain: organism extension container", slotRaw(o.attributesSlot))
 	o.extensions = &container
 	return o.extensions
 }
@@ -17,7 +16,6 @@ func (f *Facility) ensureExtensionContainer() *extension.Container {
 		return f.extensions
 	}
 	container := extension.NewContainer()
-	populateContainerFromMap(&container, extension.HookFacilityEnvironmentBaselines, "domain: facility extension container", slotRaw(f.environmentBaselinesSlot))
 	f.extensions = &container
 	return f.extensions
 }
@@ -27,7 +25,6 @@ func (b *BreedingUnit) ensureExtensionContainer() *extension.Container {
 		return b.extensions
 	}
 	container := extension.NewContainer()
-	populateContainerFromMap(&container, extension.HookBreedingUnitPairingAttributes, "domain: breeding unit extension container", slotRaw(b.pairingAttributesSlot))
 	b.extensions = &container
 	return b.extensions
 }
@@ -37,7 +34,6 @@ func (o *Observation) ensureExtensionContainer() *extension.Container {
 		return o.extensions
 	}
 	container := extension.NewContainer()
-	populateContainerFromMap(&container, extension.HookObservationData, "domain: observation extension container", slotRaw(o.dataSlot))
 	o.extensions = &container
 	return o.extensions
 }
@@ -47,7 +43,6 @@ func (s *Sample) ensureExtensionContainer() *extension.Container {
 		return s.extensions
 	}
 	container := extension.NewContainer()
-	populateContainerFromMap(&container, extension.HookSampleAttributes, "domain: sample extension container", slotRaw(s.attributesSlot))
 	s.extensions = &container
 	return s.extensions
 }
@@ -57,7 +52,6 @@ func (s *SupplyItem) ensureExtensionContainer() *extension.Container {
 		return s.extensions
 	}
 	container := extension.NewContainer()
-	populateContainerFromMap(&container, extension.HookSupplyItemAttributes, "domain: supply item extension container", slotRaw(s.attributesSlot))
 	s.extensions = &container
 	return s.extensions
 }
@@ -67,8 +61,6 @@ func (l *Line) ensureExtensionContainer() *extension.Container {
 		return l.extensions
 	}
 	container := extension.NewContainer()
-	populateContainerFromMap(&container, extension.HookLineDefaultAttributes, "domain: line default attributes container", slotRaw(l.defaultAttributesSlot))
-	populateContainerFromMap(&container, extension.HookLineExtensionOverrides, "domain: line extension overrides container", slotRaw(l.extensionOverridesSlot))
 	l.extensions = &container
 	return l.extensions
 }
@@ -100,7 +92,6 @@ func (s *Strain) ensureExtensionContainer() *extension.Container {
 		return s.extensions
 	}
 	container := extension.NewContainer()
-	populateContainerFromMap(&container, extension.HookStrainAttributes, "domain: strain attributes container", slotRaw(s.attributesSlot))
 	s.extensions = &container
 	return s.extensions
 }
@@ -110,7 +101,6 @@ func (g *GenotypeMarker) ensureExtensionContainer() *extension.Container {
 		return g.extensions
 	}
 	container := extension.NewContainer()
-	populateContainerFromMap(&container, extension.HookGenotypeMarkerAttributes, "domain: genotype marker attributes container", slotRaw(g.attributesSlot))
 	g.extensions = &container
 	return g.extensions
 }
