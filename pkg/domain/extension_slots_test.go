@@ -13,25 +13,25 @@ func TestOrganismSetAttributesClonesInputAndOutput(t *testing.T) {
 		"nested": []any{map[string]any{"k": "v"}},
 	}
 	var organism Organism
-	organism.SetAttributes(original)
+	mustNoError(t, "SetCoreAttributes", organism.SetCoreAttributes(original))
 
 	// Mutate original input; stored value should remain unchanged.
 	original["nested"].([]any)[0].(map[string]any)["k"] = testMutated
-	if organism.AttributesMap()["nested"].([]any)[0].(map[string]any)["k"] != "v" {
+	if organism.CoreAttributes()["nested"].([]any)[0].(map[string]any)["k"] != "v" {
 		t.Fatalf("expected stored attributes to remain unchanged")
 	}
 
 	// Mutate returned map; stored value should remain unchanged.
-	view := organism.AttributesMap()
+	view := organism.CoreAttributes()
 	view["nested"].([]any)[0].(map[string]any)["k"] = "changed"
-	if organism.AttributesMap()["nested"].([]any)[0].(map[string]any)["k"] != "v" {
+	if organism.CoreAttributes()["nested"].([]any)[0].(map[string]any)["k"] != "v" {
 		t.Fatalf("expected stored attributes to remain unchanged after view mutation")
 	}
 }
 
 func TestOrganismEnsureAttributesSlotCaching(t *testing.T) {
 	var organism Organism
-	organism.SetAttributes(map[string]any{"flag": true})
+	mustNoError(t, "SetCoreAttributes", organism.SetCoreAttributes(map[string]any{"flag": true}))
 
 	first := organism.EnsureAttributesSlot()
 	if first == nil {
@@ -46,10 +46,7 @@ func TestOrganismEnsureAttributesSlotCaching(t *testing.T) {
 		t.Fatalf("expected repeated ensure to reuse cached slot")
 	}
 
-	organism.SetAttributes(map[string]any{"flag": false})
-	if organism.attributesSlot != nil {
-		t.Fatalf("expected slot cache to reset after map setter")
-	}
+	mustNoError(t, "SetCoreAttributes", organism.SetCoreAttributes(map[string]any{"flag": false}))
 	replacement := organism.EnsureAttributesSlot()
 	if replacement == first {
 		t.Fatalf("expected ensure to build fresh slot after reset")
@@ -99,12 +96,11 @@ func TestOrganismSetAttributesSlotClonesInput(t *testing.T) {
 	if err := organism.SetAttributesSlot(nil); err != nil {
 		t.Fatalf("SetAttributesSlot nil: %v", err)
 	}
-	if organism.AttributesMap() != nil || organism.attributesSlot != nil {
-		t.Fatalf("expected attributes view and slot to clear when setting nil")
+	if organism.CoreAttributes() != nil {
+		t.Fatalf("expected attributes view to clear when setting nil")
 	}
-	if organism.extensions != nil {
-		t.Fatalf("expected extension container cleared on nil slot")
-	}
+	assertSlotEmpty(t, organism.attributesSlot, "expected slot to be cleared when setting nil")
+	assertContainerEmpty(t, organism.extensions, "expected extension container cleared on nil slot")
 }
 
 func TestEnsureExtensionContainerIdempotent(t *testing.T) {
@@ -120,7 +116,7 @@ func TestEnsureExtensionContainerIdempotent(t *testing.T) {
 		if l := len(first.Plugins(extension.HookOrganismAttributes)); l != 0 {
 			t.Fatalf("expected no plugins for nil attributes, got %d", l)
 		}
-		o.SetAttributes(map[string]any{"flag": true})
+		mustNoError(t, "SetCoreAttributes", o.SetCoreAttributes(map[string]any{"flag": true}))
 		second := o.ensureExtensionContainer()
 		if second == nil || second == first {
 			t.Fatalf("expected container to refresh after attribute update")
@@ -136,7 +132,7 @@ func TestEnsureExtensionContainerIdempotent(t *testing.T) {
 		if base == nil {
 			t.Fatalf("expected container instance for zero-value facility")
 		}
-		f.SetEnvironmentBaselines(map[string]any{"temp": 20})
+		mustNoError(t, "ApplyEnvironmentBaselines", f.ApplyEnvironmentBaselines(map[string]any{"temp": 20}))
 		refreshed := f.ensureExtensionContainer()
 		if refreshed == nil || refreshed == base {
 			t.Fatalf("expected refreshed container for facility")
@@ -152,7 +148,7 @@ func TestEnsureExtensionContainerIdempotent(t *testing.T) {
 	t.Run("breeding", func(t *testing.T) {
 		var b BreedingUnit
 		_ = b.ensureExtensionContainer()
-		b.SetPairingAttributes(map[string]any{"note": "x"})
+		mustNoError(t, "ApplyPairingAttributes", b.ApplyPairingAttributes(map[string]any{"note": "x"}))
 		refreshed := b.ensureExtensionContainer()
 		if refreshed == nil {
 			t.Fatalf("expected breeding container to initialise")
@@ -168,7 +164,7 @@ func TestEnsureExtensionContainerIdempotent(t *testing.T) {
 	t.Run("observation", func(t *testing.T) {
 		var o Observation
 		_ = o.ensureExtensionContainer()
-		o.SetData(map[string]any{"metric": 1})
+		mustNoError(t, "ApplyObservationData", o.ApplyObservationData(map[string]any{"metric": 1}))
 		refreshed := o.ensureExtensionContainer()
 		if refreshed == nil {
 			t.Fatalf("expected observation container to initialise")
@@ -184,7 +180,7 @@ func TestEnsureExtensionContainerIdempotent(t *testing.T) {
 	t.Run("sample", func(t *testing.T) {
 		var s Sample
 		_ = s.ensureExtensionContainer()
-		s.SetAttributes(map[string]any{"batch": "A"})
+		mustNoError(t, "ApplySampleAttributes", s.ApplySampleAttributes(map[string]any{"batch": "A"}))
 		refreshed := s.ensureExtensionContainer()
 		if refreshed == nil {
 			t.Fatalf("expected sample container to initialise")
@@ -200,7 +196,7 @@ func TestEnsureExtensionContainerIdempotent(t *testing.T) {
 	t.Run("supply", func(t *testing.T) {
 		var s SupplyItem
 		_ = s.ensureExtensionContainer()
-		s.SetAttributes(map[string]any{"flag": true})
+		mustNoError(t, "ApplySupplyAttributes", s.ApplySupplyAttributes(map[string]any{"flag": true}))
 		refreshed := s.ensureExtensionContainer()
 		if refreshed == nil {
 			t.Fatalf("expected supply container to initialise")
@@ -216,7 +212,7 @@ func TestEnsureExtensionContainerIdempotent(t *testing.T) {
 
 func TestFacilitySlotLifecycle(t *testing.T) {
 	var facility Facility
-	facility.SetEnvironmentBaselines(map[string]any{"temp": "20C"})
+	mustNoError(t, "ApplyEnvironmentBaselines", facility.ApplyEnvironmentBaselines(map[string]any{"temp": "20C"}))
 
 	first := facility.EnsureEnvironmentBaselinesSlot()
 	if facility.environmentBaselinesSlot != first {
@@ -226,10 +222,7 @@ func TestFacilitySlotLifecycle(t *testing.T) {
 		t.Fatalf("expected facility ensure to reuse cached slot")
 	}
 
-	facility.SetEnvironmentBaselines(map[string]any{"temp": "21C"})
-	if facility.environmentBaselinesSlot != nil {
-		t.Fatalf("expected facility slot cache reset after map setter")
-	}
+	mustNoError(t, "ApplyEnvironmentBaselines", facility.ApplyEnvironmentBaselines(map[string]any{"temp": "21C"}))
 
 	second := facility.EnsureEnvironmentBaselinesSlot()
 	if first == second {
@@ -250,7 +243,7 @@ func TestFacilitySlotLifecycle(t *testing.T) {
 	if facility.environmentBaselinesSlot == external {
 		t.Fatalf("expected facility to clone incoming slot")
 	}
-	if facility.EnvironmentBaselinesMap()["temp"] != "22C" {
+	if facility.EnvironmentBaselines()["temp"] != "22C" {
 		t.Fatalf("expected facility map to reflect slot payload")
 	}
 	if facility.extensions == nil {
@@ -269,17 +262,15 @@ func TestFacilitySlotLifecycle(t *testing.T) {
 	if err := facility.SetEnvironmentBaselinesSlot(nil); err != nil {
 		t.Fatalf("SetEnvironmentBaselinesSlot nil: %v", err)
 	}
-	if facility.EnvironmentBaselinesMap() != nil || facility.environmentBaselinesSlot != nil {
+	if facility.EnvironmentBaselines() != nil || facility.environmentBaselinesSlot != nil {
 		t.Fatalf("expected facility slot and view cleared when nil provided")
 	}
-	if facility.extensions != nil {
-		t.Fatalf("expected facility extension container cleared on nil slot")
-	}
+	assertContainerEmpty(t, facility.extensions, "expected facility extension container cleared on nil slot")
 }
 
 func TestBreedingUnitSlotLifecycle(t *testing.T) {
 	var unit BreedingUnit
-	unit.SetPairingAttributes(map[string]any{"note": "init"})
+	mustNoError(t, "ApplyPairingAttributes", unit.ApplyPairingAttributes(map[string]any{"note": "init"}))
 
 	first := unit.EnsurePairingAttributesSlot()
 	if unit.pairingAttributesSlot != first {
@@ -289,10 +280,7 @@ func TestBreedingUnitSlotLifecycle(t *testing.T) {
 		t.Fatalf("expected breeding unit ensure to reuse cached slot")
 	}
 
-	unit.SetPairingAttributes(map[string]any{"note": "updated"})
-	if unit.pairingAttributesSlot != nil {
-		t.Fatalf("expected slot cache reset after map setter")
-	}
+	mustNoError(t, "ApplyPairingAttributes", unit.ApplyPairingAttributes(map[string]any{"note": "updated"}))
 
 	second := unit.EnsurePairingAttributesSlot()
 	if first == second {
@@ -313,7 +301,7 @@ func TestBreedingUnitSlotLifecycle(t *testing.T) {
 	if unit.pairingAttributesSlot == incoming {
 		t.Fatalf("expected breeding unit to clone incoming slot")
 	}
-	if unit.PairingAttributesMap()["note"] != "slot" {
+	if unit.PairingAttributes()["note"] != "slot" {
 		t.Fatalf("expected map to reflect cloned slot payload")
 	}
 	if unit.extensions == nil {
@@ -323,17 +311,15 @@ func TestBreedingUnitSlotLifecycle(t *testing.T) {
 	if err := unit.SetPairingAttributesSlot(nil); err != nil {
 		t.Fatalf("SetPairingAttributesSlot nil: %v", err)
 	}
-	if unit.PairingAttributesMap() != nil || unit.pairingAttributesSlot != nil {
+	if unit.PairingAttributes() != nil || unit.pairingAttributesSlot != nil {
 		t.Fatalf("expected breeding unit slot and view cleared when nil provided")
 	}
-	if unit.extensions != nil {
-		t.Fatalf("expected breeding unit extension container cleared on nil slot")
-	}
+	assertContainerEmpty(t, unit.extensions, "expected breeding unit extension container cleared on nil slot")
 }
 
 func TestObservationSlotLifecycle(t *testing.T) {
 	var obs Observation
-	obs.SetData(map[string]any{"metric": 1})
+	mustNoError(t, "ApplyObservationData", obs.ApplyObservationData(map[string]any{"metric": 1}))
 
 	first := obs.EnsureObservationDataSlot()
 	if obs.dataSlot != first {
@@ -343,10 +329,7 @@ func TestObservationSlotLifecycle(t *testing.T) {
 		t.Fatalf("expected observation ensure to reuse cached slot")
 	}
 
-	obs.SetData(map[string]any{"metric": 2})
-	if obs.dataSlot != nil {
-		t.Fatalf("expected slot cache reset after map setter")
-	}
+	mustNoError(t, "ApplyObservationData", obs.ApplyObservationData(map[string]any{"metric": 2}))
 
 	second := obs.EnsureObservationDataSlot()
 	if first == second {
@@ -367,7 +350,7 @@ func TestObservationSlotLifecycle(t *testing.T) {
 	if obs.dataSlot == incoming {
 		t.Fatalf("expected observation to clone incoming slot")
 	}
-	if obs.DataMap()["metric"] != 3 {
+	if obs.ObservationData()["metric"] != 3 {
 		t.Fatalf("expected map to reflect cloned slot payload")
 	}
 	if obs.extensions == nil {
@@ -377,17 +360,15 @@ func TestObservationSlotLifecycle(t *testing.T) {
 	if err := obs.SetObservationDataSlot(nil); err != nil {
 		t.Fatalf("SetObservationDataSlot nil: %v", err)
 	}
-	if obs.DataMap() != nil || obs.dataSlot != nil {
+	if obs.ObservationData() != nil || obs.dataSlot != nil {
 		t.Fatalf("expected observation slot and view cleared when nil provided")
 	}
-	if obs.extensions != nil {
-		t.Fatalf("expected observation extension container cleared on nil slot")
-	}
+	assertContainerEmpty(t, obs.extensions, "expected observation extension container cleared on nil slot")
 }
 
 func TestSampleSlotLifecycle(t *testing.T) {
 	var sample Sample
-	sample.SetAttributes(map[string]any{"batch": "A"})
+	mustNoError(t, "ApplySampleAttributes", sample.ApplySampleAttributes(map[string]any{"batch": "A"}))
 
 	first := sample.EnsureSampleAttributesSlot()
 	if sample.attributesSlot != first {
@@ -397,10 +378,7 @@ func TestSampleSlotLifecycle(t *testing.T) {
 		t.Fatalf("expected sample ensure to reuse cached slot")
 	}
 
-	sample.SetAttributes(map[string]any{"batch": "B"})
-	if sample.attributesSlot != nil {
-		t.Fatalf("expected slot cache reset after map setter")
-	}
+	mustNoError(t, "ApplySampleAttributes", sample.ApplySampleAttributes(map[string]any{"batch": "B"}))
 
 	second := sample.EnsureSampleAttributesSlot()
 	if first == second {
@@ -421,7 +399,7 @@ func TestSampleSlotLifecycle(t *testing.T) {
 	if sample.attributesSlot == incoming {
 		t.Fatalf("expected sample to clone incoming slot")
 	}
-	if sample.AttributesMap()["batch"] != "C" {
+	if sample.SampleAttributes()["batch"] != "C" {
 		t.Fatalf("expected map to reflect cloned slot payload")
 	}
 	if sample.extensions == nil {
@@ -431,17 +409,16 @@ func TestSampleSlotLifecycle(t *testing.T) {
 	if err := sample.SetSampleAttributesSlot(nil); err != nil {
 		t.Fatalf("SetSampleAttributesSlot nil: %v", err)
 	}
-	if sample.AttributesMap() != nil || sample.attributesSlot != nil {
-		t.Fatalf("expected sample slot and view cleared when nil provided")
+	if sample.SampleAttributes() != nil {
+		t.Fatalf("expected sample slot view cleared when nil provided")
 	}
-	if sample.extensions != nil {
-		t.Fatalf("expected sample extension container cleared on nil slot")
-	}
+	assertSlotEmpty(t, sample.attributesSlot, "expected sample slot cleared when nil provided")
+	assertContainerEmpty(t, sample.extensions, "expected sample extension container cleared on nil slot")
 }
 
 func TestSupplyItemSlotLifecycle(t *testing.T) {
 	var supply SupplyItem
-	supply.SetAttributes(map[string]any{"flag": true})
+	mustNoError(t, "ApplySupplyAttributes", supply.ApplySupplyAttributes(map[string]any{"flag": true}))
 
 	first := supply.EnsureSupplyItemAttributesSlot()
 	if supply.attributesSlot != first {
@@ -451,10 +428,7 @@ func TestSupplyItemSlotLifecycle(t *testing.T) {
 		t.Fatalf("expected supply ensure to reuse cached slot")
 	}
 
-	supply.SetAttributes(map[string]any{"flag": false})
-	if supply.attributesSlot != nil {
-		t.Fatalf("expected slot cache reset after map setter")
-	}
+	mustNoError(t, "ApplySupplyAttributes", supply.ApplySupplyAttributes(map[string]any{"flag": false}))
 
 	second := supply.EnsureSupplyItemAttributesSlot()
 	if first == second {
@@ -475,7 +449,7 @@ func TestSupplyItemSlotLifecycle(t *testing.T) {
 	if supply.attributesSlot == incoming {
 		t.Fatalf("expected supply to clone incoming slot")
 	}
-	if supply.AttributesMap()["flag"] != "slot" {
+	if supply.SupplyAttributes()["flag"] != "slot" {
 		t.Fatalf("expected map to reflect cloned slot payload")
 	}
 	if supply.extensions == nil {
@@ -485,46 +459,45 @@ func TestSupplyItemSlotLifecycle(t *testing.T) {
 	if err := supply.SetSupplyItemAttributesSlot(nil); err != nil {
 		t.Fatalf("SetSupplyItemAttributesSlot nil: %v", err)
 	}
-	if supply.AttributesMap() != nil || supply.attributesSlot != nil {
-		t.Fatalf("expected supply slot and view cleared when nil provided")
+	if supply.SupplyAttributes() != nil {
+		t.Fatalf("expected supply slot view cleared when nil provided")
 	}
-	if supply.extensions != nil {
-		t.Fatalf("expected supply extension container cleared on nil slot")
-	}
+	assertSlotEmpty(t, supply.attributesSlot, "expected supply slot cleared when nil provided")
+	assertContainerEmpty(t, supply.extensions, "expected supply extension container cleared on nil slot")
 }
 
 func TestFacilityEnvironmentBaselinesHelpersClone(t *testing.T) {
 	input := map[string]any{"temp": []int{20}}
 
 	var facility Facility
-	facility.SetEnvironmentBaselines(input)
+	mustNoError(t, "ApplyEnvironmentBaselines", facility.ApplyEnvironmentBaselines(input))
 
 	input["temp"].([]int)[0] = 99
-	if facility.EnvironmentBaselinesMap()["temp"].([]int)[0] != 20 {
+	if facility.EnvironmentBaselines()["temp"].([]int)[0] != 20 {
 		t.Fatalf("expected facility baselines to be cloned from input")
 	}
 
-	baselines := facility.EnvironmentBaselinesMap()
+	baselines := facility.EnvironmentBaselines()
 	baselines["temp"].([]int)[0] = 30
-	if facility.EnvironmentBaselinesMap()["temp"].([]int)[0] != 20 {
+	if facility.EnvironmentBaselines()["temp"].([]int)[0] != 20 {
 		t.Fatalf("expected facility baselines to remain unchanged after view mutation")
 	}
 }
 
 func TestSampleSetAttributesNil(t *testing.T) {
 	var sample Sample
-	sample.SetAttributes(nil)
-	if sample.AttributesMap() != nil {
+	mustNoError(t, "ApplySampleAttributes", sample.ApplySampleAttributes(nil))
+	if sample.SampleAttributes() != nil {
 		t.Fatalf("expected nil attributes when input is nil")
 	}
-	if sample.AttributesMap() != nil {
+	if sample.SampleAttributes() != nil {
 		t.Fatalf("expected nil attribute map when stored map is nil")
 	}
 }
 
 func TestOrganismAttributesSlotBridgeRoundTrip(t *testing.T) {
 	organism := Organism{}
-	organism.SetAttributes(map[string]any{"flag": true})
+	mustNoError(t, "SetCoreAttributes", organism.SetCoreAttributes(map[string]any{"flag": true}))
 
 	slot := organism.EnsureAttributesSlot()
 	if slot.Hook() != extension.HookOrganismAttributes {
@@ -541,7 +514,7 @@ func TestOrganismAttributesSlotBridgeRoundTrip(t *testing.T) {
 	}
 
 	payload["flag"] = false
-	if organism.AttributesMap()["flag"] != true {
+	if organism.CoreAttributes()["flag"] != true {
 		t.Fatalf("expected slot payload clone to avoid mutating organism attributes")
 	}
 
@@ -555,7 +528,7 @@ func TestOrganismAttributesSlotBridgeRoundTrip(t *testing.T) {
 		t.Fatalf("unexpected error applying slot payload: %v", err)
 	}
 
-	if value, ok := organism.AttributesMap()["flag"].(bool); !ok || value {
+	if value, ok := organism.CoreAttributes()["flag"].(bool); !ok || value {
 		t.Fatalf("expected organism attributes to be updated from slot")
 	}
 }
@@ -563,7 +536,7 @@ func TestOrganismAttributesSlotBridgeRoundTrip(t *testing.T) {
 func TestExtensionSlotBridgeRoundTripsOtherEntities(t *testing.T) {
 	tempMap := map[string]any{"temp": "22C"}
 	env := Facility{}
-	env.SetEnvironmentBaselines(tempMap)
+	mustNoError(t, "ApplyEnvironmentBaselines", env.ApplyEnvironmentBaselines(tempMap))
 	envSlot := env.EnsureEnvironmentBaselinesSlot()
 	if envSlot.Hook() != extension.HookFacilityEnvironmentBaselines {
 		t.Fatalf("expected facility hook %q", extension.HookFacilityEnvironmentBaselines)
@@ -574,12 +547,12 @@ func TestExtensionSlotBridgeRoundTripsOtherEntities(t *testing.T) {
 	if err := env.SetEnvironmentBaselinesSlot(envSlot); err != nil {
 		t.Fatalf("unexpected error setting facility slot: %v", err)
 	}
-	if env.EnvironmentBaselinesMap()["temp"] != "25C" {
+	if env.EnvironmentBaselines()["temp"] != "25C" {
 		t.Fatalf("expected facility baselines to reflect slot payload")
 	}
 
 	breeding := BreedingUnit{}
-	breeding.SetPairingAttributes(map[string]any{"note": "initial"})
+	mustNoError(t, "ApplyPairingAttributes", breeding.ApplyPairingAttributes(map[string]any{"note": "initial"}))
 	bSlot := breeding.EnsurePairingAttributesSlot()
 	if bSlot.Hook() != extension.HookBreedingUnitPairingAttributes {
 		t.Fatalf("expected breeding unit hook %q", extension.HookBreedingUnitPairingAttributes)
@@ -588,12 +561,12 @@ func TestExtensionSlotBridgeRoundTripsOtherEntities(t *testing.T) {
 	if err := breeding.SetPairingAttributesSlot(bSlot); err != nil {
 		t.Fatalf("unexpected error applying breeding slot: %v", err)
 	}
-	if breeding.PairingAttributesMap()["note"] != "updated" {
+	if breeding.PairingAttributes()["note"] != "updated" {
 		t.Fatalf("expected breeding attributes to reflect slot payload")
 	}
 
 	observation := Observation{}
-	observation.SetData(map[string]any{"metric": 3})
+	mustNoError(t, "ApplyObservationData", observation.ApplyObservationData(map[string]any{"metric": 3}))
 	oSlot := observation.EnsureObservationDataSlot()
 	if oSlot.Hook() != extension.HookObservationData {
 		t.Fatalf("expected observation hook %q", extension.HookObservationData)
@@ -602,12 +575,12 @@ func TestExtensionSlotBridgeRoundTripsOtherEntities(t *testing.T) {
 	if err := observation.SetObservationDataSlot(oSlot); err != nil {
 		t.Fatalf("unexpected error applying observation slot: %v", err)
 	}
-	if observation.DataMap()["metric"] != 4 {
+	if observation.ObservationData()["metric"] != 4 {
 		t.Fatalf("expected observation data to reflect slot payload")
 	}
 
 	sample := Sample{}
-	sample.SetAttributes(map[string]any{"batch": "A"})
+	mustNoError(t, "ApplySampleAttributes", sample.ApplySampleAttributes(map[string]any{"batch": "A"}))
 	sSlot := sample.EnsureSampleAttributesSlot()
 	if sSlot.Hook() != extension.HookSampleAttributes {
 		t.Fatalf("expected sample hook %q", extension.HookSampleAttributes)
@@ -616,12 +589,12 @@ func TestExtensionSlotBridgeRoundTripsOtherEntities(t *testing.T) {
 	if err := sample.SetSampleAttributesSlot(sSlot); err != nil {
 		t.Fatalf("unexpected error applying sample slot: %v", err)
 	}
-	if sample.AttributesMap()["batch"] != "B" {
+	if sample.SampleAttributes()["batch"] != "B" {
 		t.Fatalf("expected sample attributes to reflect slot payload")
 	}
 
 	supply := SupplyItem{}
-	supply.SetAttributes(map[string]any{"reorder": true})
+	mustNoError(t, "ApplySupplyAttributes", supply.ApplySupplyAttributes(map[string]any{"reorder": true}))
 	uSlot := supply.EnsureSupplyItemAttributesSlot()
 	if uSlot.Hook() != extension.HookSupplyItemAttributes {
 		t.Fatalf("expected supply hook %q", extension.HookSupplyItemAttributes)
@@ -630,7 +603,7 @@ func TestExtensionSlotBridgeRoundTripsOtherEntities(t *testing.T) {
 	if err := supply.SetSupplyItemAttributesSlot(uSlot); err != nil {
 		t.Fatalf("unexpected error applying supply slot: %v", err)
 	}
-	if supply.AttributesMap()["reorder"] != false {
+	if supply.SupplyAttributes()["reorder"] != false {
 		t.Fatalf("expected supply attributes to reflect slot payload")
 	}
 }
@@ -644,7 +617,7 @@ func TestExtensionSlotBridgeRejectsNonCorePlugins(t *testing.T) {
 	if err := organism.SetAttributesSlot(slot); err != nil {
 		t.Fatalf("expected non-core payload to be accepted: %v", err)
 	}
-	if organism.AttributesMap() != nil {
+	if organism.CoreAttributes() != nil {
 		t.Fatalf("expected organism attributes map to be nil when only external plugins provided")
 	}
 	payload := organism.EnsureAttributesSlot()
@@ -668,7 +641,7 @@ func TestExtensionSlotBridgeNilSlotHandling(t *testing.T) {
 	if err := sample.SetSampleAttributesSlot(nil); err != nil {
 		t.Fatalf("expected nil slot to be accepted: %v", err)
 	}
-	if sample.AttributesMap() != nil {
+	if sample.SampleAttributes() != nil {
 		t.Fatalf("expected attributes to remain nil when setting nil slot")
 	}
 }

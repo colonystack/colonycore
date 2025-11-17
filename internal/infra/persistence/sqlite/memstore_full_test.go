@@ -423,7 +423,9 @@ func TestSQLiteStore_Persist_Reload_Full(t *testing.T) {
 			AccessPolicy: "badge",
 			ProjectIDs:   []string{project.ID},
 		}
-		facilityInput.SetEnvironmentBaselines(map[string]any{"temperature": "22C"})
+		if err := facilityInput.ApplyEnvironmentBaselines(map[string]any{"temperature": "22C"}); err != nil {
+			t.Fatalf("apply facility baselines: %v", err)
+		}
 		facility, err := tx.CreateFacility(facilityInput)
 		if err != nil {
 			return err

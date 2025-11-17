@@ -27,13 +27,13 @@ func TestOrganismMarshalJSON(t *testing.T) {
 	}
 
 	// Set attributes to test marshaling
-	organism.SetAttributes(map[string]any{
+	mustNoError(t, "SetCoreAttributes", organism.SetCoreAttributes(map[string]any{
 		"weight": 100.5,
 		"color":  "green",
 		"metadata": map[string]any{
 			"source": "lab",
 		},
-	})
+	}))
 
 	data, err := json.Marshal(organism)
 	if err != nil {
@@ -92,7 +92,7 @@ func TestOrganismUnmarshalJSON(t *testing.T) {
 	}
 
 	// Test attributes were properly unmarshaled
-	attrs := organism.AttributesMap()
+	attrs := organism.CoreAttributes()
 	if attrs["weight"] != 100.5 {
 		t.Errorf("Expected weight 100.5, got %v", attrs["weight"])
 	}
@@ -109,6 +109,51 @@ func TestOrganismUnmarshalJSON(t *testing.T) {
 	}
 }
 
+func TestLineUnmarshalJSONInvalidPlugin(t *testing.T) {
+	input := `{
+		"code": "L1",
+		"name": "Line",
+		"origin": "lab",
+		"genotype_marker_ids": [],
+		"default_attributes": {"": {"flag": true}},
+		"extension_overrides": {}
+	}`
+	var line Line
+	if err := json.Unmarshal([]byte(input), &line); err == nil {
+		t.Fatalf("expected invalid plugin error")
+	}
+}
+
+func TestStrainUnmarshalJSONInvalidPlugin(t *testing.T) {
+	input := `{
+		"code": "S1",
+		"name": "Strain",
+		"line_id": "line",
+		"genotype_marker_ids": [],
+		"attributes": {"": {"note": "bad"}}
+	}`
+	var strain Strain
+	if err := json.Unmarshal([]byte(input), &strain); err == nil {
+		t.Fatalf("expected invalid plugin error")
+	}
+}
+
+func TestGenotypeMarkerUnmarshalJSONInvalidPlugin(t *testing.T) {
+	input := `{
+		"name": "marker",
+		"locus": "l",
+		"alleles": [],
+		"assay_method": "m",
+		"interpretation": "i",
+		"version": "v1",
+		"attributes": {"": {"note": "bad"}}
+	}`
+	var marker GenotypeMarker
+	if err := json.Unmarshal([]byte(input), &marker); err == nil {
+		t.Fatalf("expected invalid plugin error")
+	}
+}
+
 func TestOrganismMarshalUnmarshalRoundTrip(t *testing.T) {
 	original := Organism{
 		Base: Base{
@@ -121,12 +166,12 @@ func TestOrganismMarshalUnmarshalRoundTrip(t *testing.T) {
 		Stage:   StageJuvenile,
 	}
 
-	original.SetAttributes(map[string]any{
+	mustNoError(t, "SetCoreAttributes", original.SetCoreAttributes(map[string]any{
 		"test": "value",
 		"nested": map[string]any{
 			"inner": []any{1, 2, 3},
 		},
-	})
+	}))
 
 	// Marshal to JSON
 	data, err := json.Marshal(original)
@@ -152,8 +197,8 @@ func TestOrganismMarshalUnmarshalRoundTrip(t *testing.T) {
 	}
 
 	// Compare attributes
-	originalAttrs := original.AttributesMap()
-	restoredAttrs := restored.AttributesMap()
+	originalAttrs := original.CoreAttributes()
+	restoredAttrs := restored.CoreAttributes()
 
 	if restoredAttrs["test"] != originalAttrs["test"] {
 		t.Errorf("Attribute 'test' mismatch: expected %v, got %v", originalAttrs["test"], restoredAttrs["test"])
@@ -167,10 +212,10 @@ func TestFacilityMarshalJSON(t *testing.T) {
 		Zone: "Test Zone",
 	}
 
-	facility.SetEnvironmentBaselines(map[string]any{
+	mustNoError(t, "ApplyEnvironmentBaselines", facility.ApplyEnvironmentBaselines(map[string]any{
 		"temperature": testTemperature,
 		"humidity":    "65%",
-	})
+	}))
 
 	data, err := json.Marshal(facility)
 	if err != nil {
@@ -212,7 +257,7 @@ func TestFacilityUnmarshalJSON(t *testing.T) {
 		t.Errorf("Expected ID 'test-facility', got %v", facility.ID)
 	}
 
-	baselines := facility.EnvironmentBaselinesMap()
+	baselines := facility.EnvironmentBaselines()
 	if baselines["temperature"] != testTemperature {
 		t.Errorf("Expected temperature '22C', got %v", baselines["temperature"])
 	}
@@ -225,10 +270,10 @@ func TestBreedingUnitMarshalJSON(t *testing.T) {
 		Strategy: "pair",
 	}
 
-	unit.SetPairingAttributes(map[string]any{
+	mustNoError(t, "ApplyPairingAttributes", unit.ApplyPairingAttributes(map[string]any{
 		"purpose": "research",
 		"notes":   "test pairing",
-	})
+	}))
 
 	data, err := json.Marshal(unit)
 	if err != nil {
@@ -270,7 +315,7 @@ func TestBreedingUnitUnmarshalJSON(t *testing.T) {
 		t.Errorf("Expected ID 'test-breeding', got %v", unit.ID)
 	}
 
-	attrs := unit.PairingAttributesMap()
+	attrs := unit.PairingAttributes()
 	if attrs["purpose"] != "research" {
 		t.Errorf("Expected purpose 'research', got %v", attrs["purpose"])
 	}
@@ -282,11 +327,11 @@ func TestObservationMarshalJSON(t *testing.T) {
 		Observer: "Test Observer",
 	}
 
-	obs.SetData(map[string]any{
+	mustNoError(t, "ApplyObservationData", obs.ApplyObservationData(map[string]any{
 		"weight":      50.5,
 		"temperature": 22.0,
 		"notes":       "test observation data",
-	})
+	}))
 
 	data, err := json.Marshal(obs)
 	if err != nil {
@@ -328,7 +373,7 @@ func TestObservationUnmarshalJSON(t *testing.T) {
 		t.Errorf("Expected ID 'test-observation', got %v", obs.ID)
 	}
 
-	data := obs.DataMap()
+	data := obs.ObservationData()
 	if data["weight"] != 50.5 {
 		t.Errorf("Expected weight 50.5, got %v", data["weight"])
 	}
@@ -343,10 +388,10 @@ func TestSampleMarshalJSON(t *testing.T) {
 		SourceType: "blood",
 	}
 
-	sample.SetAttributes(map[string]any{
+	mustNoError(t, "ApplySampleAttributes", sample.ApplySampleAttributes(map[string]any{
 		"volume":     testVolumeAttribute,
 		"processing": "frozen",
-	})
+	}))
 
 	data, err := json.Marshal(sample)
 	if err != nil {
@@ -388,7 +433,7 @@ func TestSampleUnmarshalJSON(t *testing.T) {
 		t.Errorf("Expected ID 'test-sample', got %v", sample.ID)
 	}
 
-	attrs := sample.AttributesMap()
+	attrs := sample.SampleAttributes()
 	if attrs["volume"] != testVolumeAttribute {
 		t.Errorf("Expected volume '5ml', got %v", attrs["volume"])
 	}
@@ -401,10 +446,10 @@ func TestSupplyItemMarshalJSON(t *testing.T) {
 		Name: "Test Supply",
 	}
 
-	supply.SetAttributes(map[string]any{
+	mustNoError(t, "ApplySupplyAttributes", supply.ApplySupplyAttributes(map[string]any{
 		"brand":    "TestBrand",
 		"category": "consumable",
-	})
+	}))
 
 	data, err := json.Marshal(supply)
 	if err != nil {
@@ -446,7 +491,7 @@ func TestSupplyItemUnmarshalJSON(t *testing.T) {
 		t.Errorf("Expected ID 'test-supply', got %v", supply.ID)
 	}
 
-	attrs := supply.AttributesMap()
+	attrs := supply.SupplyAttributes()
 	if attrs["brand"] != "TestBrand" {
 		t.Errorf("Expected brand 'TestBrand', got %v", attrs["brand"])
 	}
@@ -493,7 +538,7 @@ func TestJSONUnmarshalWithMissingAttributes(t *testing.T) {
 		t.Errorf("Expected ID 'missing-attrs', got %v", organism.ID)
 	}
 
-	attrs := organism.AttributesMap()
+	attrs := organism.CoreAttributes()
 	if attrs != nil {
 		t.Errorf("Expected nil attributes map, got %v", attrs)
 	}
@@ -508,12 +553,12 @@ func TestJSONMarshalErrorCases(t *testing.T) {
 	}
 
 	// Set attributes with data that could cause issues
-	organism.SetAttributes(map[string]any{
+	mustNoError(t, "SetCoreAttributes", organism.SetCoreAttributes(map[string]any{
 		"valid":   "string",
 		"number":  42,
 		"boolean": true,
 		"array":   []string{"a", "b", "c"},
-	})
+	}))
 
 	// This should work fine
 	data, err := json.Marshal(organism)
@@ -537,23 +582,23 @@ func TestAttributesEdgeCases(t *testing.T) {
 	organism := &Organism{Base: Base{ID: "test"}}
 
 	// Test setting empty attributes
-	organism.SetAttributes(map[string]any{})
-	attrs := organism.AttributesMap()
+	mustNoError(t, "SetCoreAttributes", organism.SetCoreAttributes(map[string]any{}))
+	attrs := organism.CoreAttributes()
 	if attrs == nil {
 		t.Error("Expected empty map, got nil")
 	}
 
 	// Test setting nil attributes
-	organism.SetAttributes(nil)
-	attrs2 := organism.AttributesMap()
+	mustNoError(t, "SetCoreAttributes", organism.SetCoreAttributes(nil))
+	attrs2 := organism.CoreAttributes()
 	if attrs2 != nil {
 		t.Error("Expected nil for nil attributes")
 	}
 
 	// Test setting attributes multiple times
-	organism.SetAttributes(map[string]any{"first": 1})
-	organism.SetAttributes(map[string]any{"second": 2})
-	attrs3 := organism.AttributesMap()
+	mustNoError(t, "SetCoreAttributes", organism.SetCoreAttributes(map[string]any{"first": 1}))
+	mustNoError(t, "SetCoreAttributes", organism.SetCoreAttributes(map[string]any{"second": 2}))
+	attrs3 := organism.CoreAttributes()
 	if attrs3["first"] != nil || attrs3["second"] != 2 {
 		t.Errorf("Expected only second attribute, got %v", attrs3)
 	}
@@ -636,7 +681,7 @@ func TestJSONRoundTripComplexData(t *testing.T) {
 	}
 
 	// Set complex attributes
-	original.SetAttributes(map[string]any{
+	mustNoError(t, "SetCoreAttributes", original.SetCoreAttributes(map[string]any{
 		"nested": map[string]any{
 			"deep": map[string]any{
 				"value": "test",
@@ -646,7 +691,7 @@ func TestJSONRoundTripComplexData(t *testing.T) {
 		"number":  42.5,
 		"boolean": true,
 		"null":    nil,
-	})
+	}))
 
 	// Marshal
 	data, err := json.Marshal(original)
@@ -670,7 +715,7 @@ func TestJSONRoundTripComplexData(t *testing.T) {
 	}
 
 	// Verify complex attributes are restored
-	attrs := restored.AttributesMap()
+	attrs := restored.CoreAttributes()
 	if attrs == nil {
 		t.Fatal("Expected attributes to be restored")
 	}
@@ -716,7 +761,7 @@ func TestJSONUnmarshalAdditionalErrorPaths(t *testing.T) {
 	}
 
 	// Verify attributes were set
-	attrs := organism.AttributesMap()
+	attrs := organism.CoreAttributes()
 	if attrs == nil || attrs["test"] != testAttrValue {
 		t.Errorf("Expected attributes to be set from JSON, got %v", attrs)
 	}

@@ -143,7 +143,9 @@ func TestObservationViewData(t *testing.T) {
 			ID: "observation-1",
 		},
 	}
-	observation.SetData(data)
+	if err := observation.ApplyObservationData(data); err != nil {
+		t.Fatalf("apply observation data: %v", err)
+	}
 
 	view := newObservationView(observation)
 
@@ -169,7 +171,9 @@ func TestObservationViewHasStructuredPayload(t *testing.T) {
 			ID: "observation-1",
 		},
 	}
-	observation.SetData(dataWithStructure)
+	if err := observation.ApplyObservationData(dataWithStructure); err != nil {
+		t.Fatalf("apply observation data: %v", err)
+	}
 
 	view := newObservationView(observation)
 	if !view.HasStructuredPayload() {

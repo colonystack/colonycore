@@ -49,6 +49,7 @@ func TestCloneHookMapVariants(t *testing.T) {
 	if originalSlice[0] != 1 {
 		t.Fatalf("expected deep clone to protect stored payload, got %d", originalSlice[0])
 	}
+
 }
 
 func TestCloneContainerNilAndCopy(t *testing.T) {

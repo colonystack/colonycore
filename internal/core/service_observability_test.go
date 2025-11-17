@@ -172,7 +172,9 @@ func TestServiceObservabilityComplianceEntities(t *testing.T) {
 		RecordedAt:  time.Now().UTC(),
 		Observer:    "tech",
 	}
-	observationInput.SetData(map[string]any{"key": "value"})
+	if err := observationInput.ApplyObservationData(map[string]any{"key": "value"}); err != nil {
+		t.Fatalf("apply observation data: %v", err)
+	}
 	obs, _, err := svc.CreateObservation(ctx, observationInput)
 	if err != nil {
 		t.Fatalf("create observation: %v", err)

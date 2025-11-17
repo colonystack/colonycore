@@ -9,7 +9,7 @@ import (
 func TestExtensionContainerCoverageOrganism(t *testing.T) {
 	// Test ensureExtensionContainer when extensions is nil
 	var organism Organism
-	organism.SetAttributes(map[string]any{"test": testAttrValue})
+	mustNoError(t, "SetCoreAttributes", organism.SetCoreAttributes(map[string]any{"test": testAttrValue}))
 
 	container := organism.ensureExtensionContainer()
 	if container == nil {
@@ -33,7 +33,7 @@ func TestExtensionContainerCoverageOrganism(t *testing.T) {
 func TestExtensionContainerCoverageFacility(t *testing.T) {
 	// Test ensureExtensionContainer when extensions is nil
 	var facility Facility
-	facility.SetEnvironmentBaselines(map[string]any{"temp": "22C"})
+	mustNoError(t, "ApplyEnvironmentBaselines", facility.ApplyEnvironmentBaselines(map[string]any{"temp": "22C"}))
 
 	container := facility.ensureExtensionContainer()
 	if container == nil {
@@ -57,7 +57,7 @@ func TestExtensionContainerCoverageFacility(t *testing.T) {
 func TestExtensionContainerCoverageBreedingUnit(t *testing.T) {
 	// Test ensureExtensionContainer when extensions is nil
 	var unit BreedingUnit
-	unit.SetPairingAttributes(map[string]any{"purpose": "research"})
+	mustNoError(t, "ApplyPairingAttributes", unit.ApplyPairingAttributes(map[string]any{"purpose": "research"}))
 
 	container := unit.ensureExtensionContainer()
 	if container == nil {
@@ -81,7 +81,7 @@ func TestExtensionContainerCoverageBreedingUnit(t *testing.T) {
 func TestExtensionContainerCoverageObservation(t *testing.T) {
 	// Test ensureExtensionContainer when extensions is nil
 	var obs Observation
-	obs.SetData(map[string]any{"weight": 50.5})
+	mustNoError(t, "ApplyObservationData", obs.ApplyObservationData(map[string]any{"weight": 50.5}))
 
 	container := obs.ensureExtensionContainer()
 	if container == nil {
@@ -105,7 +105,7 @@ func TestExtensionContainerCoverageObservation(t *testing.T) {
 func TestExtensionContainerCoverageSample(t *testing.T) {
 	// Test ensureExtensionContainer when extensions is nil
 	var sample Sample
-	sample.SetAttributes(map[string]any{"volume": "5ml"})
+	mustNoError(t, "ApplySampleAttributes", sample.ApplySampleAttributes(map[string]any{"volume": "5ml"}))
 
 	container := sample.ensureExtensionContainer()
 	if container == nil {
@@ -129,7 +129,7 @@ func TestExtensionContainerCoverageSample(t *testing.T) {
 func TestExtensionContainerCoverageSupplyItem(t *testing.T) {
 	// Test ensureExtensionContainer when extensions is nil
 	var supply SupplyItem
-	supply.SetAttributes(map[string]any{"brand": "TestBrand"})
+	mustNoError(t, "ApplySupplyAttributes", supply.ApplySupplyAttributes(map[string]any{"brand": "TestBrand"}))
 
 	container := supply.ensureExtensionContainer()
 	if container == nil {
@@ -286,7 +286,7 @@ func TestExtensionContainerSlotInteraction(t *testing.T) {
 	var organism Organism
 
 	// Start with attributes
-	organism.SetAttributes(map[string]any{"initial": testAttrValue})
+	mustNoError(t, "SetCoreAttributes", organism.SetCoreAttributes(map[string]any{"initial": testAttrValue}))
 
 	// Get slot and modify it
 	slot := organism.EnsureAttributesSlot()
@@ -317,103 +317,87 @@ func TestExtensionContainerSlotInteraction(t *testing.T) {
 func TestSetAttributesNilHandling(t *testing.T) {
 	// Test SetAttributes with nil for various entities
 	var organism Organism
-	organism.SetAttributes(map[string]any{"test": testAttrValue})
+	mustNoError(t, "SetCoreAttributes", organism.SetCoreAttributes(map[string]any{"test": testAttrValue}))
 
 	// Verify it's set
-	if organism.AttributesMap() == nil {
+	if organism.CoreAttributes() == nil {
 		t.Fatalf("Expected attributes to be set")
 	}
 
 	// Set to nil
-	organism.SetAttributes(nil)
-	if organism.AttributesMap() != nil {
+	mustNoError(t, "SetCoreAttributes", organism.SetCoreAttributes(nil))
+	if organism.CoreAttributes() != nil {
 		t.Errorf("Expected attributes to be nil after setting nil")
 	}
-	if organism.attributesSlot != nil {
-		t.Errorf("Expected attributesSlot to be nil")
-	}
-	if organism.extensions != nil {
-		t.Errorf("Expected extensions to be nil")
-	}
+	assertSlotEmpty(t, organism.attributesSlot, "expected attributesSlot to be cleared")
+	assertContainerEmpty(t, organism.extensions, "expected extensions to be cleared")
 }
 
 func TestSetEnvironmentBaselinesNilHandling(t *testing.T) {
 	var facility Facility
-	facility.SetEnvironmentBaselines(map[string]any{"temp": "22C"})
+	mustNoError(t, "ApplyEnvironmentBaselines", facility.ApplyEnvironmentBaselines(map[string]any{"temp": "22C"}))
 
 	// Verify it's set
-	if facility.EnvironmentBaselinesMap() == nil {
+	if facility.EnvironmentBaselines() == nil {
 		t.Fatalf("Expected baselines to be set")
 	}
 
 	// Set to nil
-	facility.SetEnvironmentBaselines(nil)
-	if facility.EnvironmentBaselinesMap() != nil {
+	mustNoError(t, "ApplyEnvironmentBaselines", facility.ApplyEnvironmentBaselines(nil))
+	if facility.EnvironmentBaselines() != nil {
 		t.Errorf("Expected baselines to be nil after setting nil")
 	}
-	if facility.environmentBaselinesSlot != nil {
-		t.Errorf("Expected environmentBaselinesSlot to be nil")
-	}
-	if facility.extensions != nil {
-		t.Errorf("Expected extensions to be nil")
-	}
+	assertSlotEmpty(t, facility.environmentBaselinesSlot, "expected environmentBaselinesSlot to be cleared")
+	assertContainerEmpty(t, facility.extensions, "expected extensions to be cleared")
 }
 
 func TestSetPairingAttributesNilHandling(t *testing.T) {
 	var unit BreedingUnit
-	unit.SetPairingAttributes(map[string]any{"purpose": "test"})
+	mustNoError(t, "ApplyPairingAttributes", unit.ApplyPairingAttributes(map[string]any{"purpose": "test"}))
 
 	// Verify it's set
-	if unit.PairingAttributesMap() == nil {
+	if unit.PairingAttributes() == nil {
 		t.Fatalf("Expected pairing attributes to be set")
 	}
 
 	// Set to nil
-	unit.SetPairingAttributes(nil)
-	if unit.PairingAttributesMap() != nil {
+	mustNoError(t, "ApplyPairingAttributes", unit.ApplyPairingAttributes(nil))
+	if unit.PairingAttributes() != nil {
 		t.Errorf("Expected pairing attributes to be nil after setting nil")
 	}
-	if unit.pairingAttributesSlot != nil {
-		t.Errorf("Expected pairingAttributesSlot to be nil")
-	}
-	if unit.extensions != nil {
-		t.Errorf("Expected extensions to be nil")
-	}
+	assertSlotEmpty(t, unit.pairingAttributesSlot, "expected pairingAttributesSlot to be cleared")
+	assertContainerEmpty(t, unit.extensions, "expected extensions to be cleared")
 }
 
 func TestSetDataNilHandling(t *testing.T) {
 	var obs Observation
-	obs.SetData(map[string]any{"weight": 50.5})
+	mustNoError(t, "ApplyObservationData", obs.ApplyObservationData(map[string]any{"weight": 50.5}))
 
 	// Verify it's set
-	if obs.DataMap() == nil {
+	if obs.ObservationData() == nil {
 		t.Fatalf("Expected data to be set")
 	}
 
 	// Set to nil
-	obs.SetData(nil)
-	if obs.DataMap() != nil {
+	mustNoError(t, "ApplyObservationData", obs.ApplyObservationData(nil))
+	if obs.ObservationData() != nil {
 		t.Errorf("Expected data to be nil after setting nil")
 	}
-	if obs.dataSlot != nil {
-		t.Errorf("Expected dataSlot to be nil")
-	}
-	if obs.extensions != nil {
-		t.Errorf("Expected extensions to be nil")
-	}
+	assertSlotEmpty(t, obs.dataSlot, "expected dataSlot to be cleared")
+	assertContainerEmpty(t, obs.extensions, "expected extensions to be cleared")
 }
 
 func TestMapAccessorsWithNilExtensions(t *testing.T) {
-	// Test AttributesMap when both slot and extensions are nil
+	// Test CoreAttributes when both slot and extensions are nil
 	var organism Organism
-	attrs := organism.AttributesMap()
+	attrs := organism.CoreAttributes()
 	if attrs != nil {
 		t.Errorf("Expected nil attributes map when no data set")
 	}
 
 	// Test when extensions exist but slot is nil
 	organism.extensions = &extension.Container{}
-	attrs2 := organism.AttributesMap()
+	attrs2 := organism.CoreAttributes()
 	if attrs2 != nil {
 		t.Errorf("Expected nil attributes when container has no data")
 	}
@@ -427,7 +411,7 @@ func TestMapAccessorsInvalidPayloadTypes(t *testing.T) {
 
 	organism.attributesSlot = slot
 
-	attrs := organism.AttributesMap()
+	attrs := organism.CoreAttributes()
 	if attrs != nil {
 		t.Errorf("Expected nil when payload is not a map[string]any")
 	}
@@ -510,7 +494,7 @@ func TestAllContainerTypes(t *testing.T) {
 func TestEnsureExtensionContainerWithExistingData(t *testing.T) {
 	// Test Organism with existing attributes
 	organism := &Organism{Base: Base{ID: "test"}}
-	organism.SetAttributes(map[string]any{"initial": "data"})
+	mustNoError(t, "SetCoreAttributes", organism.SetCoreAttributes(map[string]any{"initial": "data"}))
 
 	container := organism.ensureExtensionContainer()
 	if container == nil {
@@ -525,7 +509,7 @@ func TestEnsureExtensionContainerWithExistingData(t *testing.T) {
 
 	// Test Facility with existing environment baselines
 	facility := &Facility{Base: Base{ID: "test"}}
-	facility.SetEnvironmentBaselines(map[string]any{"temp": "20C"})
+	mustNoError(t, "ApplyEnvironmentBaselines", facility.ApplyEnvironmentBaselines(map[string]any{"temp": "20C"}))
 
 	facilityContainer := facility.ensureExtensionContainer()
 	envData, envOk := facilityContainer.Get(extension.HookFacilityEnvironmentBaselines, extension.PluginCore)
@@ -535,7 +519,7 @@ func TestEnsureExtensionContainerWithExistingData(t *testing.T) {
 
 	// Test BreedingUnit with existing pairing attributes
 	breedingUnit := &BreedingUnit{Base: Base{ID: "test"}}
-	breedingUnit.SetPairingAttributes(map[string]any{"pairing": "data"})
+	mustNoError(t, "ApplyPairingAttributes", breedingUnit.ApplyPairingAttributes(map[string]any{"pairing": "data"}))
 
 	breedingContainer := breedingUnit.ensureExtensionContainer()
 	pairingData, pairingOk := breedingContainer.Get(extension.HookBreedingUnitPairingAttributes, extension.PluginCore)
@@ -545,7 +529,7 @@ func TestEnsureExtensionContainerWithExistingData(t *testing.T) {
 
 	// Test Observation with existing data
 	observation := &Observation{Base: Base{ID: "test"}}
-	observation.SetData(map[string]any{"measurement": testAttrValue})
+	mustNoError(t, "ApplyObservationData", observation.ApplyObservationData(map[string]any{"measurement": testAttrValue}))
 
 	obsContainer := observation.ensureExtensionContainer()
 	obsData, obsOk := obsContainer.Get(extension.HookObservationData, extension.PluginCore)
@@ -555,7 +539,7 @@ func TestEnsureExtensionContainerWithExistingData(t *testing.T) {
 
 	// Test Sample with existing attributes
 	sample := &Sample{Base: Base{ID: "test"}}
-	sample.SetAttributes(map[string]any{"sample": "data"})
+	mustNoError(t, "ApplySampleAttributes", sample.ApplySampleAttributes(map[string]any{"sample": "data"}))
 
 	sampleContainer := sample.ensureExtensionContainer()
 	sampleData, sampleOk := sampleContainer.Get(extension.HookSampleAttributes, extension.PluginCore)
@@ -565,7 +549,7 @@ func TestEnsureExtensionContainerWithExistingData(t *testing.T) {
 
 	// Test SupplyItem with existing attributes
 	supplyItem := &SupplyItem{Base: Base{ID: "test"}}
-	supplyItem.SetAttributes(map[string]any{"supply": "data"})
+	mustNoError(t, "ApplySupplyAttributes", supplyItem.ApplySupplyAttributes(map[string]any{"supply": "data"}))
 
 	supplyContainer := supplyItem.ensureExtensionContainer()
 	supplyData, supplyOk := supplyContainer.Get(extension.HookSupplyItemAttributes, extension.PluginCore)

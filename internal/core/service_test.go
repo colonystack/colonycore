@@ -501,7 +501,9 @@ func TestServiceEmitsChangesForNewEntities(t *testing.T) {
 		RecordedAt:  now,
 		Observer:    "tech",
 	}
-	observationInput.SetData(map[string]any{"score": 5})
+	if err := observationInput.ApplyObservationData(map[string]any{"score": 5}); err != nil {
+		t.Fatalf("apply observation data: %v", err)
+	}
 	observation, res, err := svc.CreateObservation(ctx, observationInput)
 	if err != nil {
 		t.Fatalf("create observation: %v", err)

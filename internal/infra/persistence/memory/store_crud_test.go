@@ -59,7 +59,9 @@ func seedMemoryStore(t *testing.T, store *memory.Store) memoryIDs {
 			AccessPolicy: "badge-required",
 			ProjectIDs:   []string{ids.projectID},
 		}
-		facilityInput.SetEnvironmentBaselines(map[string]any{"temperature": "22C"})
+		if err := facilityInput.ApplyEnvironmentBaselines(map[string]any{"temperature": "22C"}); err != nil {
+			t.Fatalf("apply facility baselines: %v", err)
+		}
 		facilityVal, err := tx.CreateFacility(facilityInput)
 		facility := must(t, facilityVal, err)
 		ids.facilityID = facility.ID
@@ -193,7 +195,9 @@ func seedMemoryStore(t *testing.T, store *memory.Store) memoryIDs {
 			Observer:    "tech",
 			Notes:       strPtr("baseline"),
 		}
-		observationInput.SetData(map[string]any{"score": 5})
+		if err := observationInput.ApplyObservationData(map[string]any{"score": 5}); err != nil {
+			t.Fatalf("apply observation data: %v", err)
+		}
 		observationVal, err := tx.CreateObservation(observationInput)
 		observation := must(t, observationVal, err)
 		ids.observationID = observation.ID

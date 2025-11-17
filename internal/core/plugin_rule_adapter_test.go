@@ -362,7 +362,9 @@ func TestNewViewAccessors(t *testing.T) {
 		HousingUnitIDs: []string{"H1"},
 		ProjectIDs:     []string{"P1"},
 	}
-	domainFacility.SetEnvironmentBaselines(map[string]any{"temp": 21})
+	if err := domainFacility.ApplyEnvironmentBaselines(map[string]any{"temp": 21}); err != nil {
+		t.Fatalf("apply facility baselines: %v", err)
+	}
 	facility := newFacilityView(domainFacility)
 	if facility.Name() == "" || facility.Zone() == "" || facility.AccessPolicy() == "" {
 		t.Fatal("facility view should expose base fields")
@@ -418,7 +420,9 @@ func TestNewViewAccessors(t *testing.T) {
 		ProcedureID: &procID,
 		Notes:       strPtr("text"),
 	}
-	observationDomain.SetData(map[string]any{"score": 1})
+	if err := observationDomain.ApplyObservationData(map[string]any{"score": 1}); err != nil {
+		t.Fatalf("apply observation data: %v", err)
+	}
 	observation := newObservationView(observationDomain)
 	if observation.Observer() == "" || observation.Notes() == "" {
 		t.Fatal("observation view should expose observer")

@@ -170,7 +170,9 @@ func TestIntegrationEntityRelationships(t *testing.T) {
 				RecordedAt:  now,
 				Notes:       strPtr("baseline observation"),
 			}
-			observationInput.SetData(map[string]any{"weight": 12.5})
+			if err := observationInput.ApplyObservationData(map[string]any{"weight": 12.5}); err != nil {
+				t.Fatalf("apply observation data: %v", err)
+			}
 			observation, res, err := svc.CreateObservation(ctx, observationInput)
 			if err != nil {
 				t.Fatalf("create observation: %v", err)

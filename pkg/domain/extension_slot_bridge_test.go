@@ -8,7 +8,7 @@ import (
 
 func TestSlotFromContainerRoundTrip(t *testing.T) {
 	var organism Organism
-	organism.SetAttributes(map[string]any{"flag": true})
+	mustNoError(t, "SetCoreAttributes", organism.SetCoreAttributes(map[string]any{"flag": true}))
 
 	slot := slotFromContainer(extension.HookOrganismAttributes, organism.ensureExtensionContainer())
 	if slot == nil {

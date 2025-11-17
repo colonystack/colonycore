@@ -134,7 +134,9 @@ func TestFacadeCollectionsCloneSlices(t *testing.T) {
 		FemaleIDs:      []string{"f1"},
 		MaleIDs:        []string{"m1"},
 	}
-	breeding.SetPairingAttributes(map[string]any{"purpose": "lineage"})
+	if err := breeding.ApplyPairingAttributes(map[string]any{"purpose": "lineage"}); err != nil {
+		t.Fatalf("apply pairing attributes: %v", err)
+	}
 	procProject := testProjectID
 	procedure := domain.Procedure{
 		Base:           domain.Base{ID: "PROC", UpdatedAt: now},

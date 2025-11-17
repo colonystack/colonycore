@@ -11,9 +11,9 @@ func TestSetAttributesErrorPanics(t *testing.T) {
 	// since the current implementation doesn't fail in normal cases
 	// We'll test the successful path to improve coverage
 	var organism Organism
-	organism.SetAttributes(map[string]any{"test": testAttrValue})
+	mustNoError(t, "SetCoreAttributes", organism.SetCoreAttributes(map[string]any{"test": testAttrValue}))
 
-	if organism.AttributesMap()["test"] != testAttrValue {
+	if organism.CoreAttributes()["test"] != testAttrValue {
 		t.Errorf("Expected successful set attributes")
 	}
 }
@@ -25,21 +25,21 @@ func TestAttributeMapEdgeCases(t *testing.T) {
 	// Don't set any payload - this tests the case where slot.Get returns false
 	organism.attributesSlot = slot
 
-	attrs := organism.AttributesMap()
+	attrs := organism.CoreAttributes()
 	if attrs != nil {
 		t.Errorf("Expected nil when slot has no core payload")
 	}
 
 	// Test when payload is nil
 	_ = slot.Set(extension.PluginCore, nil)
-	attrs2 := organism.AttributesMap()
+	attrs2 := organism.CoreAttributes()
 	if attrs2 != nil {
 		t.Errorf("Expected nil when payload is nil")
 	}
 
 	// Test when payload is not a map[string]any
 	_ = slot.Set(extension.PluginCore, "not a map")
-	attrs3 := organism.AttributesMap()
+	attrs3 := organism.CoreAttributes()
 	if attrs3 != nil {
 		t.Errorf("Expected nil when payload is wrong type")
 	}
@@ -51,7 +51,7 @@ func TestEnvironmentBaselinesMapEdgeCases(t *testing.T) {
 	facility.environmentBaselinesSlot = slot
 
 	// Test when slot has no payload
-	baselines := facility.EnvironmentBaselinesMap()
+	baselines := facility.EnvironmentBaselines()
 	if baselines != nil {
 		t.Errorf("Expected nil when slot has no payload")
 	}
@@ -62,7 +62,7 @@ func TestEnvironmentBaselinesMapEdgeCases(t *testing.T) {
 	_ = container.Set(extension.HookFacilityEnvironmentBaselines, extension.PluginCore, map[string]any{"temp": "25C"})
 	facility.extensions = &container
 
-	baselines2 := facility.EnvironmentBaselinesMap()
+	baselines2 := facility.EnvironmentBaselines()
 	if baselines2 == nil {
 		t.Errorf("Expected baselines from extensions container")
 	}
@@ -75,7 +75,7 @@ func TestPairingAttributesMapEdgeCases(t *testing.T) {
 	var unit BreedingUnit
 
 	// Test with nil slot and nil extensions
-	attrs := unit.PairingAttributesMap()
+	attrs := unit.PairingAttributes()
 	if attrs != nil {
 		t.Errorf("Expected nil when no data set")
 	}
@@ -85,7 +85,7 @@ func TestPairingAttributesMapEdgeCases(t *testing.T) {
 	_ = container.Set(extension.HookBreedingUnitPairingAttributes, extension.PluginCore, map[string]any{"purpose": "breeding"})
 	unit.extensions = &container
 
-	attrs2 := unit.PairingAttributesMap()
+	attrs2 := unit.PairingAttributes()
 	if attrs2 == nil {
 		t.Errorf("Expected attributes from extensions container")
 	}
@@ -98,7 +98,7 @@ func TestDataMapEdgeCases(t *testing.T) {
 	var obs Observation
 
 	// Test with nil slot and nil extensions
-	data := obs.DataMap()
+	data := obs.ObservationData()
 	if data != nil {
 		t.Errorf("Expected nil when no data set")
 	}
@@ -108,7 +108,7 @@ func TestDataMapEdgeCases(t *testing.T) {
 	_ = container.Set(extension.HookObservationData, extension.PluginCore, map[string]any{"measurement": 42.5})
 	obs.extensions = &container
 
-	data2 := obs.DataMap()
+	data2 := obs.ObservationData()
 	if data2 == nil {
 		t.Errorf("Expected data from extensions container")
 	}
@@ -121,7 +121,7 @@ func TestSampleAttributesMapEdgeCases(t *testing.T) {
 	var sample Sample
 
 	// Test with nil slot and nil extensions
-	attrs := sample.AttributesMap()
+	attrs := sample.SampleAttributes()
 	if attrs != nil {
 		t.Errorf("Expected nil when no data set")
 	}
@@ -131,7 +131,7 @@ func TestSampleAttributesMapEdgeCases(t *testing.T) {
 	_ = container.Set(extension.HookSampleAttributes, extension.PluginCore, map[string]any{"type": "blood"})
 	sample.extensions = &container
 
-	attrs2 := sample.AttributesMap()
+	attrs2 := sample.SampleAttributes()
 	if attrs2 == nil {
 		t.Errorf("Expected attributes from extensions container")
 	}
@@ -144,7 +144,7 @@ func TestSupplyItemAttributesMapEdgeCases(t *testing.T) {
 	var supply SupplyItem
 
 	// Test with nil slot and nil extensions
-	attrs := supply.AttributesMap()
+	attrs := supply.SupplyAttributes()
 	if attrs != nil {
 		t.Errorf("Expected nil when no data set")
 	}
@@ -154,7 +154,7 @@ func TestSupplyItemAttributesMapEdgeCases(t *testing.T) {
 	_ = container.Set(extension.HookSupplyItemAttributes, extension.PluginCore, map[string]any{"category": "lab-equipment"})
 	supply.extensions = &container
 
-	attrs2 := supply.AttributesMap()
+	attrs2 := supply.SupplyAttributes()
 	if attrs2 == nil {
 		t.Errorf("Expected attributes from extensions container")
 	}
@@ -168,8 +168,8 @@ func TestSetAttributesPanicRecovery(t *testing.T) {
 	var organism Organism
 
 	// Test successful path first
-	organism.SetAttributes(map[string]any{"test": testAttrValue})
-	if organism.AttributesMap()["test"] != testAttrValue {
+	mustNoError(t, "SetCoreAttributes", organism.SetCoreAttributes(map[string]any{"test": testAttrValue}))
+	if organism.CoreAttributes()["test"] != testAttrValue {
 		t.Errorf("Expected successful set attributes")
 	}
 }
@@ -178,8 +178,8 @@ func TestSetEnvironmentBaselinesPanicRecovery(t *testing.T) {
 	var facility Facility
 
 	// Test successful path
-	facility.SetEnvironmentBaselines(map[string]any{"humidity": "60%"})
-	if facility.EnvironmentBaselinesMap()["humidity"] != "60%" {
+	mustNoError(t, "ApplyEnvironmentBaselines", facility.ApplyEnvironmentBaselines(map[string]any{"humidity": "60%"}))
+	if facility.EnvironmentBaselines()["humidity"] != "60%" {
 		t.Errorf("Expected successful set environment baselines")
 	}
 }
@@ -188,8 +188,8 @@ func TestSetPairingAttributesPanicRecovery(t *testing.T) {
 	var unit BreedingUnit
 
 	// Test successful path
-	unit.SetPairingAttributes(map[string]any{"strategy": "outcross"})
-	if unit.PairingAttributesMap()["strategy"] != "outcross" {
+	mustNoError(t, "ApplyPairingAttributes", unit.ApplyPairingAttributes(map[string]any{"strategy": "outcross"}))
+	if unit.PairingAttributes()["strategy"] != "outcross" {
 		t.Errorf("Expected successful set pairing attributes")
 	}
 }
@@ -198,8 +198,8 @@ func TestSetDataPanicRecovery(t *testing.T) {
 	var obs Observation
 
 	// Test successful path
-	obs.SetData(map[string]any{"result": "positive"})
-	if obs.DataMap()["result"] != "positive" {
+	mustNoError(t, "ApplyObservationData", obs.ApplyObservationData(map[string]any{"result": "positive"}))
+	if obs.ObservationData()["result"] != "positive" {
 		t.Errorf("Expected successful set data")
 	}
 }
@@ -208,14 +208,14 @@ func TestSetSampleAttributesPanicRecovery(t *testing.T) {
 	var sample Sample
 
 	// Test successful path that covers 80% code path
-	sample.SetAttributes(map[string]any{"preservation": "frozen"})
-	if sample.AttributesMap()["preservation"] != "frozen" {
+	mustNoError(t, "ApplySampleAttributes", sample.ApplySampleAttributes(map[string]any{"preservation": "frozen"}))
+	if sample.SampleAttributes()["preservation"] != "frozen" {
 		t.Errorf("Expected successful set sample attributes")
 	}
 
 	// Test nil case to improve coverage
-	sample.SetAttributes(nil)
-	if sample.AttributesMap() != nil {
+	mustNoError(t, "ApplySampleAttributes", sample.ApplySampleAttributes(nil))
+	if sample.SampleAttributes() != nil {
 		t.Errorf("Expected nil after setting nil attributes")
 	}
 }
@@ -224,8 +224,8 @@ func TestSetSupplyItemAttributesPanicRecovery(t *testing.T) {
 	var supply SupplyItem
 
 	// Test successful path
-	supply.SetAttributes(map[string]any{"manufacturer": "LabCorp"})
-	if supply.AttributesMap()["manufacturer"] != "LabCorp" {
+	mustNoError(t, "ApplySupplyAttributes", supply.ApplySupplyAttributes(map[string]any{"manufacturer": "LabCorp"}))
+	if supply.SupplyAttributes()["manufacturer"] != "LabCorp" {
 		t.Errorf("Expected successful set supply attributes")
 	}
 }
@@ -235,17 +235,17 @@ func TestComplexExtensionWorkflows(t *testing.T) {
 	var organism Organism
 
 	// 1. Set initial attributes
-	organism.SetAttributes(map[string]any{"weight": 100.0})
+	mustNoError(t, "SetCoreAttributes", organism.SetCoreAttributes(map[string]any{"weight": 100.0}))
 
 	// 2. Get slot and add external plugin data
 	slot := organism.EnsureAttributesSlot()
 	_ = slot.Set(extension.PluginID("external"), map[string]any{"tag": "special"})
 
 	// 3. Update attributes (this should clear slot and regenerate)
-	organism.SetAttributes(map[string]any{"weight": 105.0, "status": "healthy"})
+	mustNoError(t, "SetCoreAttributes", organism.SetCoreAttributes(map[string]any{"weight": 105.0, "status": "healthy"}))
 
 	// 4. Verify new attributes are correct
-	attrs := organism.AttributesMap()
+	attrs := organism.CoreAttributes()
 	if attrs["weight"] != 105.0 {
 		t.Errorf("Expected weight 105.0, got %v", attrs["weight"])
 	}
@@ -266,7 +266,7 @@ func TestExtensionContainerRegeneration(t *testing.T) {
 	var facility Facility
 
 	// Set initial baselines
-	facility.SetEnvironmentBaselines(map[string]any{"temp": "20C"})
+	mustNoError(t, "ApplyEnvironmentBaselines", facility.ApplyEnvironmentBaselines(map[string]any{"temp": "20C"}))
 
 	// Get container
 	container1 := facility.ensureExtensionContainer()
@@ -290,7 +290,7 @@ func TestExtensionContainerRegeneration(t *testing.T) {
 func TestSlotHookBinding(t *testing.T) {
 	// Test that slots maintain proper hook binding
 	var organism Organism
-	organism.SetAttributes(map[string]any{"test": testAttrValue})
+	mustNoError(t, "SetCoreAttributes", organism.SetCoreAttributes(map[string]any{"test": testAttrValue}))
 
 	slot1 := organism.EnsureAttributesSlot()
 	if slot1.Hook() != extension.HookOrganismAttributes {
