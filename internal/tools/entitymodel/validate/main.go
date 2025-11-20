@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"sort"
 	"strings"
@@ -22,12 +23,20 @@ type relationshipSpec struct {
 	Target string `json:"target"`
 }
 
+type naturalKeySpec struct {
+	Fields      []string `json:"fields"`
+	Scope       string   `json:"scope"`
+	Description string   `json:"description"`
+}
+
 type entitySpec struct {
 	Description   string                      `json:"description"`
+	NaturalKeys   []naturalKeySpec            `json:"natural_keys"`
 	Required      []string                    `json:"required"`
 	Properties    map[string]json.RawMessage  `json:"properties"`
 	Relationships map[string]relationshipSpec `json:"relationships"`
 	States        *stateSpec                  `json:"states"`
+	Invariants    []string                    `json:"invariants"`
 }
 
 type schemaDoc struct {
@@ -35,6 +44,11 @@ type schemaDoc struct {
 	Enums    map[string]enumSpec   `json:"enums"`
 	Entities map[string]entitySpec `json:"entities"`
 }
+
+var (
+	exitFn              = os.Exit
+	errWriter io.Writer = os.Stderr
+)
 
 func main() {
 	path := "docs/schema/entity-model.json"
@@ -88,6 +102,9 @@ func validate(path string) error {
 		if len(ent.Properties) == 0 {
 			errs = append(errs, fmt.Sprintf("entity %q must declare properties", name))
 		}
+		if ent.NaturalKeys == nil {
+			errs = append(errs, fmt.Sprintf("entity %q must declare natural_keys (empty array allowed)", name))
+		}
 
 		for _, base := range baseRequired {
 			if !contains(ent.Required, base) {
@@ -98,6 +115,24 @@ func validate(path string) error {
 		for _, field := range ent.Required {
 			if _, ok := ent.Properties[field]; !ok {
 				errs = append(errs, fmt.Sprintf("entity %q required field %q missing from properties", name, field))
+			}
+		}
+
+		for i, nk := range ent.NaturalKeys {
+			if len(nk.Fields) == 0 {
+				errs = append(errs, fmt.Sprintf("entity %q natural key #%d must declare at least one field", name, i))
+			}
+			for _, field := range nk.Fields {
+				if _, ok := ent.Properties[field]; !ok {
+					errs = append(errs, fmt.Sprintf("entity %q natural key field %q missing from properties", name, field))
+				}
+			}
+			if nk.Scope == "" {
+				fieldLabel := strings.Join(nk.Fields, ",")
+				if fieldLabel == "" {
+					fieldLabel = "<unset>"
+				}
+				errs = append(errs, fmt.Sprintf("entity %q natural key [%s] must declare scope", name, fieldLabel))
 			}
 		}
 
@@ -116,6 +151,15 @@ func validate(path string) error {
 			}
 			if _, ok := doc.Entities[rel.Target]; !ok {
 				errs = append(errs, fmt.Sprintf("entity %q relationship %q targets unknown entity %q", name, relName, rel.Target))
+			}
+			if _, ok := ent.Properties[relName]; !ok {
+				errs = append(errs, fmt.Sprintf("entity %q relationship %q missing property definition", name, relName))
+			}
+		}
+
+		for i, invariant := range ent.Invariants {
+			if strings.TrimSpace(invariant) == "" {
+				errs = append(errs, fmt.Sprintf("entity %q invariants[%d] must not be empty", name, i))
 			}
 		}
 	}
@@ -138,6 +182,10 @@ func contains(list []string, needle string) bool {
 }
 
 func exitErr(msg string) {
-	fmt.Fprintf(os.Stderr, "entity-model validation failed: %s\n", msg)
-	os.Exit(1)
+	if _, err := fmt.Fprintf(errWriter, "entity-model validation failed: %s\n", msg); err != nil {
+		// Fallback to stderr if the configured writer fails.
+		//nolint:errcheck // best-effort secondary logging; exiting regardless.
+		fmt.Fprintf(os.Stderr, "entity-model validation failed (write error: %v)\n", err)
+	}
+	exitFn(1)
 }
