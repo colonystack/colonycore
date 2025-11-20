@@ -51,6 +51,12 @@ repos:
         additional_dependencies:
           - openapi-spec-validator==0.7.1
         files: ^docs/schema/dataset-service.openapi.yaml$
+      - id: entity-model-validate
+        name: entity model validate
+        language: system
+        entry: make entity-model-validate
+        pass_filenames: false
+        files: ^docs/schema/entity-model\.json$
       - id: lint-via-make
         name: lint via make lint
         entry: make lint

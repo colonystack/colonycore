@@ -76,7 +76,7 @@ func updateHookPayload(
 // onto the target entity. A container with no hooks clears the reference.
 func replaceExtensionContainer(
 	targetRef **extension.Container,
-	hook extension.Hook,
+	_ extension.Hook,
 	container extension.Container,
 ) error {
 	clone, err := cloneContainer(&container)

@@ -11,7 +11,7 @@ GOLANGCI_VERSION_PLAIN := $(patsubst v%,%,$(GOLANGCI_VERSION))
 MODULE := $(shell go list -m)
 IMPORT_BOSS_BIN := $(GOPATH_BIN)/import-boss
 
-.PHONY: all build lint go-test test registry-check fmt-check vet registry-lint golangci golangci-install python-lint r-lint go-lint import-boss import-boss-install
+.PHONY: all build lint go-test test registry-check fmt-check vet registry-lint golangci golangci-install python-lint r-lint go-lint import-boss import-boss-install entity-model-validate
 
 all: build
 
@@ -149,6 +149,10 @@ python-lint:
 r-lint:
 	@echo "==> R lint"
 	@python scripts/run_lintr.py && echo "R lint: OK" || (status=$$?; if [ $$status -eq 0 ]; then echo "R lint: OK"; else exit $$status; fi)
+
+entity-model-validate:
+	@echo "==> entity-model validate"
+	@GOCACHE=$(GOCACHE) go run ./internal/tools/entitymodel/validate
 
 
 go-test:
