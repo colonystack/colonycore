@@ -33,6 +33,13 @@ type naturalKeySpec struct {
 	Description string   `json:"description"`
 }
 
+type idSemanticsSpec struct {
+	Type        string `json:"type"`
+	Scope       string `json:"scope"`
+	Required    bool   `json:"required"`
+	Description string `json:"description"`
+}
+
 type entitySpec struct {
 	Description   string                      `json:"description"`
 	NaturalKeys   []naturalKeySpec            `json:"natural_keys"`
@@ -51,6 +58,7 @@ type schemaDoc struct {
 	Version  string                `json:"version"`
 	Metadata metadataSpec          `json:"metadata"`
 	Enums    map[string]enumSpec   `json:"enums"`
+	ID       *idSemanticsSpec      `json:"id_semantics"`
 	Entities map[string]entitySpec `json:"entities"`
 }
 
@@ -109,6 +117,30 @@ func validate(path string) error {
 		errs = append(errs, "entities section must not be empty")
 	}
 
+	if doc.ID == nil {
+		errs = append(errs, "id_semantics must be declared")
+	} else {
+		if strings.TrimSpace(doc.ID.Type) == "" {
+			errs = append(errs, "id_semantics.type must be set")
+		}
+		if strings.TrimSpace(doc.ID.Scope) == "" {
+			errs = append(errs, "id_semantics.scope must be set")
+		}
+		if !doc.ID.Required {
+			errs = append(errs, "id_semantics.required must be true")
+		}
+		if strings.TrimSpace(doc.ID.Description) == "" {
+			errs = append(errs, "id_semantics.description must be set")
+		}
+	}
+
+	allowedInvariants := map[string]struct{}{
+		"housing_capacity":     {},
+		"protocol_subject_cap": {},
+	}
+
+	usedEnums := make(map[string]struct{}, len(doc.Enums))
+
 	baseRequired := []string{"id", "created_at", "updated_at"}
 
 	for name, ent := range doc.Entities {
@@ -158,6 +190,7 @@ func validate(path string) error {
 			} else if _, ok := doc.Enums[ent.States.Enum]; !ok {
 				errs = append(errs, fmt.Sprintf("entity %q states.enum %q not found in enums", name, ent.States.Enum))
 			} else {
+				usedEnums[ent.States.Enum] = struct{}{}
 				enumValues := doc.Enums[ent.States.Enum].Values
 				if ent.States.Initial == "" {
 					errs = append(errs, fmt.Sprintf("entity %q states.initial must reference a value in enum %q", name, ent.States.Enum))
@@ -199,10 +232,35 @@ func validate(path string) error {
 		for i, invariant := range ent.Invariants {
 			if strings.TrimSpace(invariant) == "" {
 				errs = append(errs, fmt.Sprintf("entity %q invariants[%d] must not be empty", name, i))
+				continue
+			}
+			if _, ok := allowedInvariants[invariant]; !ok {
+				errs = append(errs, fmt.Sprintf("entity %q invariants[%d] %q is not in the allowed invariants list", name, i, invariant))
 			}
 		}
 		if dup := firstDuplicate(ent.Invariants); dup != "" {
 			errs = append(errs, fmt.Sprintf("entity %q invariants has duplicate entry %q", name, dup))
+		}
+
+		for propName, prop := range ent.Properties {
+			propEnums, err := extractEnumRefs(prop)
+			if err != nil {
+				errs = append(errs, fmt.Sprintf("entity %q property %q invalid JSON: %v", name, propName, err))
+				continue
+			}
+			for _, enumName := range propEnums {
+				if _, ok := doc.Enums[enumName]; !ok {
+					errs = append(errs, fmt.Sprintf("entity %q property %q references unknown enum %q", name, propName, enumName))
+					continue
+				}
+				usedEnums[enumName] = struct{}{}
+			}
+		}
+	}
+
+	for enumName := range doc.Enums {
+		if _, ok := usedEnums[enumName]; !ok {
+			errs = append(errs, fmt.Sprintf("enum %q is defined but not referenced by any entity states or properties", enumName))
 		}
 	}
 
@@ -246,6 +304,22 @@ func firstDuplicate(values []string) string {
 		seen[v] = struct{}{}
 	}
 	return ""
+}
+
+func extractEnumRefs(raw json.RawMessage) ([]string, error) {
+	var prop map[string]any
+	if err := json.Unmarshal(raw, &prop); err != nil {
+		return nil, err
+	}
+
+	var enums []string
+	if ref, ok := prop["$ref"].(string); ok {
+		if strings.HasPrefix(ref, "#/enums/") {
+			enums = append(enums, strings.TrimPrefix(ref, "#/enums/"))
+		}
+	}
+
+	return enums, nil
 }
 
 func exitErr(msg string) {

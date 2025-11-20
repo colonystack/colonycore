@@ -10,6 +10,7 @@ import (
 func TestValidateOK(t *testing.T) {
 	path := writeTemp(t, `{
   "version": "0.0.1",
+  "id_semantics": { "type": "uuidv7", "scope": "global", "required": true, "description": "opaque" },
   "metadata": { "status": "seed" },
   "enums": {
     "status": { "values": ["ok", "fail"] }
@@ -43,8 +44,7 @@ func TestValidateOK(t *testing.T) {
       "states": {"enum": "status", "initial": "ok", "terminal": ["fail"]},
       "relationships": {
         "bar_id": {"target": "Bar", "cardinality": "0..1"}
-      },
-      "invariants": ["rule_one"]
+      }
     }
   }
 }`)
@@ -88,7 +88,9 @@ func TestValidateFailures(t *testing.T) {
 	expect := []string{
 		"version must be set",
 		"metadata.status must be set",
+		"id_semantics must be declared",
 		"enum \"status\" must include at least one value",
+		"enum \"status\" is defined but not referenced by any entity states or properties",
 		"entity \"Foo\" must require base field \"updated_at\"",
 		"entity \"Foo\" natural key #0 must declare at least one field",
 		"entity \"Foo\" natural key [<unset>] must declare scope",
@@ -124,6 +126,7 @@ func TestValidateTopLevelMissing(t *testing.T) {
 		"metadata.status must be set",
 		"enums must not be empty",
 		"entities section must not be empty",
+		"id_semantics must be declared",
 	}
 	for _, want := range expect {
 		if !strings.Contains(msg, want) {
@@ -135,6 +138,7 @@ func TestValidateTopLevelMissing(t *testing.T) {
 func TestValidateNaturalKeyAndRelationshipErrors(t *testing.T) {
 	path := writeTemp(t, `{
   "version": "0.0.1",
+  "id_semantics": { "type": "uuidv7", "scope": "global", "required": true, "description": "opaque" },
   "metadata": { "status": "seed" },
   "enums": {
     "status": { "values": ["ok"] }
@@ -188,6 +192,7 @@ func TestValidateNaturalKeyAndRelationshipErrors(t *testing.T) {
 func TestValidateNaturalKeyFieldMissing(t *testing.T) {
 	path := writeTemp(t, `{
   "version": "0.0.2",
+  "id_semantics": { "type": "uuidv7", "scope": "global", "required": true, "description": "opaque" },
   "metadata": { "status": "seed" },
   "enums": {
     "status": { "values": ["ok"] }
@@ -227,6 +232,7 @@ func TestValidateNaturalKeyFieldMissing(t *testing.T) {
 func TestValidateStatesAndDuplicates(t *testing.T) {
 	path := writeTemp(t, `{
   "version": "1.0.0",
+  "id_semantics": { "type": "uuidv7", "scope": "global", "required": true, "description": "opaque" },
   "metadata": { "status": "seed" },
   "enums": {
     "status": { "values": ["one", "one"] }
@@ -257,6 +263,8 @@ func TestValidateStatesAndDuplicates(t *testing.T) {
 		"entity \"Foo\" states.initial \"missing\" not found in enum \"status\"",
 		"entity \"Foo\" states.terminal value \"two\" not found in enum \"status\"",
 		"entity \"Foo\" states.terminal has duplicate value \"one\"",
+		"entity \"Foo\" invariants[0] \"dup\" is not in the allowed invariants list",
+		"entity \"Foo\" invariants[1] \"dup\" is not in the allowed invariants list",
 		"entity \"Foo\" invariants has duplicate entry \"dup\"",
 	}
 	for _, want := range expect {
@@ -269,6 +277,7 @@ func TestValidateStatesAndDuplicates(t *testing.T) {
 func TestValidateRelationshipCardinality(t *testing.T) {
 	path := writeTemp(t, `{
   "version": "0.0.4",
+  "id_semantics": { "type": "uuidv7", "scope": "global", "required": true, "description": "opaque" },
   "metadata": { "status": "seed" },
   "enums": {
     "status": { "values": ["ok"] }
@@ -321,6 +330,148 @@ func TestValidateRelationshipCardinality(t *testing.T) {
 	}
 }
 
+func TestValidateIDSemanticsRequired(t *testing.T) {
+	path := writeTemp(t, `{
+  "version": "0.1.0",
+  "id_semantics": { "type": "", "scope": " ", "required": false, "description": "" },
+  "metadata": { "status": "seed" },
+  "enums": {
+    "status": { "values": ["ok"] }
+  },
+  "entities": {
+    "Foo": {
+      "natural_keys": [],
+      "required": ["id", "created_at", "updated_at"],
+      "properties": {
+        "id": {"type":"string"},
+        "created_at": {"type":"string"},
+        "updated_at": {"type":"string"},
+        "status": {"$ref":"#/enums/status"}
+      },
+      "relationships": {}
+    }
+  }
+}`)
+
+	err := validate(path)
+	if err == nil {
+		t.Fatalf("validate() expected error")
+	}
+	msg := err.Error()
+	expect := []string{
+		"id_semantics.type must be set",
+		"id_semantics.scope must be set",
+		"id_semantics.required must be true",
+		"id_semantics.description must be set",
+	}
+	for _, want := range expect {
+		if !strings.Contains(msg, want) {
+			t.Fatalf("expected message to contain %q, got %q", want, msg)
+		}
+	}
+}
+
+func TestValidateUnusedEnums(t *testing.T) {
+	path := writeTemp(t, `{
+  "version": "0.1.1",
+  "id_semantics": { "type": "uuidv7", "scope": "global", "required": true, "description": "opaque" },
+  "metadata": { "status": "seed" },
+  "enums": {
+    "used": { "values": ["ok"] },
+    "unused": { "values": ["x"] }
+  },
+  "entities": {
+    "Foo": {
+      "natural_keys": [],
+      "required": ["id", "created_at", "updated_at"],
+      "properties": {
+        "id": {"type":"string"},
+        "created_at": {"type":"string"},
+        "updated_at": {"type":"string"},
+        "status": {"$ref":"#/enums/used"}
+      },
+      "relationships": {}
+    }
+  }
+}`)
+
+	err := validate(path)
+	if err == nil {
+		t.Fatalf("validate() expected error")
+	}
+	msg := err.Error()
+	if !strings.Contains(msg, "enum \"unused\" is defined but not referenced by any entity states or properties") {
+		t.Fatalf("expected unused enum error, got %q", msg)
+	}
+}
+
+func TestValidatePropertyEnumReferenceUnknown(t *testing.T) {
+	path := writeTemp(t, `{
+  "version": "0.1.2",
+  "id_semantics": { "type": "uuidv7", "scope": "global", "required": true, "description": "opaque" },
+  "metadata": { "status": "seed" },
+  "enums": {
+    "status": { "values": ["ok"] }
+  },
+  "entities": {
+    "Foo": {
+      "natural_keys": [],
+      "required": ["id", "created_at", "updated_at", "status"],
+      "properties": {
+        "id": {"type":"string"},
+        "created_at": {"type":"string"},
+        "updated_at": {"type":"string"},
+        "status": {"$ref":"#/enums/missing"}
+      },
+      "states": {"enum": "status", "initial": "ok", "terminal": ["ok"]},
+      "relationships": {}
+    }
+  }
+}`)
+
+	err := validate(path)
+	if err == nil {
+		t.Fatalf("validate() expected error")
+	}
+	msg := err.Error()
+	if !strings.Contains(msg, "entity \"Foo\" property \"status\" references unknown enum \"missing\"") {
+		t.Fatalf("expected unknown enum reference error, got %q", msg)
+	}
+}
+
+func TestValidatePropertyJSONError(t *testing.T) {
+	path := writeTemp(t, `{
+  "version": "0.1.3",
+  "id_semantics": { "type": "uuidv7", "scope": "global", "required": true, "description": "opaque" },
+  "metadata": { "status": "seed" },
+  "enums": {
+    "status": { "values": ["ok"] }
+  },
+  "entities": {
+    "Foo": {
+      "natural_keys": [],
+      "required": ["id", "created_at", "updated_at", "status"],
+      "properties": {
+        "id": {"type":"string"},
+        "created_at": {"type":"string"},
+        "updated_at": {"type":"string"},
+        "status": true
+      },
+      "states": {"enum": "status", "initial": "ok", "terminal": ["ok"]},
+      "relationships": {}
+    }
+  }
+}`)
+
+	err := validate(path)
+	if err == nil {
+		t.Fatalf("validate() expected error")
+	}
+	if !strings.Contains(err.Error(), "entity \"Foo\" property \"status\" invalid JSON") {
+		t.Fatalf("expected property JSON error, got %q", err.Error())
+	}
+}
+
 func TestContains(t *testing.T) {
 	t.Helper()
 	if !contains([]string{"Id", "Created"}, "id") {
@@ -339,6 +490,7 @@ func TestMainSuccess(t *testing.T) {
 
 	path := writeTemp(t, `{
   "version": "0.0.3",
+  "id_semantics": { "type": "uuidv7", "scope": "global", "required": true, "description": "opaque" },
   "metadata": { "status": "seed" },
   "enums": {
     "status": { "values": ["ok"] }
@@ -350,9 +502,11 @@ func TestMainSuccess(t *testing.T) {
       "properties": {
         "id": {"type":"string"},
         "created_at": {"type":"string"},
-        "updated_at": {"type":"string"}
+        "updated_at": {"type":"string"},
+        "status": {"$ref":"#/enums/status"}
       },
-      "relationships": {}
+      "relationships": {},
+      "states": {"enum": "status", "initial": "ok", "terminal": ["ok"]}
     }
   }
 }`)
