@@ -107,7 +107,12 @@
         "stage"
       ],
       "states": {
-        "enum": "lifecycle_stage"
+        "enum": "lifecycle_stage",
+        "initial": "planned",
+        "terminal": [
+          "retired",
+          "deceased"
+        ]
       },
       "properties": {
         "id": {
@@ -275,7 +280,14 @@
         "environment"
       ],
       "states": {
-        "enum": "housing_environment"
+        "enum": "housing_environment",
+        "initial": "aquatic",
+        "terminal": [
+          "aquatic",
+          "terrestrial",
+          "arboreal",
+          "humid"
+        ]
       },
       "properties": {
         "id": {
@@ -721,7 +733,13 @@
         "protocol_id"
       ],
       "states": {
-        "enum": "procedure_status"
+        "enum": "procedure_status",
+        "initial": "scheduled",
+        "terminal": [
+          "completed",
+          "cancelled",
+          "failed"
+        ]
       },
       "properties": {
         "id": {
@@ -817,7 +835,12 @@
         "dosage_plan"
       ],
       "states": {
-        "enum": "treatment_status"
+        "enum": "treatment_status",
+        "initial": "planned",
+        "terminal": [
+          "completed",
+          "flagged"
+        ]
       },
       "properties": {
         "id": {
@@ -972,7 +995,12 @@
         "chain_of_custody"
       ],
       "states": {
-        "enum": "sample_status"
+        "enum": "sample_status",
+        "initial": "stored",
+        "terminal": [
+          "consumed",
+          "disposed"
+        ]
       },
       "properties": {
         "id": {
@@ -1064,7 +1092,12 @@
         "status"
       ],
       "states": {
-        "enum": "protocol_status"
+        "enum": "protocol_status",
+        "initial": "draft",
+        "terminal": [
+          "completed",
+          "cancelled"
+        ]
       },
       "properties": {
         "id": {
@@ -1123,7 +1156,11 @@
         "protocol_ids"
       ],
       "states": {
-        "enum": "permit_status"
+        "enum": "permit_status",
+        "initial": "pending",
+        "terminal": [
+          "expired"
+        ]
       },
       "properties": {
         "id": {

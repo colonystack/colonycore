@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"regexp"
 	"sort"
 	"strings"
 )
@@ -16,7 +17,9 @@ type enumSpec struct {
 }
 
 type stateSpec struct {
-	Enum string `json:"enum"`
+	Enum     string   `json:"enum"`
+	Initial  string   `json:"initial"`
+	Terminal []string `json:"terminal"`
 }
 
 type relationshipSpec struct {
@@ -39,8 +42,13 @@ type entitySpec struct {
 	Invariants    []string                    `json:"invariants"`
 }
 
+type metadataSpec struct {
+	Status string `json:"status"`
+}
+
 type schemaDoc struct {
 	Version  string                `json:"version"`
+	Metadata metadataSpec          `json:"metadata"`
 	Enums    map[string]enumSpec   `json:"enums"`
 	Entities map[string]entitySpec `json:"entities"`
 }
@@ -77,8 +85,11 @@ func validate(path string) error {
 
 	var errs []string
 
-	if doc.Version == "" {
+	if !isSemver(doc.Version) {
 		errs = append(errs, "version must be set (semver expected)")
+	}
+	if strings.TrimSpace(doc.Metadata.Status) == "" {
+		errs = append(errs, "metadata.status must be set")
 	}
 	if len(doc.Enums) == 0 {
 		errs = append(errs, "enums must not be empty")
@@ -86,6 +97,10 @@ func validate(path string) error {
 	for name, spec := range doc.Enums {
 		if len(spec.Values) == 0 {
 			errs = append(errs, fmt.Sprintf("enum %q must include at least one value", name))
+			continue
+		}
+		if dup := firstDuplicate(spec.Values); dup != "" {
+			errs = append(errs, fmt.Sprintf("enum %q has duplicate value %q", name, dup))
 		}
 	}
 
@@ -141,6 +156,24 @@ func validate(path string) error {
 				errs = append(errs, fmt.Sprintf("entity %q states.enum must reference an enum name", name))
 			} else if _, ok := doc.Enums[ent.States.Enum]; !ok {
 				errs = append(errs, fmt.Sprintf("entity %q states.enum %q not found in enums", name, ent.States.Enum))
+			} else {
+				enumValues := doc.Enums[ent.States.Enum].Values
+				if ent.States.Initial == "" {
+					errs = append(errs, fmt.Sprintf("entity %q states.initial must reference a value in enum %q", name, ent.States.Enum))
+				} else if !contains(enumValues, ent.States.Initial) {
+					errs = append(errs, fmt.Sprintf("entity %q states.initial %q not found in enum %q", name, ent.States.Initial, ent.States.Enum))
+				}
+				if len(ent.States.Terminal) == 0 {
+					errs = append(errs, fmt.Sprintf("entity %q states.terminal must include at least one value", name))
+				}
+				for _, term := range ent.States.Terminal {
+					if !contains(enumValues, term) {
+						errs = append(errs, fmt.Sprintf("entity %q states.terminal value %q not found in enum %q", name, term, ent.States.Enum))
+					}
+				}
+				if dup := firstDuplicate(ent.States.Terminal); dup != "" {
+					errs = append(errs, fmt.Sprintf("entity %q states.terminal has duplicate value %q", name, dup))
+				}
 			}
 		}
 
@@ -162,6 +195,9 @@ func validate(path string) error {
 				errs = append(errs, fmt.Sprintf("entity %q invariants[%d] must not be empty", name, i))
 			}
 		}
+		if dup := firstDuplicate(ent.Invariants); dup != "" {
+			errs = append(errs, fmt.Sprintf("entity %q invariants has duplicate entry %q", name, dup))
+		}
 	}
 
 	if len(errs) > 0 {
@@ -179,6 +215,22 @@ func contains(list []string, needle string) bool {
 		}
 	}
 	return false
+}
+
+func isSemver(version string) bool {
+	semverRe := regexp.MustCompile(`^v?[0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z.-]+)?$`)
+	return semverRe.MatchString(strings.TrimSpace(version))
+}
+
+func firstDuplicate(values []string) string {
+	seen := make(map[string]struct{}, len(values))
+	for _, v := range values {
+		if _, ok := seen[v]; ok {
+			return v
+		}
+		seen[v] = struct{}{}
+	}
+	return ""
 }
 
 func exitErr(msg string) {
