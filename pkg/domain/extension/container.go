@@ -113,14 +113,14 @@ var hookRegistry = map[Hook]HookSpec{
 	HookStrainAttributes: {
 		Entity:       "strain",
 		Field:        "attributes",
-		DomainMember: "domain.Strain.EnsureAttributes",
+		DomainMember: "domain.Strain.StrainAttributesByPlugin",
 		Description:  "Strain-level metadata extensions (versions, husbandry qualities).",
 		Shape:        ShapeObject,
 	},
 	HookGenotypeMarkerAttributes: {
 		Entity:       "genotype_marker",
 		Field:        "attributes",
-		DomainMember: "domain.GenotypeMarker.EnsureAttributes",
+		DomainMember: "domain.GenotypeMarker.GenotypeMarkerAttributesByPlugin",
 		Description:  "Assay-specific attributes for genotype markers (interpretation, thresholds).",
 		Shape:        ShapeObject,
 	},

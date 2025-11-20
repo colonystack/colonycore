@@ -22,11 +22,9 @@ func TestExtensionContainerCoverageOrganism(t *testing.T) {
 		t.Errorf("Expected same container instance on second call")
 	}
 
-	// Test with nil attributesSlot
 	var organism2 Organism
-	container2 := organism2.ensureExtensionContainer()
-	if container2 == nil {
-		t.Fatalf("Expected non-nil container even with nil slot")
+	if organism2.ensureExtensionContainer() == nil {
+		t.Fatalf("Expected non-nil container for fresh organism")
 	}
 }
 
@@ -46,11 +44,9 @@ func TestExtensionContainerCoverageFacility(t *testing.T) {
 		t.Errorf("Expected same container instance on second call")
 	}
 
-	// Test with nil environmentBaselinesSlot
 	var facility2 Facility
-	container2 := facility2.ensureExtensionContainer()
-	if container2 == nil {
-		t.Fatalf("Expected non-nil container even with nil slot")
+	if facility2.ensureExtensionContainer() == nil {
+		t.Fatalf("Expected non-nil container for fresh facility")
 	}
 }
 
@@ -70,11 +66,9 @@ func TestExtensionContainerCoverageBreedingUnit(t *testing.T) {
 		t.Errorf("Expected same container instance on second call")
 	}
 
-	// Test with nil pairingAttributesSlot
 	var unit2 BreedingUnit
-	container2 := unit2.ensureExtensionContainer()
-	if container2 == nil {
-		t.Fatalf("Expected non-nil container even with nil slot")
+	if unit2.ensureExtensionContainer() == nil {
+		t.Fatalf("Expected non-nil container for fresh breeding unit")
 	}
 }
 
@@ -94,11 +88,9 @@ func TestExtensionContainerCoverageObservation(t *testing.T) {
 		t.Errorf("Expected same container instance on second call")
 	}
 
-	// Test with nil dataSlot
 	var obs2 Observation
-	container2 := obs2.ensureExtensionContainer()
-	if container2 == nil {
-		t.Fatalf("Expected non-nil container even with nil slot")
+	if obs2.ensureExtensionContainer() == nil {
+		t.Fatalf("Expected non-nil container for fresh observation")
 	}
 }
 
@@ -118,11 +110,9 @@ func TestExtensionContainerCoverageSample(t *testing.T) {
 		t.Errorf("Expected same container instance on second call")
 	}
 
-	// Test with nil attributesSlot
 	var sample2 Sample
-	container2 := sample2.ensureExtensionContainer()
-	if container2 == nil {
-		t.Fatalf("Expected non-nil container even with nil slot")
+	if sample2.ensureExtensionContainer() == nil {
+		t.Fatalf("Expected non-nil container for fresh sample")
 	}
 }
 
@@ -142,11 +132,9 @@ func TestExtensionContainerCoverageSupplyItem(t *testing.T) {
 		t.Errorf("Expected same container instance on second call")
 	}
 
-	// Test with nil attributesSlot
 	var supply2 SupplyItem
-	container2 := supply2.ensureExtensionContainer()
-	if container2 == nil {
-		t.Fatalf("Expected non-nil container even with nil slot")
+	if supply2.ensureExtensionContainer() == nil {
+		t.Fatalf("Expected non-nil container for fresh supply")
 	}
 }
 
@@ -188,9 +176,8 @@ func TestExtensionContainerCoverageStrain(t *testing.T) {
 	}
 
 	var empty Strain
-	container2 := empty.ensureExtensionContainer()
-	if container2 == nil {
-		t.Fatalf("Expected non-nil container even when slot nil")
+	if empty.ensureExtensionContainer() == nil {
+		t.Fatalf("Expected non-nil container for fresh strain")
 	}
 }
 
@@ -210,9 +197,8 @@ func TestExtensionContainerCoverageGenotypeMarker(t *testing.T) {
 	}
 
 	var empty GenotypeMarker
-	container2 := empty.ensureExtensionContainer()
-	if container2 == nil {
-		t.Fatalf("Expected non-nil container even when slot nil")
+	if empty.ensureExtensionContainer() == nil {
+		t.Fatalf("Expected non-nil container for fresh genotype marker")
 	}
 }
 
@@ -322,7 +308,6 @@ func TestSetAttributesNilHandling(t *testing.T) {
 	if organism.CoreAttributes() != nil {
 		t.Errorf("Expected attributes to be nil after setting nil")
 	}
-	assertSlotEmpty(t, organism.attributesSlot, "expected attributesSlot to be cleared")
 	assertContainerEmpty(t, organism.extensions, "expected extensions to be cleared")
 }
 
@@ -340,7 +325,6 @@ func TestSetEnvironmentBaselinesNilHandling(t *testing.T) {
 	if facility.EnvironmentBaselines() != nil {
 		t.Errorf("Expected baselines to be nil after setting nil")
 	}
-	assertSlotEmpty(t, facility.environmentBaselinesSlot, "expected environmentBaselinesSlot to be cleared")
 	assertContainerEmpty(t, facility.extensions, "expected extensions to be cleared")
 }
 
@@ -358,7 +342,6 @@ func TestSetPairingAttributesNilHandling(t *testing.T) {
 	if unit.PairingAttributes() != nil {
 		t.Errorf("Expected pairing attributes to be nil after setting nil")
 	}
-	assertSlotEmpty(t, unit.pairingAttributesSlot, "expected pairingAttributesSlot to be cleared")
 	assertContainerEmpty(t, unit.extensions, "expected extensions to be cleared")
 }
 
@@ -376,7 +359,6 @@ func TestSetDataNilHandling(t *testing.T) {
 	if obs.ObservationData() != nil {
 		t.Errorf("Expected data to be nil after setting nil")
 	}
-	assertSlotEmpty(t, obs.dataSlot, "expected dataSlot to be cleared")
 	assertContainerEmpty(t, obs.extensions, "expected extensions to be cleared")
 }
 
@@ -539,13 +521,12 @@ func TestEnsureExtensionContainerWithExistingData(t *testing.T) {
 
 // TestEnsureExtensionContainerNilSlots tests container creation when slots are nil
 func TestEnsureExtensionContainerNilSlots(t *testing.T) {
-	// Test all entity types with completely empty/nil slots
+	// Test all entity types with completely empty extension state
 	organism := &Organism{Base: Base{ID: "test"}}
-	// Don't set any attributes - attributesSlot should be nil
 
 	container := organism.ensureExtensionContainer()
 	if container == nil {
-		t.Error("Expected non-nil container even with nil slot")
+		t.Error("Expected non-nil container even with no extension data")
 	}
 
 	// Test that we can use the container

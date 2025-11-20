@@ -60,35 +60,23 @@ func TestCloneHookMapVariants(t *testing.T) {
 
 }
 
-func TestPluginPayloadsPrefersSlotAndFallsBack(t *testing.T) {
+func TestPluginPayloadsUsesContainerClone(t *testing.T) {
 	hook := extension.HookStrainAttributes
-	if got := pluginPayloads(nil, nil, hook); got != nil {
-		t.Fatalf("expected nil payload when both slot and container are nil, got %v", got)
-	}
-
-	emptySlot := extension.NewSlot(hook)
-	if got := pluginPayloads(emptySlot, nil, hook); got != nil {
-		t.Fatalf("expected nil payload for empty slot, got %v", got)
-	}
-
-	slot := extension.NewSlot(hook)
-	if err := slot.Set(extension.PluginCore, map[string]any{"seed": true}); err != nil {
-		t.Fatalf("set slot payload: %v", err)
-	}
-	payload := pluginPayloads(slot, nil, hook)
-	payload[extension.PluginCore.String()].(map[string]any)["seed"] = false
-	stored, _ := slot.Get(extension.PluginCore)
-	if stored.(map[string]any)["seed"] != true {
-		t.Fatalf("expected pluginPayloads to return clone independent of slot state")
+	if got := pluginPayloads(nil, hook); got != nil {
+		t.Fatalf("expected nil payload when container is nil, got %v", got)
 	}
 
 	container := extension.NewContainer()
+	if got := pluginPayloads(&container, hook); got != nil {
+		t.Fatalf("expected nil payload for empty container, got %v", got)
+	}
+
 	if err := container.Set(hook, extension.PluginCore, map[string]any{"note": "container"}); err != nil {
 		t.Fatalf("set container payload: %v", err)
 	}
-	restored := pluginPayloads(nil, &container, hook)
+	restored := pluginPayloads(&container, hook)
 	restored[extension.PluginCore.String()].(map[string]any)["note"] = "mutated"
-	again := pluginPayloads(nil, &container, hook)
+	again := pluginPayloads(&container, hook)
 	if again[extension.PluginCore.String()].(map[string]any)["note"] != "container" {
 		t.Fatalf("expected container-derived payload to remain immutable")
 	}
@@ -265,10 +253,9 @@ func TestUpdateHookPayloadRemovesEntryAndRebinds(t *testing.T) {
 	mustNoError(t, "set external", container.Set(hook, extension.PluginID("external"), map[string]any{"note": "x"}))
 
 	containerRef := &container
-	var slotRef *extension.Slot
 	ensure := func() *extension.Container { return containerRef }
 
-	if err := updateHookPayload(ensure, &containerRef, &slotRef, hook, extension.PluginCore, nil); err != nil {
+	if err := updateHookPayload(ensure, &containerRef, hook, extension.PluginCore, nil); err != nil {
 		t.Fatalf("updateHookPayload remove: %v", err)
 	}
 	if containerRef == nil {
@@ -278,27 +265,20 @@ func TestUpdateHookPayloadRemovesEntryAndRebinds(t *testing.T) {
 	if len(plugins) != 1 || plugins[0] != extension.PluginID("external") {
 		t.Fatalf("expected external plugin to remain, got %v", plugins)
 	}
-	if slotRef == nil || len(slotRef.Plugins()) != 1 || slotRef.Plugins()[0] != extension.PluginID("external") {
-		t.Fatalf("expected slot to be rebound with external payloads, got %v", slotRef)
-	}
 }
 
 func TestUpdateHookPayloadClearsEmptyContainer(t *testing.T) {
 	hook := extension.HookBreedingUnitPairingAttributes
 	var containerRef *extension.Container
-	var slotRef *extension.Slot
 	ensure := func() *extension.Container {
 		t.Fatalf("ensure should not be called when container is nil and payload nil")
 		return nil
 	}
-	if err := updateHookPayload(ensure, &containerRef, &slotRef, hook, extension.PluginCore, nil); err != nil {
+	if err := updateHookPayload(ensure, &containerRef, hook, extension.PluginCore, nil); err != nil {
 		t.Fatalf("updateHookPayload on empty container: %v", err)
 	}
 	if containerRef != nil {
 		t.Fatalf("expected container to remain nil")
-	}
-	if slotRef != nil {
-		t.Fatalf("expected slot to remain nil")
 	}
 }
 
@@ -308,17 +288,13 @@ func TestUpdateHookPayloadRemovesLastEntry(t *testing.T) {
 	mustNoError(t, "set core", container.Set(hook, extension.PluginCore, map[string]any{"flag": true}))
 
 	containerRef := &container
-	var slotRef *extension.Slot
 	ensure := func() *extension.Container { return containerRef }
 
-	if err := updateHookPayload(ensure, &containerRef, &slotRef, hook, extension.PluginCore, nil); err != nil {
+	if err := updateHookPayload(ensure, &containerRef, hook, extension.PluginCore, nil); err != nil {
 		t.Fatalf("updateHookPayload remove last: %v", err)
 	}
 	if containerRef != nil {
 		t.Fatalf("expected container cleared after removing last payload")
-	}
-	if slotRef != nil {
-		t.Fatalf("expected slot cleared after removing last payload")
 	}
 }
 
@@ -329,18 +305,13 @@ func TestUpdateHookPayloadClearsSlotWhenOtherHooksRemain(t *testing.T) {
 	mustNoError(t, "set facility", container.Set(extension.HookFacilityEnvironmentBaselines, extension.PluginCore, map[string]any{"temp": 20}))
 
 	containerRef := &container
-	slotRef := extension.NewSlot(hook)
-	mustNoError(t, "slot set", slotRef.Set(extension.PluginCore, map[string]any{"flag": true}))
 	ensure := func() *extension.Container { return containerRef }
 
-	if err := updateHookPayload(ensure, &containerRef, &slotRef, hook, extension.PluginCore, nil); err != nil {
+	if err := updateHookPayload(ensure, &containerRef, hook, extension.PluginCore, nil); err != nil {
 		t.Fatalf("updateHookPayload remove with other hooks: %v", err)
 	}
 	if containerRef == nil || len(containerRef.Hooks()) != 1 || containerRef.Hooks()[0] != extension.HookFacilityEnvironmentBaselines {
 		t.Fatalf("expected only facility hook to remain, got %v", containerRef)
-	}
-	if slotRef != nil {
-		t.Fatalf("expected slot cleared when hook removed but other hooks remain")
 	}
 }
 
@@ -348,21 +319,15 @@ func TestReplaceExtensionContainerClearsEmpty(t *testing.T) {
 	hook := extension.HookOrganismAttributes
 	container := extension.NewContainer()
 	mustNoError(t, "set core", container.Set(hook, extension.PluginCore, map[string]any{"flag": true}))
-	slot := extension.NewSlot(hook)
-	mustNoError(t, "slot set", slot.Set(extension.PluginCore, map[string]any{"flag": true}))
 
 	target := &container
-	slotRef := slot
 
 	empty := extension.NewContainer()
-	if err := replaceExtensionContainer(&target, &slotRef, hook, empty); err != nil {
+	if err := replaceExtensionContainer(&target, hook, empty); err != nil {
 		t.Fatalf("replaceExtensionContainer empty: %v", err)
 	}
 	if target != nil {
 		t.Fatalf("expected container cleared when replacement empty, got %v", target)
-	}
-	if slotRef != nil {
-		t.Fatalf("expected slot cleared when replacement empty, got %v", slotRef)
 	}
 }
 
@@ -372,15 +337,11 @@ func TestReplaceExtensionContainerKeepsOtherHooks(t *testing.T) {
 	mustNoError(t, "set facility", container.Set(extension.HookFacilityEnvironmentBaselines, extension.PluginCore, map[string]any{"temp": 20}))
 
 	var target *extension.Container
-	var slotRef *extension.Slot
-	if err := replaceExtensionContainer(&target, &slotRef, hook, container); err != nil {
+	if err := replaceExtensionContainer(&target, hook, container); err != nil {
 		t.Fatalf("replaceExtensionContainer other hook: %v", err)
 	}
 	if target == nil || len(target.Hooks()) != 1 || target.Hooks()[0] != extension.HookFacilityEnvironmentBaselines {
 		t.Fatalf("expected facility hook preserved, got %v", target)
-	}
-	if slotRef != nil {
-		t.Fatalf("expected slot nil when hook has no payloads")
 	}
 }
 
@@ -831,15 +792,15 @@ func TestStrainExtensionsRoundTrip(t *testing.T) {
 		t.Fatalf("unexpected strain payload %+v", payload)
 	}
 	payload["note"] = testMutated
-	if stored, ok := strain.attributesSlot.Get(extension.PluginCore); !ok || stored.(map[string]any)["note"] != "strain" {
+	if stored := strain.StrainAttributesByPlugin(); stored[extension.PluginCore.String()].(map[string]any)["note"] != "strain" {
 		t.Fatalf("expected stored strain payload unchanged")
 	}
 
 	if err := strain.SetStrainExtensions(extension.NewContainer()); err != nil {
 		t.Fatalf("SetStrainExtensions empty: %v", err)
 	}
-	if strain.attributesSlot != nil || strain.extensions != nil {
-		t.Fatalf("expected strain slots cleared after empty assignment")
+	if strain.extensions != nil {
+		t.Fatalf("expected strain extensions cleared after empty assignment")
 	}
 }
 
@@ -861,15 +822,15 @@ func TestGenotypeMarkerExtensionsRoundTrip(t *testing.T) {
 		t.Fatalf("unexpected genotype payload %+v", payload)
 	}
 	payload["note"] = testMutated
-	if stored, ok := marker.attributesSlot.Get(extension.PluginCore); !ok || stored.(map[string]any)["note"] != "marker" {
+	if stored := marker.GenotypeMarkerAttributesByPlugin(); stored[extension.PluginCore.String()].(map[string]any)["note"] != "marker" {
 		t.Fatalf("expected stored genotype payload unchanged")
 	}
 
 	if err := marker.SetGenotypeMarkerExtensions(extension.NewContainer()); err != nil {
 		t.Fatalf("SetGenotypeMarkerExtensions empty: %v", err)
 	}
-	if marker.attributesSlot != nil || marker.extensions != nil {
-		t.Fatalf("expected genotype slots cleared after empty assignment")
+	if marker.extensions != nil {
+		t.Fatalf("expected genotype extensions cleared after empty assignment")
 	}
 }
 

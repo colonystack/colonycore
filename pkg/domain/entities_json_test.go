@@ -925,7 +925,6 @@ func TestStrainMarshalUnmarshalJSON(t *testing.T) {
 	if err := restored.SetStrainExtensions(extension.NewContainer()); err != nil {
 		t.Fatalf("SetStrainExtensions empty: %v", err)
 	}
-	assertSlotEmpty(t, restored.attributesSlot, "expected strain slot cleared after reset")
 	assertContainerEmpty(t, restored.extensions, "expected strain container cleared after reset")
 }
 
@@ -976,7 +975,6 @@ func TestGenotypeMarkerMarshalUnmarshalJSON(t *testing.T) {
 	if err := decoded.SetGenotypeMarkerExtensions(extension.NewContainer()); err != nil {
 		t.Fatalf("SetGenotypeMarkerExtensions empty: %v", err)
 	}
-	assertSlotEmpty(t, decoded.attributesSlot, "expected genotype slot cleared after reset")
 	assertContainerEmpty(t, decoded.extensions, "expected genotype container cleared after reset")
 }
 
@@ -1044,9 +1042,6 @@ func TestStrainMarshalJSONWithContainerWithoutSlot(t *testing.T) {
 	if _, ok := encoded["attributes"].(map[string]any); !ok {
 		t.Fatalf("expected attributes serialized from container")
 	}
-	if strain.attributesSlot != nil {
-		t.Fatalf("expected attributes slot to remain nil")
-	}
 }
 
 func TestStrainUnmarshalJSONWithoutAttributesClearsState(t *testing.T) {
@@ -1056,7 +1051,7 @@ func TestStrainUnmarshalJSONWithoutAttributesClearsState(t *testing.T) {
 	if err := json.Unmarshal([]byte(jsonData), &strain); err != nil {
 		t.Fatalf("unmarshal strain without attributes: %v", err)
 	}
-	if strain.attributesSlot != nil || strain.extensions != nil {
+	if strain.extensions != nil {
 		t.Fatalf("expected strain extension state to remain nil")
 	}
 }
@@ -1080,9 +1075,6 @@ func TestGenotypeMarkerMarshalJSONWithContainerWithoutSlot(t *testing.T) {
 	if _, ok := encoded["attributes"].(map[string]any); !ok {
 		t.Fatalf("expected attributes serialized from container")
 	}
-	if marker.attributesSlot != nil {
-		t.Fatalf("expected attributes slot to remain nil when only container present")
-	}
 }
 
 func TestGenotypeMarkerUnmarshalJSONWithoutAttributesClearsState(t *testing.T) {
@@ -1092,7 +1084,7 @@ func TestGenotypeMarkerUnmarshalJSONWithoutAttributesClearsState(t *testing.T) {
 	if err := json.Unmarshal([]byte(jsonData), &marker); err != nil {
 		t.Fatalf("unmarshal marker without attributes: %v", err)
 	}
-	if marker.attributesSlot != nil || marker.extensions != nil {
+	if marker.extensions != nil {
 		t.Fatalf("expected marker extension state cleared")
 	}
 }

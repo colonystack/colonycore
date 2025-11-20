@@ -21,16 +21,9 @@ func cloneHookMap(container *extension.Container, hook extension.Hook, plugin ex
 }
 
 // pluginPayloads returns a defensive copy of all plugin payloads bound to the
-// given hook, preferring the slot cache when present and falling back to the
-// container for lazily hydrated entities.
-func pluginPayloads(slot *extension.Slot, container *extension.Container, hook extension.Hook) map[string]any {
-	if slot != nil {
-		payload := slot.Raw()
-		if len(payload) == 0 {
-			return nil
-		}
-		return payload
-	}
+// given hook, deriving the data from the container each time so the container
+// stays canonical.
+func pluginPayloads(container *extension.Container, hook extension.Hook) map[string]any {
 	if container == nil {
 		return nil
 	}
@@ -41,25 +34,22 @@ func pluginPayloads(slot *extension.Slot, container *extension.Container, hook e
 	return payload
 }
 
-// updateHookPayload mutates the underlying container and slot references for a
-// single hook/plugin combination. When payload is nil the entry is removed.
+// updateHookPayload mutates the underlying container for a single hook/plugin
+// combination. When payload is nil the entry is removed.
 func updateHookPayload(
 	ensure func() *extension.Container,
 	containerRef **extension.Container,
-	slotRef **extension.Slot,
 	hook extension.Hook,
 	plugin extension.PluginID,
 	payload map[string]any,
 ) error {
 	if payload == nil {
 		if *containerRef == nil {
-			*slotRef = nil
 			return nil
 		}
 		(*containerRef).Remove(hook, plugin)
 		if len((*containerRef).Hooks()) == 0 {
 			*containerRef = nil
-			*slotRef = nil
 			return nil
 		}
 		clone, err := cloneContainer(*containerRef)
@@ -67,12 +57,6 @@ func updateHookPayload(
 			return err
 		}
 		*containerRef = &clone
-		slot := slotFromContainer(hook, *containerRef)
-		if len(slot.Plugins()) == 0 {
-			*slotRef = nil
-		} else {
-			*slotRef = slot
-		}
 		return nil
 	}
 
@@ -85,21 +69,13 @@ func updateHookPayload(
 		return err
 	}
 	*containerRef = &clone
-	slot := slotFromContainer(hook, *containerRef)
-	if len(slot.Plugins()) == 0 {
-		*slotRef = nil
-	} else {
-		*slotRef = slot
-	}
 	return nil
 }
 
 // replaceExtensionContainer installs a cloned copy of the provided container
-// onto the target entity and synchronises the backing slot representation. A
-// container with no hooks clears both references.
+// onto the target entity. A container with no hooks clears the reference.
 func replaceExtensionContainer(
 	targetRef **extension.Container,
-	slotRef **extension.Slot,
 	hook extension.Hook,
 	container extension.Container,
 ) error {
@@ -109,16 +85,9 @@ func replaceExtensionContainer(
 	}
 	if len(clone.Hooks()) == 0 {
 		*targetRef = nil
-		*slotRef = nil
 		return nil
 	}
 	*targetRef = &clone
-	slot := slotFromContainer(hook, *targetRef)
-	if len(slot.Plugins()) == 0 {
-		*slotRef = nil
-	} else {
-		*slotRef = slot
-	}
 	return nil
 }
 
@@ -139,7 +108,7 @@ func (o *Organism) OrganismExtensions() (extension.Container, error) {
 // SetOrganismExtensions replaces the organism extension container with the
 // provided payload.
 func (o *Organism) SetOrganismExtensions(container extension.Container) error {
-	return replaceExtensionContainer(&o.extensions, &o.attributesSlot, extension.HookOrganismAttributes, container)
+	return replaceExtensionContainer(&o.extensions, extension.HookOrganismAttributes, container)
 }
 
 // CoreAttributes returns the payload stored in the core plugin slot for an
@@ -178,7 +147,6 @@ func (o *Organism) SetCoreAttributesPayload(payload extension.ObjectPayload) err
 	return updateHookPayload(
 		func() *extension.Container { return o.ensureExtensionContainer() },
 		&o.extensions,
-		&o.attributesSlot,
 		extension.HookOrganismAttributes,
 		extension.PluginCore,
 		payload.Map(),
@@ -194,7 +162,7 @@ func (f *Facility) FacilityExtensions() (extension.Container, error) {
 // SetFacilityExtensions replaces the facility extension container with the
 // provided payload.
 func (f *Facility) SetFacilityExtensions(container extension.Container) error {
-	return replaceExtensionContainer(&f.extensions, &f.environmentBaselinesSlot, extension.HookFacilityEnvironmentBaselines, container)
+	return replaceExtensionContainer(&f.extensions, extension.HookFacilityEnvironmentBaselines, container)
 }
 
 // EnvironmentBaselines returns a copy of the core environment baselines payload.
@@ -232,7 +200,6 @@ func (f *Facility) ApplyEnvironmentBaselinesPayload(payload extension.ObjectPayl
 	return updateHookPayload(
 		func() *extension.Container { return f.ensureExtensionContainer() },
 		&f.extensions,
-		&f.environmentBaselinesSlot,
 		extension.HookFacilityEnvironmentBaselines,
 		extension.PluginCore,
 		payload.Map(),
@@ -248,7 +215,7 @@ func (b *BreedingUnit) BreedingUnitExtensions() (extension.Container, error) {
 // SetBreedingUnitExtensions replaces the breeding unit extension container with
 // the provided payload.
 func (b *BreedingUnit) SetBreedingUnitExtensions(container extension.Container) error {
-	return replaceExtensionContainer(&b.extensions, &b.pairingAttributesSlot, extension.HookBreedingUnitPairingAttributes, container)
+	return replaceExtensionContainer(&b.extensions, extension.HookBreedingUnitPairingAttributes, container)
 }
 
 // PairingAttributes returns a copy of the core pairing attributes payload.
@@ -335,7 +302,7 @@ func (l *Line) ApplyExtensionOverrides(overrides map[string]any) error {
 
 // StrainAttributesByPlugin returns the plugin-scoped strain attributes payload.
 func (s *Strain) StrainAttributesByPlugin() map[string]any {
-	return pluginPayloads(s.attributesSlot, s.extensions, extension.HookStrainAttributes)
+	return pluginPayloads(s.extensions, extension.HookStrainAttributes)
 }
 
 // StrainExtensions returns a deep copy of the strain extension container.
@@ -346,7 +313,7 @@ func (s *Strain) StrainExtensions() (extension.Container, error) {
 
 // SetStrainExtensions replaces the strain extension container.
 func (s *Strain) SetStrainExtensions(container extension.Container) error {
-	return replaceExtensionContainer(&s.extensions, &s.attributesSlot, extension.HookStrainAttributes, container)
+	return replaceExtensionContainer(&s.extensions, extension.HookStrainAttributes, container)
 }
 
 // ApplyStrainAttributes replaces the plugin-scoped strain attributes payloads.
@@ -355,7 +322,12 @@ func (s *Strain) ApplyStrainAttributes(attrs map[string]any) error {
 	if err != nil {
 		return err
 	}
-	return s.SetAttributesSlot(slot)
+	container, err := containerFromSlot(extension.HookStrainAttributes, slot)
+	if err != nil {
+		return err
+	}
+	s.extensions = container
+	return nil
 }
 
 // GenotypeMarkerExtensions returns a deep copy of the genotype marker extension container.
@@ -366,12 +338,12 @@ func (g *GenotypeMarker) GenotypeMarkerExtensions() (extension.Container, error)
 
 // SetGenotypeMarkerExtensions replaces the genotype marker extension container.
 func (g *GenotypeMarker) SetGenotypeMarkerExtensions(container extension.Container) error {
-	return replaceExtensionContainer(&g.extensions, &g.attributesSlot, extension.HookGenotypeMarkerAttributes, container)
+	return replaceExtensionContainer(&g.extensions, extension.HookGenotypeMarkerAttributes, container)
 }
 
 // GenotypeMarkerAttributesByPlugin returns the plugin-scoped genotype marker payloads.
 func (g *GenotypeMarker) GenotypeMarkerAttributesByPlugin() map[string]any {
-	return pluginPayloads(g.attributesSlot, g.extensions, extension.HookGenotypeMarkerAttributes)
+	return pluginPayloads(g.extensions, extension.HookGenotypeMarkerAttributes)
 }
 
 // ApplyGenotypeMarkerAttributes replaces the plugin-scoped genotype marker attributes payloads.
@@ -380,7 +352,12 @@ func (g *GenotypeMarker) ApplyGenotypeMarkerAttributes(attrs map[string]any) err
 	if err != nil {
 		return err
 	}
-	return g.SetAttributesSlot(slot)
+	container, err := containerFromSlot(extension.HookGenotypeMarkerAttributes, slot)
+	if err != nil {
+		return err
+	}
+	g.extensions = container
+	return nil
 }
 
 // ApplyPairingAttributes stores the provided pairing attributes payload. A nil
@@ -401,7 +378,6 @@ func (b *BreedingUnit) ApplyPairingAttributesPayload(payload extension.ObjectPay
 	return updateHookPayload(
 		func() *extension.Container { return b.ensureExtensionContainer() },
 		&b.extensions,
-		&b.pairingAttributesSlot,
 		extension.HookBreedingUnitPairingAttributes,
 		extension.PluginCore,
 		payload.Map(),
@@ -417,7 +393,7 @@ func (o *Observation) ObservationExtensions() (extension.Container, error) {
 // SetObservationExtensions replaces the observation extension container with
 // the provided payload.
 func (o *Observation) SetObservationExtensions(container extension.Container) error {
-	return replaceExtensionContainer(&o.extensions, &o.dataSlot, extension.HookObservationData, container)
+	return replaceExtensionContainer(&o.extensions, extension.HookObservationData, container)
 }
 
 // ObservationData returns a copy of the core observation data payload.
@@ -454,7 +430,6 @@ func (o *Observation) ApplyObservationDataPayload(payload extension.ObjectPayloa
 	return updateHookPayload(
 		func() *extension.Container { return o.ensureExtensionContainer() },
 		&o.extensions,
-		&o.dataSlot,
 		extension.HookObservationData,
 		extension.PluginCore,
 		payload.Map(),
@@ -469,7 +444,7 @@ func (s *Sample) SampleExtensions() (extension.Container, error) {
 
 // SetSampleExtensions replaces the sample extension container with the provided payload.
 func (s *Sample) SetSampleExtensions(container extension.Container) error {
-	return replaceExtensionContainer(&s.extensions, &s.attributesSlot, extension.HookSampleAttributes, container)
+	return replaceExtensionContainer(&s.extensions, extension.HookSampleAttributes, container)
 }
 
 // SampleAttributes returns a copy of the core sample attributes payload.
@@ -506,7 +481,6 @@ func (s *Sample) ApplySampleAttributesPayload(payload extension.ObjectPayload) e
 	return updateHookPayload(
 		func() *extension.Container { return s.ensureExtensionContainer() },
 		&s.extensions,
-		&s.attributesSlot,
 		extension.HookSampleAttributes,
 		extension.PluginCore,
 		payload.Map(),
@@ -522,7 +496,7 @@ func (s *SupplyItem) SupplyItemExtensions() (extension.Container, error) {
 // SetSupplyItemExtensions replaces the supply item extension container with the
 // provided payload.
 func (s *SupplyItem) SetSupplyItemExtensions(container extension.Container) error {
-	return replaceExtensionContainer(&s.extensions, &s.attributesSlot, extension.HookSupplyItemAttributes, container)
+	return replaceExtensionContainer(&s.extensions, extension.HookSupplyItemAttributes, container)
 }
 
 // SupplyAttributes returns a copy of the core supply item attributes payload.
@@ -559,7 +533,6 @@ func (s *SupplyItem) ApplySupplyAttributesPayload(payload extension.ObjectPayloa
 	return updateHookPayload(
 		func() *extension.Container { return s.ensureExtensionContainer() },
 		&s.extensions,
-		&s.attributesSlot,
 		extension.HookSupplyItemAttributes,
 		extension.PluginCore,
 		payload.Map(),

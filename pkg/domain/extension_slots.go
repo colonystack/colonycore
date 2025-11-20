@@ -24,26 +24,6 @@ func (l *Line) EnsureExtensionOverrides() *extension.Slot {
 	return l.extensionOverridesSlot
 }
 
-// EnsureAttributes returns the strain attributes slot, initialising it if necessary.
-func (s *Strain) EnsureAttributes() *extension.Slot {
-	if s.attributesSlot == nil {
-		s.attributesSlot = slotFromContainer(extension.HookStrainAttributes, s.ensureExtensionContainer())
-	} else {
-		_ = s.attributesSlot.BindHook(extension.HookStrainAttributes)
-	}
-	return s.attributesSlot
-}
-
-// EnsureAttributes returns the genotype marker attributes slot, initialising it if necessary.
-func (g *GenotypeMarker) EnsureAttributes() *extension.Slot {
-	if g.attributesSlot == nil {
-		g.attributesSlot = slotFromContainer(extension.HookGenotypeMarkerAttributes, g.ensureExtensionContainer())
-	} else {
-		_ = g.attributesSlot.BindHook(extension.HookGenotypeMarkerAttributes)
-	}
-	return g.attributesSlot
-}
-
 // SetDefaultAttributesSlot installs the provided slot as the default attributes hook payload.
 func (l *Line) SetDefaultAttributesSlot(slot *extension.Slot) error {
 	return l.setLineSlot(extension.HookLineDefaultAttributes, slot)
@@ -102,45 +82,5 @@ func (l *Line) setLineSlot(hook extension.Hook, incoming *extension.Slot) error 
 		l.extensions = &containerClone
 	}
 	l.rebindLineSlots()
-	return nil
-}
-
-// SetAttributesSlot persists the provided attributes slot onto the strain entity.
-func (s *Strain) SetAttributesSlot(slot *extension.Slot) error {
-	if slot == nil {
-		s.attributesSlot = nil
-		s.extensions = nil
-		return nil
-	}
-	clone := slot.Clone()
-	if err := clone.BindHook(extension.HookStrainAttributes); err != nil {
-		return err
-	}
-	container, err := containerFromSlot(extension.HookStrainAttributes, clone)
-	if err != nil {
-		return err
-	}
-	s.attributesSlot = clone
-	s.extensions = container
-	return nil
-}
-
-// SetAttributesSlot persists the provided attributes slot onto the genotype marker entity.
-func (g *GenotypeMarker) SetAttributesSlot(slot *extension.Slot) error {
-	if slot == nil {
-		g.attributesSlot = nil
-		g.extensions = nil
-		return nil
-	}
-	clone := slot.Clone()
-	if err := clone.BindHook(extension.HookGenotypeMarkerAttributes); err != nil {
-		return err
-	}
-	container, err := containerFromSlot(extension.HookGenotypeMarkerAttributes, clone)
-	if err != nil {
-		return err
-	}
-	g.attributesSlot = clone
-	g.extensions = container
 	return nil
 }

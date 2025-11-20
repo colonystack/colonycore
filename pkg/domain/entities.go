@@ -128,19 +128,18 @@ type Base struct {
 // Organism represents an individual animal tracked by the system.
 type Organism struct {
 	Base
-	Name           string               `json:"name"`
-	Species        string               `json:"species"`
-	Line           string               `json:"line"`
-	LineID         *string              `json:"line_id"`
-	StrainID       *string              `json:"strain_id"`
-	ParentIDs      []string             `json:"parent_ids"`
-	Stage          LifecycleStage       `json:"stage"`
-	CohortID       *string              `json:"cohort_id"`
-	HousingID      *string              `json:"housing_id"`
-	ProtocolID     *string              `json:"protocol_id"`
-	ProjectID      *string              `json:"project_id"`
-	attributesSlot *extension.Slot      `json:"-"`
-	extensions     *extension.Container `json:"-"`
+	Name       string               `json:"name"`
+	Species    string               `json:"species"`
+	Line       string               `json:"line"`
+	LineID     *string              `json:"line_id"`
+	StrainID   *string              `json:"strain_id"`
+	ParentIDs  []string             `json:"parent_ids"`
+	Stage      LifecycleStage       `json:"stage"`
+	CohortID   *string              `json:"cohort_id"`
+	HousingID  *string              `json:"housing_id"`
+	ProtocolID *string              `json:"protocol_id"`
+	ProjectID  *string              `json:"project_id"`
+	extensions *extension.Container `json:"-"`
 }
 
 // Cohort represents a managed group of organisms.
@@ -165,33 +164,31 @@ type HousingUnit struct {
 // Facility aggregates housing units with shared biosecurity controls.
 type Facility struct {
 	Base
-	Code                     string               `json:"code"`
-	Name                     string               `json:"name"`
-	Zone                     string               `json:"zone"`
-	AccessPolicy             string               `json:"access_policy"`
-	HousingUnitIDs           []string             `json:"housing_unit_ids"`
-	ProjectIDs               []string             `json:"project_ids"`
-	environmentBaselinesSlot *extension.Slot      `json:"-"`
-	extensions               *extension.Container `json:"-"`
+	Code           string               `json:"code"`
+	Name           string               `json:"name"`
+	Zone           string               `json:"zone"`
+	AccessPolicy   string               `json:"access_policy"`
+	HousingUnitIDs []string             `json:"housing_unit_ids"`
+	ProjectIDs     []string             `json:"project_ids"`
+	extensions     *extension.Container `json:"-"`
 }
 
 // BreedingUnit tracks configured pairings or groups intended for reproduction.
 type BreedingUnit struct {
 	Base
-	Name                  string               `json:"name"`
-	Strategy              string               `json:"strategy"`
-	HousingID             *string              `json:"housing_id"`
-	ProtocolID            *string              `json:"protocol_id"`
-	LineID                *string              `json:"line_id"`
-	StrainID              *string              `json:"strain_id"`
-	TargetLineID          *string              `json:"target_line_id"`
-	TargetStrainID        *string              `json:"target_strain_id"`
-	PairingIntent         *string              `json:"pairing_intent,omitempty"`
-	PairingNotes          *string              `json:"pairing_notes,omitempty"`
-	FemaleIDs             []string             `json:"female_ids"`
-	MaleIDs               []string             `json:"male_ids"`
-	pairingAttributesSlot *extension.Slot      `json:"-"`
-	extensions            *extension.Container `json:"-"`
+	Name           string               `json:"name"`
+	Strategy       string               `json:"strategy"`
+	HousingID      *string              `json:"housing_id"`
+	ProtocolID     *string              `json:"protocol_id"`
+	LineID         *string              `json:"line_id"`
+	StrainID       *string              `json:"strain_id"`
+	TargetLineID   *string              `json:"target_line_id"`
+	TargetStrainID *string              `json:"target_strain_id"`
+	PairingIntent  *string              `json:"pairing_intent,omitempty"`
+	PairingNotes   *string              `json:"pairing_notes,omitempty"`
+	FemaleIDs      []string             `json:"female_ids"`
+	MaleIDs        []string             `json:"male_ids"`
+	extensions     *extension.Container `json:"-"`
 }
 
 // Line represents a genetic lineage with shared inheritance characteristics.
@@ -218,7 +215,6 @@ type Strain struct {
 	Description       *string              `json:"description,omitempty"`
 	Generation        *string              `json:"generation,omitempty"`
 	GenotypeMarkerIDs []string             `json:"genotype_marker_ids"`
-	attributesSlot    *extension.Slot      `json:"-"`
 	extensions        *extension.Container `json:"-"`
 	RetiredAt         *time.Time           `json:"retired_at"`
 	RetirementReason  *string              `json:"retirement_reason,omitempty"`
@@ -233,7 +229,6 @@ type GenotypeMarker struct {
 	AssayMethod    string               `json:"assay_method"`
 	Interpretation string               `json:"interpretation"`
 	Version        string               `json:"version"`
-	attributesSlot *extension.Slot      `json:"-"`
 	extensions     *extension.Container `json:"-"`
 }
 
@@ -273,7 +268,6 @@ type Observation struct {
 	RecordedAt  time.Time            `json:"recorded_at"`
 	Observer    string               `json:"observer"`
 	Notes       *string              `json:"notes,omitempty"`
-	dataSlot    *extension.Slot      `json:"-"`
 	extensions  *extension.Container `json:"-"`
 }
 
@@ -290,7 +284,6 @@ type Sample struct {
 	StorageLocation string               `json:"storage_location"`
 	AssayType       string               `json:"assay_type"`
 	ChainOfCustody  []SampleCustodyEvent `json:"chain_of_custody"`
-	attributesSlot  *extension.Slot      `json:"-"`
 	extensions      *extension.Container `json:"-"`
 }
 
@@ -352,7 +345,6 @@ type SupplyItem struct {
 	FacilityIDs    []string             `json:"facility_ids"`
 	ProjectIDs     []string             `json:"project_ids"`
 	ReorderLevel   int                  `json:"reorder_level"`
-	attributesSlot *extension.Slot      `json:"-"`
 	extensions     *extension.Container `json:"-"`
 }
 
@@ -585,8 +577,6 @@ func (s *Strain) UnmarshalJSON(data []byte) error {
 		return err
 	}
 	*s = Strain(aux.strainAlias)
-	s.extensions = nil
-	s.attributesSlot = nil
 	return s.ApplyStrainAttributes(aux.Attributes)
 }
 
@@ -616,8 +606,6 @@ func (g *GenotypeMarker) UnmarshalJSON(data []byte) error {
 		return err
 	}
 	*g = GenotypeMarker(aux.genotypeMarkerAlias)
-	g.extensions = nil
-	g.attributesSlot = nil
 	return g.ApplyGenotypeMarkerAttributes(aux.Attributes)
 }
 
