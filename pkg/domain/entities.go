@@ -202,8 +202,8 @@ type Line struct {
 	Description            *string              `json:"description,omitempty"`
 	Origin                 string               `json:"origin"`
 	GenotypeMarkerIDs      []string             `json:"genotype_marker_ids"`
-	defaultAttributesSlot  *extension.Slot      `json:"-"`
-	extensionOverridesSlot *extension.Slot      `json:"-"`
+	defaultAttributesSlot  *extension.Slot      `json:"-"` // cache avoids rehydrating the container; container remains canonical
+	extensionOverridesSlot *extension.Slot      `json:"-"` // cache avoids rehydrating the container; container remains canonical
 	extensions             *extension.Container `json:"-"`
 	DeprecatedAt           *time.Time           `json:"deprecated_at"`
 	DeprecationReason      *string              `json:"deprecation_reason,omitempty"`
@@ -553,23 +553,10 @@ func (l *Line) UnmarshalJSON(data []byte) error {
 		return err
 	}
 	*l = Line(aux.lineAlias)
-	l.extensions = nil
-	l.defaultAttributesSlot = nil
-	l.extensionOverridesSlot = nil
-
-	defaultSlot, err := slotFromPluginPayloads(extension.HookLineDefaultAttributes, aux.DefaultAttributes)
-	if err != nil {
+	if err := l.ApplyDefaultAttributes(aux.DefaultAttributes); err != nil {
 		return err
 	}
-	if err := l.SetDefaultAttributesSlot(defaultSlot); err != nil {
-		return err
-	}
-
-	overrideSlot, err := slotFromPluginPayloads(extension.HookLineExtensionOverrides, aux.ExtensionOverrides)
-	if err != nil {
-		return err
-	}
-	return l.SetExtensionOverridesSlot(overrideSlot)
+	return l.ApplyExtensionOverrides(aux.ExtensionOverrides)
 }
 
 type strainAlias Strain
@@ -581,16 +568,9 @@ func (s Strain) MarshalJSON() ([]byte, error) {
 		Attributes map[string]any `json:"attributes"`
 	}
 
-	var attributes map[string]any
-	if s.attributesSlot != nil {
-		attributes = s.attributesSlot.Raw()
-	} else if s.extensions != nil && len(s.extensions.Plugins(extension.HookStrainAttributes)) > 0 {
-		attributes = slotFromContainer(extension.HookStrainAttributes, s.extensions).Raw()
-	}
-
 	return json.Marshal(payload{
 		strainAlias: strainAlias(s),
-		Attributes:  attributes,
+		Attributes:  (&s).StrainAttributesByPlugin(),
 	})
 }
 
@@ -607,21 +587,7 @@ func (s *Strain) UnmarshalJSON(data []byte) error {
 	*s = Strain(aux.strainAlias)
 	s.extensions = nil
 	s.attributesSlot = nil
-
-	if aux.Attributes != nil {
-		slot := extension.NewSlot(extension.HookStrainAttributes)
-		for plugin, value := range aux.Attributes {
-			if err := slot.Set(extension.PluginID(plugin), value); err != nil {
-				return err
-			}
-		}
-		if err := s.SetAttributesSlot(slot); err != nil {
-			return err
-		}
-	} else if err := s.SetAttributesSlot(nil); err != nil {
-		return err
-	}
-	return nil
+	return s.ApplyStrainAttributes(aux.Attributes)
 }
 
 type genotypeMarkerAlias GenotypeMarker
@@ -633,16 +599,9 @@ func (g GenotypeMarker) MarshalJSON() ([]byte, error) {
 		Attributes map[string]any `json:"attributes"`
 	}
 
-	var attributes map[string]any
-	if g.attributesSlot != nil {
-		attributes = g.attributesSlot.Raw()
-	} else if g.extensions != nil && len(g.extensions.Plugins(extension.HookGenotypeMarkerAttributes)) > 0 {
-		attributes = slotFromContainer(extension.HookGenotypeMarkerAttributes, g.extensions).Raw()
-	}
-
 	return json.Marshal(payload{
 		genotypeMarkerAlias: genotypeMarkerAlias(g),
-		Attributes:          attributes,
+		Attributes:          (&g).GenotypeMarkerAttributesByPlugin(),
 	})
 }
 
@@ -659,21 +618,7 @@ func (g *GenotypeMarker) UnmarshalJSON(data []byte) error {
 	*g = GenotypeMarker(aux.genotypeMarkerAlias)
 	g.extensions = nil
 	g.attributesSlot = nil
-
-	if aux.Attributes != nil {
-		slot := extension.NewSlot(extension.HookGenotypeMarkerAttributes)
-		for plugin, value := range aux.Attributes {
-			if err := slot.Set(extension.PluginID(plugin), value); err != nil {
-				return err
-			}
-		}
-		if err := g.SetAttributesSlot(slot); err != nil {
-			return err
-		}
-	} else if err := g.SetAttributesSlot(nil); err != nil {
-		return err
-	}
-	return nil
+	return g.ApplyGenotypeMarkerAttributes(aux.Attributes)
 }
 
 // Change describes a mutation applied to an entity during a transaction.

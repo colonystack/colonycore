@@ -152,13 +152,9 @@ func TestExtensionContainerCoverageSupplyItem(t *testing.T) {
 
 func TestExtensionContainerCoverageLine(t *testing.T) {
 	var line Line
-	defaultSlot := line.EnsureDefaultAttributes()
-	if err := defaultSlot.Set(extension.PluginCore, map[string]any{"seed": true}); err != nil {
-		t.Fatalf("set default slot: %v", err)
-	}
-	if err := line.SetDefaultAttributesSlot(defaultSlot); err != nil {
-		t.Fatalf("SetDefaultAttributesSlot: %v", err)
-	}
+	mustNoError(t, "ApplyDefaultAttributes", line.ApplyDefaultAttributes(map[string]any{
+		extension.PluginCore.String(): map[string]any{"seed": true},
+	}))
 	container := line.ensureExtensionContainer()
 	if container == nil {
 		t.Fatalf("Expected non-nil line extension container")
@@ -178,13 +174,9 @@ func TestExtensionContainerCoverageLine(t *testing.T) {
 
 func TestExtensionContainerCoverageStrain(t *testing.T) {
 	var strain Strain
-	slot := strain.EnsureAttributes()
-	if err := slot.Set(extension.PluginCore, map[string]any{"label": "strain"}); err != nil {
-		t.Fatalf("set strain slot: %v", err)
-	}
-	if err := strain.SetAttributesSlot(slot); err != nil {
-		t.Fatalf("SetAttributesSlot: %v", err)
-	}
+	mustNoError(t, "ApplyStrainAttributes", strain.ApplyStrainAttributes(map[string]any{
+		extension.PluginCore.String(): map[string]any{"label": "strain"},
+	}))
 	container := strain.ensureExtensionContainer()
 	if container == nil {
 		t.Fatalf("Expected non-nil strain extension container")
@@ -204,13 +196,9 @@ func TestExtensionContainerCoverageStrain(t *testing.T) {
 
 func TestExtensionContainerCoverageGenotypeMarker(t *testing.T) {
 	var marker GenotypeMarker
-	slot := marker.EnsureAttributes()
-	if err := slot.Set(extension.PluginCore, map[string]any{"label": "geno"}); err != nil {
-		t.Fatalf("set genotype slot: %v", err)
-	}
-	if err := marker.SetAttributesSlot(slot); err != nil {
-		t.Fatalf("SetAttributesSlot: %v", err)
-	}
+	mustNoError(t, "ApplyGenotypeMarkerAttributes", marker.ApplyGenotypeMarkerAttributes(map[string]any{
+		extension.PluginCore.String(): map[string]any{"label": "geno"},
+	}))
 	container := marker.ensureExtensionContainer()
 	if container == nil {
 		t.Fatalf("Expected non-nil genotype extension container")

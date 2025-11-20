@@ -42,7 +42,7 @@ func TestSlotFromPluginPayloads(t *testing.T) {
 	if core.(map[string]any)["seed"] != "value" {
 		t.Fatalf("unexpected core payload: %+v", core)
 	}
-	payload[extension.PluginCore.String()].(map[string]any)["seed"] = "mutated"
+	payload[extension.PluginCore.String()].(map[string]any)["seed"] = testMutated
 	recheck, ok := slot.Get(extension.PluginCore)
 	if !ok {
 		t.Fatalf("expected core payload after mutation")

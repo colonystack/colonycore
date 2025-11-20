@@ -17,11 +17,28 @@ func cloneHookMap(container *extension.Container, hook extension.Hook, plugin ex
 	if !ok || payload == nil {
 		return nil, false
 	}
-	values, ok := payload.(map[string]any)
-	if !ok {
-		return nil, false
+	return extension.CloneMap(payload.(map[string]any)), true
+}
+
+// pluginPayloads returns a defensive copy of all plugin payloads bound to the
+// given hook, preferring the slot cache when present and falling back to the
+// container for lazily hydrated entities.
+func pluginPayloads(slot *extension.Slot, container *extension.Container, hook extension.Hook) map[string]any {
+	if slot != nil {
+		payload := slot.Raw()
+		if len(payload) == 0 {
+			return nil
+		}
+		return payload
 	}
-	return extension.CloneMap(values), true
+	if container == nil {
+		return nil
+	}
+	payload := slotFromContainer(hook, container).Raw()
+	if len(payload) == 0 {
+		return nil
+	}
+	return payload
 }
 
 // updateHookPayload mutates the underlying container and slot references for a
@@ -316,6 +333,11 @@ func (l *Line) ApplyExtensionOverrides(overrides map[string]any) error {
 	return l.SetExtensionOverridesSlot(slot)
 }
 
+// StrainAttributesByPlugin returns the plugin-scoped strain attributes payload.
+func (s *Strain) StrainAttributesByPlugin() map[string]any {
+	return pluginPayloads(s.attributesSlot, s.extensions, extension.HookStrainAttributes)
+}
+
 // StrainExtensions returns a deep copy of the strain extension container.
 func (s *Strain) StrainExtensions() (extension.Container, error) {
 	container := s.ensureExtensionContainer()
@@ -327,6 +349,15 @@ func (s *Strain) SetStrainExtensions(container extension.Container) error {
 	return replaceExtensionContainer(&s.extensions, &s.attributesSlot, extension.HookStrainAttributes, container)
 }
 
+// ApplyStrainAttributes replaces the plugin-scoped strain attributes payloads.
+func (s *Strain) ApplyStrainAttributes(attrs map[string]any) error {
+	slot, err := slotFromPluginPayloads(extension.HookStrainAttributes, attrs)
+	if err != nil {
+		return err
+	}
+	return s.SetAttributesSlot(slot)
+}
+
 // GenotypeMarkerExtensions returns a deep copy of the genotype marker extension container.
 func (g *GenotypeMarker) GenotypeMarkerExtensions() (extension.Container, error) {
 	container := g.ensureExtensionContainer()
@@ -336,6 +367,20 @@ func (g *GenotypeMarker) GenotypeMarkerExtensions() (extension.Container, error)
 // SetGenotypeMarkerExtensions replaces the genotype marker extension container.
 func (g *GenotypeMarker) SetGenotypeMarkerExtensions(container extension.Container) error {
 	return replaceExtensionContainer(&g.extensions, &g.attributesSlot, extension.HookGenotypeMarkerAttributes, container)
+}
+
+// GenotypeMarkerAttributesByPlugin returns the plugin-scoped genotype marker payloads.
+func (g *GenotypeMarker) GenotypeMarkerAttributesByPlugin() map[string]any {
+	return pluginPayloads(g.attributesSlot, g.extensions, extension.HookGenotypeMarkerAttributes)
+}
+
+// ApplyGenotypeMarkerAttributes replaces the plugin-scoped genotype marker attributes payloads.
+func (g *GenotypeMarker) ApplyGenotypeMarkerAttributes(attrs map[string]any) error {
+	slot, err := slotFromPluginPayloads(extension.HookGenotypeMarkerAttributes, attrs)
+	if err != nil {
+		return err
+	}
+	return g.SetAttributesSlot(slot)
 }
 
 // ApplyPairingAttributes stores the provided pairing attributes payload. A nil
