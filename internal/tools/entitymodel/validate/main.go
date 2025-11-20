@@ -23,7 +23,8 @@ type stateSpec struct {
 }
 
 type relationshipSpec struct {
-	Target string `json:"target"`
+	Target      string `json:"target"`
+	Cardinality string `json:"cardinality"`
 }
 
 type naturalKeySpec struct {
@@ -188,6 +189,11 @@ func validate(path string) error {
 			if _, ok := ent.Properties[relName]; !ok {
 				errs = append(errs, fmt.Sprintf("entity %q relationship %q missing property definition", name, relName))
 			}
+			if strings.TrimSpace(rel.Cardinality) == "" {
+				errs = append(errs, fmt.Sprintf("entity %q relationship %q missing cardinality", name, relName))
+			} else if !isValidCardinality(rel.Cardinality) {
+				errs = append(errs, fmt.Sprintf("entity %q relationship %q has invalid cardinality %q", name, relName, rel.Cardinality))
+			}
 		}
 
 		for i, invariant := range ent.Invariants {
@@ -220,6 +226,15 @@ func contains(list []string, needle string) bool {
 func isSemver(version string) bool {
 	semverRe := regexp.MustCompile(`^v?[0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z.-]+)?$`)
 	return semverRe.MatchString(strings.TrimSpace(version))
+}
+
+func isValidCardinality(value string) bool {
+	switch strings.ToLower(strings.TrimSpace(value)) {
+	case "0..1", "1..1", "0..n", "1..n":
+		return true
+	default:
+		return false
+	}
 }
 
 func firstDuplicate(values []string) string {

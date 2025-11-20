@@ -42,7 +42,7 @@ func TestValidateOK(t *testing.T) {
       },
       "states": {"enum": "status", "initial": "ok", "terminal": ["fail"]},
       "relationships": {
-        "bar_id": {"target": "Bar"}
+        "bar_id": {"target": "Bar", "cardinality": "0..1"}
       },
       "invariants": ["rule_one"]
     }
@@ -93,6 +93,7 @@ func TestValidateFailures(t *testing.T) {
 		"entity \"Foo\" natural key #0 must declare at least one field",
 		"entity \"Foo\" natural key [<unset>] must declare scope",
 		"entity \"Foo\" relationship \"bar_id\" missing property definition",
+		"entity \"Foo\" relationship \"bar_id\" missing cardinality",
 		"entity \"Foo\" states.enum \"missing_enum\" not found in enums",
 		"entity \"Foo\" relationship \"bar_id\" targets unknown entity \"Missing\"",
 		"entity \"Foo\" invariants[0] must not be empty",
@@ -148,7 +149,7 @@ func TestValidateNaturalKeyAndRelationshipErrors(t *testing.T) {
         "bar_ref": {"type":"string"}
       },
       "relationships": {
-        "bar_ref": {"target": ""}
+        "bar_ref": {"target": "", "cardinality": "0..1"}
       }
     },
     "Foo": {
@@ -257,6 +258,61 @@ func TestValidateStatesAndDuplicates(t *testing.T) {
 		"entity \"Foo\" states.terminal value \"two\" not found in enum \"status\"",
 		"entity \"Foo\" states.terminal has duplicate value \"one\"",
 		"entity \"Foo\" invariants has duplicate entry \"dup\"",
+	}
+	for _, want := range expect {
+		if !strings.Contains(msg, want) {
+			t.Fatalf("expected message to contain %q, got %q", want, msg)
+		}
+	}
+}
+
+func TestValidateRelationshipCardinality(t *testing.T) {
+	path := writeTemp(t, `{
+  "version": "0.0.4",
+  "metadata": { "status": "seed" },
+  "enums": {
+    "status": { "values": ["ok"] }
+  },
+  "entities": {
+    "Bar": {
+      "natural_keys": [],
+      "required": ["id", "created_at", "updated_at"],
+      "properties": {
+        "id": {"type":"string"},
+        "created_at": {"type":"string"},
+        "updated_at": {"type":"string"}
+      },
+      "relationships": {},
+      "invariants": []
+    },
+    "Foo": {
+      "natural_keys": [],
+      "required": ["id", "created_at", "updated_at"],
+      "properties": {
+        "id": {"type":"string"},
+        "created_at": {"type":"string"},
+        "updated_at": {"type":"string"},
+        "bar_id": {"type":"string"},
+        "invalid_card": {"type":"string"}
+      },
+      "states": {"enum": "status", "initial": "ok", "terminal": ["ok"]},
+      "relationships": {
+        "bar_id": {"target": "Bar"},
+        "invalid_card": {"target": "Bar", "cardinality": "2..3"}
+      },
+      "invariants": []
+    }
+  }
+}`)
+
+	err := validate(path)
+	if err == nil {
+		t.Fatalf("validate() expected error")
+	}
+	msg := err.Error()
+	expect := []string{
+		"entity \"Foo\" relationship \"bar_id\" missing cardinality",
+		"entity \"Foo\" relationship \"invalid_card\" has invalid cardinality \"2..3\"",
 	}
 	for _, want := range expect {
 		if !strings.Contains(msg, want) {
