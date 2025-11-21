@@ -65,22 +65,40 @@
     "permit_status": {
       "type": "string",
       "values": [
-        "pending",
-        "active",
-        "expired"
+        "draft",
+        "submitted",
+        "approved",
+        "on_hold",
+        "expired",
+        "archived"
       ],
-      "description": "Permit validity states."
+      "description": "Compliance lifecycle states for permits."
     },
     "protocol_status": {
       "type": "string",
       "values": [
         "draft",
-        "active",
-        "suspended",
-        "completed",
-        "cancelled"
+        "submitted",
+        "approved",
+        "on_hold",
+        "expired",
+        "archived"
       ],
-      "description": "Protocol lifecycle states used by contextual accessors."
+      "description": "Compliance lifecycle states (RFC-0001 §5.3) used by contextual accessors."
+    },
+    "housing_state": {
+      "type": "string",
+      "values": [
+        "quarantine",
+        "active",
+        "cleaning",
+        "decommissioned"
+      ],
+      "initial": "quarantine",
+      "terminal": [
+        "decommissioned"
+      ],
+      "description": "Housing lifecycle states (RFC-0001 §5.2)."
     },
     "housing_environment": {
       "type": "string",
@@ -277,16 +295,14 @@
         "name",
         "facility_id",
         "capacity",
-        "environment"
+        "environment",
+        "state"
       ],
       "states": {
-        "enum": "housing_environment",
-        "initial": "aquatic",
+        "enum": "housing_state",
+        "initial": "quarantine",
         "terminal": [
-          "aquatic",
-          "terrestrial",
-          "arboreal",
-          "humid"
+          "decommissioned"
         ]
       },
       "properties": {
@@ -310,6 +326,9 @@
         "capacity": {
           "type": "integer",
           "minimum": 0
+        },
+        "state": {
+          "$ref": "#/enums/housing_state"
         },
         "environment": {
           "$ref": "#/enums/housing_environment"
@@ -1095,8 +1114,8 @@
         "enum": "protocol_status",
         "initial": "draft",
         "terminal": [
-          "completed",
-          "cancelled"
+          "expired",
+          "archived"
         ]
       },
       "properties": {
@@ -1157,9 +1176,10 @@
       ],
       "states": {
         "enum": "permit_status",
-        "initial": "pending",
+        "initial": "draft",
         "terminal": [
-          "expired"
+          "expired",
+          "archived"
         ]
       },
       "properties": {

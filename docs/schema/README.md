@@ -5,7 +5,7 @@ This directory holds machine-readable contracts. `entity-model.json` is the seed
 Conventions:
 - IDs are opaque UUIDv7 strings for all entities.
 - `id`, `created_at`, and `updated_at` are required on every entity.
-- Enums capture lifecycle/status sets; `states.enum` references the enum name declared under `enums`.
+- Enums capture lifecycle/status sets; `states.enum` references the enum name declared under `enums`. Housing lifecycle uses `housing_state` (quarantine → active → cleaning → decommissioned), and protocol/permit compliance states follow RFC-0001 §5.3.
 - Natural keys document uniqueness scopes (global, facility, authority, line, etc.) but primary keys remain opaque IDs.
 - Extension slots (`attributes`, `environment_baselines`, `pairing_attributes`, etc.) are plugin-safe maps; schema-specific extensions belong in plugins, not core.
 
