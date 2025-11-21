@@ -108,6 +108,11 @@ func validate(path string) error {
 			errs = append(errs, fmt.Sprintf("enum %q must include at least one value", name))
 			continue
 		}
+		for i, v := range spec.Values {
+			if strings.TrimSpace(v) == "" {
+				errs = append(errs, fmt.Sprintf("enum %q value #%d must not be empty", name, i))
+			}
+		}
 		if dup := firstDuplicate(spec.Values); dup != "" {
 			errs = append(errs, fmt.Sprintf("enum %q has duplicate value %q", name, dup))
 		}
@@ -243,12 +248,15 @@ func validate(path string) error {
 		}
 
 		for propName, prop := range ent.Properties {
-			propEnums, err := extractEnumRefs(prop)
+			meta, err := extractPropertyMeta(prop)
 			if err != nil {
 				errs = append(errs, fmt.Sprintf("entity %q property %q invalid JSON: %v", name, propName, err))
 				continue
 			}
-			for _, enumName := range propEnums {
+			if !meta.hasType && !meta.hasRef {
+				errs = append(errs, fmt.Sprintf("entity %q property %q must declare a type or $ref", name, propName))
+			}
+			for _, enumName := range meta.enums {
 				if _, ok := doc.Enums[enumName]; !ok {
 					errs = append(errs, fmt.Sprintf("entity %q property %q references unknown enum %q", name, propName, enumName))
 					continue
@@ -306,20 +314,37 @@ func firstDuplicate(values []string) string {
 	return ""
 }
 
-func extractEnumRefs(raw json.RawMessage) ([]string, error) {
+type propertyMeta struct {
+	enums   []string
+	hasType bool
+	hasRef  bool
+}
+
+func extractPropertyMeta(raw json.RawMessage) (propertyMeta, error) {
 	var prop map[string]any
 	if err := json.Unmarshal(raw, &prop); err != nil {
-		return nil, err
+		return propertyMeta{}, err
 	}
 
+	return propertyMeta{
+		enums:   enumRefs(prop),
+		hasType: strings.TrimSpace(asString(prop["type"])) != "",
+		hasRef:  strings.TrimSpace(asString(prop["$ref"])) != "",
+	}, nil
+}
+
+func enumRefs(prop map[string]any) []string {
 	var enums []string
-	if ref, ok := prop["$ref"].(string); ok {
-		if strings.HasPrefix(ref, "#/enums/") {
-			enums = append(enums, strings.TrimPrefix(ref, "#/enums/"))
-		}
+	ref := asString(prop["$ref"])
+	if strings.HasPrefix(ref, "#/enums/") {
+		enums = append(enums, strings.TrimPrefix(ref, "#/enums/"))
 	}
+	return enums
+}
 
-	return enums, nil
+func asString(candidate any) string {
+	value, _ := candidate.(string)
+	return value
 }
 
 func exitErr(msg string) {

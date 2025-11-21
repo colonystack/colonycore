@@ -11,7 +11,7 @@ GOLANGCI_VERSION_PLAIN := $(patsubst v%,%,$(GOLANGCI_VERSION))
 MODULE := $(shell go list -m)
 IMPORT_BOSS_BIN := $(GOPATH_BIN)/import-boss
 
-.PHONY: all build lint go-test test registry-check fmt-check vet registry-lint golangci golangci-install python-lint r-lint go-lint import-boss import-boss-install entity-model-validate
+.PHONY: all build lint go-test test registry-check fmt-check vet registry-lint golangci golangci-install python-lint r-lint go-lint import-boss import-boss-install entity-model-validate entity-model-generate entity-model-verify
 
 all: build
 
@@ -22,7 +22,7 @@ registry-check:
 	GOCACHE=$(GOCACHE) go build -o cmd/registry-check/registry-check ./cmd/registry-check
 
 lint:
-	@$(MAKE) --no-print-directory entity-model-validate
+	@$(MAKE) --no-print-directory entity-model-verify
 	@$(MAKE) --no-print-directory go-lint
 	@$(MAKE) --no-print-directory validate-plugin-patterns
 	@$(MAKE) --no-print-directory python-lint
@@ -154,6 +154,14 @@ r-lint:
 entity-model-validate:
 	@echo "==> entity-model validate"
 	@GOCACHE=$(GOCACHE) go run ./internal/tools/entitymodel/validate docs/schema/entity-model.json
+
+entity-model-generate:
+	@echo "==> entity-model generate (placeholder)"
+	@echo "Add generators for Go structs, OpenAPI components, ERD, and DDL derived from docs/schema/entity-model.json"
+
+entity-model-verify: entity-model-validate
+	@echo "==> entity-model verify (validate + generation placeholder)"
+	@echo "Extend this target to chain entity-model-generate outputs once generators are available"
 
 
 go-test:

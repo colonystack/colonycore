@@ -439,6 +439,72 @@ func TestValidatePropertyEnumReferenceUnknown(t *testing.T) {
 	}
 }
 
+func TestValidatePropertyRequiresTypeOrRef(t *testing.T) {
+	path := writeTemp(t, `{
+  "version": "0.1.3",
+  "id_semantics": { "type": "uuidv7", "scope": "global", "required": true, "description": "opaque" },
+  "metadata": { "status": "seed" },
+  "enums": {
+    "status": { "values": ["ok"] }
+  },
+  "entities": {
+    "Foo": {
+      "natural_keys": [],
+      "required": ["id", "created_at", "updated_at", "status"],
+      "properties": {
+        "id": {"type":"string"},
+        "created_at": {"type":"string"},
+        "updated_at": {"type":"string"},
+        "status": {}
+      },
+      "states": {"enum": "status", "initial": "ok", "terminal": ["ok"]},
+      "relationships": {}
+    }
+  }
+}`)
+
+	err := validate(path)
+	if err == nil {
+		t.Fatalf("validate() expected error")
+	}
+	msg := err.Error()
+	if !strings.Contains(msg, "entity \"Foo\" property \"status\" must declare a type or $ref") {
+		t.Fatalf("expected property type/ref error, got %q", msg)
+	}
+}
+
+func TestValidateEnumWhitespaceValue(t *testing.T) {
+	path := writeTemp(t, `{
+  "version": "0.1.4",
+  "id_semantics": { "type": "uuidv7", "scope": "global", "required": true, "description": "opaque" },
+  "metadata": { "status": "seed" },
+  "enums": {
+    "status": { "values": ["ok", " "] }
+  },
+  "entities": {
+    "Foo": {
+      "natural_keys": [],
+      "required": ["id", "created_at", "updated_at"],
+      "properties": {
+        "id": {"type":"string"},
+        "created_at": {"type":"string"},
+        "updated_at": {"type":"string"}
+      },
+      "relationships": {}
+    }
+  }
+}`)
+
+	err := validate(path)
+	if err == nil {
+		t.Fatalf("validate() expected error")
+	}
+	msg := err.Error()
+	if !strings.Contains(msg, "enum \"status\" value #1 must not be empty") {
+		t.Fatalf("expected enum whitespace error, got %q", msg)
+	}
+}
+
 func TestValidatePropertyJSONError(t *testing.T) {
 	path := writeTemp(t, `{
   "version": "0.1.3",
