@@ -22,6 +22,7 @@ registry-check:
 	GOCACHE=$(GOCACHE) go build -o cmd/registry-check/registry-check ./cmd/registry-check
 
 lint:
+	@$(MAKE) --no-print-directory entity-model-validate
 	@$(MAKE) --no-print-directory go-lint
 	@$(MAKE) --no-print-directory validate-plugin-patterns
 	@$(MAKE) --no-print-directory python-lint
@@ -152,7 +153,7 @@ r-lint:
 
 entity-model-validate:
 	@echo "==> entity-model validate"
-	@GOCACHE=$(GOCACHE) go run ./internal/tools/entitymodel/validate
+	@GOCACHE=$(GOCACHE) go run ./internal/tools/entitymodel/validate docs/schema/entity-model.json
 
 
 go-test:

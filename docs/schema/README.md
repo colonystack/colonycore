@@ -10,4 +10,4 @@ Conventions:
 - Extension slots (`attributes`, `environment_baselines`, `pairing_attributes`, etc.) are plugin-safe maps; schema-specific extensions belong in plugins, not core.
 
 Validation:
-- Run `make entity-model-validate` (also wired into pre-commit) to sanity-check the JSON (presence of enums, required fields, and relationship targets). The target only reads `docs/schema/entity-model.json` and keeps domain layering intact.
+- Run `make entity-model-validate` (also executed by `make lint`) to sanity-check the JSON (presence of enums, required fields, and relationship targets). The target only reads `docs/schema/entity-model.json` and keeps domain layering intact.
