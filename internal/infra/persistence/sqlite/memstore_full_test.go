@@ -109,7 +109,7 @@ func TestMemStore_FullCRUDAndErrors(t *testing.T) { //nolint:gocyclo // exhausti
 		per, _ := tx.CreatePermit(domain.Permit{
 			PermitNumber:      "PER-1",
 			Authority:         "Agency",
-			Status:            domain.PermitStatusActive,
+			Status:            domain.PermitStatusApproved,
 			ValidFrom:         now.Add(-time.Hour),
 			ValidUntil:        now.Add(time.Hour),
 			AllowedActivities: []string{"collect"},
@@ -548,7 +548,7 @@ func TestSQLiteStore_Persist_Reload_Full(t *testing.T) {
 		permit, err := tx.CreatePermit(domain.Permit{
 			PermitNumber:      "PER-1",
 			Authority:         "Agency",
-			Status:            domain.PermitStatusActive,
+			Status:            domain.PermitStatusApproved,
 			ValidFrom:         now.Add(-time.Hour),
 			ValidUntil:        now.Add(time.Hour),
 			AllowedActivities: []string{"collect"},

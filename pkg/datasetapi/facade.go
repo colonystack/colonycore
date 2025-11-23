@@ -227,6 +227,7 @@ type PermitData struct {
 	Base              BaseData
 	PermitNumber      string
 	Authority         string
+	Status            string
 	ValidFrom         time.Time
 	ValidUntil        time.Time
 	AllowedActivities []string
@@ -1681,16 +1682,18 @@ func (p protocol) MaxSubjects() int { return p.maxSubjects }
 func (p protocol) GetCurrentStatus() ProtocolStatusRef {
 	ctx := NewProtocolContext()
 	switch strings.ToLower(p.status) {
-	case "draft":
+	case datasetProtocolStatusDraft:
 		return ctx.Draft()
-	case "active":
-		return ctx.Active()
-	case "suspended", "paused":
-		return ctx.Suspended()
-	case "completed", "done":
-		return ctx.Completed()
-	case "cancelled":
-		return ctx.Cancelled()
+	case datasetProtocolStatusSubmitted:
+		return ctx.Submitted()
+	case datasetProtocolStatusApproved:
+		return ctx.Approved()
+	case datasetProtocolStatusOnHold, "paused":
+		return ctx.OnHold()
+	case datasetProtocolStatusExpired:
+		return ctx.Expired()
+	case datasetProtocolStatusArchived:
+		return ctx.Archived()
 	default:
 		// Default to draft for unknown statuses
 		return ctx.Draft()
@@ -1736,6 +1739,7 @@ type permit struct {
 	base
 	permitNumber      string
 	authority         string
+	status            string
 	validFrom         time.Time
 	validUntil        time.Time
 	allowedActivities []string
@@ -1750,6 +1754,7 @@ func NewPermit(data PermitData) Permit {
 		base:              newBase(data.Base),
 		permitNumber:      data.PermitNumber,
 		authority:         data.Authority,
+		status:            data.Status,
 		validFrom:         data.ValidFrom,
 		validUntil:        data.ValidUntil,
 		allowedActivities: cloneStringSlice(data.AllowedActivities),
@@ -1778,13 +1783,24 @@ func (p permit) Notes() string {
 // Contextual validity accessors
 func (p permit) GetStatus(reference time.Time) PermitStatusRef {
 	statuses := NewPermitContext().Statuses()
-	switch {
-	case reference.Before(p.validFrom):
-		return statuses.Pending()
-	case !p.validUntil.IsZero() && reference.After(p.validUntil):
+	switch strings.ToLower(p.status) {
+	case datasetPermitStatusDraft:
+		return statuses.Draft()
+	case datasetPermitStatusSubmitted:
+		return statuses.Submitted()
+	case datasetPermitStatusApproved:
+		if !p.validUntil.IsZero() && reference.After(p.validUntil) {
+			return statuses.Expired()
+		}
+		return statuses.Approved()
+	case datasetPermitStatusOnHold:
+		return statuses.OnHold()
+	case datasetPermitStatusExpired:
 		return statuses.Expired()
+	case datasetPermitStatusArchived:
+		return statuses.Archived()
 	default:
-		return statuses.Active()
+		return statuses.Draft()
 	}
 }
 
@@ -1803,6 +1819,7 @@ func (p permit) MarshalJSON() ([]byte, error) {
 		UpdatedAt         time.Time `json:"updated_at"`
 		PermitNumber      string    `json:"permit_number"`
 		Authority         string    `json:"authority"`
+		Status            string    `json:"status"`
 		ValidFrom         time.Time `json:"valid_from"`
 		ValidUntil        time.Time `json:"valid_until"`
 		AllowedActivities []string  `json:"allowed_activities,omitempty"`
@@ -1816,6 +1833,7 @@ func (p permit) MarshalJSON() ([]byte, error) {
 		UpdatedAt:         p.UpdatedAt(),
 		PermitNumber:      p.permitNumber,
 		Authority:         p.authority,
+		Status:            p.GetStatus(time.Now()).String(),
 		ValidFrom:         p.validFrom,
 		ValidUntil:        p.validUntil,
 		AllowedActivities: cloneStringSlice(p.allowedActivities),

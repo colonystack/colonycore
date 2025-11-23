@@ -713,7 +713,7 @@ func newProtocolView(protocol domain.Protocol) protocolView {
 		title:       protocol.Title,
 		description: cloneOptionalString(protocol.Description),
 		maxSubjects: protocol.MaxSubjects,
-		status:      protocol.Status,
+		status:      string(protocol.Status),
 	}
 }
 
@@ -730,17 +730,19 @@ func (p protocolView) MaxSubjects() int { return p.maxSubjects }
 // Contextual status accessors
 func (p protocolView) GetCurrentStatus() pluginapi.ProtocolStatusRef {
 	ctx := pluginapi.NewProtocolContext()
-	switch p.status {
+	switch strings.ToLower(p.status) {
 	case "draft":
 		return ctx.Draft()
-	case "active":
-		return ctx.Active()
-	case "suspended":
-		return ctx.Suspended()
-	case "completed":
-		return ctx.Completed()
-	case "cancelled":
-		return ctx.Cancelled()
+	case "submitted":
+		return ctx.Submitted()
+	case "approved":
+		return ctx.Approved()
+	case "on_hold":
+		return ctx.OnHold()
+	case "expired":
+		return ctx.Expired()
+	case "archived":
+		return ctx.Archived()
 	default:
 		// Default to draft for unknown statuses
 		return ctx.Draft()
@@ -763,6 +765,7 @@ type permitView struct {
 	baseView
 	permitNumber      string
 	authority         string
+	status            string
 	validFrom         time.Time
 	validUntil        time.Time
 	allowedActivities []string
@@ -776,6 +779,7 @@ func newPermitView(permit domain.Permit) permitView {
 		baseView:          newBaseView(permit.Base),
 		permitNumber:      permit.PermitNumber,
 		authority:         permit.Authority,
+		status:            string(permit.Status),
 		validFrom:         permit.ValidFrom,
 		validUntil:        permit.ValidUntil,
 		allowedActivities: cloneStringSlice(permit.AllowedActivities),
@@ -804,13 +808,24 @@ func (p permitView) Notes() string {
 // Contextual validity accessors
 func (p permitView) GetStatus(reference time.Time) pluginapi.PermitStatusRef {
 	statuses := pluginapi.NewPermitContext().Statuses()
-	switch {
-	case reference.Before(p.validFrom):
-		return statuses.Pending()
-	case !p.validUntil.IsZero() && reference.After(p.validUntil):
+	switch strings.ToLower(p.status) {
+	case "draft":
+		return statuses.Draft()
+	case "submitted":
+		return statuses.Submitted()
+	case "approved":
+		if !p.validUntil.IsZero() && reference.After(p.validUntil) {
+			return statuses.Expired()
+		}
+		return statuses.Approved()
+	case "on_hold":
+		return statuses.OnHold()
+	case "expired":
 		return statuses.Expired()
+	case "archived":
+		return statuses.Archived()
 	default:
-		return statuses.Active()
+		return statuses.Draft()
 	}
 }
 

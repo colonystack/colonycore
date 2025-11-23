@@ -709,6 +709,7 @@ func TestExtendedFacades(t *testing.T) {
 		Base:              BaseData{ID: "permit", CreatedAt: now},
 		PermitNumber:      "PERMIT",
 		Authority:         "Gov",
+		Status:            datasetPermitStatusApproved,
 		ValidFrom:         now.Add(-time.Hour),
 		ValidUntil:        now.Add(time.Hour),
 		AllowedActivities: []string{"activity"},

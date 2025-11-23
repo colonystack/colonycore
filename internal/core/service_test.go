@@ -563,7 +563,7 @@ func TestServiceEmitsChangesForNewEntities(t *testing.T) {
 	permit, res, err := svc.CreatePermit(ctx, domain.Permit{
 		PermitNumber:      "P-1",
 		Authority:         "Gov",
-		Status:            domain.PermitStatusActive,
+		Status:            domain.PermitStatusApproved,
 		ValidFrom:         now.Add(-time.Hour),
 		ValidUntil:        now.Add(time.Hour),
 		AllowedActivities: []string{"collect"},

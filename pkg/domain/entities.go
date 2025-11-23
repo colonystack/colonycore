@@ -62,6 +62,19 @@ const (
 	StageDeceased LifecycleStage = "deceased"
 )
 
+// ProtocolStatus enumerates compliance protocol lifecycle states (RFC-0001 §5.3).
+type ProtocolStatus string
+
+// Canonical protocol statuses aligned to Entity Model v0.
+const (
+	ProtocolStatusDraft     ProtocolStatus = "draft"
+	ProtocolStatusSubmitted ProtocolStatus = "submitted"
+	ProtocolStatusApproved  ProtocolStatus = "approved"
+	ProtocolStatusOnHold    ProtocolStatus = "on_hold"
+	ProtocolStatusExpired   ProtocolStatus = "expired"
+	ProtocolStatusArchived  ProtocolStatus = "archived"
+)
+
 // ProcedureStatus enumerates canonical procedure workflow states (RFC-0001 §5.4).
 type ProcedureStatus string
 
@@ -101,9 +114,12 @@ type PermitStatus string
 
 // Canonical permit statuses describing regulatory validity.
 const (
-	PermitStatusPending PermitStatus = "pending"
-	PermitStatusActive  PermitStatus = "active"
-	PermitStatusExpired PermitStatus = "expired"
+	PermitStatusDraft     PermitStatus = "draft"
+	PermitStatusSubmitted PermitStatus = "submitted"
+	PermitStatusApproved  PermitStatus = "approved"
+	PermitStatusOnHold    PermitStatus = "on_hold"
+	PermitStatusExpired   PermitStatus = "expired"
+	PermitStatusArchived  PermitStatus = "archived"
 )
 
 // Severity captures rule outcomes.
@@ -298,11 +314,11 @@ type SampleCustodyEvent struct {
 // Protocol represents compliance agreements.
 type Protocol struct {
 	Base
-	Code        string  `json:"code"`
-	Title       string  `json:"title"`
-	Description *string `json:"description,omitempty"`
-	MaxSubjects int     `json:"max_subjects"`
-	Status      string  `json:"status"`
+	Code        string         `json:"code"`
+	Title       string         `json:"title"`
+	Description *string        `json:"description,omitempty"`
+	MaxSubjects int            `json:"max_subjects"`
+	Status      ProtocolStatus `json:"status"`
 }
 
 // Permit represents external authorizations needed for compliance.

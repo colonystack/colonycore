@@ -36,17 +36,17 @@ func TestDatasetContextMarkerMethodsAreCallable(t *testing.T) {
 	})
 
 	t.Run("PermitStatusRef", func(t *testing.T) {
-		ref := NewPermitContext().Statuses().Active()
+		ref := NewPermitContext().Statuses().Approved()
 		ref.isPermitStatusRef()
-		if ref.Equals(&permitStatusRef{value: datasetPermitStatusActive}) {
+		if ref.Equals(&permitStatusRef{value: datasetPermitStatusApproved}) {
 			t.Fatal("permit status equality should reject pointer types")
 		}
 	})
 
 	t.Run("ProtocolStatusRef", func(t *testing.T) {
-		ref := NewProtocolContext().Completed()
+		ref := NewProtocolContext().Approved()
 		ref.isProtocolStatusRef()
-		if ref.Equals(&protocolStatusRef{value: "completed"}) {
+		if ref.Equals(&protocolStatusRef{value: "approved"}) {
 			t.Fatal("protocol status equality should reject pointer types")
 		}
 	})

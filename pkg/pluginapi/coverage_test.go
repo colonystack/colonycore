@@ -70,19 +70,19 @@ func TestObservationShapeRefChecker(_ *testing.T) {
 // TestPermitStatusRefChecker tests the isPermitStatusRef function
 func TestPermitStatusRefChecker(_ *testing.T) {
 	ctx := NewPermitContext()
-	active := ctx.Statuses().Active()
+	approved := ctx.Statuses().Approved()
 
 	// Call the function to ensure it's covered
-	active.isPermitStatusRef()
+	approved.isPermitStatusRef()
 }
 
 // TestProtocolStatusRefChecker tests the isProtocolStatusRef function
 func TestProtocolStatusRefChecker(_ *testing.T) {
 	ctx := NewProtocolContext()
-	active := ctx.Active()
+	approved := ctx.Approved()
 
 	// Call the function to ensure it's covered
-	active.isProtocolStatusRef()
+	approved.isProtocolStatusRef()
 }
 
 // TestSampleSourceRefChecker tests the isSampleSourceRef function

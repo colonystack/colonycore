@@ -65,10 +65,10 @@ func TestObservationShapeRefChecker(_ *testing.T) {
 // TestPermitStatusRefChecker tests the isPermitStatusRef function
 func TestPermitStatusRefChecker(_ *testing.T) {
 	ctx := NewPermitContext()
-	active := ctx.Statuses().Active()
+	approved := ctx.Statuses().Approved()
 
 	// Call the function to ensure it's covered
-	active.isPermitStatusRef()
+	approved.isPermitStatusRef()
 }
 
 // TestProcedureStatusRefChecker tests the isProcedureStatusRef function
@@ -83,10 +83,10 @@ func TestProcedureStatusRefChecker(_ *testing.T) {
 // TestProtocolStatusRefChecker tests the isProtocolStatusRef function
 func TestProtocolStatusRefChecker(_ *testing.T) {
 	ctx := NewProtocolContext()
-	active := ctx.Active()
+	approved := ctx.Approved()
 
 	// Call the function to ensure it's covered
-	active.isProtocolStatusRef()
+	approved.isProtocolStatusRef()
 }
 
 // TestSampleSourceRefChecker tests the isSampleSourceRef function
@@ -162,7 +162,7 @@ func TestFacadeMethods(t *testing.T) {
 		SourceType:      "blood",
 		FacilityID:      "facility-1",
 		CollectedAt:     time.Now(),
-		Status:          "collected",
+		Status:          datasetSampleStatusStored,
 		StorageLocation: "freezer-A",
 		AssayType:       "PCR",
 	}

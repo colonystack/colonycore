@@ -74,7 +74,7 @@ func TestStoreDeleteGuards(t *testing.T) {
 		_, err = tx.CreatePermit(domain.Permit{
 			PermitNumber:      "PERM-1",
 			Authority:         "Gov",
-			Status:            domain.PermitStatusActive,
+			Status:            domain.PermitStatusApproved,
 			ValidFrom:         validFrom,
 			ValidUntil:        validUntil,
 			AllowedActivities: []string{"store"},

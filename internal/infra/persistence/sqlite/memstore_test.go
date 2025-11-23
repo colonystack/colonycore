@@ -160,7 +160,7 @@ func TestMigrateSnapshotRelationships(t *testing.T) {
 		},
 		Protocols: protocols,
 		Permits: map[string]domain.Permit{
-			"permit-1": {Base: domain.Base{ID: "permit-1"}, PermitNumber: "P1", Authority: "Gov", Status: domain.PermitStatusActive, ValidFrom: now, ValidUntil: now.AddDate(1, 0, 0), FacilityIDs: []string{"fac-1", "fac-1"}, ProtocolIDs: []string{"prot-1"}},
+			"permit-1": {Base: domain.Base{ID: "permit-1"}, PermitNumber: "P1", Authority: "Gov", Status: domain.PermitStatusApproved, ValidFrom: now, ValidUntil: now.AddDate(1, 0, 0), FacilityIDs: []string{"fac-1", "fac-1"}, ProtocolIDs: []string{"prot-1"}},
 		},
 		Projects: map[string]domain.Project{
 			"proj-1": {Base: domain.Base{ID: "proj-1"}, Code: "P1", Title: "Project", FacilityIDs: []string{"fac-1", "fac-1"}},

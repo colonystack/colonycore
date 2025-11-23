@@ -108,9 +108,9 @@ func TestContextMarkerMethodsAreCallable(t *testing.T) {
 	})
 
 	t.Run("PermitStatusRef", func(t *testing.T) {
-		ref := NewPermitContext().Statuses().Pending()
+		ref := NewPermitContext().Statuses().Approved()
 		ref.isPermitStatusRef()
-		if ref.Equals(&permitStatusRef{value: permitStatusPending}) {
+		if ref.Equals(&permitStatusRef{value: permitStatusApproved}) {
 			t.Fatal("permit status equality should reject pointer types")
 		}
 	})

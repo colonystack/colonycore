@@ -1,15 +1,25 @@
 package datasetapi
 
+const (
+	datasetProtocolStatusDraft     = "draft"
+	datasetProtocolStatusSubmitted = "submitted"
+	datasetProtocolStatusApproved  = "approved"
+	datasetProtocolStatusOnHold    = "on_hold"
+	datasetProtocolStatusExpired   = "expired"
+	datasetProtocolStatusArchived  = "archived"
+)
+
 // ProtocolContext provides contextual access to protocol-related constants
 // without exposing raw constants. This promotes hexagonal architecture
 // by decoupling plugins from internal constant definitions.
 type ProtocolContext interface {
 	// StatusTypes returns contextual references to protocol status types
 	Draft() ProtocolStatusRef
-	Active() ProtocolStatusRef
-	Suspended() ProtocolStatusRef
-	Completed() ProtocolStatusRef
-	Cancelled() ProtocolStatusRef
+	Submitted() ProtocolStatusRef
+	Approved() ProtocolStatusRef
+	OnHold() ProtocolStatusRef
+	Expired() ProtocolStatusRef
+	Archived() ProtocolStatusRef
 }
 
 // ProtocolStatusRef represents an opaque reference to a protocol status.
@@ -41,11 +51,11 @@ func (p protocolStatusRef) String() string {
 }
 
 func (p protocolStatusRef) IsActive() bool {
-	return p.value == "active"
+	return p.value == datasetProtocolStatusApproved
 }
 
 func (p protocolStatusRef) IsTerminal() bool {
-	return p.value == "completed" || p.value == "cancelled"
+	return p.value == datasetProtocolStatusExpired || p.value == datasetProtocolStatusArchived
 }
 
 func (p protocolStatusRef) Equals(other ProtocolStatusRef) bool {
@@ -62,27 +72,32 @@ type DefaultProtocolContext struct{}
 
 // Draft returns the draft protocol status reference.
 func (DefaultProtocolContext) Draft() ProtocolStatusRef {
-	return protocolStatusRef{value: "draft"}
+	return protocolStatusRef{value: datasetProtocolStatusDraft}
 }
 
-// Active returns the active protocol status reference.
-func (DefaultProtocolContext) Active() ProtocolStatusRef {
-	return protocolStatusRef{value: "active"}
+// Submitted returns the submitted protocol status reference.
+func (DefaultProtocolContext) Submitted() ProtocolStatusRef {
+	return protocolStatusRef{value: datasetProtocolStatusSubmitted}
 }
 
-// Suspended returns the suspended protocol status reference.
-func (DefaultProtocolContext) Suspended() ProtocolStatusRef {
-	return protocolStatusRef{value: "suspended"}
+// Approved returns the approved protocol status reference.
+func (DefaultProtocolContext) Approved() ProtocolStatusRef {
+	return protocolStatusRef{value: datasetProtocolStatusApproved}
 }
 
-// Completed returns the completed protocol status reference.
-func (DefaultProtocolContext) Completed() ProtocolStatusRef {
-	return protocolStatusRef{value: "completed"}
+// OnHold returns the on_hold protocol status reference.
+func (DefaultProtocolContext) OnHold() ProtocolStatusRef {
+	return protocolStatusRef{value: datasetProtocolStatusOnHold}
 }
 
-// Cancelled returns the cancelled protocol status reference.
-func (DefaultProtocolContext) Cancelled() ProtocolStatusRef {
-	return protocolStatusRef{value: "cancelled"}
+// Expired returns the expired protocol status reference.
+func (DefaultProtocolContext) Expired() ProtocolStatusRef {
+	return protocolStatusRef{value: datasetProtocolStatusExpired}
+}
+
+// Archived returns the archived protocol status reference.
+func (DefaultProtocolContext) Archived() ProtocolStatusRef {
+	return protocolStatusRef{value: datasetProtocolStatusArchived}
 }
 
 // NewProtocolContext creates a new protocol context instance.

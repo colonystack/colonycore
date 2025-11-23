@@ -7,7 +7,7 @@ import (
 
 const (
 	testStatusDraft     = "draft"
-	testStatusActive    = "active"
+	testStatusApproved  = "approved"
 	testStatusCompleted = "completed"
 	testStatusScheduled = "scheduled"
 	testProtocolID      = "protocol1"
@@ -201,7 +201,7 @@ func TestProtocolContextualAccessors(t *testing.T) {
 		// Set status through internal field manipulation for testing
 		// In real usage, status would be set through service operations
 		p := activeProtocol.(protocol)
-		p.status = testStatusActive
+		p.status = testStatusApproved
 		activeProtocol = p
 
 		if !activeProtocol.IsActiveProtocol() {
@@ -216,11 +216,11 @@ func TestProtocolContextualAccessors(t *testing.T) {
 		})
 		// Set status through internal field manipulation for testing
 		p := completedProtocol.(protocol)
-		p.status = testStatusCompleted
+		p.status = datasetProtocolStatusExpired
 		completedProtocol = p
 
 		if !completedProtocol.IsTerminalStatus() {
-			t.Error("Completed protocol should return true for IsTerminalStatus")
+			t.Error("Expired protocol should return true for IsTerminalStatus")
 		}
 	})
 
@@ -232,11 +232,11 @@ func TestProtocolContextualAccessors(t *testing.T) {
 		})
 		// Set as active status
 		p := availableProtocol.(protocol)
-		p.status = testStatusActive
+		p.status = testStatusApproved
 		availableProtocol = p
 
 		if !availableProtocol.CanAcceptNewSubjects() {
-			t.Error("Active protocol with capacity should accept new subjects")
+			t.Error("Approved protocol with capacity should accept new subjects")
 		}
 
 		// Test completed protocol

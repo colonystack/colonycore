@@ -201,7 +201,7 @@ func validateContextualPatternConsistency(t *testing.T, baseDir string) {
 	expectedContexts := map[string][]string{
 		"LifecycleStageContext": {"Planned", "Larva", "Juvenile", "Adult", "Retired", "Deceased"},
 		"HousingContext":        {"Aquatic", "Terrestrial", "Arboreal", "Humid"},
-		"ProtocolContext":       {"Draft", "Active", "Suspended", "Completed", "Cancelled"},
+		"ProtocolContext":       {"Draft", "Submitted", "Approved", "OnHold", "Expired", "Archived"},
 		"ProcedureContext":      {"Scheduled", "InProgress", "Completed", "Cancelled", "Failed"},
 		"EntityContext":         {"Organism", "Housing", "Protocol"},
 		"SeverityContext":       {"Log", "Warn", "Block"},

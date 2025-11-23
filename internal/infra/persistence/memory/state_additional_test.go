@@ -136,7 +136,7 @@ func TestImportStateAppliesRelationshipMigrations(t *testing.T) {
 		},
 		Protocols: protocols,
 		Permits: map[string]domain.Permit{
-			"permit-1": {Base: domain.Base{ID: "permit-1"}, PermitNumber: "P1", Authority: "Gov", Status: domain.PermitStatusActive, ValidFrom: now, ValidUntil: now.AddDate(1, 0, 0), FacilityIDs: []string{facilityKey, "missing", facilityKey}, ProtocolIDs: []string{"prot-1", "missing"}},
+			"permit-1": {Base: domain.Base{ID: "permit-1"}, PermitNumber: "P1", Authority: "Gov", Status: domain.PermitStatusApproved, ValidFrom: now, ValidUntil: now.AddDate(1, 0, 0), FacilityIDs: []string{facilityKey, "missing", facilityKey}, ProtocolIDs: []string{"prot-1", "missing"}},
 		},
 		Projects: map[string]domain.Project{
 			"proj-1": {Base: domain.Base{ID: "proj-1"}, Code: "P1", Title: "Project", FacilityIDs: []string{facilityKey, facilityKey, "missing"}},
@@ -234,7 +234,7 @@ func TestMigrateSnapshotCleansDataVariants(t *testing.T) {
 			"prot-keep": {Base: domain.Base{ID: "prot-keep"}, Code: "PR", Title: "Protocol", MaxSubjects: 5, Status: "active"},
 		},
 		Permits: map[string]domain.Permit{
-			"permit-valid": {Base: domain.Base{ID: "permit-valid"}, PermitNumber: "P", Authority: "Gov", Status: domain.PermitStatusActive, ValidFrom: now, ValidUntil: now.Add(time.Hour), FacilityIDs: []string{facilityID, facilityID, "missing"}, ProtocolIDs: []string{"prot-keep", "missing"}},
+			"permit-valid": {Base: domain.Base{ID: "permit-valid"}, PermitNumber: "P", Authority: "Gov", Status: domain.PermitStatusApproved, ValidFrom: now, ValidUntil: now.Add(time.Hour), FacilityIDs: []string{facilityID, facilityID, "missing"}, ProtocolIDs: []string{"prot-keep", "missing"}},
 		},
 		Projects: map[string]domain.Project{
 			"project-valid": {Base: domain.Base{ID: "project-valid"}, Code: "PRJ", Title: "Project", FacilityIDs: []string{facilityID, facilityID, "missing"}},

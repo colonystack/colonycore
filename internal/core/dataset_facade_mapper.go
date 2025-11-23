@@ -77,7 +77,7 @@ func facadeProtocolFromDomain(protocol domain.Protocol) datasetapi.Protocol {
 		Title:       protocol.Title,
 		Description: protocol.Description,
 		MaxSubjects: protocol.MaxSubjects,
-		Status:      protocol.Status,
+		Status:      string(protocol.Status),
 	})
 }
 
@@ -320,6 +320,7 @@ func facadePermitFromDomain(permit domain.Permit) datasetapi.Permit {
 		Base:              baseDataFromDomain(permit.Base),
 		PermitNumber:      permit.PermitNumber,
 		Authority:         permit.Authority,
+		Status:            string(permit.Status),
 		ValidFrom:         permit.ValidFrom,
 		ValidUntil:        permit.ValidUntil,
 		AllowedActivities: permit.AllowedActivities,

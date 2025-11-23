@@ -84,29 +84,34 @@ func TestProtocolContext(t *testing.T) {
 
 		// Test all status type methods exist and return proper types
 		draft := ctx.Draft()
-		active := ctx.Active()
-		suspended := ctx.Suspended()
-		completed := ctx.Completed()
-		cancelled := ctx.Cancelled()
+		submitted := ctx.Submitted()
+		approved := ctx.Approved()
+		onHold := ctx.OnHold()
+		expired := ctx.Expired()
+		archived := ctx.Archived()
 
 		if draft.String() != "draft" {
 			t.Errorf("Expected draft status, got %s", draft.String())
 		}
 
-		if active.String() != "active" {
-			t.Errorf("Expected active status, got %s", active.String())
+		if submitted.String() != "submitted" {
+			t.Errorf("Expected submitted status, got %s", submitted.String())
 		}
 
-		if suspended.String() != "suspended" {
-			t.Errorf("Expected suspended status, got %s", suspended.String())
+		if approved.String() != "approved" {
+			t.Errorf("Expected approved status, got %s", approved.String())
 		}
 
-		if completed.String() != "completed" {
-			t.Errorf("Expected completed status, got %s", completed.String())
+		if onHold.String() != "on_hold" {
+			t.Errorf("Expected on_hold status, got %s", onHold.String())
 		}
 
-		if cancelled.String() != "cancelled" {
-			t.Errorf("Expected cancelled status, got %s", cancelled.String())
+		if expired.String() != "expired" {
+			t.Errorf("Expected expired status, got %s", expired.String())
+		}
+
+		if archived.String() != "archived" {
+			t.Errorf("Expected archived status, got %s", archived.String())
 		}
 	})
 
@@ -114,21 +119,21 @@ func TestProtocolContext(t *testing.T) {
 		ctx := NewProtocolContext()
 
 		draft := ctx.Draft()
-		active := ctx.Active()
-		completed := ctx.Completed()
-		cancelled := ctx.Cancelled()
+		approved := ctx.Approved()
+		expired := ctx.Expired()
+		archived := ctx.Archived()
 
 		// Test IsActive behavior
 		if draft.IsActive() {
 			t.Error("Draft status should return false for IsActive()")
 		}
 
-		if !active.IsActive() {
-			t.Error("Active status should return true for IsActive()")
+		if !approved.IsActive() {
+			t.Error("Approved status should return true for IsActive()")
 		}
 
-		if completed.IsActive() {
-			t.Error("Completed status should return false for IsActive()")
+		if expired.IsActive() {
+			t.Error("Expired status should return false for IsActive()")
 		}
 
 		// Test IsTerminal behavior
@@ -136,32 +141,91 @@ func TestProtocolContext(t *testing.T) {
 			t.Error("Draft status should return false for IsTerminal()")
 		}
 
-		if active.IsTerminal() {
-			t.Error("Active status should return false for IsTerminal()")
+		if approved.IsTerminal() {
+			t.Error("Approved status should return false for IsTerminal()")
 		}
 
-		if !completed.IsTerminal() {
-			t.Error("Completed status should return true for IsTerminal()")
+		if !expired.IsTerminal() {
+			t.Error("Expired status should return true for IsTerminal()")
 		}
 
-		if !cancelled.IsTerminal() {
-			t.Error("Cancelled status should return true for IsTerminal()")
+		if !archived.IsTerminal() {
+			t.Error("Archived status should return true for IsTerminal()")
 		}
 	})
 
 	t.Run("protocol status equality works", func(t *testing.T) {
 		ctx := NewProtocolContext()
 
-		active1 := ctx.Active()
-		active2 := ctx.Active()
+		approved1 := ctx.Approved()
+		approved2 := ctx.Approved()
 		draft := ctx.Draft()
 
-		if !active1.Equals(active2) {
-			t.Error("Two active references should be equal")
+		if !approved1.Equals(approved2) {
+			t.Error("Two approved references should be equal")
 		}
 
-		if active1.Equals(draft) {
-			t.Error("Active and draft references should not be equal")
+		if approved1.Equals(draft) {
+			t.Error("Approved and draft references should not be equal")
+		}
+	})
+}
+
+func TestPermitContext(t *testing.T) {
+	t.Run("permit context provides all status types", func(t *testing.T) {
+		statuses := NewPermitContext().Statuses()
+
+		draft := statuses.Draft()
+		submitted := statuses.Submitted()
+		approved := statuses.Approved()
+		onHold := statuses.OnHold()
+		expired := statuses.Expired()
+		archived := statuses.Archived()
+
+		if draft.String() != "draft" {
+			t.Errorf("Expected draft status, got %s", draft.String())
+		}
+		if submitted.String() != "submitted" {
+			t.Errorf("Expected submitted status, got %s", submitted.String())
+		}
+		if approved.String() != "approved" {
+			t.Errorf("Expected approved status, got %s", approved.String())
+		}
+		if onHold.String() != "on_hold" {
+			t.Errorf("Expected on_hold status, got %s", onHold.String())
+		}
+		if expired.String() != "expired" {
+			t.Errorf("Expected expired status, got %s", expired.String())
+		}
+		if archived.String() != "archived" {
+			t.Errorf("Expected archived status, got %s", archived.String())
+		}
+	})
+
+	t.Run("permit status contextual methods work correctly", func(t *testing.T) {
+		statuses := NewPermitContext().Statuses()
+
+		approved := statuses.Approved()
+		expired := statuses.Expired()
+		archived := statuses.Archived()
+
+		if !approved.IsActive() {
+			t.Error("Approved status should be active")
+		}
+		if approved.IsExpired() || approved.IsArchived() {
+			t.Error("Approved status should not be expired or archived")
+		}
+		if !expired.IsExpired() {
+			t.Error("Expired status should be expired")
+		}
+		if expired.IsActive() {
+			t.Error("Expired status should not be active")
+		}
+		if !archived.IsArchived() {
+			t.Error("Archived status should be archived")
+		}
+		if archived.IsActive() {
+			t.Error("Archived status should not be active")
 		}
 	})
 }
@@ -189,21 +253,21 @@ func TestPluginAPIContextUtilityMethods(t *testing.T) {
 
 	t.Run("ProtocolStatusRef utility methods", func(t *testing.T) {
 		ctx := NewProtocolContext()
-		active1 := ctx.Active()
-		active2 := ctx.Active()
-		completed := ctx.Completed()
+		approved1 := ctx.Approved()
+		approved2 := ctx.Approved()
+		expired := ctx.Expired()
 
 		// Test Equals method
-		if !active1.Equals(active2) {
-			t.Error("Two active status refs should be equal")
+		if !approved1.Equals(approved2) {
+			t.Error("Two approved status refs should be equal")
 		}
 
-		if active1.Equals(completed) {
-			t.Error("Active and completed status refs should not be equal")
+		if approved1.Equals(expired) {
+			t.Error("Approved and expired status refs should not be equal")
 		}
 
 		// Test marker method exists (type safety)
-		var _ = active1
+		var _ = approved1
 	})
 
 	t.Run("ActionRef utility methods", func(t *testing.T) {

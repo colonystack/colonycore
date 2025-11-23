@@ -481,7 +481,7 @@ func TestNewViewAccessors(t *testing.T) {
 		Base:              domain.Base{ID: "permit", CreatedAt: now},
 		PermitNumber:      "PERMIT",
 		Authority:         "Gov",
-		Status:            domain.PermitStatusActive,
+		Status:            domain.PermitStatusApproved,
 		ValidFrom:         now.Add(-time.Hour),
 		ValidUntil:        now.Add(time.Hour),
 		AllowedActivities: []string{"activity"},
@@ -785,33 +785,33 @@ func TestProtocolViewContextualAccessors(t *testing.T) {
 		Title:       "Test Protocol",
 		Description: strPtr("Test description"),
 		MaxSubjects: 10,
-		Status:      "active",
+		Status:      domain.ProtocolStatusApproved,
 	}
 
 	protocolView := newProtocolView(*domainProtocol)
 
 	t.Run("GetCurrentStatus returns contextual status reference", func(t *testing.T) {
 		statusRef := protocolView.GetCurrentStatus()
-		if statusRef.String() != "active" {
-			t.Errorf("Expected status 'active', got '%s'", statusRef.String())
+		if statusRef.String() != string(domain.ProtocolStatusApproved) {
+			t.Errorf("Expected status '%s', got '%s'", domain.ProtocolStatusApproved, statusRef.String())
 		}
 	})
 
 	t.Run("IsActiveProtocol returns correct active state", func(t *testing.T) {
 		if !protocolView.IsActiveProtocol() {
-			t.Error("Active protocol should return true for IsActiveProtocol")
+			t.Error("Approved protocol should return true for IsActiveProtocol")
 		}
 	})
 
 	t.Run("IsTerminalStatus returns correct terminal state", func(t *testing.T) {
 		if protocolView.IsTerminalStatus() {
-			t.Error("Active protocol should return false for IsTerminalStatus")
+			t.Error("Approved protocol should return false for IsTerminalStatus")
 		}
 	})
 
 	t.Run("CanAcceptNewSubjects returns correct capacity state", func(t *testing.T) {
 		if !protocolView.CanAcceptNewSubjects() {
-			t.Error("Active protocol with capacity should accept new subjects")
+			t.Error("Approved protocol with capacity should accept new subjects")
 		}
 	})
 }

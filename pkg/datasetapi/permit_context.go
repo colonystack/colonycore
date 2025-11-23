@@ -1,9 +1,12 @@
 package datasetapi
 
 const (
-	datasetPermitStatusPending = "pending"
-	datasetPermitStatusActive  = "active"
-	datasetPermitStatusExpired = "expired"
+	datasetPermitStatusDraft     = "draft"
+	datasetPermitStatusSubmitted = "submitted"
+	datasetPermitStatusApproved  = "approved"
+	datasetPermitStatusOnHold    = "on_hold"
+	datasetPermitStatusExpired   = "expired"
+	datasetPermitStatusArchived  = "archived"
 )
 
 // PermitContext provides contextual access to permit validity statuses.
@@ -13,9 +16,12 @@ type PermitContext interface {
 
 // PermitStatusProvider exposes canonical permit validity references.
 type PermitStatusProvider interface {
-	Pending() PermitStatusRef
-	Active() PermitStatusRef
+	Draft() PermitStatusRef
+	Submitted() PermitStatusRef
+	Approved() PermitStatusRef
+	OnHold() PermitStatusRef
 	Expired() PermitStatusRef
+	Archived() PermitStatusRef
 }
 
 // PermitStatusRef represents an opaque permit status reference.
@@ -23,6 +29,7 @@ type PermitStatusRef interface {
 	String() string
 	IsActive() bool
 	IsExpired() bool
+	IsArchived() bool
 	Equals(other PermitStatusRef) bool
 	isPermitStatusRef()
 }
@@ -40,16 +47,28 @@ func (permitContext) Statuses() PermitStatusProvider {
 
 type permitStatusProvider struct{}
 
-func (permitStatusProvider) Pending() PermitStatusRef {
-	return permitStatusRef{value: datasetPermitStatusPending}
+func (permitStatusProvider) Draft() PermitStatusRef {
+	return permitStatusRef{value: datasetPermitStatusDraft}
 }
 
-func (permitStatusProvider) Active() PermitStatusRef {
-	return permitStatusRef{value: datasetPermitStatusActive}
+func (permitStatusProvider) Submitted() PermitStatusRef {
+	return permitStatusRef{value: datasetPermitStatusSubmitted}
+}
+
+func (permitStatusProvider) Approved() PermitStatusRef {
+	return permitStatusRef{value: datasetPermitStatusApproved}
+}
+
+func (permitStatusProvider) OnHold() PermitStatusRef {
+	return permitStatusRef{value: datasetPermitStatusOnHold}
 }
 
 func (permitStatusProvider) Expired() PermitStatusRef {
 	return permitStatusRef{value: datasetPermitStatusExpired}
+}
+
+func (permitStatusProvider) Archived() PermitStatusRef {
+	return permitStatusRef{value: datasetPermitStatusArchived}
 }
 
 type permitStatusRef struct {
@@ -61,11 +80,15 @@ func (p permitStatusRef) String() string {
 }
 
 func (p permitStatusRef) IsActive() bool {
-	return p.value == datasetPermitStatusActive
+	return p.value == datasetPermitStatusApproved
 }
 
 func (p permitStatusRef) IsExpired() bool {
 	return p.value == datasetPermitStatusExpired
+}
+
+func (p permitStatusRef) IsArchived() bool {
+	return p.value == datasetPermitStatusArchived
 }
 
 func (p permitStatusRef) Equals(other PermitStatusRef) bool {

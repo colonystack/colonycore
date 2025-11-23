@@ -100,7 +100,7 @@ func TestIntegrationEntityRelationships(t *testing.T) {
 				Title:       "Protocol 1",
 				Description: strPtr("baseline protocol"),
 				MaxSubjects: 10,
-				Status:      "active",
+				Status:      domain.ProtocolStatusApproved,
 			})
 			if err != nil {
 				t.Fatalf("create protocol: %v", err)
@@ -228,7 +228,7 @@ func TestIntegrationEntityRelationships(t *testing.T) {
 			if _, _, err := svc.CreatePermit(ctx, domain.Permit{
 				PermitNumber: "PERM-ERR",
 				Authority:    "Gov",
-				Status:       domain.PermitStatusPending,
+				Status:       domain.PermitStatusSubmitted,
 				ValidFrom:    now,
 				ValidUntil:   now.AddDate(1, 0, 0),
 				FacilityIDs:  []string{facility.ID},
@@ -240,7 +240,7 @@ func TestIntegrationEntityRelationships(t *testing.T) {
 			permit, res, err := svc.CreatePermit(ctx, domain.Permit{
 				PermitNumber:      "PERM-1",
 				Authority:         "Gov",
-				Status:            domain.PermitStatusActive,
+				Status:            domain.PermitStatusApproved,
 				ValidFrom:         now,
 				ValidUntil:        now.AddDate(1, 0, 0),
 				AllowedActivities: []string{"activity"},

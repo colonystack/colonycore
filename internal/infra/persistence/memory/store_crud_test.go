@@ -731,7 +731,7 @@ func TestDeleteFacilityEnforcesReferences(t *testing.T) {
 			permit, err = tx.CreatePermit(domain.Permit{
 				PermitNumber:      "PERM",
 				Authority:         "Gov",
-				Status:            domain.PermitStatusActive,
+				Status:            domain.PermitStatusApproved,
 				ValidFrom:         now,
 				ValidUntil:        now.Add(time.Hour),
 				AllowedActivities: []string{"collect"},
@@ -880,7 +880,7 @@ func TestRelationshipValidations(t *testing.T) {
 			PermitNumber: "PERM-FAIL2",
 			FacilityIDs:  []string{facility.ID},
 			ProtocolIDs:  []string{"missing"},
-			Status:       domain.PermitStatusPending,
+			Status:       domain.PermitStatusSubmitted,
 			ValidFrom:    now,
 			ValidUntil:   now.Add(time.Hour),
 		}); err == nil {
@@ -889,7 +889,7 @@ func TestRelationshipValidations(t *testing.T) {
 		if _, err := tx.CreatePermit(domain.Permit{
 			PermitNumber:      "PERM-OK",
 			Authority:         "Gov",
-			Status:            domain.PermitStatusPending,
+			Status:            domain.PermitStatusSubmitted,
 			ValidFrom:         now,
 			ValidUntil:        now.Add(time.Hour),
 			AllowedActivities: []string{"collect"},

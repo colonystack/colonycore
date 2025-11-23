@@ -47,7 +47,7 @@ func TestDatasetPersistentStoreAdapter(t *testing.T) {
 	treatment := domain.Treatment{Base: domain.Base{ID: "treatment"}, Name: "Treatment", Status: domain.TreatmentStatusInProgress, ProcedureID: procedure.ID, OrganismIDs: []string{organismID}, AdministrationLog: []string{"dose1"}}
 	observation := domain.Observation{Base: domain.Base{ID: "observation"}, RecordedAt: now, Observer: "tech"}
 	sample := domain.Sample{Base: domain.Base{ID: "sample"}, Identifier: "S1", SourceType: "organism", FacilityID: facility.ID, CollectedAt: now, Status: domain.SampleStatusStored}
-	permit := domain.Permit{Base: domain.Base{ID: "permit"}, PermitNumber: "PERMIT", Authority: "Gov", Status: domain.PermitStatusActive, ValidFrom: now.Add(-24 * time.Hour), ValidUntil: now.Add(24 * time.Hour)}
+	permit := domain.Permit{Base: domain.Base{ID: "permit"}, PermitNumber: "PERMIT", Authority: "Gov", Status: domain.PermitStatusApproved, ValidFrom: now.Add(-24 * time.Hour), ValidUntil: now.Add(24 * time.Hour)}
 	supply := domain.SupplyItem{Base: domain.Base{ID: "supply"}, SKU: "SKU", Name: "Item", QuantityOnHand: 5, ReorderLevel: 1}
 
 	fake := &fakePersistentStore{
