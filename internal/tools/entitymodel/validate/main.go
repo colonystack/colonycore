@@ -141,6 +141,9 @@ func validate(path string) error {
 
 	allowedInvariants := map[string]struct{}{
 		"housing_capacity":     {},
+		"lineage_integrity":    {},
+		"lifecycle_transition": {},
+		"protocol_coverage":    {},
 		"protocol_subject_cap": {},
 	}
 

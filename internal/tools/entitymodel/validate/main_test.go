@@ -277,6 +277,42 @@ func TestValidateStatesAndDuplicates(t *testing.T) {
 	}
 }
 
+func TestValidateAllowedInvariants(t *testing.T) {
+	path := writeTemp(t, `{
+  "version": "0.0.9",
+  "id_semantics": { "type": "uuidv7", "scope": "global", "required": true, "description": "opaque" },
+  "metadata": { "status": "seed" },
+  "enums": {
+    "status": { "values": ["ok"] }
+  },
+  "entities": {
+    "Foo": {
+      "natural_keys": [],
+      "required": ["id", "created_at", "updated_at"],
+      "properties": {
+        "id": {"type":"string"},
+        "created_at": {"type":"string"},
+        "updated_at": {"type":"string"},
+        "status": {"type":"string"}
+      },
+      "states": {"enum": "status", "initial": "ok", "terminal": ["ok"]},
+      "relationships": {},
+      "invariants": [
+        "housing_capacity",
+        "lineage_integrity",
+        "lifecycle_transition",
+        "protocol_coverage",
+        "protocol_subject_cap"
+      ]
+    }
+  }
+}`)
+
+	if err := validate(path); err != nil {
+		t.Fatalf("validate() unexpected error for allowed invariants: %v", err)
+	}
+}
+
 func TestValidateRelationshipCardinality(t *testing.T) {
 	path := writeTemp(t, `{
   "version": "0.0.4",

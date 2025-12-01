@@ -235,7 +235,9 @@
       },
       "invariants": [
         "housing_capacity",
-        "protocol_subject_cap"
+        "protocol_subject_cap",
+        "lineage_integrity",
+        "lifecycle_transition"
       ]
     },
     "Cohort": {
@@ -367,7 +369,8 @@
         }
       },
       "invariants": [
-        "housing_capacity"
+        "housing_capacity",
+        "lifecycle_transition"
       ]
     },
     "Facility": {
@@ -566,7 +569,9 @@
           "cardinality": "0..n"
         }
       },
-      "invariants": []
+      "invariants": [
+        "lineage_integrity"
+      ]
     },
     "Line": {
       "description": "Genetic lineage definition.",
@@ -889,7 +894,10 @@
           "cardinality": "0..n"
         }
       },
-      "invariants": []
+      "invariants": [
+        "protocol_coverage",
+        "lifecycle_transition"
+      ]
     },
     "Treatment": {
       "description": "Therapeutic intervention bound to procedure subjects.",
@@ -985,7 +993,10 @@
           "cardinality": "0..n"
         }
       },
-      "invariants": []
+      "invariants": [
+        "protocol_coverage",
+        "lifecycle_transition"
+      ]
     },
     "Observation": {
       "description": "Observation or measurement captured during workflows.",
@@ -1064,6 +1075,7 @@
       "natural_keys": [
         {
           "fields": [
+            "facility_id",
             "identifier"
           ],
           "scope": "facility"
@@ -1159,7 +1171,9 @@
           "cardinality": "1..1"
         }
       },
-      "invariants": []
+      "invariants": [
+        "lifecycle_transition"
+      ]
     },
     "Protocol": {
       "description": "Compliance protocol with subject cap and status.",
@@ -1219,7 +1233,8 @@
       },
       "relationships": {},
       "invariants": [
-        "protocol_subject_cap"
+        "protocol_subject_cap",
+        "lifecycle_transition"
       ]
     },
     "Permit": {
@@ -1227,6 +1242,7 @@
       "natural_keys": [
         {
           "fields": [
+            "authority",
             "permit_number"
           ],
           "scope": "authority"
@@ -1315,7 +1331,9 @@
           "cardinality": "0..n"
         }
       },
-      "invariants": []
+      "invariants": [
+        "lifecycle_transition"
+      ]
     },
     "Project": {
       "description": "Project with facility and protocol affiliations.",
