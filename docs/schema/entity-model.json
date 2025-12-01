@@ -114,7 +114,6 @@
   "entities": {
     "Organism": {
       "description": "Individual organism with lifecycle and housing context.",
-      "natural_keys": [],
       "required": [
         "id",
         "created_at",
