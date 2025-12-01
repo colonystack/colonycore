@@ -124,6 +124,16 @@
         "line",
         "stage"
       ],
+      "natural_keys": [
+        {
+          "fields": [
+            "species",
+            "line",
+            "name"
+          ],
+          "scope": "species"
+        }
+      ],
       "states": {
         "enum": "lifecycle_stage",
         "initial": "planned",
@@ -231,7 +241,15 @@
     },
     "Cohort": {
       "description": "Managed group of organisms bound to housing and project context.",
-      "natural_keys": [],
+      "natural_keys": [
+        {
+          "fields": [
+            "project_id",
+            "name"
+          ],
+          "scope": "project"
+        }
+      ],
       "required": [
         "id",
         "created_at",
@@ -288,7 +306,15 @@
     },
     "HousingUnit": {
       "description": "Physical housing with capacity and environmental baseline.",
-      "natural_keys": [],
+      "natural_keys": [
+        {
+          "fields": [
+            "facility_id",
+            "name"
+          ],
+          "scope": "facility"
+        }
+      ],
       "required": [
         "id",
         "created_at",
@@ -424,7 +450,15 @@
     },
     "BreedingUnit": {
       "description": "Configured breeding group with lineage targets.",
-      "natural_keys": [],
+      "natural_keys": [
+        {
+          "fields": [
+            "name",
+            "line_id"
+          ],
+          "scope": "line"
+        }
+      ],
       "required": [
         "id",
         "created_at",
@@ -748,7 +782,16 @@
     },
     "Procedure": {
       "description": "Scheduled or executed procedure with protocol coverage.",
-      "natural_keys": [],
+      "natural_keys": [
+        {
+          "fields": [
+            "protocol_id",
+            "name",
+            "scheduled_at"
+          ],
+          "scope": "protocol"
+        }
+      ],
       "required": [
         "id",
         "created_at",
@@ -851,7 +894,15 @@
     },
     "Treatment": {
       "description": "Therapeutic intervention bound to procedure subjects.",
-      "natural_keys": [],
+      "natural_keys": [
+        {
+          "fields": [
+            "procedure_id",
+            "name"
+          ],
+          "scope": "procedure"
+        }
+      ],
       "required": [
         "id",
         "created_at",
@@ -939,7 +990,16 @@
     },
     "Observation": {
       "description": "Observation or measurement captured during workflows.",
-      "natural_keys": [],
+      "natural_keys": [
+        {
+          "fields": [
+            "procedure_id",
+            "recorded_at",
+            "observer"
+          ],
+          "scope": "procedure"
+        }
+      ],
       "required": [
         "id",
         "created_at",
