@@ -96,7 +96,7 @@ func TestDatasetPersistentStoreAdapter(t *testing.T) {
 		t.Fatalf("expected missing housing to fail")
 	}
 	housingUnits := adapter.ListHousingUnits()
-	if len(housingUnits) != 1 || housingUnits[0].Environment() != unit.Environment {
+	if len(housingUnits) != 1 || housingUnits[0].Environment() != string(unit.Environment) {
 		t.Fatalf("expected converted housing slice")
 	}
 

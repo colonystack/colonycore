@@ -122,6 +122,28 @@ const (
 	PermitStatusArchived  PermitStatus = "archived"
 )
 
+// HousingState enumerates lifecycle states for housing units (RFC-0001 §5.2).
+type HousingState string
+
+// Canonical housing lifecycle states aligned to Entity Model v0.
+const (
+	HousingStateQuarantine     HousingState = "quarantine"
+	HousingStateActive         HousingState = "active"
+	HousingStateCleaning       HousingState = "cleaning"
+	HousingStateDecommissioned HousingState = "decommissioned"
+)
+
+// HousingEnvironment enumerates canonical housing environments.
+type HousingEnvironment string
+
+// Canonical housing environments aligned to Entity Model v0.
+const (
+	HousingEnvironmentAquatic     HousingEnvironment = "aquatic"
+	HousingEnvironmentTerrestrial HousingEnvironment = "terrestrial"
+	HousingEnvironmentArboreal    HousingEnvironment = "arboreal"
+	HousingEnvironmentHumid       HousingEnvironment = "humid"
+)
+
 // Severity captures rule outcomes.
 type Severity string
 
@@ -171,10 +193,11 @@ type Cohort struct {
 // HousingUnit captures physical housing metadata.
 type HousingUnit struct {
 	Base
-	Name        string `json:"name"`
-	FacilityID  string `json:"facility_id"`
-	Capacity    int    `json:"capacity"`
-	Environment string `json:"environment"`
+	Name        string             `json:"name"`
+	FacilityID  string             `json:"facility_id"`
+	Capacity    int                `json:"capacity"`
+	State       HousingState       `json:"state"`
+	Environment HousingEnvironment `json:"environment"`
 }
 
 // Facility aggregates housing units with shared biosecurity controls.

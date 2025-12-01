@@ -644,13 +644,13 @@ func TestHousingAndProtocolViews(t *testing.T) {
 		Name:        "Tank",
 		FacilityID:  "North",
 		Capacity:    12,
-		Environment: "humid",
+		Environment: domain.HousingEnvironmentHumid,
 	}
 	unitView := newHousingUnitView(domainUnit)
 	if unitView.ID() != domainUnit.ID || unitView.Name() != domainUnit.Name {
 		t.Fatalf("unexpected housing view %+v", unitView)
 	}
-	if got := unitView.Environment(); got != domainUnit.Environment {
+	if got := unitView.Environment(); got != string(domainUnit.Environment) {
 		t.Fatalf("unexpected housing environment: %s", got)
 	}
 	if unitView.FacilityID() != domainUnit.FacilityID || unitView.Capacity() != domainUnit.Capacity {

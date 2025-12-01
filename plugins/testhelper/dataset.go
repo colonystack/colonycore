@@ -139,7 +139,7 @@ func HousingUnit(cfg HousingUnitFixtureConfig) datasetapi.HousingUnit {
 		Name:        cfg.Name,
 		FacilityID:  cfg.FacilityID,
 		Capacity:    cfg.Capacity,
-		Environment: cfg.Environment,
+		Environment: domain.HousingEnvironment(cfg.Environment),
 	}
 
 	return datasetapi.NewHousingUnit(datasetapi.HousingUnitData{
@@ -147,7 +147,7 @@ func HousingUnit(cfg HousingUnitFixtureConfig) datasetapi.HousingUnit {
 		Name:        domainUnit.Name,
 		FacilityID:  domainUnit.FacilityID,
 		Capacity:    domainUnit.Capacity,
-		Environment: domainUnit.Environment,
+		Environment: string(domainUnit.Environment),
 	})
 }
 

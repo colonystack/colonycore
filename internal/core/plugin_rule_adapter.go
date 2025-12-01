@@ -306,7 +306,7 @@ func newHousingUnitView(unit domain.HousingUnit) housingUnitView {
 		name:        unit.Name,
 		facilityID:  unit.FacilityID,
 		capacity:    unit.Capacity,
-		environment: unit.Environment,
+		environment: string(unit.Environment),
 	}
 }
 

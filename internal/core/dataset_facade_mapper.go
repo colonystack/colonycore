@@ -55,7 +55,7 @@ func facadeHousingUnitFromDomain(unit domain.HousingUnit) datasetapi.HousingUnit
 		Name:        unit.Name,
 		FacilityID:  unit.FacilityID,
 		Capacity:    unit.Capacity,
-		Environment: unit.Environment,
+		Environment: string(unit.Environment),
 	})
 }
 
