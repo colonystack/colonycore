@@ -158,6 +158,12 @@ func validate(path string) error {
 		if ent.NaturalKeys == nil {
 			errs = append(errs, fmt.Sprintf("entity %q must declare natural_keys (empty array allowed)", name))
 		}
+		if ent.Relationships == nil {
+			errs = append(errs, fmt.Sprintf("entity %q must declare relationships (empty object allowed)", name))
+		}
+		if ent.Invariants == nil {
+			errs = append(errs, fmt.Sprintf("entity %q must declare invariants (empty array allowed)", name))
+		}
 
 		for _, base := range baseRequired {
 			if !contains(ent.Required, base) {

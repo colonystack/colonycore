@@ -44,7 +44,8 @@ func TestValidateOK(t *testing.T) {
       "states": {"enum": "status", "initial": "ok", "terminal": ["fail"]},
       "relationships": {
         "bar_id": {"target": "Bar", "cardinality": "0..1"}
-      }
+      },
+      "invariants": []
     }
   }
 }`)
@@ -154,7 +155,8 @@ func TestValidateNaturalKeyAndRelationshipErrors(t *testing.T) {
       },
       "relationships": {
         "bar_ref": {"target": "", "cardinality": "0..1"}
-      }
+      },
+      "invariants": []
     },
     "Foo": {
       "required": ["id", "created_at", "updated_at"],
@@ -208,7 +210,8 @@ func TestValidateNaturalKeyFieldMissing(t *testing.T) {
         "created_at": {"type":"string"},
         "updated_at": {"type":"string"}
       },
-      "relationships": {}
+      "relationships": {},
+      "invariants": []
     }
   }
 }`)
@@ -348,7 +351,8 @@ func TestValidateIDSemanticsRequired(t *testing.T) {
         "updated_at": {"type":"string"},
         "status": {"$ref":"#/enums/status"}
       },
-      "relationships": {}
+      "relationships": {},
+      "invariants": []
     }
   }
 }`)
@@ -390,7 +394,8 @@ func TestValidateUnusedEnums(t *testing.T) {
         "updated_at": {"type":"string"},
         "status": {"$ref":"#/enums/used"}
       },
-      "relationships": {}
+      "relationships": {},
+      "invariants": []
     }
   }
 }`)
@@ -424,7 +429,8 @@ func TestValidatePropertyEnumReferenceUnknown(t *testing.T) {
         "status": {"$ref":"#/enums/missing"}
       },
       "states": {"enum": "status", "initial": "ok", "terminal": ["ok"]},
-      "relationships": {}
+      "relationships": {},
+      "invariants": []
     }
   }
 }`)
@@ -458,7 +464,8 @@ func TestValidatePropertyRequiresTypeOrRef(t *testing.T) {
         "status": {}
       },
       "states": {"enum": "status", "initial": "ok", "terminal": ["ok"]},
-      "relationships": {}
+      "relationships": {},
+      "invariants": []
     }
   }
 }`)
@@ -470,6 +477,43 @@ func TestValidatePropertyRequiresTypeOrRef(t *testing.T) {
 	msg := err.Error()
 	if !strings.Contains(msg, "entity \"Foo\" property \"status\" must declare a type or $ref") {
 		t.Fatalf("expected property type/ref error, got %q", msg)
+	}
+}
+
+func TestValidateRequiresRelationshipsAndInvariants(t *testing.T) {
+	path := writeTemp(t, `{
+  "version": "0.1.31",
+  "id_semantics": { "type": "uuidv7", "scope": "global", "required": true, "description": "opaque" },
+  "metadata": { "status": "seed" },
+  "enums": {
+    "status": { "values": ["ok"] }
+  },
+  "entities": {
+    "Foo": {
+      "natural_keys": [],
+      "required": ["id", "created_at", "updated_at"],
+      "properties": {
+        "id": {"type":"string"},
+        "created_at": {"type":"string"},
+        "updated_at": {"type":"string"}
+      },
+      "states": {"enum": "status", "initial": "ok", "terminal": ["ok"]}
+    }
+  }
+}`)
+
+	err := validate(path)
+	if err == nil {
+		t.Fatalf("validate() expected error")
+	}
+	msg := err.Error()
+	for _, want := range []string{
+		`entity "Foo" must declare relationships (empty object allowed)`,
+		`entity "Foo" must declare invariants (empty array allowed)`,
+	} {
+		if !strings.Contains(msg, want) {
+			t.Fatalf("expected message to contain %q, got %q", want, msg)
+		}
 	}
 }
 
@@ -490,7 +534,8 @@ func TestValidateEnumWhitespaceValue(t *testing.T) {
         "created_at": {"type":"string"},
         "updated_at": {"type":"string"}
       },
-      "relationships": {}
+      "relationships": {},
+      "invariants": []
     }
   }
 }`)
@@ -524,7 +569,8 @@ func TestValidatePropertyJSONError(t *testing.T) {
         "status": true
       },
       "states": {"enum": "status", "initial": "ok", "terminal": ["ok"]},
-      "relationships": {}
+      "relationships": {},
+      "invariants": []
     }
   }
 }`)
@@ -572,7 +618,8 @@ func TestMainSuccess(t *testing.T) {
         "status": {"$ref":"#/enums/status"}
       },
       "relationships": {},
-      "states": {"enum": "status", "initial": "ok", "terminal": ["ok"]}
+      "states": {"enum": "status", "initial": "ok", "terminal": ["ok"]},
+      "invariants": []
     }
   }
 }`)

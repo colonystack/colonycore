@@ -283,7 +283,8 @@
           "target": "Protocol",
           "cardinality": "0..1"
         }
-      }
+      },
+      "invariants": []
     },
     "HousingUnit": {
       "description": "Physical housing with capacity and environmental baseline.",
@@ -418,7 +419,8 @@
           "target": "Project",
           "cardinality": "0..n"
         }
-      }
+      },
+      "invariants": []
     },
     "BreedingUnit": {
       "description": "Configured breeding group with lineage targets.",
@@ -530,7 +532,8 @@
           "target": "Organism",
           "cardinality": "0..n"
         }
-      }
+      },
+      "invariants": []
     },
     "Line": {
       "description": "Genetic lineage definition.",
@@ -603,7 +606,8 @@
           "target": "GenotypeMarker",
           "cardinality": "0..n"
         }
-      }
+      },
+      "invariants": []
     },
     "Strain": {
       "description": "Managed strain derived from a Line.",
@@ -675,7 +679,8 @@
           "target": "GenotypeMarker",
           "cardinality": "0..n"
         }
-      }
+      },
+      "invariants": []
     },
     "GenotypeMarker": {
       "description": "Genotype marker metadata with assay details.",
@@ -737,7 +742,9 @@
           "type": "string",
           "minLength": 1
         }
-      }
+      },
+      "relationships": {},
+      "invariants": []
     },
     "Procedure": {
       "description": "Scheduled or executed procedure with protocol coverage.",
@@ -839,7 +846,8 @@
           "target": "Observation",
           "cardinality": "0..n"
         }
-      }
+      },
+      "invariants": []
     },
     "Treatment": {
       "description": "Therapeutic intervention bound to procedure subjects.",
@@ -926,7 +934,8 @@
           "target": "Cohort",
           "cardinality": "0..n"
         }
-      }
+      },
+      "invariants": []
     },
     "Observation": {
       "description": "Observation or measurement captured during workflows.",
@@ -988,7 +997,8 @@
           "target": "Cohort",
           "cardinality": "0..1"
         }
-      }
+      },
+      "invariants": []
     },
     "Sample": {
       "description": "Sample with chain-of-custody and facility linkage.",
@@ -1089,7 +1099,8 @@
           "target": "Facility",
           "cardinality": "1..1"
         }
-      }
+      },
+      "invariants": []
     },
     "Protocol": {
       "description": "Compliance protocol with subject cap and status.",
@@ -1147,6 +1158,7 @@
           "$ref": "#/enums/protocol_status"
         }
       },
+      "relationships": {},
       "invariants": [
         "protocol_subject_cap"
       ]
@@ -1243,7 +1255,8 @@
           "target": "Protocol",
           "cardinality": "0..n"
         }
-      }
+      },
+      "invariants": []
     },
     "Project": {
       "description": "Project with facility and protocol affiliations.",
@@ -1341,7 +1354,8 @@
           "target": "SupplyItem",
           "cardinality": "0..n"
         }
-      }
+      },
+      "invariants": []
     },
     "SupplyItem": {
       "description": "Inventory item linked to facilities and projects.",
@@ -1432,7 +1446,8 @@
           "target": "Project",
           "cardinality": "0..n"
         }
-      }
+      },
+      "invariants": []
     }
   },
   "definitions": {
