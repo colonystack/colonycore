@@ -12,4 +12,4 @@ Conventions:
 
 Validation & targets:
 - Run `make entity-model-verify` (also executed by `make lint`) to sanity-check the JSON: semver version, required base fields, relationship cardinalities/targets, non-empty enums, allowlisted invariants, property enum references, and type/$ref presence. This target keeps domain layering intact by only reading `docs/schema/entity-model.json`.
-- `make entity-model-generate` emits Go enums and struct projections into `pkg/domain/entitymodel` via `internal/tools/entitymodel/generate`; extend this target with OpenAPI/DDL/ERD generation as those pieces land. `make entity-model-verify` runs validation and generation together.
+- `make entity-model-generate` emits Go enums and struct projections into `pkg/domain/entitymodel` via `internal/tools/entitymodel/generate` and OpenAPI components to `docs/schema/openapi/entity-model.yaml`; extend this target with DDL/ERD generation as those pieces land. `make entity-model-verify` runs validation and generation together.

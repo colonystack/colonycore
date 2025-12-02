@@ -3,6 +3,9 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
+	"flag"
+	"fmt"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -43,8 +46,8 @@ func TestGenerateCodeIncludesTimeImport(t *testing.T) {
 			"status": {Values: []string{"draft"}},
 		},
 		Definitions: map[string]definitionSpec{
-			"id":        {Type: "string"},
-			"timestamp": {Type: "string", Format: dateTimeFormat},
+			"id":        {Type: typeString},
+			"timestamp": {Type: typeString, Format: dateTimeFormat},
 		},
 		Entities: map[string]entitySpec{
 			"Thing": {
@@ -87,14 +90,14 @@ func TestGoTypeForPropertyVariants(t *testing.T) {
 	}{
 		{
 			name:         "timestampRequired",
-			prop:         definitionSpec{Type: "string", Format: dateTimeFormat},
+			prop:         definitionSpec{Type: typeString, Format: dateTimeFormat},
 			required:     true,
 			wantType:     "time.Time",
 			wantUsesTime: true,
 		},
 		{
 			name:         "stringOptional",
-			prop:         definitionSpec{Type: "string"},
+			prop:         definitionSpec{Type: typeString},
 			required:     false,
 			wantType:     "*string",
 			wantUsesTime: false,
@@ -232,8 +235,8 @@ func TestDefinitionsGeneration(t *testing.T) {
 			"status": {Values: []string{"ok"}},
 		},
 		Definitions: map[string]definitionSpec{
-			"id":        {Type: "string"},
-			"timestamp": {Type: "string", Format: dateTimeFormat},
+			"id":        {Type: typeString},
+			"timestamp": {Type: typeString, Format: dateTimeFormat},
 			"sample_custody_event": {
 				Properties: map[string]json.RawMessage{
 					"actor":      raw(`{"type":"string"}`),
@@ -293,23 +296,40 @@ func TestMainRunsWithTempPaths(t *testing.T) {
 	tmpDir := t.TempDir()
 	schemaPath := filepath.Join(tmpDir, "schema.json")
 	outPath := filepath.Join(tmpDir, "out.go")
+	openapiPath := filepath.Join(tmpDir, "entity-model.yaml")
 
 	content := `{"version":"0.0.1","metadata":{"status":"seed"},"enums":{"kind":{"values":["one"]}},"definitions":{"id":{"type":"string"},"timestamp":{"type":"string","format":"date-time"}},"entities":{"Entity":{"required":["id","created_at","updated_at","kind"],"properties":{"id":{"$ref":"#/definitions/id"},"created_at":{"$ref":"#/definitions/timestamp"},"updated_at":{"$ref":"#/definitions/timestamp"},"kind":{"$ref":"#/enums/kind"},"at":{"type":"string","format":"date-time"}}}}}`
 	if err := os.WriteFile(schemaPath, []byte(content), 0o600); err != nil {
 		t.Fatalf("write schema: %v", err)
 	}
 
-	origArgs := os.Args
-	defer func() {
-		os.Args = origArgs
-	}()
-
-	os.Args = []string{"generate", "-schema", schemaPath, "-out", outPath}
-
-	main()
+	runMainWithArgs(t, []string{"-schema", schemaPath, "-out", outPath, "-openapi", openapiPath})
 
 	if _, err := os.Stat(outPath); err != nil {
 		t.Fatalf("expected output file: %v", err)
+	}
+	if _, err := os.Stat(openapiPath); err != nil {
+		t.Fatalf("expected openapi output file: %v", err)
+	}
+}
+
+func TestMainSkipsOpenAPIWhenFlagMissing(t *testing.T) {
+	tmpDir := t.TempDir()
+	schemaPath := filepath.Join(tmpDir, "schema.json")
+	outPath := filepath.Join(tmpDir, "out.go")
+
+	content := `{"version":"0.0.1","metadata":{"status":"seed"},"enums":{"kind":{"values":["one"]}},"definitions":{"id":{"type":"string"}},"entities":{"Entity":{"required":["id"],"properties":{"id":{"$ref":"#/definitions/id"}}}}}`
+	if err := os.WriteFile(schemaPath, []byte(content), 0o600); err != nil {
+		t.Fatalf("write schema: %v", err)
+	}
+
+	runMainWithArgs(t, []string{"-schema", schemaPath, "-out", outPath})
+
+	if _, err := os.Stat(outPath); err != nil {
+		t.Fatalf("expected output file: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(tmpDir, "entity-model.yaml")); err == nil {
+		t.Fatalf("did not expect openapi file without flag")
 	}
 }
 
@@ -348,6 +368,331 @@ func TestUtilityHelpers(t *testing.T) {
 	if !contains([]string{"A", "b"}, "a") {
 		t.Fatalf("contains should be case-insensitive")
 	}
+}
+
+func TestBuildOpenAPIDoc(t *testing.T) {
+	doc := schemaDoc{
+		Version: "0.1.0",
+		Enums: map[string]enumSpec{
+			"status": {Values: []string{"pending", "approved"}},
+		},
+		Definitions: map[string]definitionSpec{
+			"id":        {Type: typeString},
+			"timestamp": {Type: typeString, Format: dateTimeFormat},
+			"metadata": {
+				Type: "object",
+				Properties: map[string]json.RawMessage{
+					"note": raw(`{"type":"string"}`),
+				},
+				Required: []string{"note"},
+			},
+		},
+		Entities: map[string]entitySpec{
+			"Thing": {
+				Required: []string{"id", "created_at", "updated_at", "name", "status"},
+				Properties: map[string]json.RawMessage{
+					"id":          raw(`{"$ref":"#/definitions/id"}`),
+					"created_at":  raw(`{"$ref":"#/definitions/timestamp"}`),
+					"updated_at":  raw(`{"$ref":"#/definitions/timestamp"}`),
+					"name":        raw(`{"type":"string"}`),
+					"status":      raw(`{"$ref":"#/enums/status"}`),
+					"tags":        raw(`{"type":"array","items":{"type":"string"}}`),
+					"metadata":    raw(`{"$ref":"#/definitions/metadata"}`),
+					"attributes":  raw(`{"type":"object","additionalProperties":true}`),
+					"emptyObject": raw(`{"type":"object","properties":{},"required":[]}`),
+				},
+			},
+		},
+	}
+
+	api, err := buildOpenAPIDoc(doc)
+	if err != nil {
+		t.Fatalf("buildOpenAPIDoc: %v", err)
+	}
+
+	components := api["components"].(map[string]any)["schemas"].(map[string]any)
+	thing := components["Thing"].(map[string]any)
+	thingProps := thing["properties"].(map[string]any)
+	if ro, ok := thingProps["id"].(map[string]any)["readOnly"].(bool); !ok || !ro {
+		t.Fatalf("expected id to be readOnly in Thing")
+	}
+	create := components["ThingCreate"].(map[string]any)
+	createProps := create["properties"].(map[string]any)
+	if _, ok := createProps["id"]; ok {
+		t.Fatalf("id should be omitted from ThingCreate")
+	}
+	if _, ok := createProps["created_at"]; ok {
+		t.Fatalf("created_at should be omitted from ThingCreate")
+	}
+	if attrs, ok := createProps["attributes"].(map[string]any); !ok || attrs["additionalProperties"] != true {
+		t.Fatalf("expected attributes to allow additionalProperties")
+	}
+	update := components["ThingUpdate"].(map[string]any)
+	if update["required"] != nil {
+		t.Fatalf("update schema should not set required fields")
+	}
+	if enumSchema, ok := components["Status"].(map[string]any); ok {
+		if enumType := enumSchema["type"]; enumType != typeString {
+			t.Fatalf("expected enum schema type string, got %v", enumType)
+		}
+	}
+	if metaSchema, ok := components["Metadata"].(map[string]any); ok {
+		props := metaSchema["properties"].(map[string]any)
+		if _, ok := props["note"]; !ok {
+			t.Fatalf("expected metadata.note property in schema")
+		}
+	}
+}
+
+func TestEncodeYAMLDeterministic(t *testing.T) {
+	doc := openAPIDoc{
+		"openapi": "3.1.0",
+		"info": map[string]any{
+			"title":   "T",
+			"version": "1.0.0",
+		},
+		"components": map[string]any{
+			"schemas": map[string]any{
+				"Item": map[string]any{
+					"type": "object",
+					"required": []any{
+						"name",
+					},
+					"properties": map[string]any{
+						"name": map[string]any{"type": "string"},
+						"tags": map[string]any{"type": "array", "items": map[string]any{"type": "string"}},
+					},
+				},
+			},
+		},
+	}
+
+	yaml, err := encodeYAML(doc)
+	if err != nil {
+		t.Fatalf("encodeYAML: %v", err)
+	}
+
+	got := strings.TrimSpace(string(yaml))
+	want := strings.TrimSpace("" +
+		`components:` + "\n" +
+		`  schemas:` + "\n" +
+		`    Item:` + "\n" +
+		`      properties:` + "\n" +
+		`        name:` + "\n" +
+		`          type: "string"` + "\n" +
+		`        tags:` + "\n" +
+		`          items:` + "\n" +
+		`            type: "string"` + "\n" +
+		`          type: "array"` + "\n" +
+		`      required:` + "\n" +
+		`        - "name"` + "\n" +
+		`      type: "object"` + "\n" +
+		`info:` + "\n" +
+		`  title: "T"` + "\n" +
+		`  version: "1.0.0"` + "\n" +
+		`openapi: "3.1.0"` + "\n")
+
+	if got != want {
+		t.Fatalf("unexpected YAML output\nwant:\n%s\ngot:\n%s", want, got)
+	}
+}
+
+func TestEncodeYAMLScalar(t *testing.T) {
+	yaml, err := encodeYAML("value")
+	if err != nil {
+		t.Fatalf("encodeYAML: %v", err)
+	}
+	if string(yaml) != "\"value\"\n" {
+		t.Fatalf("unexpected scalar encoding: %q", string(yaml))
+	}
+}
+
+func TestEncodeYAMLSliceRoot(t *testing.T) {
+	yaml, err := encodeYAML([]any{"a", map[string]any{"k": "v"}})
+	if err != nil {
+		t.Fatalf("encodeYAML: %v", err)
+	}
+	text := string(yaml)
+	if !strings.Contains(text, "- \"a\"") || !strings.Contains(text, "k: \"v\"") {
+		t.Fatalf("unexpected slice encoding: %s", text)
+	}
+}
+
+func TestEncodeYAMLMapRoot(t *testing.T) {
+	yaml, err := encodeYAML(map[string]any{"k": "v"})
+	if err != nil {
+		t.Fatalf("encodeYAML: %v", err)
+	}
+	if !strings.Contains(string(yaml), "k: \"v\"") {
+		t.Fatalf("unexpected map encoding: %s", string(yaml))
+	}
+}
+
+func TestEncodeOpenAPIYAMLHeader(t *testing.T) {
+	doc := openAPIDoc{"openapi": "3.1.0"}
+	out, err := encodeOpenAPIYAML(doc)
+	if err != nil {
+		t.Fatalf("encodeOpenAPIYAML: %v", err)
+	}
+	text := string(out)
+	if !strings.HasPrefix(text, "# Code generated by internal/tools/entitymodel/generate. DO NOT EDIT.") {
+		t.Fatalf("expected generated header, got:\n%s", text)
+	}
+	if !strings.Contains(text, "openapi: \"3.1.0\"") {
+		t.Fatalf("expected openapi field in output:\n%s", text)
+	}
+}
+
+func TestSchemaForPropertyErrorsOnUnknownRef(t *testing.T) {
+	prop := definitionSpec{Ref: "#/definitions/missing"}
+	if _, err := schemaForProperty(prop, nil, map[string]definitionSpec{}); err == nil {
+		t.Fatalf("expected error for unknown ref")
+	}
+}
+
+func TestYAMLEncoderBranches(t *testing.T) {
+	content := openAPIDoc{
+		"emptyMap": map[string]any{},
+		"list": []any{
+			map[string]any{},
+			map[string]any{"k": "v"},
+			[]any{},
+			[]any{"a", map[string]any{"inner": []any{"x"}}},
+		},
+		"nothing": []string{},
+		"maybe":   nil,
+	}
+
+	yaml, err := encodeYAML(content)
+	if err != nil {
+		t.Fatalf("encodeYAML: %v", err)
+	}
+	text := string(yaml)
+	for _, want := range []string{"emptyMap: {}", "list:", "- {}", "- \"a\"", "inner:", "nothing: []", "maybe: null"} {
+		if !strings.Contains(text, want) {
+			t.Fatalf("expected YAML to contain %q\n%s", want, text)
+		}
+	}
+}
+
+func TestCloneValueDeepCopy(t *testing.T) {
+	original := map[string]any{
+		"list": []any{map[string]any{"k": "v"}},
+	}
+	cloned := cloneValue(original).(map[string]any)
+	original["list"].([]any)[0].(map[string]any)["k"] = "changed"
+
+	if cloned["list"].([]any)[0].(map[string]any)["k"] != "v" {
+		t.Fatalf("expected clone to remain unchanged: %#v", cloned)
+	}
+}
+
+func TestAdditionalPropertiesValueInvalid(t *testing.T) {
+	if _, ok := additionalPropertiesValue(raw(`{"not":"bool"}`)); ok {
+		t.Fatalf("expected invalid additionalProperties to return false")
+	}
+}
+
+func TestCloneStringsEmpty(t *testing.T) {
+	if out := cloneStrings(nil); out != nil {
+		t.Fatalf("expected nil clone for nil input")
+	}
+}
+
+func TestFormatScalarVariants(t *testing.T) {
+	if got := formatScalar(5); got != "5" {
+		t.Fatalf("unexpected int scalar: %s", got)
+	}
+	if got := formatScalar(true); got != "true" {
+		t.Fatalf("unexpected bool scalar: %s", got)
+	}
+	if got := formatScalar(map[string]string{"k": "v"}); got != `{"k":"v"}` {
+		t.Fatalf("unexpected map scalar: %s", got)
+	}
+}
+
+func TestGenerateOpenAPIRejectsMissingRef(t *testing.T) {
+	doc := schemaDoc{
+		Version:  "0.1.0",
+		Metadata: metadataSpec{Status: "seed"},
+		Enums: map[string]enumSpec{
+			"status": {Values: []string{"ok"}},
+		},
+		Definitions: map[string]definitionSpec{
+			"id": {Type: typeString},
+		},
+		Entities: map[string]entitySpec{
+			"Broken": {
+				Required: []string{"id", "ref"},
+				Properties: map[string]json.RawMessage{
+					"id":  raw(`{"$ref":"#/definitions/id"}`),
+					"ref": raw(`{"$ref":"#/definitions/missing"}`),
+				},
+			},
+		},
+	}
+
+	if _, err := generateOpenAPI(doc); err == nil {
+		t.Fatalf("expected error for missing ref in entity")
+	}
+}
+
+func TestExitErrUsesExitFunc(t *testing.T) {
+	called := 0
+	exitFunc = func(code int) {
+		called = code
+	}
+	t.Cleanup(func() {
+		exitFunc = os.Exit
+	})
+
+	exitErr(errors.New("fail"))
+	if called != 1 {
+		t.Fatalf("expected exit func to be called with 1, got %d", called)
+	}
+	exitErr(nil)
+	if called != 1 {
+		t.Fatalf("exitErr should ignore nil error")
+	}
+}
+
+func TestWriteFileEmptyPath(t *testing.T) {
+	if err := writeFile("", []byte("x")); err == nil {
+		t.Fatalf("expected error for empty path")
+	}
+}
+
+func TestMainExitsOnInvalidSchema(t *testing.T) {
+	tmpDir := t.TempDir()
+	outPath := filepath.Join(tmpDir, "out.go")
+
+	flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError)
+	origArgs := os.Args
+	defer func() { os.Args = origArgs }()
+	os.Args = []string{"generate", "-schema", filepath.Join(tmpDir, "missing.json"), "-out", outPath}
+
+	exitFunc = func(code int) {
+		panic(fmt.Sprintf("exit:%d", code))
+	}
+	defer func() {
+		exitFunc = os.Exit
+		if r := recover(); r == nil || !strings.Contains(fmt.Sprint(r), "exit:1") {
+			t.Fatalf("expected exit panic, got %v", r)
+		}
+	}()
+
+	main()
+}
+
+func runMainWithArgs(t *testing.T, args []string) {
+	t.Helper()
+	flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError)
+	origArgs := os.Args
+	os.Args = append([]string{"generate"}, args...)
+	t.Cleanup(func() {
+		os.Args = origArgs
+	})
+	main()
 }
 
 func repoRoot(t *testing.T) string {

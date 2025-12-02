@@ -14,6 +14,8 @@ import (
 
 const dateTimeFormat = "date-time"
 
+var exitFunc = os.Exit
+
 type enumSpec struct {
 	Values []string `json:"values"`
 }
@@ -58,6 +60,7 @@ type schemaDoc struct {
 func main() {
 	schemaPath := flag.String("schema", "docs/schema/entity-model.json", "path to the entity model schema")
 	outPath := flag.String("out", "pkg/domain/entitymodel/model_gen.go", "output file for generated Go code")
+	openapiPath := flag.String("openapi", "", "output file for generated OpenAPI YAML (optional)")
 	flag.Parse()
 
 	doc, err := loadSchema(*schemaPath)
@@ -70,11 +73,19 @@ func main() {
 		exitErr(err)
 	}
 
-	if err := os.MkdirAll(filepath.Dir(*outPath), 0o750); err != nil {
-		exitErr(fmt.Errorf("create output dir: %w", err))
+	if err := writeFile(*outPath, code); err != nil {
+		exitErr(err)
 	}
-	if err := os.WriteFile(*outPath, code, 0o600); err != nil {
-		exitErr(fmt.Errorf("write output: %w", err))
+
+	if openapiPath != nil && strings.TrimSpace(*openapiPath) != "" {
+		openapi, err := generateOpenAPI(doc)
+		if err != nil {
+			exitErr(err)
+		}
+		if err := writeFile(*openapiPath, openapi); err != nil {
+			exitErr(err)
+		}
+		fmt.Printf("generated %s from %s\n", *openapiPath, *schemaPath)
 	}
 
 	fmt.Printf("generated %s from %s\n", *outPath, *schemaPath)
@@ -320,6 +331,19 @@ func sortedKeys[T any](m map[string]T) []string {
 	return keys
 }
 
+func writeFile(path string, data []byte) error {
+	if strings.TrimSpace(path) == "" {
+		return fmt.Errorf("output path must not be empty")
+	}
+	if err := os.MkdirAll(filepath.Dir(path), 0o750); err != nil {
+		return fmt.Errorf("create output dir: %w", err)
+	}
+	if err := os.WriteFile(path, data, 0o600); err != nil {
+		return fmt.Errorf("write output: %w", err)
+	}
+	return nil
+}
+
 func toCamel(input string) string {
 	if input == "" {
 		return ""
@@ -378,5 +402,5 @@ func exitErr(err error) {
 	}
 	//nolint:forbidigo // generator writes to stderr on failure.
 	fmt.Fprintln(os.Stderr, err)
-	os.Exit(1)
+	exitFunc(1)
 }

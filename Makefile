@@ -157,7 +157,7 @@ entity-model-validate:
 
 entity-model-generate:
 	@echo "==> entity-model generate"
-	@GOCACHE=$(GOCACHE) go run ./internal/tools/entitymodel/generate -schema docs/schema/entity-model.json -out pkg/domain/entitymodel/model_gen.go
+	@GOCACHE=$(GOCACHE) go run ./internal/tools/entitymodel/generate -schema docs/schema/entity-model.json -out pkg/domain/entitymodel/model_gen.go -openapi docs/schema/openapi/entity-model.yaml
 
 entity-model-verify: entity-model-validate entity-model-generate
 	@echo "==> entity-model verify (validate + generation)"
