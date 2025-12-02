@@ -50,8 +50,8 @@ func validateAllViewInterfacesHaveContextualAccessors(t *testing.T, baseDir stri
 	requiredPatterns := map[string][]string{
 		"OrganismView":    {"GetCurrentStage", "IsActive", "IsRetired", "IsDeceased"},
 		"Organism":        {"GetCurrentStage", "IsActive", "IsRetired", "IsDeceased"},
-		"HousingUnitView": {"GetEnvironmentType", "IsAquaticEnvironment", "IsHumidEnvironment", "SupportsSpecies"},
-		"HousingUnit":     {"GetEnvironmentType", "IsAquaticEnvironment", "IsHumidEnvironment", "SupportsSpecies"},
+		"HousingUnitView": {"GetEnvironmentType", "IsAquaticEnvironment", "IsHumidEnvironment", "SupportsSpecies", "GetCurrentState", "IsActiveState", "IsDecommissioned"},
+		"HousingUnit":     {"GetEnvironmentType", "IsAquaticEnvironment", "IsHumidEnvironment", "SupportsSpecies", "GetState", "IsActiveState", "IsDecommissioned"},
 		"ProtocolView":    {"GetCurrentStatus", "IsActiveProtocol", "IsTerminalStatus", "CanAcceptNewSubjects"},
 		"Protocol":        {"GetCurrentStatus", "IsActiveProtocol", "IsTerminalStatus", "CanAcceptNewSubjects"},
 		"Procedure":       {"GetCurrentStatus", "IsActiveProcedure", "IsTerminalStatus", "IsSuccessful"},

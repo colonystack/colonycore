@@ -42,12 +42,16 @@ type HousingUnitView interface {
 	FacilityID() string
 	Capacity() int
 	Environment() string
+	State() string
 
 	// Contextual environment accessors
 	GetEnvironmentType() EnvironmentTypeRef
 	IsAquaticEnvironment() bool
 	IsHumidEnvironment() bool
 	SupportsSpecies(species string) bool
+	GetCurrentState() HousingStateRef
+	IsActiveState() bool
+	IsDecommissioned() bool
 }
 
 // FacilityView is a read-only projection of a facility record.

@@ -99,6 +99,14 @@ func TestContextMarkerMethodsAreCallable(t *testing.T) {
 		}
 	})
 
+	t.Run("HousingStateRef", func(t *testing.T) {
+		ref := NewHousingStateContext().Active()
+		ref.isHousingStateRef()
+		if ref.Equals(&housingStateRef{value: housingStateActive}) {
+			t.Fatal("housing state equality should reject pointer types")
+		}
+	})
+
 	t.Run("ProtocolStatusRef", func(t *testing.T) {
 		ref := NewProtocolContext().Draft()
 		ref.isProtocolStatusRef()

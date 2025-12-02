@@ -76,6 +76,48 @@ func TestHousingContext(t *testing.T) {
 			t.Error("Aquatic and terrestrial references should not be equal")
 		}
 	})
+
+	t.Run("housing state context provides lifecycle states", func(t *testing.T) {
+		ctx := NewHousingStateContext()
+
+		quarantine := ctx.Quarantine()
+		active := ctx.Active()
+		cleaning := ctx.Cleaning()
+		decommissioned := ctx.Decommissioned()
+
+		if quarantine.String() != "quarantine" {
+			t.Errorf("Expected quarantine state, got %s", quarantine.String())
+		}
+		if active.String() != "active" {
+			t.Errorf("Expected active state, got %s", active.String())
+		}
+		if cleaning.String() != "cleaning" {
+			t.Errorf("Expected cleaning state, got %s", cleaning.String())
+		}
+		if decommissioned.String() != "decommissioned" {
+			t.Errorf("Expected decommissioned state, got %s", decommissioned.String())
+		}
+	})
+
+	t.Run("housing state contextual methods work correctly", func(t *testing.T) {
+		ctx := NewHousingStateContext()
+
+		active := ctx.Active()
+		decommissioned := ctx.Decommissioned()
+
+		if !active.IsActive() {
+			t.Error("Active state should return true for IsActive()")
+		}
+		if active.IsDecommissioned() {
+			t.Error("Active state should not be decommissioned")
+		}
+		if decommissioned.IsActive() {
+			t.Error("Decommissioned state should not be active")
+		}
+		if !decommissioned.IsDecommissioned() {
+			t.Error("Decommissioned state should be flagged terminal")
+		}
+	})
 }
 
 func TestProtocolContext(t *testing.T) {

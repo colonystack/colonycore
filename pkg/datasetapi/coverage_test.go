@@ -45,6 +45,14 @@ func TestEnvironmentTypeRefChecker(_ *testing.T) {
 	envType.isEnvironmentTypeRef()
 }
 
+// TestHousingStateRefChecker tests the isHousingStateRef function
+func TestHousingStateRefChecker(_ *testing.T) {
+	ctx := NewHousingStateContext()
+	state := ctx.Active()
+	// Call the function to ensure it's covered
+	state.isHousingStateRef()
+}
+
 // TestLifecycleStageRefChecker tests the isLifecycleStageRef function
 func TestLifecycleStageRefChecker(_ *testing.T) {
 	ctx := NewLifecycleStageContext()

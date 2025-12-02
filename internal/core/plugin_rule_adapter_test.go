@@ -740,6 +740,7 @@ func TestHousingUnitViewContextualAccessors(t *testing.T) {
 		FacilityID:  "Lab A",
 		Capacity:    10,
 		Environment: "aquatic",
+		State:       domain.HousingStateActive,
 	}
 
 	housingView := newHousingUnitView(*domainHousing)
@@ -770,6 +771,81 @@ func TestHousingUnitViewContextualAccessors(t *testing.T) {
 		}
 		if housingView.SupportsSpecies("bird") {
 			t.Error("Aquatic housing should not support bird")
+		}
+	})
+
+	t.Run("GetCurrentState returns contextual state reference", func(t *testing.T) {
+		stateRef := housingView.GetCurrentState()
+		if stateRef.String() != string(domainHousing.State) {
+			t.Errorf("Expected state '%s', got '%s'", domainHousing.State, stateRef.String())
+		}
+		if !housingView.IsActiveState() {
+			t.Error("Active housing should be treated as active")
+		}
+		if housingView.IsDecommissioned() {
+			t.Error("Active housing should not be decommissioned")
+		}
+	})
+
+	t.Run("GetCurrentState covers cleaning and decommissioned states", func(t *testing.T) {
+		cleaning := newHousingUnitView(domain.HousingUnit{
+			Base:        domain.Base{ID: "housing-2"},
+			Name:        "Cleaning Unit",
+			FacilityID:  "Lab B",
+			Capacity:    5,
+			Environment: "terrestrial",
+			State:       domain.HousingStateCleaning,
+		})
+		state := cleaning.GetCurrentState()
+		if state.String() != string(domain.HousingStateCleaning) {
+			t.Fatalf("expected cleaning state, got %s", state.String())
+		}
+		if cleaning.IsActiveState() {
+			t.Fatal("cleaning housing should not be treated as active")
+		}
+
+		decommissioned := newHousingUnitView(domain.HousingUnit{
+			Base:        domain.Base{ID: "housing-3"},
+			Name:        "Retired Unit",
+			FacilityID:  "Lab C",
+			Capacity:    2,
+			Environment: "terrestrial",
+			State:       domain.HousingStateDecommissioned,
+		})
+		if !decommissioned.IsDecommissioned() {
+			t.Fatal("decommissioned housing should report terminal state")
+		}
+		if decommissioned.IsActiveState() {
+			t.Fatal("decommissioned housing should not be active")
+		}
+	})
+
+	t.Run("GetCurrentState handles quarantine and unknown states", func(t *testing.T) {
+		quarantine := newHousingUnitView(domain.HousingUnit{
+			Base:        domain.Base{ID: "housing-4"},
+			Name:        "Quarantine Unit",
+			FacilityID:  "Lab D",
+			Capacity:    2,
+			Environment: "aquatic",
+			State:       domain.HousingStateQuarantine,
+		})
+		if quarantine.GetCurrentState().String() != string(domain.HousingStateQuarantine) {
+			t.Fatalf("expected quarantine state, got %s", quarantine.GetCurrentState().String())
+		}
+		if quarantine.IsDecommissioned() {
+			t.Fatal("quarantine housing should not be decommissioned")
+		}
+
+		unknown := housingUnitView{
+			baseView:    newBaseView(domain.Base{ID: "housing-5"}),
+			name:        "Unknown State",
+			facilityID:  "Lab E",
+			capacity:    1,
+			environment: "terrestrial",
+			state:       "unexpected",
+		}
+		if !unknown.IsActiveState() {
+			t.Fatal("unknown housing state should default to active reference")
 		}
 	})
 }

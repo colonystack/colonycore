@@ -91,6 +91,14 @@ func TestDatasetContextMarkerMethodsAreCallable(t *testing.T) {
 		}
 	})
 
+	t.Run("HousingStateRef", func(t *testing.T) {
+		ref := NewHousingStateContext().Cleaning()
+		ref.isHousingStateRef()
+		if ref.Equals(&housingStateRef{value: housingStateCleaning}) {
+			t.Fatal("housing state equality should reject pointer types")
+		}
+	})
+
 	t.Run("LifecycleStageRef", func(t *testing.T) {
 		ref := NewLifecycleStageContext().Adult()
 		ref.isLifecycleStageRef()

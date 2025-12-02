@@ -14,6 +14,7 @@ FUNC NewFacility(colonycore/pkg/datasetapi.FacilityData) colonycore/pkg/dataseta
 FUNC NewFacilityContext() colonycore/pkg/datasetapi.FacilityContext
 FUNC NewHostTemplate(string,colonycore/pkg/datasetapi.Template) (colonycore/pkg/datasetapi.HostTemplate,error)
 FUNC NewHousingContext() colonycore/pkg/datasetapi.HousingContext
+FUNC NewHousingStateContext() colonycore/pkg/datasetapi.HousingStateContext
 FUNC NewHousingUnit(colonycore/pkg/datasetapi.HousingUnitData) colonycore/pkg/datasetapi.HousingUnit
 FUNC NewLifecycleStageContext() colonycore/pkg/datasetapi.LifecycleStageContext
 FUNC NewObservation(colonycore/pkg/datasetapi.ObservationData) colonycore/pkg/datasetapi.Observation
@@ -73,7 +74,10 @@ TYPE FormatProvider interface { CSV() colonycore/pkg/datasetapi.Format HTML() co
 TYPE HookRef interface { Equals(colonycore/pkg/datasetapi.HookRef) bool String() string }
 TYPE HostTemplate struct { unexported }
 TYPE HousingContext interface { Aquatic() colonycore/pkg/datasetapi.EnvironmentTypeRef Arboreal() colonycore/pkg/datasetapi.EnvironmentTypeRef Humid() colonycore/pkg/datasetapi.EnvironmentTypeRef Terrestrial() colonycore/pkg/datasetapi.EnvironmentTypeRef }
-TYPE HousingUnit interface { Capacity() int CreatedAt() time.Time Environment() string FacilityID() string GetEnvironmentType() colonycore/pkg/datasetapi.EnvironmentTypeRef ID() string IsAquaticEnvironment() bool IsHumidEnvironment() bool Name() string SupportsSpecies(string) bool UpdatedAt() time.Time }
+TYPE HousingState (string)
+TYPE HousingStateContext interface { Active() colonycore/pkg/datasetapi.HousingStateRef Cleaning() colonycore/pkg/datasetapi.HousingStateRef Decommissioned() colonycore/pkg/datasetapi.HousingStateRef Quarantine() colonycore/pkg/datasetapi.HousingStateRef }
+TYPE HousingStateRef interface { Equals(colonycore/pkg/datasetapi.HousingStateRef) bool IsActive() bool IsDecommissioned() bool String() string }
+TYPE HousingUnit interface { Capacity() int CreatedAt() time.Time Environment() string FacilityID() string GetEnvironmentType() colonycore/pkg/datasetapi.EnvironmentTypeRef GetState() colonycore/pkg/datasetapi.HousingStateRef ID() string IsActiveState() bool IsAquaticEnvironment() bool IsDecommissioned() bool IsHumidEnvironment() bool Name() string State() string SupportsSpecies(string) bool UpdatedAt() time.Time }
 TYPE HousingUnitData struct { unexported }
 TYPE LifecycleStage (string)
 TYPE LifecycleStageContext interface { Adult() colonycore/pkg/datasetapi.LifecycleStageRef Deceased() colonycore/pkg/datasetapi.LifecycleStageRef Juvenile() colonycore/pkg/datasetapi.LifecycleStageRef Larva() colonycore/pkg/datasetapi.LifecycleStageRef Planned() colonycore/pkg/datasetapi.LifecycleStageRef Retired() colonycore/pkg/datasetapi.LifecycleStageRef }

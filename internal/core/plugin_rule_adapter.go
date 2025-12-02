@@ -298,6 +298,7 @@ type housingUnitView struct {
 	facilityID  string
 	capacity    int
 	environment string
+	state       string
 }
 
 func newHousingUnitView(unit domain.HousingUnit) housingUnitView {
@@ -307,6 +308,7 @@ func newHousingUnitView(unit domain.HousingUnit) housingUnitView {
 		facilityID:  unit.FacilityID,
 		capacity:    unit.Capacity,
 		environment: string(unit.Environment),
+		state:       string(unit.State),
 	}
 }
 
@@ -314,6 +316,7 @@ func (h housingUnitView) Name() string        { return h.name }
 func (h housingUnitView) FacilityID() string  { return h.facilityID }
 func (h housingUnitView) Capacity() int       { return h.capacity }
 func (h housingUnitView) Environment() string { return h.environment }
+func (h housingUnitView) State() string       { return h.state }
 
 // Contextual environment accessors
 func (h housingUnitView) GetEnvironmentType() pluginapi.EnvironmentTypeRef {
@@ -339,6 +342,28 @@ func (h housingUnitView) IsAquaticEnvironment() bool {
 
 func (h housingUnitView) IsHumidEnvironment() bool {
 	return h.GetEnvironmentType().IsHumid()
+}
+
+func (h housingUnitView) GetCurrentState() pluginapi.HousingStateRef {
+	ctx := pluginapi.NewHousingStateContext()
+	switch h.state {
+	case ctx.Quarantine().String():
+		return ctx.Quarantine()
+	case ctx.Cleaning().String():
+		return ctx.Cleaning()
+	case ctx.Decommissioned().String():
+		return ctx.Decommissioned()
+	default:
+		return ctx.Active()
+	}
+}
+
+func (h housingUnitView) IsActiveState() bool {
+	return h.GetCurrentState().IsActive()
+}
+
+func (h housingUnitView) IsDecommissioned() bool {
+	return h.GetCurrentState().IsDecommissioned()
 }
 
 func (h housingUnitView) SupportsSpecies(species string) bool {

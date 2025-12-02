@@ -49,6 +49,15 @@ func TestEnvironmentTypeRefChecker(_ *testing.T) {
 	aquatic.isEnvironmentTypeRef()
 }
 
+// TestHousingStateRefChecker tests the isHousingStateRef function
+func TestHousingStateRefChecker(_ *testing.T) {
+	ctx := NewHousingStateContext()
+	active := ctx.Active()
+
+	// Call the function to ensure it's covered
+	active.isHousingStateRef()
+}
+
 // TestLifecycleStageRefChecker tests the isLifecycleStageRef function
 func TestLifecycleStageRefChecker(_ *testing.T) {
 	ctx := NewLifecycleStageContext()

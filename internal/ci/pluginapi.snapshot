@@ -12,6 +12,7 @@ FUNC NewExtensionHookContext() colonycore/pkg/pluginapi.ExtensionHookContext
 FUNC NewExtensionSet(map[string]map[string]any) colonycore/pkg/pluginapi.ExtensionSet
 FUNC NewFacilityContext() colonycore/pkg/pluginapi.FacilityContext
 FUNC NewHousingContext() colonycore/pkg/pluginapi.HousingContext
+FUNC NewHousingStateContext() colonycore/pkg/pluginapi.HousingStateContext
 FUNC NewLifecycleStageContext() colonycore/pkg/pluginapi.LifecycleStageContext
 FUNC NewObjectPayload(map[string]any) colonycore/pkg/pluginapi.ObjectPayload
 FUNC NewObservationContext() colonycore/pkg/pluginapi.ObservationContext
@@ -51,7 +52,10 @@ TYPE FacilityZoneProvider interface { Biosecure() colonycore/pkg/pluginapi.Facil
 TYPE FacilityZoneRef interface { Equals(colonycore/pkg/pluginapi.FacilityZoneRef) bool IsBiosecure() bool IsQuarantine() bool String() string }
 TYPE HookRef interface { Equals(colonycore/pkg/pluginapi.HookRef) bool String() string }
 TYPE HousingContext interface { Aquatic() colonycore/pkg/pluginapi.EnvironmentTypeRef Arboreal() colonycore/pkg/pluginapi.EnvironmentTypeRef Humid() colonycore/pkg/pluginapi.EnvironmentTypeRef Terrestrial() colonycore/pkg/pluginapi.EnvironmentTypeRef }
-TYPE HousingUnitView interface { Capacity() int CreatedAt() time.Time Environment() string FacilityID() string GetEnvironmentType() colonycore/pkg/pluginapi.EnvironmentTypeRef ID() string IsAquaticEnvironment() bool IsHumidEnvironment() bool Name() string SupportsSpecies(string) bool UpdatedAt() time.Time }
+TYPE HousingState (string)
+TYPE HousingStateContext interface { Active() colonycore/pkg/pluginapi.HousingStateRef Cleaning() colonycore/pkg/pluginapi.HousingStateRef Decommissioned() colonycore/pkg/pluginapi.HousingStateRef Quarantine() colonycore/pkg/pluginapi.HousingStateRef }
+TYPE HousingStateRef interface { Equals(colonycore/pkg/pluginapi.HousingStateRef) bool IsActive() bool IsDecommissioned() bool String() string }
+TYPE HousingUnitView interface { Capacity() int CreatedAt() time.Time Environment() string FacilityID() string GetCurrentState() colonycore/pkg/pluginapi.HousingStateRef GetEnvironmentType() colonycore/pkg/pluginapi.EnvironmentTypeRef ID() string IsActiveState() bool IsAquaticEnvironment() bool IsDecommissioned() bool IsHumidEnvironment() bool Name() string State() string SupportsSpecies(string) bool UpdatedAt() time.Time }
 TYPE LifecycleStage (string)
 TYPE LifecycleStageContext interface { Adult() colonycore/pkg/pluginapi.LifecycleStageRef Deceased() colonycore/pkg/pluginapi.LifecycleStageRef Juvenile() colonycore/pkg/pluginapi.LifecycleStageRef Larva() colonycore/pkg/pluginapi.LifecycleStageRef Planned() colonycore/pkg/pluginapi.LifecycleStageRef Retired() colonycore/pkg/pluginapi.LifecycleStageRef }
 TYPE LifecycleStageRef interface { Equals(colonycore/pkg/pluginapi.LifecycleStageRef) bool IsActive() bool String() string Value() colonycore/pkg/pluginapi.LifecycleStage }

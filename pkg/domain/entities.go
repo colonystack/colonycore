@@ -3,6 +3,7 @@
 package domain
 
 import (
+	"colonycore/pkg/domain/entitymodel"
 	"colonycore/pkg/domain/extension"
 	"encoding/json"
 	"time"
@@ -48,100 +49,100 @@ const (
 )
 
 // LifecycleStage represents the canonical organism lifecycle states described in the RFC.
-type LifecycleStage string
+type LifecycleStage = entitymodel.LifecycleStage
 
 // Canonical organism lifecycle stages used for housing and capacity rule evaluation.
 const (
 	// StagePlanned indicates a planned organism not yet created in lab.
-	StagePlanned LifecycleStage = "planned"
+	StagePlanned LifecycleStage = entitymodel.LifecycleStagePlanned
 	// StageLarva indicates embryonic or larval stage.
-	StageLarva    LifecycleStage = "embryo_larva"
-	StageJuvenile LifecycleStage = "juvenile"
-	StageAdult    LifecycleStage = "adult"
-	StageRetired  LifecycleStage = "retired"
-	StageDeceased LifecycleStage = "deceased"
+	StageLarva    LifecycleStage = entitymodel.LifecycleStageEmbryoLarva
+	StageJuvenile LifecycleStage = entitymodel.LifecycleStageJuvenile
+	StageAdult    LifecycleStage = entitymodel.LifecycleStageAdult
+	StageRetired  LifecycleStage = entitymodel.LifecycleStageRetired
+	StageDeceased LifecycleStage = entitymodel.LifecycleStageDeceased
 )
 
 // ProtocolStatus enumerates compliance protocol lifecycle states (RFC-0001 §5.3).
-type ProtocolStatus string
+type ProtocolStatus = entitymodel.ProtocolStatus
 
 // Canonical protocol statuses aligned to Entity Model v0.
 const (
-	ProtocolStatusDraft     ProtocolStatus = "draft"
-	ProtocolStatusSubmitted ProtocolStatus = "submitted"
-	ProtocolStatusApproved  ProtocolStatus = "approved"
-	ProtocolStatusOnHold    ProtocolStatus = "on_hold"
-	ProtocolStatusExpired   ProtocolStatus = "expired"
-	ProtocolStatusArchived  ProtocolStatus = "archived"
+	ProtocolStatusDraft     ProtocolStatus = entitymodel.ProtocolStatusDraft
+	ProtocolStatusSubmitted ProtocolStatus = entitymodel.ProtocolStatusSubmitted
+	ProtocolStatusApproved  ProtocolStatus = entitymodel.ProtocolStatusApproved
+	ProtocolStatusOnHold    ProtocolStatus = entitymodel.ProtocolStatusOnHold
+	ProtocolStatusExpired   ProtocolStatus = entitymodel.ProtocolStatusExpired
+	ProtocolStatusArchived  ProtocolStatus = entitymodel.ProtocolStatusArchived
 )
 
 // ProcedureStatus enumerates canonical procedure workflow states (RFC-0001 §5.4).
-type ProcedureStatus string
+type ProcedureStatus = entitymodel.ProcedureStatus
 
 // Canonical procedure statuses used for scheduling and validation.
 const (
-	ProcedureStatusScheduled  ProcedureStatus = "scheduled"
-	ProcedureStatusInProgress ProcedureStatus = "in_progress"
-	ProcedureStatusCompleted  ProcedureStatus = "completed"
-	ProcedureStatusCancelled  ProcedureStatus = "cancelled"
-	ProcedureStatusFailed     ProcedureStatus = "failed"
+	ProcedureStatusScheduled  ProcedureStatus = entitymodel.ProcedureStatusScheduled
+	ProcedureStatusInProgress ProcedureStatus = entitymodel.ProcedureStatusInProgress
+	ProcedureStatusCompleted  ProcedureStatus = entitymodel.ProcedureStatusCompleted
+	ProcedureStatusCancelled  ProcedureStatus = entitymodel.ProcedureStatusCancelled
+	ProcedureStatusFailed     ProcedureStatus = entitymodel.ProcedureStatusFailed
 )
 
 // TreatmentStatus enumerates treatment lifecycle states enforced by the plugin contract.
-type TreatmentStatus string
+type TreatmentStatus = entitymodel.TreatmentStatus
 
 // Canonical treatment statuses recognised by rule and dataset adapters.
 const (
-	TreatmentStatusPlanned    TreatmentStatus = "planned"
-	TreatmentStatusInProgress TreatmentStatus = "in_progress"
-	TreatmentStatusCompleted  TreatmentStatus = "completed"
-	TreatmentStatusFlagged    TreatmentStatus = "flagged"
+	TreatmentStatusPlanned    TreatmentStatus = entitymodel.TreatmentStatusPlanned
+	TreatmentStatusInProgress TreatmentStatus = entitymodel.TreatmentStatusInProgress
+	TreatmentStatusCompleted  TreatmentStatus = entitymodel.TreatmentStatusCompleted
+	TreatmentStatusFlagged    TreatmentStatus = entitymodel.TreatmentStatusFlagged
 )
 
 // SampleStatus enumerates sample custody states (stored, in transit, consumed, disposed).
-type SampleStatus string
+type SampleStatus = entitymodel.SampleStatus
 
 // Canonical sample statuses used for chain-of-custody validation.
 const (
-	SampleStatusStored    SampleStatus = "stored"
-	SampleStatusInTransit SampleStatus = "in_transit"
-	SampleStatusConsumed  SampleStatus = "consumed"
-	SampleStatusDisposed  SampleStatus = "disposed"
+	SampleStatusStored    SampleStatus = entitymodel.SampleStatusStored
+	SampleStatusInTransit SampleStatus = entitymodel.SampleStatusInTransit
+	SampleStatusConsumed  SampleStatus = entitymodel.SampleStatusConsumed
+	SampleStatusDisposed  SampleStatus = entitymodel.SampleStatusDisposed
 )
 
 // PermitStatus enumerates permit validity states consumed by compliance workflows.
-type PermitStatus string
+type PermitStatus = entitymodel.PermitStatus
 
 // Canonical permit statuses describing regulatory validity.
 const (
-	PermitStatusDraft     PermitStatus = "draft"
-	PermitStatusSubmitted PermitStatus = "submitted"
-	PermitStatusApproved  PermitStatus = "approved"
-	PermitStatusOnHold    PermitStatus = "on_hold"
-	PermitStatusExpired   PermitStatus = "expired"
-	PermitStatusArchived  PermitStatus = "archived"
+	PermitStatusDraft     PermitStatus = entitymodel.PermitStatusDraft
+	PermitStatusSubmitted PermitStatus = entitymodel.PermitStatusSubmitted
+	PermitStatusApproved  PermitStatus = entitymodel.PermitStatusApproved
+	PermitStatusOnHold    PermitStatus = entitymodel.PermitStatusOnHold
+	PermitStatusExpired   PermitStatus = entitymodel.PermitStatusExpired
+	PermitStatusArchived  PermitStatus = entitymodel.PermitStatusArchived
 )
 
 // HousingState enumerates lifecycle states for housing units (RFC-0001 §5.2).
-type HousingState string
+type HousingState = entitymodel.HousingState
 
 // Canonical housing lifecycle states aligned to Entity Model v0.
 const (
-	HousingStateQuarantine     HousingState = "quarantine"
-	HousingStateActive         HousingState = "active"
-	HousingStateCleaning       HousingState = "cleaning"
-	HousingStateDecommissioned HousingState = "decommissioned"
+	HousingStateQuarantine     HousingState = entitymodel.HousingStateQuarantine
+	HousingStateActive         HousingState = entitymodel.HousingStateActive
+	HousingStateCleaning       HousingState = entitymodel.HousingStateCleaning
+	HousingStateDecommissioned HousingState = entitymodel.HousingStateDecommissioned
 )
 
 // HousingEnvironment enumerates canonical housing environments.
-type HousingEnvironment string
+type HousingEnvironment = entitymodel.HousingEnvironment
 
 // Canonical housing environments aligned to Entity Model v0.
 const (
-	HousingEnvironmentAquatic     HousingEnvironment = "aquatic"
-	HousingEnvironmentTerrestrial HousingEnvironment = "terrestrial"
-	HousingEnvironmentArboreal    HousingEnvironment = "arboreal"
-	HousingEnvironmentHumid       HousingEnvironment = "humid"
+	HousingEnvironmentAquatic     HousingEnvironment = entitymodel.HousingEnvironmentAquatic
+	HousingEnvironmentTerrestrial HousingEnvironment = entitymodel.HousingEnvironmentTerrestrial
+	HousingEnvironmentArboreal    HousingEnvironment = entitymodel.HousingEnvironmentArboreal
+	HousingEnvironmentHumid       HousingEnvironment = entitymodel.HousingEnvironmentHumid
 )
 
 // Severity captures rule outcomes.

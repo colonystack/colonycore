@@ -325,7 +325,6 @@ func encodeOpenAPIYAML(doc openAPIDoc) ([]byte, error) {
 	if err := writeYAML(&b, doc, 0); err != nil {
 		return nil, err
 	}
-	b.WriteByte('\n')
 	return []byte(b.String()), nil
 }
 

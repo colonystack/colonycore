@@ -118,6 +118,7 @@ type HousingUnitData struct {
 	FacilityID  string
 	Capacity    int
 	Environment string
+	State       string
 }
 
 // FacilityData describes the fields required to construct a Facility facade.
@@ -319,12 +320,16 @@ type HousingUnit interface {
 	FacilityID() string
 	Capacity() int
 	Environment() string
+	State() string
 
 	// Contextual environment accessors
 	GetEnvironmentType() EnvironmentTypeRef
 	IsAquaticEnvironment() bool
 	IsHumidEnvironment() bool
 	SupportsSpecies(species string) bool
+	GetState() HousingStateRef
+	IsActiveState() bool
+	IsDecommissioned() bool
 }
 
 // Facility exposes read-only facility metadata to dataset plugins.
@@ -818,6 +823,7 @@ type housingUnit struct {
 	facilityID  string
 	capacity    int
 	environment string
+	state       string
 }
 
 // NewHousingUnit constructs a read-only HousingUnit facade.
@@ -828,6 +834,7 @@ func NewHousingUnit(data HousingUnitData) HousingUnit {
 		facilityID:  data.FacilityID,
 		capacity:    data.Capacity,
 		environment: data.Environment,
+		state:       data.State,
 	}
 }
 
@@ -835,6 +842,7 @@ func (h housingUnit) Name() string        { return h.name }
 func (h housingUnit) FacilityID() string  { return h.facilityID }
 func (h housingUnit) Capacity() int       { return h.capacity }
 func (h housingUnit) Environment() string { return h.environment }
+func (h housingUnit) State() string       { return h.state }
 
 // Contextual environment accessors
 func (h housingUnit) GetEnvironmentType() EnvironmentTypeRef {
@@ -860,6 +868,28 @@ func (h housingUnit) IsAquaticEnvironment() bool {
 
 func (h housingUnit) IsHumidEnvironment() bool {
 	return h.GetEnvironmentType().IsHumid()
+}
+
+func (h housingUnit) GetState() HousingStateRef {
+	ctx := NewHousingStateContext()
+	switch strings.ToLower(h.state) {
+	case ctx.Quarantine().String():
+		return ctx.Quarantine()
+	case ctx.Cleaning().String():
+		return ctx.Cleaning()
+	case ctx.Decommissioned().String():
+		return ctx.Decommissioned()
+	default:
+		return ctx.Active()
+	}
+}
+
+func (h housingUnit) IsActiveState() bool {
+	return h.GetState().IsActive()
+}
+
+func (h housingUnit) IsDecommissioned() bool {
+	return h.GetState().IsDecommissioned()
 }
 
 func (h housingUnit) SupportsSpecies(species string) bool {
@@ -888,6 +918,7 @@ func (h housingUnit) MarshalJSON() ([]byte, error) {
 		FacilityID  string    `json:"facility_id"`
 		Capacity    int       `json:"capacity"`
 		Environment string    `json:"environment"`
+		State       string    `json:"state"`
 	}
 	return json.Marshal(housingJSON{
 		ID:          h.ID(),
@@ -897,6 +928,7 @@ func (h housingUnit) MarshalJSON() ([]byte, error) {
 		FacilityID:  h.facilityID,
 		Capacity:    h.capacity,
 		Environment: h.environment,
+		State:       h.state,
 	})
 }
 

@@ -83,6 +83,24 @@ func TestOrganismContextualAccessors(t *testing.T) {
 			t.Error("Adult organism should return false for IsDeceased")
 		}
 	})
+
+	t.Run("GetState returns contextual state reference", func(t *testing.T) {
+		housing := NewHousingUnit(HousingUnitData{
+			Base:        BaseData{ID: "housing3"},
+			Environment: "terrestrial",
+			State:       "decommissioned",
+		})
+		state := housing.GetState()
+		if state.String() != "decommissioned" {
+			t.Fatalf("expected decommissioned state, got %s", state.String())
+		}
+		if housing.IsActiveState() {
+			t.Fatal("decommissioned housing should not be active")
+		}
+		if !housing.IsDecommissioned() {
+			t.Fatal("decommissioned housing should be flagged as such")
+		}
+	})
 }
 
 func TestHousingUnitContextualAccessors(t *testing.T) {
@@ -92,6 +110,7 @@ func TestHousingUnitContextualAccessors(t *testing.T) {
 			Name:        "Test Tank",
 			Environment: "aquatic",
 			Capacity:    10,
+			State:       "active",
 		})
 
 		envRef := housing.GetEnvironmentType()
@@ -107,6 +126,7 @@ func TestHousingUnitContextualAccessors(t *testing.T) {
 		aquaticHousing := NewHousingUnit(HousingUnitData{
 			Base:        BaseData{ID: "housing1"},
 			Environment: "aquatic",
+			State:       "active",
 		})
 		if !aquaticHousing.IsAquaticEnvironment() {
 			t.Error("Aquatic housing should return true for IsAquaticEnvironment")
@@ -115,6 +135,7 @@ func TestHousingUnitContextualAccessors(t *testing.T) {
 		terrestrialHousing := NewHousingUnit(HousingUnitData{
 			Base:        BaseData{ID: "housing2"},
 			Environment: "terrestrial",
+			State:       "active",
 		})
 		if terrestrialHousing.IsAquaticEnvironment() {
 			t.Error("Terrestrial housing should return false for IsAquaticEnvironment")
@@ -125,6 +146,7 @@ func TestHousingUnitContextualAccessors(t *testing.T) {
 		humidHousing := NewHousingUnit(HousingUnitData{
 			Base:        BaseData{ID: "housing1"},
 			Environment: "humid",
+			State:       "active",
 		})
 		if !humidHousing.IsHumidEnvironment() {
 			t.Error("Humid housing should return true for IsHumidEnvironment")
@@ -133,6 +155,7 @@ func TestHousingUnitContextualAccessors(t *testing.T) {
 		dryHousing := NewHousingUnit(HousingUnitData{
 			Base:        BaseData{ID: "housing2"},
 			Environment: "terrestrial",
+			State:       "active",
 		})
 		if dryHousing.IsHumidEnvironment() {
 			t.Error("Terrestrial housing should return false for IsHumidEnvironment")
@@ -143,6 +166,7 @@ func TestHousingUnitContextualAccessors(t *testing.T) {
 		aquaticHousing := NewHousingUnit(HousingUnitData{
 			Base:        BaseData{ID: "housing1"},
 			Environment: "aquatic",
+			State:       "active",
 		})
 		if !aquaticHousing.SupportsSpecies("fish") {
 			t.Error("Aquatic housing should support fish")
@@ -154,6 +178,7 @@ func TestHousingUnitContextualAccessors(t *testing.T) {
 		arborealHousing := NewHousingUnit(HousingUnitData{
 			Base:        BaseData{ID: "housing2"},
 			Environment: "arboreal",
+			State:       "active",
 		})
 		if !arborealHousing.SupportsSpecies("bird") {
 			t.Error("Arboreal housing should support bird")
@@ -165,6 +190,7 @@ func TestHousingUnitContextualAccessors(t *testing.T) {
 			Base:       BaseData{ID: "housing1"},
 			Name:       "Test Tank",
 			FacilityID: "Lab A",
+			State:      "active",
 		})
 
 		if housing.Name() != "Test Tank" {
