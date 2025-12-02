@@ -48,6 +48,7 @@ linters:
             - fmt
             - go/ast
             - go/parser
+            - go/format
             - go/token
             - maps
             - github.com/aws/aws-sdk-go-v2/aws

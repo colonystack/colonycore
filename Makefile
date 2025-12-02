@@ -156,12 +156,11 @@ entity-model-validate:
 	@GOCACHE=$(GOCACHE) go run ./internal/tools/entitymodel/validate docs/schema/entity-model.json
 
 entity-model-generate:
-	@echo "==> entity-model generate (placeholder)"
-	@echo "Add generators for Go structs, OpenAPI components, ERD, and DDL derived from docs/schema/entity-model.json"
+	@echo "==> entity-model generate"
+	@GOCACHE=$(GOCACHE) go run ./internal/tools/entitymodel/generate -schema docs/schema/entity-model.json -out pkg/domain/entitymodel/model_gen.go
 
-entity-model-verify: entity-model-validate
-	@echo "==> entity-model verify (validate + generation placeholder)"
-	@echo "Extend this target to chain entity-model-generate outputs once generators are available"
+entity-model-verify: entity-model-validate entity-model-generate
+	@echo "==> entity-model verify (validate + generation)"
 
 
 go-test:
