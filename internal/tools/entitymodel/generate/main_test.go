@@ -297,19 +297,26 @@ func TestMainRunsWithTempPaths(t *testing.T) {
 	schemaPath := filepath.Join(tmpDir, "schema.json")
 	outPath := filepath.Join(tmpDir, "out.go")
 	openapiPath := filepath.Join(tmpDir, "entity-model.yaml")
+	pgSQLPath := filepath.Join(tmpDir, "postgres.sql")
+	sqlitePath := filepath.Join(tmpDir, "sqlite.sql")
 
 	content := `{"version":"0.0.1","metadata":{"status":"seed"},"enums":{"kind":{"values":["one"]}},"definitions":{"id":{"type":"string"},"timestamp":{"type":"string","format":"date-time"}},"entities":{"Entity":{"required":["id","created_at","updated_at","kind"],"properties":{"id":{"$ref":"#/definitions/id"},"created_at":{"$ref":"#/definitions/timestamp"},"updated_at":{"$ref":"#/definitions/timestamp"},"kind":{"$ref":"#/enums/kind"},"at":{"type":"string","format":"date-time"}}}}}`
 	if err := os.WriteFile(schemaPath, []byte(content), 0o600); err != nil {
 		t.Fatalf("write schema: %v", err)
 	}
 
-	runMainWithArgs(t, []string{"-schema", schemaPath, "-out", outPath, "-openapi", openapiPath})
+	runMainWithArgs(t, []string{"-schema", schemaPath, "-out", outPath, "-openapi", openapiPath, "-sql-postgres", pgSQLPath, "-sql-sqlite", sqlitePath})
 
 	if _, err := os.Stat(outPath); err != nil {
 		t.Fatalf("expected output file: %v", err)
 	}
 	if _, err := os.Stat(openapiPath); err != nil {
 		t.Fatalf("expected openapi output file: %v", err)
+	}
+	for _, path := range []string{pgSQLPath, sqlitePath} {
+		if _, err := os.Stat(path); err != nil {
+			t.Fatalf("expected sql output file %s: %v", path, err)
+		}
 	}
 }
 
@@ -540,6 +547,173 @@ func TestEncodeOpenAPIYAMLHeader(t *testing.T) {
 	}
 	if !strings.Contains(text, "openapi: \"3.1.0\"") {
 		t.Fatalf("expected openapi field in output:\n%s", text)
+	}
+}
+
+func TestSQLTypeForPropertyVariants(t *testing.T) {
+	enums := map[string]enumSpec{
+		"status": {Values: []string{"ready"}},
+	}
+	defs := map[string]definitionSpec{
+		"id":        {Type: typeString, Format: "uuid"},
+		"timestamp": {Type: typeString, Format: dateTimeFormat},
+		"meta": {
+			Type: "object",
+			Properties: map[string]json.RawMessage{
+				"k": raw(`{"type":"string"}`),
+			},
+		},
+	}
+
+	tests := []struct {
+		name string
+		prop definitionSpec
+		want string
+	}{
+		{name: "string", prop: definitionSpec{Type: typeString}, want: "TEXT"},
+		{name: "uuid", prop: definitionSpec{Type: typeString, Format: "uuid"}, want: "UUID"},
+		{name: "enumRef", prop: definitionSpec{Ref: "#/enums/status"}, want: "TEXT"},
+		{name: "dateTime", prop: definitionSpec{Ref: "#/definitions/timestamp"}, want: "TIMESTAMPTZ"},
+		{name: "int", prop: definitionSpec{Type: typeInteger}, want: "INTEGER"},
+		{name: "number", prop: definitionSpec{Type: typeNumber}, want: "DOUBLE PRECISION"},
+		{name: "bool", prop: definitionSpec{Type: typeBoolean}, want: "BOOLEAN"},
+		{name: "array", prop: definitionSpec{Type: typeArray}, want: "JSONB"},
+		{name: "objectWithProps", prop: defs["meta"], want: "JSONB"},
+		{name: "unknownFallsBack", prop: definitionSpec{}, want: "JSONB"},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := sqlTypeForProperty(tt.prop, enums, defs, postgresDialect)
+			if err != nil {
+				t.Fatalf("sqlTypeForProperty: %v", err)
+			}
+			if got != tt.want {
+				t.Fatalf("type mismatch: got %s want %s", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestResolvePropertyUnknownRef(t *testing.T) {
+	if _, err := resolveProperty(definitionSpec{Ref: "#/definitions/missing"}, nil, map[string]definitionSpec{}); err == nil {
+		t.Fatalf("expected error for missing ref")
+	}
+}
+
+func TestBuildSQLForDialectProducesExpectedTables(t *testing.T) {
+	doc := schemaDoc{
+		Enums: map[string]enumSpec{
+			"status": {Values: []string{"active"}},
+		},
+		Definitions: map[string]definitionSpec{
+			"id":        {Type: typeString, Format: "uuid"},
+			"timestamp": {Type: typeString, Format: dateTimeFormat},
+			"entity_id": {Type: typeString, Format: "uuid"},
+			"metadata": {
+				Type: "object",
+				Properties: map[string]json.RawMessage{
+					"note": raw(`{"type":"string"}`),
+				},
+			},
+		},
+		Entities: map[string]entitySpec{
+			"Owner": {
+				Required: []string{"id", "created_at", "updated_at", "name"},
+				Properties: map[string]json.RawMessage{
+					"id":         raw(`{"$ref":"#/definitions/id"}`),
+					"created_at": raw(`{"$ref":"#/definitions/timestamp"}`),
+					"updated_at": raw(`{"$ref":"#/definitions/timestamp"}`),
+					"name":       raw(`{"type":"string"}`),
+				},
+				Relationships: map[string]relationshipSpec{},
+			},
+			"Widget": {
+				Required: []string{"id", "created_at", "updated_at", "name", "owner_id"},
+				Properties: map[string]json.RawMessage{
+					"id":         raw(`{"$ref":"#/definitions/id"}`),
+					"created_at": raw(`{"$ref":"#/definitions/timestamp"}`),
+					"updated_at": raw(`{"$ref":"#/definitions/timestamp"}`),
+					"name":       raw(`{"type":"string"}`),
+					"owner_id":   raw(`{"$ref":"#/definitions/entity_id"}`),
+					"tags":       raw(`{"type":"array","items":{"type":"string"}}`),
+					"metadata":   raw(`{"$ref":"#/definitions/metadata"}`),
+					"quantity":   raw(`{"type":"number"}`),
+				},
+				Relationships: map[string]relationshipSpec{
+					"owner_id": {Target: "Owner", Cardinality: "1"},
+					"tags":     {Target: "Owner", Cardinality: "0..n"},
+				},
+			},
+		},
+	}
+
+	pg, err := buildSQLForDialect(doc, postgresDialect)
+	if err != nil {
+		t.Fatalf("buildSQLForDialect: %v", err)
+	}
+	if !strings.Contains(pg, "CREATE TABLE IF NOT EXISTS owners") {
+		t.Fatalf("expected owners table, got:\n%s", pg)
+	}
+	for _, want := range []string{"owner_id UUID", "tags JSONB", "FOREIGN KEY (owner_id) REFERENCES owners(id)"} {
+		if !strings.Contains(pg, want) {
+			t.Fatalf("expected postgres SQL to contain %q", want)
+		}
+	}
+
+	sqlite, err := buildSQLForDialect(doc, sqliteDialect)
+	if err != nil {
+		t.Fatalf("buildSQLForDialect sqlite: %v", err)
+	}
+	for _, want := range []string{"quantity REAL", "TEXT", "FOREIGN KEY (owner_id) REFERENCES owners(id)"} {
+		if !strings.Contains(sqlite, want) {
+			t.Fatalf("expected sqlite SQL to contain %q", want)
+		}
+	}
+}
+
+func TestBuildSQLForDialectRequiresID(t *testing.T) {
+	doc := schemaDoc{
+		Definitions: map[string]definitionSpec{
+			"timestamp": {Type: typeString, Format: dateTimeFormat},
+		},
+		Entities: map[string]entitySpec{
+			"Broken": {
+				Required: []string{"created_at"},
+				Properties: map[string]json.RawMessage{
+					"created_at": raw(`{"$ref":"#/definitions/timestamp"}`),
+				},
+			},
+		},
+	}
+
+	if _, err := buildSQLForDialect(doc, postgresDialect); err == nil {
+		t.Fatalf("expected missing id column error")
+	}
+}
+
+func TestToSnakeAndPluralize(t *testing.T) {
+	cases := map[string]string{
+		"Owner":       "owner",
+		"HousingUnit": "housing_unit",
+		"APIKey":      "api_key",
+		"mixed-Name":  "mixed_name",
+		"":            "",
+	}
+	for input, want := range cases {
+		if got := toSnake(input); got != want {
+			t.Fatalf("toSnake(%q) = %q, want %q", input, got, want)
+		}
+	}
+	if pluralize("owners") != "owners" {
+		t.Fatalf("pluralize should keep trailing s")
+	}
+	if pluralize("widget") != "widgets" {
+		t.Fatalf("pluralize should append s")
+	}
+	if pluralize("facility") != "facilities" {
+		t.Fatalf("pluralize should convert facility to facilities")
 	}
 }
 

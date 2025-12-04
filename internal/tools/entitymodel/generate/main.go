@@ -61,6 +61,8 @@ func main() {
 	schemaPath := flag.String("schema", "docs/schema/entity-model.json", "path to the entity model schema")
 	outPath := flag.String("out", "pkg/domain/entitymodel/model_gen.go", "output file for generated Go code")
 	openapiPath := flag.String("openapi", "", "output file for generated OpenAPI YAML (optional)")
+	sqlPostgresPath := flag.String("sql-postgres", "", "output file for generated Postgres DDL (optional)")
+	sqlSQLitePath := flag.String("sql-sqlite", "", "output file for generated SQLite DDL (optional)")
 	flag.Parse()
 
 	doc, err := loadSchema(*schemaPath)
@@ -86,6 +88,25 @@ func main() {
 			exitErr(err)
 		}
 		fmt.Printf("generated %s from %s\n", *openapiPath, *schemaPath)
+	}
+
+	if strings.TrimSpace(*sqlPostgresPath) != "" || strings.TrimSpace(*sqlSQLitePath) != "" {
+		pgSQL, sqliteSQL, err := generateSQL(doc)
+		if err != nil {
+			exitErr(err)
+		}
+		if path := strings.TrimSpace(*sqlPostgresPath); path != "" {
+			if err := writeFile(path, pgSQL); err != nil {
+				exitErr(err)
+			}
+			fmt.Printf("generated %s from %s\n", path, *schemaPath)
+		}
+		if path := strings.TrimSpace(*sqlSQLitePath); path != "" {
+			if err := writeFile(path, sqliteSQL); err != nil {
+				exitErr(err)
+			}
+			fmt.Printf("generated %s from %s\n", path, *schemaPath)
+		}
 	}
 
 	fmt.Printf("generated %s from %s\n", *outPath, *schemaPath)
