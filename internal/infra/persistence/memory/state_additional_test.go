@@ -388,6 +388,163 @@ func TestObservationExtensionsSnapshotRoundTrip(t *testing.T) {
 	}
 }
 
+func TestSnapshotPreservesExtensionContainers(t *testing.T) {
+	now := time.Now().UTC()
+
+	facilityContainer := extension.NewContainer()
+	if err := facilityContainer.Set(extension.HookFacilityEnvironmentBaselines, extension.PluginCore, map[string]any{"temperature": "21C"}); err != nil {
+		t.Fatalf("seed facility core payload: %v", err)
+	}
+	if err := facilityContainer.Set(extension.HookFacilityEnvironmentBaselines, extension.PluginID("plugin.facility"), map[string]any{"humidity": "65%"}); err != nil {
+		t.Fatalf("seed facility plugin payload: %v", err)
+	}
+	facility := domain.Facility{
+		Base: domain.Base{ID: "fac-ext"},
+		Name: "Facility Ext",
+		Zone: "A1",
+	}
+	if err := facility.SetFacilityExtensions(facilityContainer); err != nil {
+		t.Fatalf("apply facility extensions: %v", err)
+	}
+
+	breedingContainer := extension.NewContainer()
+	if err := breedingContainer.Set(extension.HookBreedingUnitPairingAttributes, extension.PluginCore, map[string]any{"strategy": "pair"}); err != nil {
+		t.Fatalf("seed breeding core payload: %v", err)
+	}
+	if err := breedingContainer.Set(extension.HookBreedingUnitPairingAttributes, extension.PluginID("plugin.breeding"), map[string]any{"notes": "cross-line"}); err != nil {
+		t.Fatalf("seed breeding plugin payload: %v", err)
+	}
+	breeding := domain.BreedingUnit{
+		Base:     domain.Base{ID: "breed-ext"},
+		Name:     "Breeding Ext",
+		Strategy: "pair",
+	}
+	if err := breeding.SetBreedingUnitExtensions(breedingContainer); err != nil {
+		t.Fatalf("apply breeding extensions: %v", err)
+	}
+
+	sampleContainer := extension.NewContainer()
+	if err := sampleContainer.Set(extension.HookSampleAttributes, extension.PluginCore, map[string]any{"tissue": "blood"}); err != nil {
+		t.Fatalf("seed sample core payload: %v", err)
+	}
+	if err := sampleContainer.Set(extension.HookSampleAttributes, extension.PluginID("plugin.sample"), map[string]any{"note": "hemolyzed"}); err != nil {
+		t.Fatalf("seed sample plugin payload: %v", err)
+	}
+	sample := domain.Sample{
+		Base:            domain.Base{ID: "sample-ext"},
+		Identifier:      "S-ext",
+		SourceType:      "blood",
+		OrganismID:      ptr("org-ext"),
+		FacilityID:      facility.ID,
+		CollectedAt:     now,
+		Status:          domain.SampleStatusStored,
+		StorageLocation: "freezer",
+	}
+	if err := sample.SetSampleExtensions(sampleContainer); err != nil {
+		t.Fatalf("apply sample extensions: %v", err)
+	}
+
+	supplyContainer := extension.NewContainer()
+	if err := supplyContainer.Set(extension.HookSupplyItemAttributes, extension.PluginCore, map[string]any{"sku": "core"}); err != nil {
+		t.Fatalf("seed supply core payload: %v", err)
+	}
+	if err := supplyContainer.Set(extension.HookSupplyItemAttributes, extension.PluginID("plugin.supply"), map[string]any{"lot": "L123"}); err != nil {
+		t.Fatalf("seed supply plugin payload: %v", err)
+	}
+	supply := domain.SupplyItem{
+		Base:           domain.Base{ID: "supply-ext"},
+		SKU:            "SKU-EXT",
+		Name:           "Supply Ext",
+		QuantityOnHand: 5,
+		Unit:           "box",
+		FacilityIDs:    []string{facility.ID},
+		ProjectIDs:     []string{"project-ext"},
+	}
+	if err := supply.SetSupplyItemExtensions(supplyContainer); err != nil {
+		t.Fatalf("apply supply extensions: %v", err)
+	}
+
+	snapshot := Snapshot{
+		Organisms: map[string]domain.Organism{
+			"org-ext": {Base: domain.Base{ID: "org-ext"}, Name: "Org", Species: "Spec"},
+		},
+		Facilities: map[string]domain.Facility{
+			facility.ID: facility,
+		},
+		Breeding: map[string]domain.BreedingUnit{
+			breeding.ID: breeding,
+		},
+		Samples: map[string]domain.Sample{
+			sample.ID: sample,
+		},
+		Projects: map[string]domain.Project{
+			"project-ext": {Base: domain.Base{ID: "project-ext"}, Code: "PRJ-ext", Title: "Project Ext", FacilityIDs: []string{facility.ID}},
+		},
+		Supplies: map[string]domain.SupplyItem{
+			supply.ID: supply,
+		},
+	}
+
+	store := NewStore(nil)
+	store.ImportState(snapshot)
+	exported := store.ExportState()
+
+	facilityAfter := exported.Facilities[facility.ID]
+	facContainer, err := facilityAfter.FacilityExtensions()
+	if err != nil {
+		t.Fatalf("load facility extensions: %v", err)
+	}
+	assertPluginPayload(t, facContainer, extension.HookFacilityEnvironmentBaselines, extension.PluginID("plugin.facility"), "humidity", "65%")
+	if facilityAfter.EnvironmentBaselines()["temperature"] != "21C" {
+		t.Fatalf("expected facility core baseline preserved")
+	}
+
+	breedingAfter := exported.Breeding[breeding.ID]
+	breedContainer, err := breedingAfter.BreedingUnitExtensions()
+	if err != nil {
+		t.Fatalf("load breeding extensions: %v", err)
+	}
+	assertPluginPayload(t, breedContainer, extension.HookBreedingUnitPairingAttributes, extension.PluginID("plugin.breeding"), "notes", "cross-line")
+	if breedingAfter.PairingAttributes()["strategy"] != "pair" {
+		t.Fatalf("expected breeding core payload preserved")
+	}
+
+	sampleAfter := exported.Samples[sample.ID]
+	sampleContainerOut, err := sampleAfter.SampleExtensions()
+	if err != nil {
+		t.Fatalf("load sample extensions: %v", err)
+	}
+	assertPluginPayload(t, sampleContainerOut, extension.HookSampleAttributes, extension.PluginID("plugin.sample"), "note", "hemolyzed")
+	if sampleAfter.SampleAttributes()["tissue"] != "blood" {
+		t.Fatalf("expected sample core attributes preserved")
+	}
+
+	supplyAfter := exported.Supplies[supply.ID]
+	supplyContainerOut, err := supplyAfter.SupplyItemExtensions()
+	if err != nil {
+		t.Fatalf("load supply extensions: %v", err)
+	}
+	assertPluginPayload(t, supplyContainerOut, extension.HookSupplyItemAttributes, extension.PluginID("plugin.supply"), "lot", "L123")
+	if supplyAfter.SupplyAttributes()["sku"] != "core" {
+		t.Fatalf("expected supply core attributes preserved")
+	}
+}
+
+func assertPluginPayload(t *testing.T, container extension.Container, hook extension.Hook, plugin extension.PluginID, key string, expected any) {
+	t.Helper()
+	hookPayload := container.Raw()[string(hook)]
+	if hookPayload == nil {
+		t.Fatalf("expected hook %s payload present", hook)
+	}
+	pluginPayload, ok := hookPayload[plugin.String()].(map[string]any)
+	if !ok {
+		t.Fatalf("expected plugin %s payload present", plugin)
+	}
+	if pluginPayload[key] != expected {
+		t.Fatalf("expected %s=%v for plugin %s hook %s, got %#v", key, expected, plugin, hook, pluginPayload[key])
+	}
+}
+
 func TestStateNormalizationDefaultsAndValidation(t *testing.T) {
 	store := NewStore(nil)
 	now := time.Now().UTC()
