@@ -10,8 +10,18 @@ GOLANGCI_BIN := $(GOPATH_BIN)/golangci-lint
 GOLANGCI_VERSION_PLAIN := $(patsubst v%,%,$(GOLANGCI_VERSION))
 MODULE := $(shell go list -m)
 IMPORT_BOSS_BIN := $(GOPATH_BIN)/import-boss
+SCHEMASPY_IMAGE ?= schemaspy/schemaspy:7.0.2
+SCHEMASPY_PLATFORM ?=
+SCHEMASPY_TMP := $(CURDIR)/.cache/schemaspy/entitymodel-erd
+SCHEMASPY_SVG_OUT := $(CURDIR)/docs/annex/entity-model-erd.svg
+SCHEMASPY_DOT_OUT := $(CURDIR)/docs/annex/entity-model-erd.dot
+SCHEMASPY_PG_IMAGE ?= postgres:16-alpine
+SCHEMASPY_PG_CONTAINER ?= entitymodel-erd-pg
+SCHEMASPY_PG_DB ?= entitymodel
+SCHEMASPY_PG_USER ?= postgres
+SCHEMASPY_PG_PASSWORD ?= postgres
 
-.PHONY: all build lint go-test test registry-check fmt-check vet registry-lint golangci golangci-install python-lint r-lint go-lint import-boss import-boss-install entity-model-validate entity-model-generate entity-model-verify
+.PHONY: all build lint go-test test registry-check fmt-check vet registry-lint golangci golangci-install python-lint r-lint go-lint import-boss import-boss-install entity-model-validate entity-model-generate entity-model-verify entity-model-erd
 
 all: build
 
@@ -161,6 +171,22 @@ entity-model-generate:
 
 entity-model-verify: entity-model-validate entity-model-generate
 	@echo "==> entity-model verify (validate + generation)"
+
+entity-model-erd: entity-model-generate
+	@echo "==> entity-model erd (SchemaSpy via generated Postgres DDL)"
+	@rm -rf $(SCHEMASPY_TMP)
+	@mkdir -p $(SCHEMASPY_TMP) $(dir $(SCHEMASPY_SVG_OUT))
+	@docker rm -f $(SCHEMASPY_PG_CONTAINER) >/dev/null 2>&1 || true
+	@docker run --rm -d --name $(SCHEMASPY_PG_CONTAINER) -e POSTGRES_PASSWORD=$(SCHEMASPY_PG_PASSWORD) -e POSTGRES_DB=$(SCHEMASPY_PG_DB) $(SCHEMASPY_PG_IMAGE) >/dev/null
+	@printf "waiting for postgres"
+	@until docker exec $(SCHEMASPY_PG_CONTAINER) pg_isready -U $(SCHEMASPY_PG_USER) -d $(SCHEMASPY_PG_DB) >/dev/null 2>&1; do printf "."; sleep 1; done; echo
+	@docker exec -i $(SCHEMASPY_PG_CONTAINER) psql -X -v ON_ERROR_STOP=1 -1 -U $(SCHEMASPY_PG_USER) -d $(SCHEMASPY_PG_DB) < docs/schema/sql/postgres.sql
+	@docker run --rm $(if $(SCHEMASPY_PLATFORM),--platform $(SCHEMASPY_PLATFORM),) -v "$(SCHEMASPY_TMP)":/output --network container:$(SCHEMASPY_PG_CONTAINER) $(SCHEMASPY_IMAGE) -t pgsql11 -db $(SCHEMASPY_PG_DB) -host localhost -port 5432 -s public -u $(SCHEMASPY_PG_USER) -p $(SCHEMASPY_PG_PASSWORD) -hq -imageformat svg
+	@cp "$(SCHEMASPY_TMP)/diagrams/summary/relationships.real.large.svg" "$(SCHEMASPY_SVG_OUT)"
+	@cp "$(SCHEMASPY_TMP)/diagrams/summary/relationships.real.large.dot" "$(SCHEMASPY_DOT_OUT)"
+	@docker rm -f $(SCHEMASPY_PG_CONTAINER) >/dev/null 2>&1 || true
+	@echo "SchemaSpy ERD written to $(SCHEMASPY_SVG_OUT) (full report in $(SCHEMASPY_TMP))"
+	@echo "SchemaSpy Graphviz DOT written to $(SCHEMASPY_DOT_OUT) (full report in $(SCHEMASPY_TMP))"
 
 
 go-test:

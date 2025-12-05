@@ -642,8 +642,8 @@ func TestBuildSQLForDialectProducesExpectedTables(t *testing.T) {
 					"quantity":   raw(`{"type":"number"}`),
 				},
 				Relationships: map[string]relationshipSpec{
-					"owner_id": {Target: "Owner", Cardinality: "1"},
-					"tags":     {Target: "Owner", Cardinality: "0..n"},
+					"owner_id": {Target: "Owner", Cardinality: "1..1"},
+					"tags":     {Target: "Owner", Cardinality: "0..n", Storage: storageJSON},
 				},
 			},
 		},

@@ -74,7 +74,7 @@ func TestValidateFailures(t *testing.T) {
       },
       "states": {"enum": "missing_enum"},
       "relationships": {
-        "bar_id": {"target": "Missing"}
+        "bar_id": {"target": "Missing", "storage": "bogus"}
       },
       "invariants": ["", " "]
     }
@@ -97,6 +97,7 @@ func TestValidateFailures(t *testing.T) {
 		"entity \"Foo\" natural key [<unset>] must declare scope",
 		"entity \"Foo\" relationship \"bar_id\" missing property definition",
 		"entity \"Foo\" relationship \"bar_id\" missing cardinality",
+		"entity \"Foo\" relationship \"bar_id\" has invalid storage \"bogus\"",
 		"entity \"Foo\" states.enum \"missing_enum\" not found in enums",
 		"entity \"Foo\" relationship \"bar_id\" targets unknown entity \"Missing\"",
 		"entity \"Foo\" invariants[0] must not be empty",

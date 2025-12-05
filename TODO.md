@@ -1,0 +1,31 @@
+- [x] Harden entity-model validation rules
+  - Enforce semver versioning, metadata status, duplicate checks, state machine initial/terminal values, `id_semantics`, allowed invariants, enum reachability, and property enum references in `internal/tools/entitymodel/validate`; aligned schema state definitions to pass.
+- [ ] Finish extension payload normalization across facades and persistence
+  - Rewrite plugin/dataset facades and adapter flows to pass hook-scoped payloads via typed helpers (`ExtensionSet`, etc.) instead of raw maps (e.g., dataset exporters/handlers still exchange `map[string]any` payloads).
+  - Update memory/SQLite stores and fixtures to serialize typed containers end-to-end, then rerun `make lint` and `make test`; document the container-only contract in ADR-0003/annex once stabilized.
+- [ ] Ensure rule invariants have the data they need
+  - Entity model now encodes housing, protocol, lineage, and lifecycle invariants with validator allowlists; synthetic datasets still need to exercise them end-to-end.
+- [ ] Complete Entity Model v0 canon
+  - [x] Anchor plugin contract outline at `docs/annex/plugin-contract.md` and fixtures path at `testutil/fixtures/entity-model/`.
+  - [x] Align schema enums/states with RFC-0001 compliance + housing lifecycles (code/plugins to follow).
+  - [ ] Bring domain/constants and contexts up to the RFC-aligned schema (protocol/permit/housing states): domain enums now alias the generated entity model and housing lifecycle contexts are exposed in pluginapi/datasetapi with updated API snapshots; persistence adapters/memory+sqlite snapshots, fixtures, and dataset facades still need to consume the new state accessors.
+  - [x] Fill `entity-model.json` gaps: natural keys, invariants, relationships, and enums for every RFC-0001 entity (Line/Strain/GenotypeMarker included) — relationships/invariants are now explicit (including lineage/protocol/lifecycle constraints), natural keys scoped, and enums/natural-key scopes reviewed against RFC-0001 before freeze.
+  - [ ] Stand up generators driven solely from the JSON plus `make entity-model-generate` wiring (Go/OpenAPI/SQL/ERD targets hooked into `make entity-model-verify`; SVGs rendered via Graphviz).
+    - [x] Go types/enums emitted to `pkg/domain/entitymodel`.
+    - [x] OpenAPI components.
+    - [x] Postgres/SQLite DDL with FK-aware ordering, join tables for array relationships, derived arrays omitted, and FK indexes.
+    - [x] ERD export (DOT + SVG) with Graphviz rendering and SVG fallback for headless runs; SchemaSpy target now loads generated DDL with `ON_ERROR_STOP` and emits `docs/annex/entity-model-erd.svg` from a temp Postgres container.
+- [ ] Wire entity-model tooling into workflows
+  - [x] Make `make entity-model-validate` runnable and execute it from `make lint` so schema drift fails fast.
+  - [ ] Extend `entity-model-generate`/`entity-model-verify` placeholders into real generators plus a pre-commit hook so CI and contributors run the same checks and outputs (Go/OpenAPI/SQL/ERD now generated; pre-commit hook still pending).
+- [x] Add relational projection layer for entity-model
+  - [x] Introduce per-relationship `storage` hints (`fk`/`join`/`derived`/`json`) defaulted by rules; validator now rejects unknown storage values.
+  - [x] Compile arrays without inverse FKs into join tables with deterministic names/constraints/indexes; treat inverse-array + scalar-FK pairs as derived to avoid duplicated storage; drop JSONB `*_ids` columns when join tables are emitted.
+  - [x] Keep logical JSON schema unchanged for API shape; emit relational DDL (PG/SQLite) from the compiled projection; add golden tests plus smoke `psql` load to ensure SchemaSpy sees real FKs.
+- [x] Enforce entity-model integrity in generated DDL/ERD (next slice)
+  - [x] Deduplicate many-to-many tables so each relationship emits a single join table (`facilities__project_ids` vs `projects__facility_ids`, `projects__supply_item_ids` vs `supply_items__project_ids`); update ERD output after the generator change.
+  - [x] Emit DB-level constraints for schema guarantees: unique indexes for natural keys (Facility.code, Project.code, Sample facility_id+identifier, Permit authority+permit_number, etc.) and CHECK/ENUM constraints for lifecycle/status/environment enums instead of plain TEXT columns.
+  - [x] Add enforcement for required relationship arrays (e.g., permit facility_ids/protocol_ids, line/strain genotype markers, supply item/project facility bindings) so “at least one link” is validated at the storage layer.
+- [x] Patch entity-model DDL/ERD projection gaps from the latest integrity review
+  - Fix join-table de-duplication so distinct array relationships to the same target both persist (schema defines `BreedingUnit.female_ids` and `BreedingUnit.male_ids`, and the generated DDL/ERD now includes both join tables).
+  - Add required-join enforcement for schema-required arrays that currently lacked it (permits `protocol_ids`; supply items `project_ids`) so the DDL matches `docs/schema/entity-model.json`.

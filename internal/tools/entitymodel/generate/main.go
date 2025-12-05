@@ -33,11 +33,18 @@ type definitionSpec struct {
 type relationshipSpec struct {
 	Target      string `json:"target"`
 	Cardinality string `json:"cardinality"`
+	Storage     string `json:"storage"`
+}
+
+type naturalKeySpec struct {
+	Fields      []string `json:"fields"`
+	Scope       string   `json:"scope"`
+	Description string   `json:"description"`
 }
 
 type entitySpec struct {
 	Description   string                      `json:"description"`
-	NaturalKeys   []json.RawMessage           `json:"natural_keys"` // not needed for generation yet, parsed to keep strict JSON structure.
+	NaturalKeys   []naturalKeySpec            `json:"natural_keys"`
 	Required      []string                    `json:"required"`
 	Properties    map[string]json.RawMessage  `json:"properties"`
 	Relationships map[string]relationshipSpec `json:"relationships"`

@@ -25,6 +25,7 @@ type stateSpec struct {
 type relationshipSpec struct {
 	Target      string `json:"target"`
 	Cardinality string `json:"cardinality"`
+	Storage     string `json:"storage"`
 }
 
 type naturalKeySpec struct {
@@ -241,6 +242,9 @@ func validate(path string) error {
 			} else if !isValidCardinality(rel.Cardinality) {
 				errs = append(errs, fmt.Sprintf("entity %q relationship %q has invalid cardinality %q", name, relName, rel.Cardinality))
 			}
+			if storage := strings.TrimSpace(rel.Storage); storage != "" && !isValidStorage(storage) {
+				errs = append(errs, fmt.Sprintf("entity %q relationship %q has invalid storage %q", name, relName, storage))
+			}
 		}
 
 		for i, invariant := range ent.Invariants {
@@ -306,6 +310,15 @@ func isSemver(version string) bool {
 func isValidCardinality(value string) bool {
 	switch strings.ToLower(strings.TrimSpace(value)) {
 	case "0..1", "1..1", "0..n", "1..n":
+		return true
+	default:
+		return false
+	}
+}
+
+func isValidStorage(value string) bool {
+	switch strings.ToLower(strings.TrimSpace(value)) {
+	case "fk", "join", "derived", "json":
 		return true
 	default:
 		return false
