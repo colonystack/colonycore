@@ -68,7 +68,7 @@ func TestMemStore_FullCRUDAndErrors(t *testing.T) { //nolint:gocyclo // exhausti
 		}
 		f, _ := tx.CreateFacility(fInput)
 		facility = f
-		h, _ := tx.CreateHousingUnit(domain.HousingUnit{Name: "H1", Capacity: 2, Environment: "dry", FacilityID: facility.ID})
+		h, _ := tx.CreateHousingUnit(domain.HousingUnit{Name: "H1", Capacity: 2, Environment: domain.HousingEnvironmentTerrestrial, FacilityID: facility.ID})
 		housing = h
 		_, _ = tx.UpdateFacility(facility.ID, func(fc *domain.Facility) error {
 			fc.HousingUnitIDs = append(fc.HousingUnitIDs, housing.ID)
@@ -432,7 +432,7 @@ func TestSQLiteStore_Persist_Reload_Full(t *testing.T) {
 		}
 		facilityID = facility.ID
 
-		housing, err := tx.CreateHousingUnit(domain.HousingUnit{Name: "Tank", Capacity: 2, Environment: "arid", FacilityID: facility.ID})
+		housing, err := tx.CreateHousingUnit(domain.HousingUnit{Name: "Tank", Capacity: 2, Environment: domain.HousingEnvironmentTerrestrial, FacilityID: facility.ID})
 		if err != nil {
 			return err
 		}
@@ -689,7 +689,7 @@ func TestMemStore_TransactionViewFinds(t *testing.T) {
 		if err != nil {
 			return err
 		}
-		h, err := tx.CreateHousingUnit(domain.HousingUnit{Name: "T-H", Capacity: 1, Environment: "e", FacilityID: f.ID})
+		h, err := tx.CreateHousingUnit(domain.HousingUnit{Name: "T-H", Capacity: 1, Environment: domain.HousingEnvironmentHumid, FacilityID: f.ID})
 		if err != nil {
 			return err
 		}
@@ -1095,7 +1095,7 @@ func TestSQLiteMigrateSnapshotCleansDataVariants(t *testing.T) {
 			"sample-missing-facility": {Base: domain.Base{ID: "sample-missing-facility"}, Identifier: "S3", SourceType: "blood", FacilityID: "missing", CollectedAt: now, Status: domain.SampleStatusStored, StorageLocation: "room"},
 		},
 		Protocols: map[string]domain.Protocol{
-			"prot-keep": {Base: domain.Base{ID: "prot-keep"}, Code: "PR", Title: "Protocol", MaxSubjects: 5, Status: "active"},
+			"prot-keep": {Base: domain.Base{ID: "prot-keep"}, Code: "PR", Title: "Protocol", MaxSubjects: 5, Status: domain.ProtocolStatusApproved},
 		},
 		Permits: map[string]domain.Permit{
 			"permit-valid": {Base: domain.Base{ID: "permit-valid"}, PermitNumber: "P", Authority: "Gov", ValidFrom: now, ValidUntil: now.Add(time.Hour), FacilityIDs: []string{facilityID, facilityID, "missing"}, ProtocolIDs: []string{"prot-keep", "missing"}},

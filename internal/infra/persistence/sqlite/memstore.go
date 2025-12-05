@@ -64,6 +64,77 @@ func mustApply(label string, err error) {
 	}
 }
 
+var (
+	defaultHousingState       = domain.HousingStateQuarantine
+	defaultHousingEnvironment = domain.HousingEnvironmentTerrestrial
+	validHousingStates        = map[domain.HousingState]struct{}{
+		domain.HousingStateQuarantine:     {},
+		domain.HousingStateActive:         {},
+		domain.HousingStateCleaning:       {},
+		domain.HousingStateDecommissioned: {},
+	}
+	validHousingEnvironments = map[domain.HousingEnvironment]struct{}{
+		domain.HousingEnvironmentAquatic:     {},
+		domain.HousingEnvironmentTerrestrial: {},
+		domain.HousingEnvironmentArboreal:    {},
+		domain.HousingEnvironmentHumid:       {},
+	}
+	defaultProtocolStatus = domain.ProtocolStatusDraft
+	validProtocolStatuses = map[domain.ProtocolStatus]struct{}{
+		domain.ProtocolStatusDraft:     {},
+		domain.ProtocolStatusSubmitted: {},
+		domain.ProtocolStatusApproved:  {},
+		domain.ProtocolStatusOnHold:    {},
+		domain.ProtocolStatusExpired:   {},
+		domain.ProtocolStatusArchived:  {},
+	}
+	defaultPermitStatus = domain.PermitStatusDraft
+	validPermitStatuses = map[domain.PermitStatus]struct{}{
+		domain.PermitStatusDraft:     {},
+		domain.PermitStatusSubmitted: {},
+		domain.PermitStatusApproved:  {},
+		domain.PermitStatusOnHold:    {},
+		domain.PermitStatusExpired:   {},
+		domain.PermitStatusArchived:  {},
+	}
+)
+
+func normalizeHousingUnit(h *HousingUnit) error {
+	if h.State == "" {
+		h.State = defaultHousingState
+	}
+	if _, ok := validHousingStates[h.State]; !ok {
+		return fmt.Errorf("unsupported housing state %q", h.State)
+	}
+	if h.Environment == "" {
+		h.Environment = defaultHousingEnvironment
+	}
+	if _, ok := validHousingEnvironments[h.Environment]; !ok {
+		return fmt.Errorf("unsupported housing environment %q", h.Environment)
+	}
+	return nil
+}
+
+func normalizeProtocol(p *Protocol) error {
+	if p.Status == "" {
+		p.Status = defaultProtocolStatus
+	}
+	if _, ok := validProtocolStatuses[p.Status]; !ok {
+		return fmt.Errorf("unsupported protocol status %q", p.Status)
+	}
+	return nil
+}
+
+func normalizePermit(p *Permit) error {
+	if p.Status == "" {
+		p.Status = defaultPermitStatus
+	}
+	if _, ok := validPermitStatuses[p.Status]; !ok {
+		return fmt.Errorf("unsupported permit status %q", p.Status)
+	}
+	return nil
+}
+
 // Infra implementations use domain types directly via their interfaces
 // No constant aliases needed - use domain.EntityType, domain.Action values directly
 
@@ -287,6 +358,14 @@ func migrateSnapshot(snapshot Snapshot) Snapshot {
 		return ok
 	}
 
+	for id, protocol := range snapshot.Protocols {
+		if err := normalizeProtocol(&protocol); err != nil {
+			delete(snapshot.Protocols, id)
+			continue
+		}
+		snapshot.Protocols[id] = protocol
+	}
+
 	for id, housing := range snapshot.Housing {
 		if housing.FacilityID == "" || !facilityExists(housing.FacilityID) {
 			delete(snapshot.Housing, id)
@@ -294,6 +373,10 @@ func migrateSnapshot(snapshot Snapshot) Snapshot {
 		}
 		if housing.Capacity <= 0 {
 			housing.Capacity = 1
+		}
+		if err := normalizeHousingUnit(&housing); err != nil {
+			delete(snapshot.Housing, id)
+			continue
 		}
 		snapshot.Housing[id] = housing
 	}
@@ -363,6 +446,10 @@ func migrateSnapshot(snapshot Snapshot) Snapshot {
 		}
 		if filtered, changed := filterIDs(permit.ProtocolIDs, protocolExists); changed {
 			permit.ProtocolIDs = filtered
+		}
+		if err := normalizePermit(&permit); err != nil {
+			delete(snapshot.Permits, id)
+			continue
 		}
 		snapshot.Permits[id] = permit
 	}
@@ -1108,6 +1195,9 @@ func (tx *transaction) CreateHousingUnit(h HousingUnit) (HousingUnit, error) {
 	if h.Capacity <= 0 {
 		return HousingUnit{}, errors.New("housing capacity must be positive")
 	}
+	if err := normalizeHousingUnit(&h); err != nil {
+		return HousingUnit{}, err
+	}
 	h.CreatedAt = tx.now
 	h.UpdatedAt = tx.now
 	tx.state.housing[h.ID] = cloneHousing(h)
@@ -1131,6 +1221,9 @@ func (tx *transaction) UpdateHousingUnit(id string, mutator func(*HousingUnit) e
 	}
 	if current.Capacity <= 0 {
 		return HousingUnit{}, errors.New("housing capacity must be positive")
+	}
+	if err := normalizeHousingUnit(&current); err != nil {
+		return HousingUnit{}, err
 	}
 	current.ID = id
 	current.UpdatedAt = tx.now
@@ -1570,6 +1663,9 @@ func (tx *transaction) CreateProtocol(p Protocol) (Protocol, error) {
 	if _, exists := tx.state.protocols[p.ID]; exists {
 		return Protocol{}, fmt.Errorf("protocol %q already exists", p.ID)
 	}
+	if err := normalizeProtocol(&p); err != nil {
+		return Protocol{}, err
+	}
 	p.CreatedAt = tx.now
 	p.UpdatedAt = tx.now
 	tx.state.protocols[p.ID] = cloneProtocol(p)
@@ -1583,6 +1679,9 @@ func (tx *transaction) UpdateProtocol(id string, mutator func(*Protocol) error) 
 	}
 	before := cloneProtocol(current)
 	if err := mutator(&current); err != nil {
+		return Protocol{}, err
+	}
+	if err := normalizeProtocol(&current); err != nil {
 		return Protocol{}, err
 	}
 	current.ID = id
@@ -1624,6 +1723,9 @@ func (tx *transaction) CreatePermit(p Permit) (Permit, error) {
 			return Permit{}, fmt.Errorf("protocol %q not found for permit", protocolID)
 		}
 	}
+	if err := normalizePermit(&p); err != nil {
+		return Permit{}, err
+	}
 	p.CreatedAt = tx.now
 	p.UpdatedAt = tx.now
 	tx.state.permits[p.ID] = clonePermit(p)
@@ -1650,6 +1752,9 @@ func (tx *transaction) UpdatePermit(id string, mutator func(*Permit) error) (Per
 		if _, ok := tx.state.protocols[protocolID]; !ok {
 			return Permit{}, fmt.Errorf("protocol %q not found for permit", protocolID)
 		}
+	}
+	if err := normalizePermit(&current); err != nil {
+		return Permit{}, err
 	}
 	current.ID = id
 	current.UpdatedAt = tx.now

@@ -112,3 +112,30 @@ func TestStoreDeleteGuards(t *testing.T) {
 		t.Fatalf("transaction error: %v", err)
 	}
 }
+
+func TestTransactionViewMissingFinders(t *testing.T) {
+	store := NewStore(nil)
+	if err := store.View(context.Background(), func(v domain.TransactionView) error {
+		if _, ok := v.FindOrganism("missing"); ok {
+			t.Fatalf("expected missing organism")
+		}
+		if _, ok := v.FindTreatment("missing"); ok {
+			t.Fatalf("expected missing treatment")
+		}
+		if _, ok := v.FindObservation("missing"); ok {
+			t.Fatalf("expected missing observation")
+		}
+		if _, ok := v.FindPermit("missing"); ok {
+			t.Fatalf("expected missing permit")
+		}
+		if _, ok := v.FindSupplyItem("missing"); ok {
+			t.Fatalf("expected missing supply item")
+		}
+		if _, ok := v.FindHousingUnit("missing"); ok {
+			t.Fatalf("expected missing housing unit")
+		}
+		return nil
+	}); err != nil {
+		t.Fatalf("view error: %v", err)
+	}
+}

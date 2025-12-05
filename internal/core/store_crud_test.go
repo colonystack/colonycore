@@ -48,7 +48,7 @@ func TestMemoryStoreCRUDAndQueries(t *testing.T) {
 		}
 		protocolID = protocol.ID
 
-		housing, err := tx.CreateHousingUnit(domain.HousingUnit{Name: "Tank", FacilityID: facilityID, Capacity: 2, Environment: "arid"})
+		housing, err := tx.CreateHousingUnit(domain.HousingUnit{Name: "Tank", FacilityID: facilityID, Capacity: 2, Environment: domain.HousingEnvironmentTerrestrial})
 		if err != nil {
 			return err
 		}
@@ -181,8 +181,8 @@ func TestMemoryStoreCRUDAndQueries(t *testing.T) {
 	housingList[0].Environment = "modified"
 	if stored, ok := store.GetHousingUnit(housingID); !ok {
 		t.Fatalf("expected housing unit %s to exist", housingID)
-	} else if stored.Environment != "arid" {
-		t.Fatalf("expected environment to remain arid, got %s", stored.Environment)
+	} else if stored.Environment != domain.HousingEnvironmentTerrestrial {
+		t.Fatalf("expected environment to remain terrestrial, got %s", stored.Environment)
 	}
 
 	if _, err := store.RunInTransaction(ctx, func(tx domain.Transaction) error {

@@ -133,7 +133,7 @@ func TestMigrateSnapshotRelationships(t *testing.T) {
 		"cohort-1": {Base: domain.Base{ID: "cohort-1"}, Name: "Cohort"},
 	}
 	protocols := map[string]domain.Protocol{
-		"prot-1": {Base: domain.Base{ID: "prot-1"}, Code: "PR", Title: "Protocol", MaxSubjects: 10, Status: "active"},
+		"prot-1": {Base: domain.Base{ID: "prot-1"}, Code: "PR", Title: "Protocol", MaxSubjects: 10, Status: domain.ProtocolStatusApproved},
 	}
 	procedures := map[string]domain.Procedure{
 		"proc-1": {Base: domain.Base{ID: "proc-1"}, Name: "Proc", Status: domain.ProcedureStatusScheduled, ScheduledAt: now, ProtocolID: "prot-1", OrganismIDs: []string{"org-1"}},
@@ -193,6 +193,217 @@ func TestMigrateSnapshotRelationships(t *testing.T) {
 
 	if supplies := store.ListSupplyItems(); len(supplies) != 1 || len(supplies[0].ProjectIDs) != 1 || supplies[0].ProjectIDs[0] != "proj-1" {
 		t.Fatalf("expected supply project ids filtered, got %+v", supplies)
+	}
+}
+
+func TestMemStoreStateNormalization(t *testing.T) {
+	store := newMemStore(nil)
+	now := time.Now().UTC()
+	if _, err := store.RunInTransaction(context.Background(), func(tx domain.Transaction) error {
+		facility, err := tx.CreateFacility(domain.Facility{Name: "Lab"})
+		if err != nil {
+			return err
+		}
+		housing, err := tx.CreateHousingUnit(domain.HousingUnit{Name: "H", FacilityID: facility.ID, Capacity: 1})
+		if err != nil {
+			return err
+		}
+		if housing.State != domain.HousingStateQuarantine || housing.Environment != domain.HousingEnvironmentTerrestrial {
+			return fmt.Errorf("expected housing defaults applied, got state=%q env=%q", housing.State, housing.Environment)
+		}
+		if _, err := tx.CreateHousingUnit(domain.HousingUnit{Name: "InvalidEnv", FacilityID: facility.ID, Capacity: 1, Environment: domain.HousingEnvironment("invalid")}); err == nil {
+			return fmt.Errorf("expected invalid housing environment to error")
+		}
+
+		protocol, err := tx.CreateProtocol(domain.Protocol{Code: "P", Title: "Proto", MaxSubjects: 1})
+		if err != nil {
+			return err
+		}
+		if protocol.Status != domain.ProtocolStatusDraft {
+			return fmt.Errorf("expected protocol status defaulted, got %q", protocol.Status)
+		}
+		if _, err := tx.CreateProtocol(domain.Protocol{Code: "P2", Title: "Invalid", MaxSubjects: 1, Status: domain.ProtocolStatus("invalid")}); err == nil {
+			return fmt.Errorf("expected invalid protocol status to error")
+		}
+
+		permit, err := tx.CreatePermit(domain.Permit{
+			PermitNumber:      "PER",
+			Authority:         "Gov",
+			ValidFrom:         now,
+			ValidUntil:        now.Add(time.Hour),
+			AllowedActivities: []string{"store"},
+			FacilityIDs:       []string{facility.ID},
+		})
+		if err != nil {
+			return err
+		}
+		if permit.Status != domain.PermitStatusDraft {
+			return fmt.Errorf("expected permit status defaulted, got %q", permit.Status)
+		}
+		if _, err := tx.CreatePermit(domain.Permit{
+			PermitNumber:      "PER-2",
+			Authority:         "Gov",
+			Status:            domain.PermitStatus("invalid"),
+			ValidFrom:         now,
+			ValidUntil:        now.Add(time.Hour),
+			AllowedActivities: []string{"store"},
+			FacilityIDs:       []string{facility.ID},
+		}); err == nil {
+			return fmt.Errorf("expected invalid permit status to error")
+		}
+		if _, err := tx.UpdateHousingUnit(housing.ID, func(h *domain.HousingUnit) error {
+			h.Environment = domain.HousingEnvironment("invalid")
+			return nil
+		}); err == nil {
+			return fmt.Errorf("expected invalid housing environment on update to error")
+		}
+		if _, err := tx.UpdateProtocol(protocol.ID, func(p *domain.Protocol) error {
+			p.Status = domain.ProtocolStatus("invalid")
+			return nil
+		}); err == nil {
+			return fmt.Errorf("expected invalid protocol status on update to error")
+		}
+		if _, err := tx.UpdatePermit(permit.ID, func(p *domain.Permit) error {
+			p.Status = domain.PermitStatus("invalid")
+			return nil
+		}); err == nil {
+			return fmt.Errorf("expected invalid permit status on update to error")
+		}
+		return nil
+	}); err != nil {
+		t.Fatalf("transaction error: %v", err)
+	}
+}
+
+func TestMemStoreTransactionViewMissingFinders(t *testing.T) {
+	store := newMemStore(nil)
+	if err := store.View(context.Background(), func(v domain.TransactionView) error {
+		if _, ok := v.FindOrganism("missing"); ok {
+			t.Fatalf("expected missing organism")
+		}
+		if _, ok := v.FindTreatment("missing"); ok {
+			t.Fatalf("expected missing treatment")
+		}
+		if _, ok := v.FindObservation("missing"); ok {
+			t.Fatalf("expected missing observation")
+		}
+		if _, ok := v.FindPermit("missing"); ok {
+			t.Fatalf("expected missing permit")
+		}
+		if _, ok := v.FindSupplyItem("missing"); ok {
+			t.Fatalf("expected missing supply item")
+		}
+		if _, ok := v.FindHousingUnit("missing"); ok {
+			t.Fatalf("expected missing housing unit")
+		}
+		return nil
+	}); err != nil {
+		t.Fatalf("view error: %v", err)
+	}
+}
+
+func TestMemStoreProcedureObservationSampleLifecycle(t *testing.T) {
+	store := newMemStore(nil)
+	now := time.Now().UTC()
+	if _, err := store.RunInTransaction(context.Background(), func(tx domain.Transaction) error {
+		facility, err := tx.CreateFacility(domain.Facility{Name: "Lab-2"})
+		if err != nil {
+			return err
+		}
+		housing, err := tx.CreateHousingUnit(domain.HousingUnit{Name: "H2", FacilityID: facility.ID, Capacity: 1, Environment: domain.HousingEnvironmentTerrestrial})
+		if err != nil {
+			return err
+		}
+		cohort, err := tx.CreateCohort(domain.Cohort{Name: "C2"})
+		if err != nil {
+			return err
+		}
+		housingID := housing.ID
+		organism, err := tx.CreateOrganism(domain.Organism{Name: "Org", Species: "Spec", HousingID: &housingID})
+		if err != nil {
+			return err
+		}
+		protocol, err := tx.CreateProtocol(domain.Protocol{Code: "PR-2", Title: "Protocol 2", MaxSubjects: 1, Status: domain.ProtocolStatusApproved})
+		if err != nil {
+			return err
+		}
+		procedure, err := tx.CreateProcedure(domain.Procedure{
+			Name:        "Proc",
+			Status:      domain.ProcedureStatusScheduled,
+			ScheduledAt: now,
+			ProtocolID:  protocol.ID,
+			OrganismIDs: []string{organism.ID},
+		})
+		if err != nil {
+			return err
+		}
+		treatment, err := tx.CreateTreatment(domain.Treatment{
+			Name:              "Treat",
+			Status:            domain.TreatmentStatusPlanned,
+			ProcedureID:       procedure.ID,
+			OrganismIDs:       []string{organism.ID},
+			AdministrationLog: []string{},
+			AdverseEvents:     []string{},
+		})
+		if err != nil {
+			return err
+		}
+		if _, err := tx.UpdateTreatment(treatment.ID, func(t *domain.Treatment) error {
+			t.Status = domain.TreatmentStatusCompleted
+			return nil
+		}); err != nil {
+			return err
+		}
+		observation, err := tx.CreateObservation(domain.Observation{
+			ProcedureID: &procedure.ID,
+			OrganismID:  &organism.ID,
+			CohortID:    &cohort.ID,
+			Observer:    "Tech",
+			RecordedAt:  now,
+		})
+		if err != nil {
+			return err
+		}
+		if _, err := tx.UpdateObservation(observation.ID, func(o *domain.Observation) error {
+			note := "updated"
+			o.Notes = &note
+			return nil
+		}); err != nil {
+			return err
+		}
+		sample, err := tx.CreateSample(domain.Sample{
+			Identifier:      "S-1",
+			SourceType:      "blood",
+			FacilityID:      facility.ID,
+			CollectedAt:     now,
+			Status:          domain.SampleStatusStored,
+			StorageLocation: "loc",
+			OrganismID:      &organism.ID,
+		})
+		if err != nil {
+			return err
+		}
+		if _, err := tx.UpdateSample(sample.ID, func(s *domain.Sample) error {
+			s.Status = domain.SampleStatusInTransit
+			return nil
+		}); err != nil {
+			return err
+		}
+		if err := tx.DeleteProcedure(procedure.ID); err == nil {
+			return fmt.Errorf("expected delete procedure to fail while referenced")
+		}
+		if err := tx.DeleteTreatment(treatment.ID); err != nil {
+			return err
+		}
+		if err := tx.DeleteObservation(observation.ID); err != nil {
+			return err
+		}
+		if err := tx.DeleteProcedure(procedure.ID); err != nil {
+			return err
+		}
+		return nil
+	}); err != nil {
+		t.Fatalf("transaction error: %v", err)
 	}
 }
 

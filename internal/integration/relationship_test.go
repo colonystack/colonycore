@@ -69,7 +69,7 @@ func TestIntegrationEntityRelationships(t *testing.T) {
 				Name:        "Housing-1",
 				FacilityID:  facility.ID,
 				Capacity:    2,
-				Environment: "dry",
+				Environment: domain.HousingEnvironmentTerrestrial,
 			})
 			if err != nil {
 				t.Fatalf("create housing: %v", err)

@@ -89,7 +89,7 @@ func seedMemoryStore(t *testing.T, store *memory.Store) memoryIDs {
 		_, ok = tx.FindProtocol("missing-protocol")
 		requireMissing(t, ok, "unexpected protocol lookup success")
 
-		housingVal, err := tx.CreateHousingUnit(domain.HousingUnit{Name: "Tank", FacilityID: ids.facilityID, Capacity: 2, Environment: "arid"})
+		housingVal, err := tx.CreateHousingUnit(domain.HousingUnit{Name: "Tank", FacilityID: ids.facilityID, Capacity: 2, Environment: domain.HousingEnvironmentTerrestrial})
 		housing := must(t, housingVal, err)
 		ids.housingID = housing.ID
 		_, err = tx.UpdateFacility(ids.facilityID, func(f *domain.Facility) error {
@@ -383,8 +383,8 @@ func verifyMemoryStorePostCreate(t *testing.T, store *memory.Store, ids memoryID
 
 	storedHousingVal, ok := store.GetHousingUnit(ids.housingID)
 	storedHousing := mustGet(t, storedHousingVal, ok, "expected housing unit to exist")
-	if storedHousing.Environment != "arid" {
-		t.Fatalf("expected environment to remain arid, got %s", storedHousing.Environment)
+	if storedHousing.Environment != domain.HousingEnvironmentTerrestrial {
+		t.Fatalf("expected environment to remain terrestrial, got %s", storedHousing.Environment)
 	}
 
 	facilityVal, ok := store.GetFacility(ids.facilityID)

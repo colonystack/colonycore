@@ -154,7 +154,7 @@ func TestFrogPluginRegistersSchemasAndRules(t *testing.T) {
 		t.Fatalf("create facility: %v", err)
 	}
 
-	housing, _, err := svc.CreateHousingUnit(ctx, domain.HousingUnit{Name: "Dry Terrarium", FacilityID: facility.ID, Capacity: 2, Environment: "arid"})
+	housing, _, err := svc.CreateHousingUnit(ctx, domain.HousingUnit{Name: "Dry Terrarium", FacilityID: facility.ID, Capacity: 2, Environment: domain.HousingEnvironmentTerrestrial})
 	if err != nil {
 		t.Fatalf("create housing: %v", err)
 	}
