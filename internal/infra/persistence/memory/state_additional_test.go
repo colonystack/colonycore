@@ -2,7 +2,9 @@ package memory
 
 import (
 	"colonycore/pkg/domain"
+	"colonycore/pkg/domain/extension"
 	"context"
+	"encoding/json"
 	"fmt"
 	"testing"
 	"time"
@@ -305,6 +307,84 @@ func TestMigrateSnapshotCleansDataVariants(t *testing.T) {
 	}
 	if len(facility.ProjectIDs) != 1 || facility.ProjectIDs[0] != "project-valid" {
 		t.Fatalf("expected facility project IDs populated, got %+v", facility.ProjectIDs)
+	}
+}
+
+func TestObservationExtensionsSnapshotRoundTrip(t *testing.T) {
+	container, err := extension.FromRaw(map[string]map[string]any{
+		string(extension.HookObservationData): {
+			extension.PluginCore.String(): map[string]any{"score": 3},
+			"frog":                        map[string]any{"note": "warm"},
+		},
+	})
+	if err != nil {
+		t.Fatalf("build extension container: %v", err)
+	}
+	obs := domain.Observation{
+		Base:     domain.Base{ID: "obs-1"},
+		Observer: "Tech",
+	}
+	if err := obs.SetObservationExtensions(container); err != nil {
+		t.Fatalf("seed observation extensions: %v", err)
+	}
+	snapshot := Snapshot{
+		Procedures: map[string]domain.Procedure{
+			"proc-1": {
+				Base:        domain.Base{ID: "proc-1"},
+				Name:        "Proc",
+				Status:      domain.ProcedureStatusScheduled,
+				ScheduledAt: time.Now().UTC(),
+				ProtocolID:  "prot-1",
+			},
+		},
+		Protocols: map[string]domain.Protocol{
+			"prot-1": {
+				Base:        domain.Base{ID: "prot-1"},
+				Code:        "P1",
+				Title:       "Protocol",
+				MaxSubjects: 1,
+				Status:      domain.ProtocolStatusApproved,
+			},
+		},
+		Observations: map[string]domain.Observation{
+			"obs-1": func(o domain.Observation) domain.Observation {
+				o.ProcedureID = ptr("proc-1")
+				return o
+			}(obs),
+		},
+	}
+
+	store := NewStore(nil)
+	store.ImportState(snapshot)
+	encoded, err := json.Marshal(store.ExportState())
+	if err != nil {
+		t.Fatalf("marshal snapshot: %v", err)
+	}
+
+	var decoded Snapshot
+	if err := json.Unmarshal(encoded, &decoded); err != nil {
+		t.Fatalf("unmarshal snapshot: %v", err)
+	}
+	obs, ok := decoded.Observations["obs-1"]
+	if !ok {
+		t.Fatalf("expected observation present after round trip")
+	}
+	containerAfter, err := obs.ObservationExtensions()
+	if err != nil {
+		t.Fatalf("load observation extensions: %v", err)
+	}
+	hookPayload := containerAfter.Raw()[string(extension.HookObservationData)]
+	if hookPayload == nil {
+		t.Fatalf("expected hook payload preserved")
+	}
+	if frog, ok := hookPayload["frog"].(map[string]any); !ok || frog["note"] != "warm" {
+		t.Fatalf("expected frog payload to survive, got %#v", frog)
+	}
+	if core, ok := hookPayload[extension.PluginCore.String()].(map[string]any); !ok || core["score"] != float64(3) {
+		t.Fatalf("expected core payload to survive, got %#v", core)
+	}
+	if obs.ObservationData()["score"] != float64(3) {
+		t.Fatalf("expected ObservationData to reflect core payload after round trip")
 	}
 }
 

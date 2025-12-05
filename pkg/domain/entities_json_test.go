@@ -353,6 +353,51 @@ func TestObservationMarshalJSON(t *testing.T) {
 	}
 }
 
+func TestObservationMarshalJSONIncludesExtensions(t *testing.T) {
+	obs := Observation{
+		Base:     Base{ID: "obs-ext"},
+		Observer: "Tech",
+	}
+	container, err := extension.FromRaw(map[string]map[string]any{
+		string(extension.HookObservationData): {
+			extension.PluginCore.String(): map[string]any{"score": 7},
+			"frog":                        map[string]any{"note": "ambient"},
+		},
+	})
+	mustNoError(t, "SetObservationExtensions", err)
+	mustNoError(t, "SetObservationExtensions", obs.SetObservationExtensions(container))
+
+	data, err := json.Marshal(obs)
+	if err != nil {
+		t.Fatalf("marshal observation with extensions: %v", err)
+	}
+	var out map[string]any
+	if err := json.Unmarshal(data, &out); err != nil {
+		t.Fatalf("unmarshal observation json: %v", err)
+	}
+	extAny, ok := out["extensions"].(map[string]any)
+	if !ok {
+		t.Fatalf("expected extensions map in JSON payload")
+	}
+	hookPayload, ok := extAny[string(extension.HookObservationData)].(map[string]any)
+	if !ok {
+		t.Fatalf("expected observation hook payload")
+	}
+	if hookPayload["frog"] == nil {
+		t.Fatalf("expected plugin extension payload to persist")
+	}
+	if core, ok := hookPayload[extension.PluginCore.String()].(map[string]any); !ok || core["score"] != float64(7) {
+		t.Fatalf("expected core payload score to persist, got %#v", core)
+	}
+	dataField, ok := out["data"].(map[string]any)
+	if !ok {
+		t.Fatalf("expected data field to remain for compatibility")
+	}
+	if dataField["score"] != float64(7) {
+		t.Fatalf("expected data field to mirror core payload")
+	}
+}
+
 func TestObservationUnmarshalJSON(t *testing.T) {
 	jsonData := `{
 		"id": "test-observation",
@@ -376,6 +421,46 @@ func TestObservationUnmarshalJSON(t *testing.T) {
 	data := obs.ObservationData()
 	if data["weight"] != 50.5 {
 		t.Errorf("Expected weight 50.5, got %v", data["weight"])
+	}
+}
+
+func TestObservationUnmarshalJSONWithExtensions(t *testing.T) {
+	raw := map[string]any{
+		"id":       "obs-extensions",
+		"observer": "Tech",
+		"extensions": map[string]any{
+			string(extension.HookObservationData): map[string]any{
+				"frog": map[string]any{"note": "ambient"},
+			},
+		},
+		"data": map[string]any{
+			"score": 8,
+		},
+	}
+	payload, err := json.Marshal(raw)
+	if err != nil {
+		t.Fatalf("marshal raw fixture: %v", err)
+	}
+	var obs Observation
+	if err := json.Unmarshal(payload, &obs); err != nil {
+		t.Fatalf("unmarshal observation: %v", err)
+	}
+	container, err := obs.ObservationExtensions()
+	mustNoError(t, "ObservationExtensions", err)
+	hookPayload, ok := container.Raw()[string(extension.HookObservationData)]
+	if !ok {
+		t.Fatalf("expected hook payload present after unmarshal")
+	}
+	frog, ok := hookPayload["frog"].(map[string]any)
+	if !ok || frog["note"] != "ambient" {
+		t.Fatalf("expected frog plugin payload preserved, got %#v", frog)
+	}
+	core, ok := hookPayload[extension.PluginCore.String()].(map[string]any)
+	if !ok || core["score"] != float64(8) {
+		t.Fatalf("expected core payload injected from data, got %#v", core)
+	}
+	if obs.ObservationData()["score"] != float64(8) {
+		t.Fatalf("expected ObservationData to reflect core payload")
 	}
 }
 

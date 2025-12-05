@@ -476,13 +476,23 @@ type observationAlias Observation
 
 // MarshalJSON ensures observation data are serialised via the core plugin payload.
 func (o Observation) MarshalJSON() ([]byte, error) {
+	container, err := o.ObservationExtensions()
+	if err != nil {
+		return nil, err
+	}
+	extensions := container.Raw()
+	if len(extensions) == 0 {
+		extensions = nil
+	}
 	type payload struct {
 		observationAlias
-		Data map[string]any `json:"data,omitempty"`
+		Data       map[string]any            `json:"data,omitempty"`
+		Extensions map[string]map[string]any `json:"extensions,omitempty"`
 	}
 	return json.Marshal(payload{
 		observationAlias: observationAlias(o),
 		Data:             (&o).ObservationData(),
+		Extensions:       extensions,
 	})
 }
 
@@ -490,13 +500,26 @@ func (o Observation) MarshalJSON() ([]byte, error) {
 func (o *Observation) UnmarshalJSON(data []byte) error {
 	type payload struct {
 		observationAlias
-		Data map[string]any `json:"data"`
+		Data       map[string]any            `json:"data"`
+		Extensions map[string]map[string]any `json:"extensions"`
 	}
 	var aux payload
 	if err := json.Unmarshal(data, &aux); err != nil {
 		return err
 	}
 	*o = Observation(aux.observationAlias)
+	if aux.Extensions != nil {
+		container, err := extension.FromRaw(aux.Extensions)
+		if err != nil {
+			return err
+		}
+		if _, ok := container.Get(extension.HookObservationData, extension.PluginCore); !ok && aux.Data != nil {
+			if err := container.Set(extension.HookObservationData, extension.PluginCore, aux.Data); err != nil {
+				return err
+			}
+		}
+		return o.SetObservationExtensions(container)
+	}
 	return o.ApplyObservationData(aux.Data)
 }
 
