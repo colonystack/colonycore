@@ -28,6 +28,12 @@ type (
 	BreedingUnit = domain.BreedingUnit
 	// Facility aliases domain.Facility.
 	Facility = domain.Facility
+	// Line aliases domain.Line.
+	Line = domain.Line
+	// Strain aliases domain.Strain.
+	Strain = domain.Strain
+	// GenotypeMarker aliases domain.GenotypeMarker.
+	GenotypeMarker = domain.GenotypeMarker
 	// Procedure aliases domain.Procedure.
 	Procedure = domain.Procedure
 	// Treatment aliases domain.Treatment.
@@ -144,6 +150,9 @@ type memoryState struct {
 	housing      map[string]HousingUnit
 	facilities   map[string]Facility
 	breeding     map[string]BreedingUnit
+	lines        map[string]Line
+	strains      map[string]Strain
+	markers      map[string]GenotypeMarker
 	procedures   map[string]Procedure
 	treatments   map[string]Treatment
 	observations map[string]Observation
@@ -156,19 +165,22 @@ type memoryState struct {
 
 // Snapshot captures a point-in-time clone of the store state.
 type Snapshot struct {
-	Organisms    map[string]Organism     `json:"organisms"`
-	Cohorts      map[string]Cohort       `json:"cohorts"`
-	Housing      map[string]HousingUnit  `json:"housing"`
-	Facilities   map[string]Facility     `json:"facilities"`
-	Breeding     map[string]BreedingUnit `json:"breeding"`
-	Procedures   map[string]Procedure    `json:"procedures"`
-	Treatments   map[string]Treatment    `json:"treatments"`
-	Observations map[string]Observation  `json:"observations"`
-	Samples      map[string]Sample       `json:"samples"`
-	Protocols    map[string]Protocol     `json:"protocols"`
-	Permits      map[string]Permit       `json:"permits"`
-	Projects     map[string]Project      `json:"projects"`
-	Supplies     map[string]SupplyItem   `json:"supplies"`
+	Organisms    map[string]Organism       `json:"organisms"`
+	Cohorts      map[string]Cohort         `json:"cohorts"`
+	Housing      map[string]HousingUnit    `json:"housing"`
+	Facilities   map[string]Facility       `json:"facilities"`
+	Breeding     map[string]BreedingUnit   `json:"breeding"`
+	Lines        map[string]Line           `json:"lines"`
+	Strains      map[string]Strain         `json:"strains"`
+	Markers      map[string]GenotypeMarker `json:"markers"`
+	Procedures   map[string]Procedure      `json:"procedures"`
+	Treatments   map[string]Treatment      `json:"treatments"`
+	Observations map[string]Observation    `json:"observations"`
+	Samples      map[string]Sample         `json:"samples"`
+	Protocols    map[string]Protocol       `json:"protocols"`
+	Permits      map[string]Permit         `json:"permits"`
+	Projects     map[string]Project        `json:"projects"`
+	Supplies     map[string]SupplyItem     `json:"supplies"`
 }
 
 func newMemoryState() memoryState {
@@ -178,6 +190,9 @@ func newMemoryState() memoryState {
 		housing:      make(map[string]HousingUnit),
 		facilities:   make(map[string]Facility),
 		breeding:     make(map[string]BreedingUnit),
+		lines:        make(map[string]Line),
+		strains:      make(map[string]Strain),
+		markers:      make(map[string]GenotypeMarker),
 		procedures:   make(map[string]Procedure),
 		treatments:   make(map[string]Treatment),
 		observations: make(map[string]Observation),
@@ -196,6 +211,9 @@ func snapshotFromMemoryState(state memoryState) Snapshot {
 		Housing:      make(map[string]HousingUnit, len(state.housing)),
 		Facilities:   make(map[string]Facility, len(state.facilities)),
 		Breeding:     make(map[string]BreedingUnit, len(state.breeding)),
+		Lines:        make(map[string]Line, len(state.lines)),
+		Strains:      make(map[string]Strain, len(state.strains)),
+		Markers:      make(map[string]GenotypeMarker, len(state.markers)),
 		Procedures:   make(map[string]Procedure, len(state.procedures)),
 		Treatments:   make(map[string]Treatment, len(state.treatments)),
 		Observations: make(map[string]Observation, len(state.observations)),
@@ -219,6 +237,15 @@ func snapshotFromMemoryState(state memoryState) Snapshot {
 	}
 	for k, v := range state.breeding {
 		s.Breeding[k] = cloneBreeding(v)
+	}
+	for k, v := range state.lines {
+		s.Lines[k] = cloneLine(v)
+	}
+	for k, v := range state.strains {
+		s.Strains[k] = cloneStrain(v)
+	}
+	for k, v := range state.markers {
+		s.Markers[k] = cloneGenotypeMarker(v)
 	}
 	for k, v := range state.procedures {
 		s.Procedures[k] = cloneProcedure(v)
@@ -264,6 +291,15 @@ func memoryStateFromSnapshot(s Snapshot) memoryState {
 	for k, v := range s.Breeding {
 		state.breeding[k] = cloneBreeding(v)
 	}
+	for k, v := range s.Lines {
+		state.lines[k] = cloneLine(v)
+	}
+	for k, v := range s.Strains {
+		state.strains[k] = cloneStrain(v)
+	}
+	for k, v := range s.Markers {
+		state.markers[k] = cloneGenotypeMarker(v)
+	}
 	for k, v := range s.Procedures {
 		state.procedures[k] = cloneProcedure(v)
 	}
@@ -308,6 +344,15 @@ func migrateSnapshot(snapshot Snapshot) Snapshot {
 	if snapshot.Breeding == nil {
 		snapshot.Breeding = map[string]BreedingUnit{}
 	}
+	if snapshot.Lines == nil {
+		snapshot.Lines = map[string]Line{}
+	}
+	if snapshot.Strains == nil {
+		snapshot.Strains = map[string]Strain{}
+	}
+	if snapshot.Markers == nil {
+		snapshot.Markers = map[string]GenotypeMarker{}
+	}
 	if snapshot.Procedures == nil {
 		snapshot.Procedures = map[string]Procedure{}
 	}
@@ -349,12 +394,30 @@ func migrateSnapshot(snapshot Snapshot) Snapshot {
 		_, ok := snapshot.Cohorts[id]
 		return ok
 	}
+	markerExists := func(id string) bool {
+		_, ok := snapshot.Markers[id]
+		return ok
+	}
+	lineExists := func(id string) bool {
+		_, ok := snapshot.Lines[id]
+		return ok
+	}
+	strainExists := func(id string) bool {
+		_, ok := snapshot.Strains[id]
+		return ok
+	}
 
 	for id, organism := range snapshot.Organisms {
 		if attrs := organism.CoreAttributes(); attrs == nil {
 			mustApply("apply organism attributes", organism.SetCoreAttributes(map[string]any{}))
 		} else {
 			mustApply("apply organism attributes", organism.SetCoreAttributes(attrs))
+		}
+		if organism.LineID != nil && !lineExists(*organism.LineID) {
+			organism.LineID = nil
+		}
+		if organism.StrainID != nil && !strainExists(*organism.StrainID) {
+			organism.StrainID = nil
 		}
 		snapshot.Organisms[id] = organism
 	}
@@ -365,7 +428,74 @@ func migrateSnapshot(snapshot Snapshot) Snapshot {
 		} else {
 			mustApply("apply breeding attributes", breeding.ApplyPairingAttributes(attrs))
 		}
+		if breeding.LineID != nil && !lineExists(*breeding.LineID) {
+			breeding.LineID = nil
+		}
+		if breeding.StrainID != nil && !strainExists(*breeding.StrainID) {
+			breeding.StrainID = nil
+		}
+		if breeding.TargetLineID != nil && !lineExists(*breeding.TargetLineID) {
+			breeding.TargetLineID = nil
+		}
+		if breeding.TargetStrainID != nil && !strainExists(*breeding.TargetStrainID) {
+			breeding.TargetStrainID = nil
+		}
 		snapshot.Breeding[id] = breeding
+	}
+
+	for id, marker := range snapshot.Markers {
+		if attrs := marker.GenotypeMarkerAttributesByPlugin(); attrs == nil {
+			mustApply("apply genotype marker attributes", marker.ApplyGenotypeMarkerAttributes(map[string]any{}))
+		} else {
+			mustApply("apply genotype marker attributes", marker.ApplyGenotypeMarkerAttributes(attrs))
+		}
+		if len(marker.Alleles) > 0 {
+			marker.Alleles = dedupeStrings(marker.Alleles)
+		}
+		snapshot.Markers[id] = marker
+	}
+
+	for id, line := range snapshot.Lines {
+		if attrs := line.DefaultAttributes(); attrs == nil {
+			mustApply("apply line default attributes", line.ApplyDefaultAttributes(map[string]any{}))
+		} else {
+			mustApply("apply line default attributes", line.ApplyDefaultAttributes(attrs))
+		}
+		if overrides := line.ExtensionOverrides(); overrides == nil {
+			mustApply("apply line extension overrides", line.ApplyExtensionOverrides(map[string]any{}))
+		} else {
+			mustApply("apply line extension overrides", line.ApplyExtensionOverrides(overrides))
+		}
+		if filtered, changed := filterIDs(line.GenotypeMarkerIDs, markerExists); changed {
+			line.GenotypeMarkerIDs = filtered
+		}
+		snapshot.Lines[id] = line
+	}
+
+	for id, strain := range snapshot.Strains {
+		if !lineExists(strain.LineID) {
+			delete(snapshot.Strains, id)
+			continue
+		}
+		if attrs := strain.StrainAttributesByPlugin(); attrs == nil {
+			mustApply("apply strain attributes", strain.ApplyStrainAttributes(map[string]any{}))
+		} else {
+			mustApply("apply strain attributes", strain.ApplyStrainAttributes(attrs))
+		}
+		if filtered, changed := filterIDs(strain.GenotypeMarkerIDs, markerExists); changed {
+			strain.GenotypeMarkerIDs = filtered
+		}
+		snapshot.Strains[id] = strain
+	}
+
+	for id, organism := range snapshot.Organisms {
+		if organism.LineID != nil && !lineExists(*organism.LineID) {
+			organism.LineID = nil
+		}
+		if organism.StrainID != nil && !strainExists(*organism.StrainID) {
+			organism.StrainID = nil
+		}
+		snapshot.Organisms[id] = organism
 	}
 
 	procedureExists := func(id string) bool {
@@ -599,6 +729,15 @@ func (s memoryState) clone() memoryState {
 	for k, v := range s.breeding {
 		cloned.breeding[k] = cloneBreeding(v)
 	}
+	for k, v := range s.lines {
+		cloned.lines[k] = cloneLine(v)
+	}
+	for k, v := range s.strains {
+		cloned.strains[k] = cloneStrain(v)
+	}
+	for k, v := range s.markers {
+		cloned.markers[k] = cloneGenotypeMarker(v)
+	}
 	for k, v := range s.procedures {
 		cloned.procedures[k] = cloneProcedure(v)
 	}
@@ -653,6 +792,73 @@ func cloneBreeding(b BreedingUnit) BreedingUnit {
 	}
 	if err := cp.SetBreedingUnitExtensions(container); err != nil {
 		panic(fmt.Errorf("memory: set breeding attributes: %w", err))
+	}
+	return cp
+}
+
+func cloneLine(l Line) Line {
+	cp := l
+	if l.Description != nil {
+		desc := *l.Description
+		cp.Description = &desc
+	}
+	if l.DeprecatedAt != nil {
+		t := *l.DeprecatedAt
+		cp.DeprecatedAt = &t
+	}
+	if l.DeprecationReason != nil {
+		reason := *l.DeprecationReason
+		cp.DeprecationReason = &reason
+	}
+	cp.GenotypeMarkerIDs = append([]string(nil), l.GenotypeMarkerIDs...)
+	container, err := l.LineExtensions()
+	if err != nil {
+		panic(fmt.Errorf("memory: clone line extensions: %w", err))
+	}
+	if err := cp.SetLineExtensions(container); err != nil {
+		panic(fmt.Errorf("memory: set line extensions: %w", err))
+	}
+	return cp
+}
+
+func cloneStrain(s Strain) Strain {
+	cp := s
+	if s.Description != nil {
+		desc := *s.Description
+		cp.Description = &desc
+	}
+	if s.Generation != nil {
+		gen := *s.Generation
+		cp.Generation = &gen
+	}
+	if s.RetiredAt != nil {
+		t := *s.RetiredAt
+		cp.RetiredAt = &t
+	}
+	if s.RetirementReason != nil {
+		reason := *s.RetirementReason
+		cp.RetirementReason = &reason
+	}
+	cp.GenotypeMarkerIDs = append([]string(nil), s.GenotypeMarkerIDs...)
+	container, err := s.StrainExtensions()
+	if err != nil {
+		panic(fmt.Errorf("memory: clone strain extensions: %w", err))
+	}
+	if err := cp.SetStrainExtensions(container); err != nil {
+		panic(fmt.Errorf("memory: set strain extensions: %w", err))
+	}
+	return cp
+}
+
+func cloneGenotypeMarker(g GenotypeMarker) GenotypeMarker {
+	cp := g
+	cp.Alleles = append([]string(nil), g.Alleles...)
+	container, err := g.GenotypeMarkerExtensions()
+	if err != nil {
+		panic(fmt.Errorf("memory: clone genotype marker extensions: %w", err))
+	}
+	if err := cp.SetGenotypeMarkerExtensions(container); err != nil {
+		panic(fmt.Errorf("memory: set genotype marker extensions: %w", err))
 	}
 	return cp
 }
@@ -995,6 +1201,33 @@ func (v transactionView) ListFacilities() []Facility {
 	return out
 }
 
+// ListLines returns all lines in the snapshot.
+func (v transactionView) ListLines() []Line {
+	out := make([]Line, 0, len(v.state.lines))
+	for _, line := range v.state.lines {
+		out = append(out, cloneLine(line))
+	}
+	return out
+}
+
+// ListStrains returns all strains in the snapshot.
+func (v transactionView) ListStrains() []Strain {
+	out := make([]Strain, 0, len(v.state.strains))
+	for _, strain := range v.state.strains {
+		out = append(out, cloneStrain(strain))
+	}
+	return out
+}
+
+// ListGenotypeMarkers returns all genotype markers in the snapshot.
+func (v transactionView) ListGenotypeMarkers() []GenotypeMarker {
+	out := make([]GenotypeMarker, 0, len(v.state.markers))
+	for _, marker := range v.state.markers {
+		out = append(out, cloneGenotypeMarker(marker))
+	}
+	return out
+}
+
 // FindOrganism retrieves an organism by ID from the snapshot.
 func (v transactionView) FindOrganism(id string) (Organism, bool) {
 	o, ok := v.state.organisms[id]
@@ -1020,6 +1253,33 @@ func (v transactionView) FindFacility(id string) (Facility, bool) {
 		return Facility{}, false
 	}
 	return cloneFacility(decorateFacility(v.state, f)), true
+}
+
+// FindLine retrieves a line by ID from the snapshot.
+func (v transactionView) FindLine(id string) (Line, bool) {
+	line, ok := v.state.lines[id]
+	if !ok {
+		return Line{}, false
+	}
+	return cloneLine(line), true
+}
+
+// FindStrain retrieves a strain by ID from the snapshot.
+func (v transactionView) FindStrain(id string) (Strain, bool) {
+	strain, ok := v.state.strains[id]
+	if !ok {
+		return Strain{}, false
+	}
+	return cloneStrain(strain), true
+}
+
+// FindGenotypeMarker retrieves a genotype marker by ID from the snapshot.
+func (v transactionView) FindGenotypeMarker(id string) (GenotypeMarker, bool) {
+	marker, ok := v.state.markers[id]
+	if !ok {
+		return GenotypeMarker{}, false
+	}
+	return cloneGenotypeMarker(marker), true
 }
 
 // ListProtocols returns all protocols present in the snapshot.
@@ -1207,6 +1467,33 @@ func (tx *transaction) FindFacility(id string) (Facility, bool) {
 		return Facility{}, false
 	}
 	return cloneFacility(decorateFacility(&tx.state, f)), true
+}
+
+// FindLine exposes line lookup within the transaction scope.
+func (tx *transaction) FindLine(id string) (Line, bool) {
+	line, ok := tx.state.lines[id]
+	if !ok {
+		return Line{}, false
+	}
+	return cloneLine(line), true
+}
+
+// FindStrain exposes strain lookup within the transaction scope.
+func (tx *transaction) FindStrain(id string) (Strain, bool) {
+	strain, ok := tx.state.strains[id]
+	if !ok {
+		return Strain{}, false
+	}
+	return cloneStrain(strain), true
+}
+
+// FindGenotypeMarker exposes genotype marker lookup within the transaction scope.
+func (tx *transaction) FindGenotypeMarker(id string) (GenotypeMarker, bool) {
+	marker, ok := tx.state.markers[id]
+	if !ok {
+		return GenotypeMarker{}, false
+	}
+	return cloneGenotypeMarker(marker), true
 }
 
 // FindTreatment exposes treatment lookup within the transaction scope.
@@ -1561,6 +1848,246 @@ func (tx *transaction) DeleteBreedingUnit(id string) error {
 	}
 	delete(tx.state.breeding, id)
 	tx.recordChange(Change{Entity: domain.EntityBreeding, Action: domain.ActionDelete, Before: cloneBreeding(current)})
+	return nil
+}
+
+// CreateLine stores a new line record.
+func (tx *transaction) CreateLine(l Line) (Line, error) {
+	if l.ID == "" {
+		l.ID = tx.store.newID()
+	}
+	if _, exists := tx.state.lines[l.ID]; exists {
+		return Line{}, fmt.Errorf("line %q already exists", l.ID)
+	}
+	if filtered, changed := filterIDs(l.GenotypeMarkerIDs, func(id string) bool { _, ok := tx.state.markers[id]; return ok }); changed {
+		l.GenotypeMarkerIDs = filtered
+	}
+	if attrs := l.DefaultAttributes(); attrs == nil {
+		mustApply("apply line default attributes", l.ApplyDefaultAttributes(map[string]any{}))
+	} else {
+		mustApply("apply line default attributes", l.ApplyDefaultAttributes(attrs))
+	}
+	if overrides := l.ExtensionOverrides(); overrides == nil {
+		mustApply("apply line extension overrides", l.ApplyExtensionOverrides(map[string]any{}))
+	} else {
+		mustApply("apply line extension overrides", l.ApplyExtensionOverrides(overrides))
+	}
+	l.CreatedAt = tx.now
+	l.UpdatedAt = tx.now
+	tx.state.lines[l.ID] = cloneLine(l)
+	tx.recordChange(Change{Entity: domain.EntityLine, Action: domain.ActionCreate, After: cloneLine(l)})
+	return cloneLine(l), nil
+}
+
+// UpdateLine mutates an existing line.
+func (tx *transaction) UpdateLine(id string, mutator func(*Line) error) (Line, error) {
+	current, ok := tx.state.lines[id]
+	if !ok {
+		return Line{}, fmt.Errorf("line %q not found", id)
+	}
+	before := cloneLine(current)
+	if err := mutator(&current); err != nil {
+		return Line{}, err
+	}
+	if filtered, changed := filterIDs(current.GenotypeMarkerIDs, func(markerID string) bool { _, ok := tx.state.markers[markerID]; return ok }); changed {
+		current.GenotypeMarkerIDs = filtered
+	}
+	if attrs := current.DefaultAttributes(); attrs == nil {
+		mustApply("apply line default attributes", current.ApplyDefaultAttributes(map[string]any{}))
+	} else {
+		mustApply("apply line default attributes", current.ApplyDefaultAttributes(attrs))
+	}
+	if overrides := current.ExtensionOverrides(); overrides == nil {
+		mustApply("apply line extension overrides", current.ApplyExtensionOverrides(map[string]any{}))
+	} else {
+		mustApply("apply line extension overrides", current.ApplyExtensionOverrides(overrides))
+	}
+	current.ID = id
+	current.UpdatedAt = tx.now
+	tx.state.lines[id] = cloneLine(current)
+	tx.recordChange(Change{Entity: domain.EntityLine, Action: domain.ActionUpdate, Before: before, After: cloneLine(current)})
+	return cloneLine(current), nil
+}
+
+// DeleteLine removes a line from state if no dependants reference it.
+func (tx *transaction) DeleteLine(id string) error {
+	current, ok := tx.state.lines[id]
+	if !ok {
+		return fmt.Errorf("line %q not found", id)
+	}
+	for _, strain := range tx.state.strains {
+		if strain.LineID == id {
+			return fmt.Errorf("line %q still referenced by strain %q", id, strain.ID)
+		}
+	}
+	for _, breeding := range tx.state.breeding {
+		if breeding.LineID != nil && *breeding.LineID == id {
+			return fmt.Errorf("line %q still referenced by breeding unit %q", id, breeding.ID)
+		}
+		if breeding.TargetLineID != nil && *breeding.TargetLineID == id {
+			return fmt.Errorf("line %q still referenced by breeding unit %q", id, breeding.ID)
+		}
+	}
+	for _, organism := range tx.state.organisms {
+		if organism.LineID != nil && *organism.LineID == id {
+			return fmt.Errorf("line %q still referenced by organism %q", id, organism.ID)
+		}
+	}
+	delete(tx.state.lines, id)
+	tx.recordChange(Change{Entity: domain.EntityLine, Action: domain.ActionDelete, Before: cloneLine(current)})
+	return nil
+}
+
+// CreateStrain stores a new strain record.
+func (tx *transaction) CreateStrain(s Strain) (Strain, error) {
+	if s.ID == "" {
+		s.ID = tx.store.newID()
+	}
+	if _, exists := tx.state.strains[s.ID]; exists {
+		return Strain{}, fmt.Errorf("strain %q already exists", s.ID)
+	}
+	if s.LineID == "" {
+		return Strain{}, errors.New("strain requires line id")
+	}
+	if _, ok := tx.state.lines[s.LineID]; !ok {
+		return Strain{}, fmt.Errorf("line %q not found for strain", s.LineID)
+	}
+	if filtered, changed := filterIDs(s.GenotypeMarkerIDs, func(markerID string) bool { _, ok := tx.state.markers[markerID]; return ok }); changed {
+		s.GenotypeMarkerIDs = filtered
+	}
+	if attrs := s.StrainAttributesByPlugin(); attrs == nil {
+		mustApply("apply strain attributes", s.ApplyStrainAttributes(map[string]any{}))
+	} else {
+		mustApply("apply strain attributes", s.ApplyStrainAttributes(attrs))
+	}
+	s.CreatedAt = tx.now
+	s.UpdatedAt = tx.now
+	tx.state.strains[s.ID] = cloneStrain(s)
+	tx.recordChange(Change{Entity: domain.EntityStrain, Action: domain.ActionCreate, After: cloneStrain(s)})
+	return cloneStrain(s), nil
+}
+
+// UpdateStrain mutates an existing strain.
+func (tx *transaction) UpdateStrain(id string, mutator func(*Strain) error) (Strain, error) {
+	current, ok := tx.state.strains[id]
+	if !ok {
+		return Strain{}, fmt.Errorf("strain %q not found", id)
+	}
+	before := cloneStrain(current)
+	if err := mutator(&current); err != nil {
+		return Strain{}, err
+	}
+	if current.LineID == "" {
+		return Strain{}, errors.New("strain requires line id")
+	}
+	if _, ok := tx.state.lines[current.LineID]; !ok {
+		return Strain{}, fmt.Errorf("line %q not found for strain", current.LineID)
+	}
+	if filtered, changed := filterIDs(current.GenotypeMarkerIDs, func(markerID string) bool { _, ok := tx.state.markers[markerID]; return ok }); changed {
+		current.GenotypeMarkerIDs = filtered
+	}
+	if attrs := current.StrainAttributesByPlugin(); attrs == nil {
+		mustApply("apply strain attributes", current.ApplyStrainAttributes(map[string]any{}))
+	} else {
+		mustApply("apply strain attributes", current.ApplyStrainAttributes(attrs))
+	}
+	current.ID = id
+	current.UpdatedAt = tx.now
+	tx.state.strains[id] = cloneStrain(current)
+	tx.recordChange(Change{Entity: domain.EntityStrain, Action: domain.ActionUpdate, Before: before, After: cloneStrain(current)})
+	return cloneStrain(current), nil
+}
+
+// DeleteStrain removes a strain from state.
+func (tx *transaction) DeleteStrain(id string) error {
+	current, ok := tx.state.strains[id]
+	if !ok {
+		return fmt.Errorf("strain %q not found", id)
+	}
+	for _, organism := range tx.state.organisms {
+		if organism.StrainID != nil && *organism.StrainID == id {
+			return fmt.Errorf("strain %q still referenced by organism %q", id, organism.ID)
+		}
+	}
+	for _, breeding := range tx.state.breeding {
+		if breeding.StrainID != nil && *breeding.StrainID == id {
+			return fmt.Errorf("strain %q still referenced by breeding unit %q", id, breeding.ID)
+		}
+		if breeding.TargetStrainID != nil && *breeding.TargetStrainID == id {
+			return fmt.Errorf("strain %q still referenced by breeding unit %q", id, breeding.ID)
+		}
+	}
+	delete(tx.state.strains, id)
+	tx.recordChange(Change{Entity: domain.EntityStrain, Action: domain.ActionDelete, Before: cloneStrain(current)})
+	return nil
+}
+
+// CreateGenotypeMarker stores a new genotype marker record.
+func (tx *transaction) CreateGenotypeMarker(g GenotypeMarker) (GenotypeMarker, error) {
+	if g.ID == "" {
+		g.ID = tx.store.newID()
+	}
+	if _, exists := tx.state.markers[g.ID]; exists {
+		return GenotypeMarker{}, fmt.Errorf("genotype marker %q already exists", g.ID)
+	}
+	if len(g.Alleles) > 0 {
+		g.Alleles = dedupeStrings(g.Alleles)
+	}
+	if attrs := g.GenotypeMarkerAttributesByPlugin(); attrs == nil {
+		mustApply("apply genotype marker attributes", g.ApplyGenotypeMarkerAttributes(map[string]any{}))
+	} else {
+		mustApply("apply genotype marker attributes", g.ApplyGenotypeMarkerAttributes(attrs))
+	}
+	g.CreatedAt = tx.now
+	g.UpdatedAt = tx.now
+	tx.state.markers[g.ID] = cloneGenotypeMarker(g)
+	tx.recordChange(Change{Entity: domain.EntityGenotypeMarker, Action: domain.ActionCreate, After: cloneGenotypeMarker(g)})
+	return cloneGenotypeMarker(g), nil
+}
+
+// UpdateGenotypeMarker mutates an existing genotype marker.
+func (tx *transaction) UpdateGenotypeMarker(id string, mutator func(*GenotypeMarker) error) (GenotypeMarker, error) {
+	current, ok := tx.state.markers[id]
+	if !ok {
+		return GenotypeMarker{}, fmt.Errorf("genotype marker %q not found", id)
+	}
+	before := cloneGenotypeMarker(current)
+	if err := mutator(&current); err != nil {
+		return GenotypeMarker{}, err
+	}
+	if len(current.Alleles) > 0 {
+		current.Alleles = dedupeStrings(current.Alleles)
+	}
+	if attrs := current.GenotypeMarkerAttributesByPlugin(); attrs == nil {
+		mustApply("apply genotype marker attributes", current.ApplyGenotypeMarkerAttributes(map[string]any{}))
+	} else {
+		mustApply("apply genotype marker attributes", current.ApplyGenotypeMarkerAttributes(attrs))
+	}
+	current.ID = id
+	current.UpdatedAt = tx.now
+	tx.state.markers[id] = cloneGenotypeMarker(current)
+	tx.recordChange(Change{Entity: domain.EntityGenotypeMarker, Action: domain.ActionUpdate, Before: before, After: cloneGenotypeMarker(current)})
+	return cloneGenotypeMarker(current), nil
+}
+
+// DeleteGenotypeMarker removes a genotype marker if no dependants reference it.
+func (tx *transaction) DeleteGenotypeMarker(id string) error {
+	current, ok := tx.state.markers[id]
+	if !ok {
+		return fmt.Errorf("genotype marker %q not found", id)
+	}
+	for _, line := range tx.state.lines {
+		if containsString(line.GenotypeMarkerIDs, id) {
+			return fmt.Errorf("genotype marker %q still referenced by line %q", id, line.ID)
+		}
+	}
+	for _, strain := range tx.state.strains {
+		if containsString(strain.GenotypeMarkerIDs, id) {
+			return fmt.Errorf("genotype marker %q still referenced by strain %q", id, strain.ID)
+		}
+	}
+	delete(tx.state.markers, id)
+	tx.recordChange(Change{Entity: domain.EntityGenotypeMarker, Action: domain.ActionDelete, Before: cloneGenotypeMarker(current)})
 	return nil
 }
 
@@ -2227,6 +2754,72 @@ func (s *Store) ListFacilities() []Facility {
 	out := make([]Facility, 0, len(s.state.facilities))
 	for _, f := range s.state.facilities {
 		out = append(out, cloneFacility(decorateFacility(&s.state, f)))
+	}
+	return out
+}
+
+// GetLine retrieves a line by ID.
+func (s *Store) GetLine(id string) (Line, bool) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	line, ok := s.state.lines[id]
+	if !ok {
+		return Line{}, false
+	}
+	return cloneLine(line), true
+}
+
+// ListLines returns all lines.
+func (s *Store) ListLines() []Line {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	out := make([]Line, 0, len(s.state.lines))
+	for _, line := range s.state.lines {
+		out = append(out, cloneLine(line))
+	}
+	return out
+}
+
+// GetStrain retrieves a strain by ID.
+func (s *Store) GetStrain(id string) (Strain, bool) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	strain, ok := s.state.strains[id]
+	if !ok {
+		return Strain{}, false
+	}
+	return cloneStrain(strain), true
+}
+
+// ListStrains returns all strains.
+func (s *Store) ListStrains() []Strain {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	out := make([]Strain, 0, len(s.state.strains))
+	for _, strain := range s.state.strains {
+		out = append(out, cloneStrain(strain))
+	}
+	return out
+}
+
+// GetGenotypeMarker retrieves a genotype marker by ID.
+func (s *Store) GetGenotypeMarker(id string) (GenotypeMarker, bool) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	marker, ok := s.state.markers[id]
+	if !ok {
+		return GenotypeMarker{}, false
+	}
+	return cloneGenotypeMarker(marker), true
+}
+
+// ListGenotypeMarkers returns all genotype markers.
+func (s *Store) ListGenotypeMarkers() []GenotypeMarker {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	out := make([]GenotypeMarker, 0, len(s.state.markers))
+	for _, marker := range s.state.markers {
+		out = append(out, cloneGenotypeMarker(marker))
 	}
 	return out
 }

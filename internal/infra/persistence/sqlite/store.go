@@ -56,6 +56,9 @@ var sqliteBuckets = []string{
 	"housing",
 	"facilities",
 	"breeding",
+	"lines",
+	"strains",
+	"markers",
 	"procedures",
 	"treatments",
 	"observations",
@@ -109,6 +112,18 @@ func (s *Store) load() error {
 		case "breeding":
 			if err := json.Unmarshal(r.payload, &snapshot.Breeding); err != nil {
 				return fmt.Errorf("decode breeding: %w", err)
+			}
+		case "lines":
+			if err := json.Unmarshal(r.payload, &snapshot.Lines); err != nil {
+				return fmt.Errorf("decode lines: %w", err)
+			}
+		case "strains":
+			if err := json.Unmarshal(r.payload, &snapshot.Strains); err != nil {
+				return fmt.Errorf("decode strains: %w", err)
+			}
+		case "markers":
+			if err := json.Unmarshal(r.payload, &snapshot.Markers); err != nil {
+				return fmt.Errorf("decode markers: %w", err)
 			}
 		case "procedures":
 			if err := json.Unmarshal(r.payload, &snapshot.Procedures); err != nil {
@@ -174,6 +189,12 @@ func (s *Store) persist() (retErr error) {
 			data, err = json.Marshal(snapshot.Facilities)
 		case "breeding":
 			data, err = json.Marshal(snapshot.Breeding)
+		case "lines":
+			data, err = json.Marshal(snapshot.Lines)
+		case "strains":
+			data, err = json.Marshal(snapshot.Strains)
+		case "markers":
+			data, err = json.Marshal(snapshot.Markers)
 		case "procedures":
 			data, err = json.Marshal(snapshot.Procedures)
 		case "treatments":

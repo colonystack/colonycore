@@ -1,5 +1,6 @@
 - [x] Harden entity-model validation rules
   - Enforce semver versioning, metadata status, duplicate checks, state machine initial/terminal values, `id_semantics`, allowed invariants, enum reachability, and property enum references in `internal/tools/entitymodel/validate`; aligned schema state definitions to pass.
+- [x] Lift persistence coverage for lineage entities (Line/Strain/GenotypeMarker) in memory + SQLite stores, covering guards, migrations, and deep-copy helpers (>90% package coverage).
 - [ ] Finish extension payload normalization across facades and persistence
   - [x] Encode observation extensions as hook-scoped containers in JSON and prove memory snapshot round-trips preserve plugin payloads with tests.
   - Rewrite plugin/dataset facades and adapter flows to pass hook-scoped payloads via typed helpers (`ExtensionSet`, etc.) instead of raw maps (e.g., dataset exporters/handlers still exchange `map[string]any` payloads).

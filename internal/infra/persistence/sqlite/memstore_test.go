@@ -8,7 +8,27 @@ import (
 	"time"
 )
 
+const changedValue = "changed"
+
 // Migrated minimal representative tests; original exhaustive tests remain at old path until cleanup.
+
+func TestMustApplyNoPanicSQLite(t *testing.T) {
+	defer func() {
+		if err := recover(); err != nil {
+			t.Fatalf("unexpected panic: %v", err)
+		}
+	}()
+	mustApply("noop", nil)
+}
+
+func TestMustApplyPanicsSQLite(t *testing.T) {
+	defer func() {
+		if err := recover(); err == nil {
+			t.Fatalf("expected panic when err is non-nil")
+		}
+	}()
+	mustApply("fail", fmt.Errorf("boom"))
+}
 
 func TestMemStoreBasicLifecycle(t *testing.T) {
 	store := newMemStore(nil)
@@ -290,6 +310,15 @@ func TestMemStoreTransactionViewMissingFinders(t *testing.T) {
 		if _, ok := v.FindPermit("missing"); ok {
 			t.Fatalf("expected missing permit")
 		}
+		if _, ok := v.FindLine("missing"); ok {
+			t.Fatalf("expected missing line")
+		}
+		if _, ok := v.FindStrain("missing"); ok {
+			t.Fatalf("expected missing strain")
+		}
+		if _, ok := v.FindGenotypeMarker("missing"); ok {
+			t.Fatalf("expected missing genotype marker")
+		}
 		if _, ok := v.FindSupplyItem("missing"); ok {
 			t.Fatalf("expected missing supply item")
 		}
@@ -302,6 +331,245 @@ func TestMemStoreTransactionViewMissingFinders(t *testing.T) {
 	}
 }
 
+func TestCloneDeepCopiesSQLite(t *testing.T) {
+	desc := "desc"
+	reason := "reason"
+	now := time.Now().UTC()
+
+	line := Line{
+		Description:       &desc,
+		Origin:            "field",
+		GenotypeMarkerIDs: []string{"marker-1"},
+		DeprecatedAt:      &now,
+		DeprecationReason: &reason,
+	}
+	if err := line.ApplyDefaultAttributes(map[string]any{"core": map[string]any{"seed": true}}); err != nil {
+		t.Fatalf("apply line defaults: %v", err)
+	}
+	if err := line.ApplyExtensionOverrides(map[string]any{"plugin": map[string]any{"override": 1}}); err != nil {
+		t.Fatalf("apply line overrides: %v", err)
+	}
+	clonedLine := cloneLine(line)
+	line.GenotypeMarkerIDs[0] = changedValue
+	if clonedLine.GenotypeMarkerIDs[0] != "marker-1" {
+		t.Fatalf("expected line marker IDs to be deep copied")
+	}
+	if clonedLine.Description == line.Description || clonedLine.DeprecatedAt == line.DeprecatedAt {
+		t.Fatalf("expected line pointers to be copied, not shared")
+	}
+
+	strain := Strain{
+		Description:       &desc,
+		Generation:        &desc,
+		RetiredAt:         &now,
+		RetirementReason:  &reason,
+		LineID:            "line-1",
+		GenotypeMarkerIDs: []string{"marker-1"},
+	}
+	if err := strain.ApplyStrainAttributes(map[string]any{"core": map[string]any{"note": "strain"}}); err != nil {
+		t.Fatalf("apply strain attributes: %v", err)
+	}
+	clonedStrain := cloneStrain(strain)
+	strain.GenotypeMarkerIDs[0] = "mutated"
+	if clonedStrain.GenotypeMarkerIDs[0] != "marker-1" {
+		t.Fatalf("expected strain markers to be deep copied")
+	}
+	if clonedStrain.Description == strain.Description || clonedStrain.RetiredAt == strain.RetiredAt {
+		t.Fatalf("expected strain pointers to be copied, not shared")
+	}
+
+	marker := GenotypeMarker{
+		Name:           "Marker",
+		Locus:          "loc",
+		Alleles:        []string{"A"},
+		AssayMethod:    "PCR",
+		Interpretation: "control",
+		Version:        "v1",
+	}
+	if err := marker.ApplyGenotypeMarkerAttributes(map[string]any{"core": map[string]any{"attr": "value"}}); err != nil {
+		t.Fatalf("apply marker attributes: %v", err)
+	}
+	clonedMarker := cloneGenotypeMarker(marker)
+	marker.Alleles[0] = "mutated"
+	if clonedMarker.Alleles[0] != "A" {
+		t.Fatalf("expected marker alleles to be deep copied")
+	}
+	if clonedMarker.Interpretation != marker.Interpretation {
+		t.Fatalf("expected marker interpretation copied")
+	}
+
+	breeding := BreedingUnit{
+		FemaleIDs: []string{"f1"},
+		MaleIDs:   []string{"m1"},
+	}
+	if err := breeding.ApplyPairingAttributes(map[string]any{"core": map[string]any{"note": "pair"}}); err != nil {
+		t.Fatalf("apply breeding attributes: %v", err)
+	}
+	clonedBreeding := cloneBreeding(breeding)
+	breeding.FemaleIDs[0] = changedValue
+	if clonedBreeding.FemaleIDs[0] != "f1" {
+		t.Fatalf("expected breeding IDs deep copied")
+	}
+
+	observation := Observation{}
+	if err := observation.ApplyObservationData(map[string]any{"score": 5}); err != nil {
+		t.Fatalf("apply observation data: %v", err)
+	}
+	clonedObservation := cloneObservation(observation)
+	data := clonedObservation.ObservationData()
+	if data["score"].(int) != 5 {
+		t.Fatalf("expected observation data copied, got %+v", data)
+	}
+
+	facility := Facility{HousingUnitIDs: []string{"h1"}, ProjectIDs: []string{"p1"}}
+	if err := facility.ApplyEnvironmentBaselines(map[string]any{"temp": 22}); err != nil {
+		t.Fatalf("apply facility baselines: %v", err)
+	}
+	clonedFacility := cloneFacility(facility)
+	facility.HousingUnitIDs[0] = changedValue
+	if clonedFacility.HousingUnitIDs[0] != "h1" {
+		t.Fatalf("expected facility IDs deep copied")
+	}
+	if baselines := clonedFacility.EnvironmentBaselines(); baselines["temp"].(int) != 22 {
+		t.Fatalf("expected facility baselines copied")
+	}
+}
+
+func TestSnapshotRoundTripCoverageSQLite(t *testing.T) {
+	now := time.Now().UTC()
+	lineID := "line-rtt"
+	strainID := "strain-rtt"
+	markerID := "marker-rtt"
+	orgID := "org-rtt"
+	procID := "proc-rtt"
+	facilityID := "fac-rtt"
+	cohortID := "cohort-rtt"
+	projectID := "project-rtt"
+
+	org := Organism{Base: domain.Base{ID: orgID}, Name: "Org", Species: "Spec", ParentIDs: []string{"parent"}}
+	if err := org.SetCoreAttributes(map[string]any{}); err != nil {
+		t.Fatalf("set organism attrs: %v", err)
+	}
+
+	line := Line{
+		Base:              domain.Base{ID: lineID},
+		Code:              "L-RT",
+		Name:              "Line",
+		Origin:            "field",
+		GenotypeMarkerIDs: []string{markerID},
+	}
+	if err := line.ApplyDefaultAttributes(map[string]any{}); err != nil {
+		t.Fatalf("apply line defaults: %v", err)
+	}
+	if err := line.ApplyExtensionOverrides(map[string]any{}); err != nil {
+		t.Fatalf("apply line overrides: %v", err)
+	}
+
+	strain := Strain{
+		Base:              domain.Base{ID: strainID},
+		Code:              "S-RT",
+		Name:              "Strain",
+		LineID:            lineID,
+		GenotypeMarkerIDs: []string{markerID},
+	}
+	if err := strain.ApplyStrainAttributes(map[string]any{}); err != nil {
+		t.Fatalf("apply strain attrs: %v", err)
+	}
+
+	marker := GenotypeMarker{
+		Base:        domain.Base{ID: markerID},
+		Name:        "Marker",
+		Locus:       "loc",
+		Alleles:     []string{"A"},
+		AssayMethod: "PCR",
+		Version:     "v1",
+	}
+	if err := marker.ApplyGenotypeMarkerAttributes(map[string]any{}); err != nil {
+		t.Fatalf("apply marker attrs: %v", err)
+	}
+
+	breeding := BreedingUnit{Base: domain.Base{ID: "breed-rtt"}, Name: "Breed", Strategy: "pair", LineID: &lineID, StrainID: &strainID, FemaleIDs: []string{"f"}, MaleIDs: []string{"m"}}
+	if err := breeding.ApplyPairingAttributes(map[string]any{}); err != nil {
+		t.Fatalf("apply breeding attrs: %v", err)
+	}
+
+	protocol := Protocol{Base: domain.Base{ID: "prot-rtt"}, Code: "PR", Title: "Protocol", MaxSubjects: 1, Status: domain.ProtocolStatusApproved}
+
+	housing := HousingUnit{Base: domain.Base{ID: "house-rtt"}, Name: "Housing", FacilityID: facilityID, Capacity: 2, Environment: domain.HousingEnvironmentAquatic}
+
+	facility := Facility{Base: domain.Base{ID: facilityID}, Code: "FAC", Name: "Facility", Zone: "zone", AccessPolicy: "policy", HousingUnitIDs: []string{housing.ID}, ProjectIDs: []string{projectID}}
+	if err := facility.ApplyEnvironmentBaselines(map[string]any{"temp": 21}); err != nil {
+		t.Fatalf("apply baselines: %v", err)
+	}
+
+	cohort := Cohort{Base: domain.Base{ID: cohortID}, Name: "Cohort", Purpose: "Study", ProjectID: &projectID, HousingID: &housing.FacilityID, ProtocolID: &protocol.ID}
+
+	procedure := Procedure{Base: domain.Base{ID: procID}, Name: "Proc", Status: domain.ProcedureStatusScheduled, ScheduledAt: now, ProtocolID: protocol.ID, CohortID: &cohortID, OrganismIDs: []string{orgID}}
+
+	treatment := Treatment{Base: domain.Base{ID: "treat-rtt"}, Name: "Treat", Status: domain.TreatmentStatusPlanned, ProcedureID: procID, OrganismIDs: []string{orgID}, CohortIDs: []string{cohortID}}
+
+	obs := Observation{Base: domain.Base{ID: "obs-rtt"}, ProcedureID: &procID, OrganismID: &orgID, RecordedAt: now, Observer: "tech"}
+	if err := obs.ApplyObservationData(map[string]any{"score": 1}); err != nil {
+		t.Fatalf("apply observation data: %v", err)
+	}
+
+	sample := Sample{Base: domain.Base{ID: "samp-rtt"}, Identifier: "S", SourceType: "blood", FacilityID: facilityID, OrganismID: &orgID, CollectedAt: now, Status: domain.SampleStatusStored, StorageLocation: "cold"}
+	if err := sample.ApplySampleAttributes(map[string]any{}); err != nil {
+		t.Fatalf("apply sample attrs: %v", err)
+	}
+
+	permit := Permit{
+		Base:              domain.Base{ID: "permit-rtt"},
+		PermitNumber:      "PERMIT",
+		Authority:         "Gov",
+		Status:            domain.PermitStatusApproved,
+		ValidFrom:         now,
+		ValidUntil:        now.Add(time.Hour),
+		AllowedActivities: []string{"store"},
+		FacilityIDs:       []string{facilityID},
+		ProtocolIDs:       []string{protocol.ID},
+	}
+
+	project := Project{Base: domain.Base{ID: projectID}, Code: "PRJ", Title: "Project", FacilityIDs: []string{facilityID}}
+
+	supply := SupplyItem{
+		Base:           domain.Base{ID: "supply-rtt"},
+		SKU:            "SKU",
+		Name:           "Supply",
+		QuantityOnHand: 1,
+		Unit:           "unit",
+		FacilityIDs:    []string{facilityID},
+		ProjectIDs:     []string{projectID},
+	}
+	if err := supply.ApplySupplyAttributes(map[string]any{}); err != nil {
+		t.Fatalf("apply supply attrs: %v", err)
+	}
+
+	state := memoryState{
+		organisms:    map[string]Organism{orgID: org},
+		cohorts:      map[string]Cohort{cohortID: cohort},
+		housing:      map[string]HousingUnit{housing.ID: housing},
+		facilities:   map[string]Facility{facilityID: facility},
+		breeding:     map[string]BreedingUnit{breeding.ID: breeding},
+		lines:        map[string]Line{lineID: line},
+		strains:      map[string]Strain{strainID: strain},
+		markers:      map[string]GenotypeMarker{markerID: marker},
+		procedures:   map[string]Procedure{procID: procedure},
+		treatments:   map[string]Treatment{treatment.ID: treatment},
+		observations: map[string]Observation{obs.ID: obs},
+		samples:      map[string]Sample{sample.ID: sample},
+		protocols:    map[string]Protocol{protocol.ID: protocol},
+		permits:      map[string]Permit{permit.ID: permit},
+		projects:     map[string]Project{projectID: project},
+		supplies:     map[string]SupplyItem{supply.ID: supply},
+	}
+
+	snapshot := snapshotFromMemoryState(state)
+	restored := memoryStateFromSnapshot(snapshot)
+	if len(restored.organisms) != 1 || len(restored.strains) != 1 || len(restored.markers) != 1 {
+		t.Fatalf("expected round-trip data to persist")
+	}
+}
 func TestMemStoreProcedureObservationSampleLifecycle(t *testing.T) {
 	store := newMemStore(nil)
 	now := time.Now().UTC()

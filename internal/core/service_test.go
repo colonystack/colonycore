@@ -796,6 +796,30 @@ func (s clocklessStore) ListFacilities() []domain.Facility {
 	return s.inner.ListFacilities()
 }
 
+func (s clocklessStore) GetLine(id string) (domain.Line, bool) {
+	return s.inner.GetLine(id)
+}
+
+func (s clocklessStore) ListLines() []domain.Line {
+	return s.inner.ListLines()
+}
+
+func (s clocklessStore) GetStrain(id string) (domain.Strain, bool) {
+	return s.inner.GetStrain(id)
+}
+
+func (s clocklessStore) ListStrains() []domain.Strain {
+	return s.inner.ListStrains()
+}
+
+func (s clocklessStore) GetGenotypeMarker(id string) (domain.GenotypeMarker, bool) {
+	return s.inner.GetGenotypeMarker(id)
+}
+
+func (s clocklessStore) ListGenotypeMarkers() []domain.GenotypeMarker {
+	return s.inner.ListGenotypeMarkers()
+}
+
 func (s clocklessStore) ListCohorts() []domain.Cohort {
 	return s.inner.ListCohorts()
 }

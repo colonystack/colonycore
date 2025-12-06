@@ -285,6 +285,9 @@ type fakePersistentStore struct {
 	projects      []domain.Project
 	cohorts       []domain.Cohort
 	breedingUnits []domain.BreedingUnit
+	lines         []domain.Line
+	strains       []domain.Strain
+	markers       []domain.GenotypeMarker
 	procedures    []domain.Procedure
 	treatments    []domain.Treatment
 	observations  []domain.Observation
@@ -343,6 +346,45 @@ func (f *fakePersistentStore) GetFacility(id string) (domain.Facility, bool) {
 
 func (f *fakePersistentStore) ListFacilities() []domain.Facility {
 	return append([]domain.Facility(nil), f.facilities...)
+}
+
+func (f *fakePersistentStore) GetLine(id string) (domain.Line, bool) {
+	for _, line := range f.lines {
+		if line.ID == id {
+			return line, true
+		}
+	}
+	return domain.Line{}, false
+}
+
+func (f *fakePersistentStore) ListLines() []domain.Line {
+	return append([]domain.Line(nil), f.lines...)
+}
+
+func (f *fakePersistentStore) GetStrain(id string) (domain.Strain, bool) {
+	for _, strain := range f.strains {
+		if strain.ID == id {
+			return strain, true
+		}
+	}
+	return domain.Strain{}, false
+}
+
+func (f *fakePersistentStore) ListStrains() []domain.Strain {
+	return append([]domain.Strain(nil), f.strains...)
+}
+
+func (f *fakePersistentStore) GetGenotypeMarker(id string) (domain.GenotypeMarker, bool) {
+	for _, marker := range f.markers {
+		if marker.ID == id {
+			return marker, true
+		}
+	}
+	return domain.GenotypeMarker{}, false
+}
+
+func (f *fakePersistentStore) ListGenotypeMarkers() []domain.GenotypeMarker {
+	return append([]domain.GenotypeMarker(nil), f.markers...)
 }
 
 func (f *fakePersistentStore) ListCohorts() []domain.Cohort {
@@ -405,6 +447,11 @@ func (v fakeTransactionView) ListHousingUnits() []domain.HousingUnit {
 func (v fakeTransactionView) ListFacilities() []domain.Facility {
 	return v.store.ListFacilities()
 }
+func (v fakeTransactionView) ListLines() []domain.Line     { return v.store.ListLines() }
+func (v fakeTransactionView) ListStrains() []domain.Strain { return v.store.ListStrains() }
+func (v fakeTransactionView) ListGenotypeMarkers() []domain.GenotypeMarker {
+	return v.store.ListGenotypeMarkers()
+}
 func (v fakeTransactionView) ListProtocols() []domain.Protocol { return v.store.ListProtocols() }
 func (v fakeTransactionView) ListTreatments() []domain.Treatment {
 	return v.store.ListTreatments()
@@ -429,6 +476,18 @@ func (v fakeTransactionView) FindHousingUnit(id string) (domain.HousingUnit, boo
 
 func (v fakeTransactionView) FindFacility(id string) (domain.Facility, bool) {
 	return v.store.GetFacility(id)
+}
+
+func (v fakeTransactionView) FindLine(id string) (domain.Line, bool) {
+	return v.store.GetLine(id)
+}
+
+func (v fakeTransactionView) FindStrain(id string) (domain.Strain, bool) {
+	return v.store.GetStrain(id)
+}
+
+func (v fakeTransactionView) FindGenotypeMarker(id string) (domain.GenotypeMarker, bool) {
+	return v.store.GetGenotypeMarker(id)
 }
 
 func (v fakeTransactionView) FindTreatment(id string) (domain.Treatment, bool) {
