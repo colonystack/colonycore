@@ -78,7 +78,11 @@ func TestProtocolSubjectCapBlocksOverage(t *testing.T) {
 	svc := core.NewInMemoryService(core.NewDefaultRulesEngine())
 	ctx := context.Background()
 
-	project, _, err := svc.CreateProject(ctx, domain.Project{Code: "PRJ-1", Title: "Regeneration"})
+	facility, _, err := svc.CreateFacility(ctx, domain.Facility{Name: "Protocol Facility"})
+	if err != nil {
+		t.Fatalf("create facility: %v", err)
+	}
+	project, _, err := svc.CreateProject(ctx, domain.Project{Code: "PRJ-1", Title: "Regeneration", FacilityIDs: []string{facility.ID}})
 	if err != nil {
 		t.Fatalf("create project: %v", err)
 	}
@@ -284,7 +288,12 @@ func TestServiceUpdateDeleteWrappers(t *testing.T) {
 
 	const updatedDesc = "updated"
 
-	project, _, err := svc.CreateProject(ctx, domain.Project{Code: "PRJ-WRAP", Title: "Wrap"})
+	facility, _, err := svc.CreateFacility(ctx, domain.Facility{Name: "Facility Wrap"})
+	if err != nil {
+		t.Fatalf("create facility: %v", err)
+	}
+
+	project, _, err := svc.CreateProject(ctx, domain.Project{Code: "PRJ-WRAP", Title: "Wrap", FacilityIDs: []string{facility.ID}})
 	if err != nil {
 		t.Fatalf("create project: %v", err)
 	}
@@ -330,10 +339,6 @@ func TestServiceUpdateDeleteWrappers(t *testing.T) {
 		t.Fatalf("unexpected protocol delete violations: %+v", res.Violations)
 	}
 
-	facility, _, err := svc.CreateFacility(ctx, domain.Facility{Name: "Facility Wrap"})
-	if err != nil {
-		t.Fatalf("create facility: %v", err)
-	}
 	housing, _, err := svc.CreateHousingUnit(ctx, domain.HousingUnit{Name: "Housing Wrap", FacilityID: facility.ID, Capacity: 2})
 	if err != nil {
 		t.Fatalf("create housing: %v", err)
@@ -431,7 +436,7 @@ func TestServiceEmitsChangesForNewEntities(t *testing.T) {
 	assertNoViolations(t, res)
 	assertSingleChange(t, collector.take(), domain.EntityFacility, domain.ActionCreate)
 
-	project, res, err := svc.CreateProject(ctx, domain.Project{Code: "PRJ-CHG", Title: "Change Tracking"})
+	project, res, err := svc.CreateProject(ctx, domain.Project{Code: "PRJ-CHG", Title: "Change Tracking", FacilityIDs: []string{facilityB.ID}})
 	if err != nil {
 		t.Fatalf("create project: %v", err)
 	}
@@ -536,6 +541,11 @@ func TestServiceEmitsChangesForNewEntities(t *testing.T) {
 		CollectedAt:     now,
 		Status:          domain.SampleStatusStored,
 		StorageLocation: "freezer-1",
+		ChainOfCustody: []domain.SampleCustodyEvent{{
+			Actor:     "tech",
+			Location:  "freezer-1",
+			Timestamp: now,
+		}},
 	})
 	if err != nil {
 		t.Fatalf("create sample: %v", err)

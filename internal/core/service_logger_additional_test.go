@@ -24,8 +24,12 @@ func TestServiceLoggerDebugAndError(t *testing.T) {
 	logger := &captureLogger{}
 	svc := core.NewInMemoryService(core.NewDefaultRulesEngine(), core.WithLogger(logger))
 	ctx := context.Background()
+	facility, _, err := svc.CreateFacility(ctx, domain.Facility{Name: "Logger Facility"})
+	if err != nil {
+		t.Fatalf("create facility: %v", err)
+	}
 	// success path: create project => run() succeeds => Debug call
-	if _, _, err := svc.CreateProject(ctx, domain.Project{Code: "PRJ-LOG", Title: "Logging"}); err != nil {
+	if _, _, err := svc.CreateProject(ctx, domain.Project{Code: "PRJ-LOG", Title: "Logging", FacilityIDs: []string{facility.ID}}); err != nil {
 		// shouldn't happen; but fail early
 		t.Fatalf("create project: %v", err)
 	}

@@ -49,15 +49,10 @@ func seedMemoryStore(t *testing.T, store *memory.Store) memoryIDs {
 
 	var ids memoryIDs
 	if _, err := store.RunInTransaction(ctx, func(tx domain.Transaction) error {
-		projectVal, err := tx.CreateProject(domain.Project{Code: "PRJ-1", Title: "domain.Project"})
-		project := must(t, projectVal, err)
-		ids.projectID = project.ID
-
 		facilityInput := domain.Facility{
 			Name:         "Vivarium",
 			Zone:         "Zone-A",
 			AccessPolicy: "badge-required",
-			ProjectIDs:   []string{ids.projectID},
 		}
 		if err := facilityInput.ApplyEnvironmentBaselines(map[string]any{"temperature": "22C"}); err != nil {
 			t.Fatalf("apply facility baselines: %v", err)
@@ -65,6 +60,10 @@ func seedMemoryStore(t *testing.T, store *memory.Store) memoryIDs {
 		facilityVal, err := tx.CreateFacility(facilityInput)
 		facility := must(t, facilityVal, err)
 		ids.facilityID = facility.ID
+
+		projectVal, err := tx.CreateProject(domain.Project{Code: "PRJ-1", Title: "domain.Project", FacilityIDs: []string{ids.facilityID}})
+		project := must(t, projectVal, err)
+		ids.projectID = project.ID
 
 		if _, err := tx.CreateHousingUnit(domain.HousingUnit{Name: "Invalid", FacilityID: ids.facilityID, Capacity: 0}); err == nil {
 			return fmt.Errorf("expected capacity validation error")
@@ -94,6 +93,7 @@ func seedMemoryStore(t *testing.T, store *memory.Store) memoryIDs {
 		ids.housingID = housing.ID
 		_, err = tx.UpdateFacility(ids.facilityID, func(f *domain.Facility) error {
 			f.HousingUnitIDs = append(f.HousingUnitIDs, ids.housingID)
+			f.ProjectIDs = []string{ids.projectID}
 			return nil
 		})
 		mustNoErr(t, err)
@@ -724,6 +724,11 @@ func TestDeleteFacilityEnforcesReferences(t *testing.T) {
 				CollectedAt:     now,
 				Status:          domain.SampleStatusStored,
 				StorageLocation: "room",
+				ChainOfCustody: []domain.SampleCustodyEvent{{
+					Actor:     "tech",
+					Location:  "room",
+					Timestamp: now,
+				}},
 			})
 			if err != nil {
 				return err
@@ -747,6 +752,7 @@ func TestDeleteFacilityEnforcesReferences(t *testing.T) {
 				QuantityOnHand: 5,
 				Unit:           "box",
 				FacilityIDs:    []string{facility.ID},
+				ProjectIDs:     []string{project.ID},
 			})
 			return err
 		})
@@ -784,6 +790,13 @@ func TestDeleteFacilityEnforcesReferences(t *testing.T) {
 
 	mustNoErr(t, func() error {
 		_, err := store.RunInTransaction(ctx, func(tx domain.Transaction) error {
+			return tx.DeleteSupplyItem(supply.ID)
+		})
+		return err
+	}())
+
+	mustNoErr(t, func() error {
+		_, err := store.RunInTransaction(ctx, func(tx domain.Transaction) error {
 			return tx.DeleteProject(project.ID)
 		})
 		return err
@@ -794,15 +807,6 @@ func TestDeleteFacilityEnforcesReferences(t *testing.T) {
 	mustNoErr(t, func() error {
 		_, err := store.RunInTransaction(ctx, func(tx domain.Transaction) error {
 			return tx.DeletePermit(permit.ID)
-		})
-		return err
-	}())
-
-	expectDeleteError("supply item")
-
-	mustNoErr(t, func() error {
-		_, err := store.RunInTransaction(ctx, func(tx domain.Transaction) error {
-			return tx.DeleteSupplyItem(supply.ID)
 		})
 		return err
 	}())
@@ -863,26 +867,27 @@ func TestRelationshipValidations(t *testing.T) {
 			t.Fatalf("expected observation creation to succeed: %v", err)
 		}
 
-		if _, err := tx.CreateSample(domain.Sample{Identifier: "S0", SourceType: "blood", CollectedAt: now, Status: domain.SampleStatusStored, StorageLocation: "room"}); err == nil {
+		if _, err := tx.CreateSample(domain.Sample{Identifier: "S0", SourceType: "blood", CollectedAt: now, Status: domain.SampleStatusStored, StorageLocation: "room", ChainOfCustody: []domain.SampleCustodyEvent{{Actor: "tech", Location: "room", Timestamp: now}}}); err == nil {
 			t.Fatalf("expected sample without facility to fail")
 		}
-		if _, err := tx.CreateSample(domain.Sample{Identifier: "S1", SourceType: "blood", FacilityID: facility.ID, CollectedAt: now, Status: domain.SampleStatusStored, StorageLocation: "room"}); err == nil {
+		if _, err := tx.CreateSample(domain.Sample{Identifier: "S1", SourceType: "blood", FacilityID: facility.ID, CollectedAt: now, Status: domain.SampleStatusStored, StorageLocation: "room", ChainOfCustody: []domain.SampleCustodyEvent{{Actor: "tech", Location: "room", Timestamp: now}}}); err == nil {
 			t.Fatalf("expected sample without organism or cohort to fail")
 		}
-		if _, err := tx.CreateSample(domain.Sample{Identifier: "S2", SourceType: "blood", FacilityID: facility.ID, OrganismID: &organism.ID, CollectedAt: now, Status: domain.SampleStatusStored, StorageLocation: "room"}); err != nil {
+		if _, err := tx.CreateSample(domain.Sample{Identifier: "S2", SourceType: "blood", FacilityID: facility.ID, OrganismID: &organism.ID, CollectedAt: now, Status: domain.SampleStatusStored, StorageLocation: "room", ChainOfCustody: []domain.SampleCustodyEvent{{Actor: "tech", Location: "room", Timestamp: now}}}); err != nil {
 			t.Fatalf("expected sample creation to succeed: %v", err)
 		}
 
-		if _, err := tx.CreatePermit(domain.Permit{PermitNumber: "PERM-FAIL", FacilityIDs: []string{"missing"}, ProtocolIDs: []string{"prot"}}); err == nil {
+		if _, err := tx.CreatePermit(domain.Permit{PermitNumber: "PERM-FAIL", AllowedActivities: []string{"collect"}, FacilityIDs: []string{"missing"}, ProtocolIDs: []string{"prot"}}); err == nil {
 			t.Fatalf("expected permit with missing facility to fail")
 		}
 		if _, err := tx.CreatePermit(domain.Permit{
-			PermitNumber: "PERM-FAIL2",
-			FacilityIDs:  []string{facility.ID},
-			ProtocolIDs:  []string{"missing"},
-			Status:       domain.PermitStatusSubmitted,
-			ValidFrom:    now,
-			ValidUntil:   now.Add(time.Hour),
+			PermitNumber:      "PERM-FAIL2",
+			AllowedActivities: []string{"collect"},
+			FacilityIDs:       []string{facility.ID},
+			ProtocolIDs:       []string{"missing"},
+			Status:            domain.PermitStatusSubmitted,
+			ValidFrom:         now,
+			ValidUntil:        now.Add(time.Hour),
 		}); err == nil {
 			t.Fatalf("expected permit with missing protocol to fail")
 		}
@@ -899,7 +904,7 @@ func TestRelationshipValidations(t *testing.T) {
 			t.Fatalf("expected permit creation to succeed: %v", err)
 		}
 
-		if _, err := tx.CreateSupplyItem(domain.SupplyItem{SKU: "SKU-FAIL", Name: "Supply", FacilityIDs: []string{"missing"}}); err == nil {
+		if _, err := tx.CreateSupplyItem(domain.SupplyItem{SKU: "SKU-FAIL", Name: "Supply", FacilityIDs: []string{"missing"}, ProjectIDs: []string{"missing"}}); err == nil {
 			t.Fatalf("expected supply creation with missing facility to fail")
 		}
 		if _, err := tx.CreateSupplyItem(domain.SupplyItem{
@@ -911,7 +916,7 @@ func TestRelationshipValidations(t *testing.T) {
 			t.Fatalf("expected supply creation with missing project to fail")
 		}
 
-		project, err := tx.CreateProject(domain.Project{Code: "PRJ-REL", Title: "Project"})
+		project, err := tx.CreateProject(domain.Project{Code: "PRJ-REL", Title: "Project", FacilityIDs: []string{facility.ID}})
 		if err != nil {
 			return err
 		}
@@ -947,7 +952,7 @@ func TestUpdateSupplyItemDedupe(t *testing.T) {
 			if err != nil {
 				return err
 			}
-			project, err = tx.CreateProject(domain.Project{Code: "SUP", Title: "Supply Project"})
+			project, err = tx.CreateProject(domain.Project{Code: "SUP", Title: "Supply Project", FacilityIDs: []string{facility.ID}})
 			if err != nil {
 				return err
 			}
@@ -1145,7 +1150,11 @@ func TestRulesEngineAggregates(t *testing.T) {
 	ctx := context.Background()
 
 	res, err := store.RunInTransaction(ctx, func(tx domain.Transaction) error {
-		_, err := tx.CreateProject(domain.Project{Code: "P", Title: "domain.Project"})
+		facility, err := tx.CreateFacility(domain.Facility{Name: "Rules Facility"})
+		if err != nil {
+			return err
+		}
+		_, err = tx.CreateProject(domain.Project{Code: "P", Title: "domain.Project", FacilityIDs: []string{facility.ID}})
 		return err
 	})
 	if err == nil {

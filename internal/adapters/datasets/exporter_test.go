@@ -27,7 +27,11 @@ func TestWorkerProcessesExport(t *testing.T) {
 	t.Cleanup(func() { _ = worker.Stop(context.Background()) })
 
 	ctx := context.Background()
-	project, _, err := svc.CreateProject(ctx, domain.Project{Code: "PRJ-WORK", Title: "Worker"})
+	facility, _, err := svc.CreateFacility(ctx, domain.Facility{Name: "Worker Facility"})
+	if err != nil {
+		t.Fatalf("create facility: %v", err)
+	}
+	project, _, err := svc.CreateProject(ctx, domain.Project{Code: "PRJ-WORK", Title: "Worker", FacilityIDs: []string{facility.ID}})
 	if err != nil {
 		t.Fatalf("create project: %v", err)
 	}

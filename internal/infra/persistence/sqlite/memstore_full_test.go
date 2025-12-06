@@ -56,8 +56,6 @@ func TestMemStore_FullCRUDAndErrors(t *testing.T) { //nolint:gocyclo // exhausti
 		orgA, orgB = o1, o2
 		c, _ := tx.CreateCohort(domain.Cohort{Name: "C1", Purpose: "testing"})
 		cohort = c
-		pj, _ := tx.CreateProject(domain.Project{Code: "PRJ1", Title: "Proj"})
-		project = pj
 		fInput := domain.Facility{
 			Name:         "Vivarium",
 			Zone:         "Zone-A",
@@ -68,10 +66,13 @@ func TestMemStore_FullCRUDAndErrors(t *testing.T) { //nolint:gocyclo // exhausti
 		}
 		f, _ := tx.CreateFacility(fInput)
 		facility = f
+		pj, _ := tx.CreateProject(domain.Project{Code: "PRJ1", Title: "Proj", FacilityIDs: []string{facility.ID}})
+		project = pj
 		h, _ := tx.CreateHousingUnit(domain.HousingUnit{Name: "H1", Capacity: 2, Environment: domain.HousingEnvironmentTerrestrial, FacilityID: facility.ID})
 		housing = h
 		_, _ = tx.UpdateFacility(facility.ID, func(fc *domain.Facility) error {
 			fc.HousingUnitIDs = append(fc.HousingUnitIDs, housing.ID)
+			fc.ProjectIDs = []string{project.ID}
 			return nil
 		})
 		b, _ := tx.CreateBreedingUnit(domain.BreedingUnit{Name: "B1", FemaleIDs: []string{o1.ID}, MaleIDs: []string{o2.ID}})
@@ -411,17 +412,10 @@ func TestSQLiteStore_Persist_Reload_Full(t *testing.T) {
 	)
 	now := time.Now().UTC()
 	if _, err := store.RunInTransaction(ctx, func(tx domain.Transaction) error {
-		project, err := tx.CreateProject(domain.Project{Code: "C", Title: "T"})
-		if err != nil {
-			return err
-		}
-		projectID = project.ID
-
 		facilityInput := domain.Facility{
 			Name:         "Vivarium",
 			Zone:         "Zone-A",
 			AccessPolicy: "badge",
-			ProjectIDs:   []string{project.ID},
 		}
 		if err := facilityInput.ApplyEnvironmentBaselines(map[string]any{"temperature": "22C"}); err != nil {
 			t.Fatalf("apply facility baselines: %v", err)
@@ -432,6 +426,12 @@ func TestSQLiteStore_Persist_Reload_Full(t *testing.T) {
 		}
 		facilityID = facility.ID
 
+		project, err := tx.CreateProject(domain.Project{Code: "C", Title: "T", FacilityIDs: []string{facility.ID}})
+		if err != nil {
+			return err
+		}
+		projectID = project.ID
+
 		housing, err := tx.CreateHousingUnit(domain.HousingUnit{Name: "Tank", Capacity: 2, Environment: domain.HousingEnvironmentTerrestrial, FacilityID: facility.ID})
 		if err != nil {
 			return err
@@ -439,6 +439,7 @@ func TestSQLiteStore_Persist_Reload_Full(t *testing.T) {
 		housingID = housing.ID
 		if _, err := tx.UpdateFacility(facility.ID, func(f *domain.Facility) error {
 			f.HousingUnitIDs = append(f.HousingUnitIDs, housing.ID)
+			f.ProjectIDs = []string{project.ID}
 			return nil
 		}); err != nil {
 			return err
@@ -742,12 +743,16 @@ func TestMemStore_ErrorBranchesAdditional(t *testing.T) {
 	var prot domain.Protocol
 	var proj domain.Project
 	runTx(t, store, func(tx domain.Transaction) error {
+		facility, err := tx.CreateFacility(domain.Facility{Name: "Dup Facility"})
+		if err != nil {
+			return err
+		}
 		p, err := tx.CreateProtocol(domain.Protocol{Code: "DUP", Title: "Dup", MaxSubjects: 1})
 		if err != nil {
 			return err
 		}
 		prot = p
-		pr, err := tx.CreateProject(domain.Project{Code: "DUPP", Title: "DupProj"})
+		pr, err := tx.CreateProject(domain.Project{Code: "DUPP", Title: "DupProj", FacilityIDs: []string{facility.ID}})
 		if err != nil {
 			return err
 		}
@@ -876,6 +881,11 @@ func TestMemStoreDeleteFacilityEnforcesReferences(t *testing.T) {
 			CollectedAt:     now,
 			Status:          domain.SampleStatusStored,
 			StorageLocation: "room",
+			ChainOfCustody: []domain.SampleCustodyEvent{{
+				Actor:     "tech",
+				Location:  "room",
+				Timestamp: now,
+			}},
 		})
 		if err != nil {
 			return err
@@ -898,6 +908,7 @@ func TestMemStoreDeleteFacilityEnforcesReferences(t *testing.T) {
 			QuantityOnHand: 5,
 			Unit:           "box",
 			FacilityIDs:    []string{facility.ID},
+			ProjectIDs:     []string{project.ID},
 		})
 		return err
 	})
@@ -926,6 +937,10 @@ func TestMemStoreDeleteFacilityEnforcesReferences(t *testing.T) {
 	expectDeleteError("project")
 
 	runTx(t, store, func(tx domain.Transaction) error {
+		return tx.DeleteSupplyItem(supply.ID)
+	})
+
+	runTx(t, store, func(tx domain.Transaction) error {
 		return tx.DeleteProject(project.ID)
 	})
 
@@ -933,12 +948,6 @@ func TestMemStoreDeleteFacilityEnforcesReferences(t *testing.T) {
 
 	runTx(t, store, func(tx domain.Transaction) error {
 		return tx.DeletePermit(permit.ID)
-	})
-
-	expectDeleteError("supply item")
-
-	runTx(t, store, func(tx domain.Transaction) error {
-		return tx.DeleteSupplyItem(supply.ID)
 	})
 
 	runTx(t, store, func(tx domain.Transaction) error {
@@ -995,25 +1004,30 @@ func TestMemStoreRelationshipValidations(t *testing.T) {
 			t.Fatalf("expected observation creation to succeed: %v", err)
 		}
 
-		if _, err := tx.CreateSample(domain.Sample{Identifier: "S0", SourceType: "blood", CollectedAt: now, Status: domain.SampleStatusStored, StorageLocation: "room"}); err == nil {
+		if _, err := tx.CreateSample(domain.Sample{Identifier: "S0", SourceType: "blood", CollectedAt: now, Status: domain.SampleStatusStored, StorageLocation: "room", ChainOfCustody: []domain.SampleCustodyEvent{{Actor: "tech", Location: "room", Timestamp: now}}}); err == nil {
 			t.Fatalf("expected sample without facility to fail")
 		}
-		if _, err := tx.CreateSample(domain.Sample{Identifier: "S1", SourceType: "blood", FacilityID: facility.ID, CollectedAt: now, Status: domain.SampleStatusStored, StorageLocation: "room"}); err == nil {
+		if _, err := tx.CreateSample(domain.Sample{Identifier: "S1", SourceType: "blood", FacilityID: facility.ID, CollectedAt: now, Status: domain.SampleStatusStored, StorageLocation: "room", ChainOfCustody: []domain.SampleCustodyEvent{{Actor: "tech", Location: "room", Timestamp: now}}}); err == nil {
 			t.Fatalf("expected sample without organism or cohort to fail")
 		}
-		if _, err := tx.CreateSample(domain.Sample{Identifier: "S2", SourceType: "blood", FacilityID: facility.ID, OrganismID: &organism.ID, CollectedAt: now, Status: domain.SampleStatusStored, StorageLocation: "room"}); err != nil {
+		if _, err := tx.CreateSample(domain.Sample{Identifier: "S2", SourceType: "blood", FacilityID: facility.ID, OrganismID: &organism.ID, CollectedAt: now, Status: domain.SampleStatusStored, StorageLocation: "room", ChainOfCustody: []domain.SampleCustodyEvent{{
+			Actor:     "tech",
+			Location:  "room",
+			Timestamp: now,
+		}}}); err != nil {
 			t.Fatalf("expected sample creation to succeed: %v", err)
 		}
 
-		if _, err := tx.CreatePermit(domain.Permit{PermitNumber: "PERM-FAIL", FacilityIDs: []string{"missing"}, ProtocolIDs: []string{"prot"}}); err == nil {
+		if _, err := tx.CreatePermit(domain.Permit{PermitNumber: "PERM-FAIL", AllowedActivities: []string{"collect"}, FacilityIDs: []string{"missing"}, ProtocolIDs: []string{"prot"}}); err == nil {
 			t.Fatalf("expected permit with missing facility to fail")
 		}
 		if _, err := tx.CreatePermit(domain.Permit{
-			PermitNumber: "PERM-FAIL2",
-			FacilityIDs:  []string{facility.ID},
-			ProtocolIDs:  []string{"missing"},
-			ValidFrom:    now,
-			ValidUntil:   now.Add(time.Hour),
+			PermitNumber:      "PERM-FAIL2",
+			AllowedActivities: []string{"collect"},
+			FacilityIDs:       []string{facility.ID},
+			ProtocolIDs:       []string{"missing"},
+			ValidFrom:         now,
+			ValidUntil:        now.Add(time.Hour),
 		}); err == nil {
 			t.Fatalf("expected permit with missing protocol to fail")
 		}
@@ -1029,7 +1043,7 @@ func TestMemStoreRelationshipValidations(t *testing.T) {
 			t.Fatalf("expected permit creation to succeed: %v", err)
 		}
 
-		if _, err := tx.CreateSupplyItem(domain.SupplyItem{SKU: "SKU-FAIL", Name: "Supply", FacilityIDs: []string{"missing"}}); err == nil {
+		if _, err := tx.CreateSupplyItem(domain.SupplyItem{SKU: "SKU-FAIL", Name: "Supply", FacilityIDs: []string{"missing"}, ProjectIDs: []string{"missing"}}); err == nil {
 			t.Fatalf("expected supply creation with missing facility to fail")
 		}
 		if _, err := tx.CreateSupplyItem(domain.SupplyItem{
@@ -1041,7 +1055,7 @@ func TestMemStoreRelationshipValidations(t *testing.T) {
 			t.Fatalf("expected supply creation with missing project to fail")
 		}
 
-		project, err := tx.CreateProject(domain.Project{Code: "PRJ-REL", Title: "Project"})
+		project, err := tx.CreateProject(domain.Project{Code: "PRJ-REL", Title: "Project", FacilityIDs: []string{facility.ID}})
 		if err != nil {
 			return err
 		}
@@ -1185,7 +1199,7 @@ func TestMemStoreUpdateSupplyItemDedupe(t *testing.T) {
 		if err != nil {
 			return err
 		}
-		project, err = tx.CreateProject(domain.Project{Code: "SUP", Title: "Supply Project"})
+		project, err = tx.CreateProject(domain.Project{Code: "SUP", Title: "Supply Project", FacilityIDs: []string{facility.ID}})
 		if err != nil {
 			return err
 		}

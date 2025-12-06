@@ -112,6 +112,10 @@ func TestServiceObservabilityComplianceEntities(t *testing.T) {
 	if !audit.has("create_facility", AuditStatusSuccess, func(entry AuditEntry) bool { return entry.EntityID == facility.ID }) {
 		t.Fatalf("expected audit entry for create_facility success")
 	}
+	project, _, err := svc.CreateProject(ctx, domain.Project{Code: "PRJ-OBS", Title: "Observability", FacilityIDs: []string{facility.ID}})
+	if err != nil {
+		t.Fatalf("create project: %v", err)
+	}
 
 	if _, _, err := svc.UpdateFacility(ctx, facility.ID, func(f *domain.Facility) error {
 		f.Zone = "Zone-A"
@@ -190,15 +194,21 @@ func TestServiceObservabilityComplianceEntities(t *testing.T) {
 	if err != nil {
 		t.Fatalf("create organism: %v", err)
 	}
+	sampleTime := time.Now().UTC()
 	sample, _, err := svc.CreateSample(ctx, domain.Sample{
 		Identifier:      "S-1",
 		SourceType:      "blood",
 		OrganismID:      &org.ID,
 		FacilityID:      facility.ID,
-		CollectedAt:     time.Now().UTC(),
+		CollectedAt:     sampleTime,
 		Status:          domain.SampleStatusStored,
 		StorageLocation: "Freezer-1",
 		AssayType:       "PCR",
+		ChainOfCustody: []domain.SampleCustodyEvent{{
+			Actor:     "tech",
+			Location:  "Freezer-1",
+			Timestamp: sampleTime,
+		}},
 	})
 	if err != nil {
 		t.Fatalf("create sample: %v", err)
@@ -211,10 +221,13 @@ func TestServiceObservabilityComplianceEntities(t *testing.T) {
 	}
 
 	permit, _, err := svc.CreatePermit(ctx, domain.Permit{
-		PermitNumber: "PER-1",
-		Authority:    "Regulator",
-		ValidFrom:    time.Now().UTC(),
-		ValidUntil:   time.Now().UTC().Add(24 * time.Hour),
+		PermitNumber:      "PER-1",
+		Authority:         "Regulator",
+		ValidFrom:         time.Now().UTC(),
+		ValidUntil:        time.Now().UTC().Add(24 * time.Hour),
+		AllowedActivities: []string{"collect"},
+		FacilityIDs:       []string{facility.ID},
+		ProtocolIDs:       []string{protocol.ID},
 	})
 	if err != nil {
 		t.Fatalf("create permit: %v", err)
@@ -231,6 +244,7 @@ func TestServiceObservabilityComplianceEntities(t *testing.T) {
 		Name:           "Supply",
 		QuantityOnHand: 10,
 		FacilityIDs:    []string{facility.ID},
+		ProjectIDs:     []string{project.ID},
 	})
 	if err != nil {
 		t.Fatalf("create supply item: %v", err)
@@ -256,6 +270,9 @@ func TestServiceObservabilityComplianceEntities(t *testing.T) {
 	}
 	if _, err := svc.DeleteSupplyItem(ctx, item.ID); err != nil {
 		t.Fatalf("delete supply item: %v", err)
+	}
+	if _, err := svc.DeleteProject(ctx, project.ID); err != nil {
+		t.Fatalf("delete project: %v", err)
 	}
 	if _, err := svc.DeleteFacility(ctx, facility.ID); err != nil {
 		t.Fatalf("delete facility success: %v", err)

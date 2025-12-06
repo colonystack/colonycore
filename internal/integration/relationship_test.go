@@ -194,6 +194,11 @@ func TestIntegrationEntityRelationships(t *testing.T) {
 				CollectedAt:     now,
 				Status:          domain.SampleStatusStored,
 				StorageLocation: "freezer-a",
+				ChainOfCustody: []domain.SampleCustodyEvent{{
+					Actor:     "tech",
+					Location:  "freezer-a",
+					Timestamp: now,
+				}},
 			}); err == nil {
 				t.Fatalf("expected sample creation to fail for missing facility")
 			}
@@ -205,6 +210,11 @@ func TestIntegrationEntityRelationships(t *testing.T) {
 				CollectedAt:     now,
 				Status:          domain.SampleStatusStored,
 				StorageLocation: "freezer-a",
+				ChainOfCustody: []domain.SampleCustodyEvent{{
+					Actor:     "tech",
+					Location:  "freezer-a",
+					Timestamp: now,
+				}},
 			}); err == nil {
 				t.Fatalf("expected sample creation to fail without organism or cohort")
 			}
@@ -217,6 +227,11 @@ func TestIntegrationEntityRelationships(t *testing.T) {
 				CollectedAt:     now,
 				Status:          domain.SampleStatusStored,
 				StorageLocation: "freezer-a",
+				ChainOfCustody: []domain.SampleCustodyEvent{{
+					Actor:     "tech",
+					Location:  "freezer-a",
+					Timestamp: now,
+				}},
 			})
 			if err != nil {
 				t.Fatalf("create sample: %v", err)

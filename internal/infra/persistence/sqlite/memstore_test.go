@@ -82,7 +82,11 @@ func TestMemStoreCRUDReduced(t *testing.T) {
 	var projectID string
 	const updatedDesc = "updated"
 	if _, err := store.RunInTransaction(ctx, func(tx domain.Transaction) error {
-		proj, err := tx.CreateProject(domain.Project{Code: "PRJ", Title: "Project"})
+		facility, err := tx.CreateFacility(domain.Facility{Name: "Project Facility"})
+		if err != nil {
+			return err
+		}
+		proj, err := tx.CreateProject(domain.Project{Code: "PRJ", Title: "Project", FacilityIDs: []string{facility.ID}})
 		if err != nil {
 			return err
 		}
@@ -176,7 +180,7 @@ func TestMigrateSnapshotRelationships(t *testing.T) {
 			"obs-1": {Base: domain.Base{ID: "obs-1"}, ProcedureID: ptr("proc-1"), Observer: "Tech", RecordedAt: now},
 		},
 		Samples: map[string]domain.Sample{
-			"sample-1": {Base: domain.Base{ID: "sample-1"}, Identifier: "S1", SourceType: "blood", FacilityID: "fac-1", OrganismID: ptr("org-1"), CollectedAt: now, Status: domain.SampleStatusStored, StorageLocation: "freezer"},
+			"sample-1": {Base: domain.Base{ID: "sample-1"}, Identifier: "S1", SourceType: "blood", FacilityID: "fac-1", OrganismID: ptr("org-1"), CollectedAt: now, Status: domain.SampleStatusStored, StorageLocation: "freezer", ChainOfCustody: []domain.SampleCustodyEvent{{Actor: "tech", Location: "freezer", Timestamp: now}}},
 		},
 		Protocols: protocols,
 		Permits: map[string]domain.Permit{
@@ -253,6 +257,7 @@ func TestMemStoreStateNormalization(t *testing.T) {
 			ValidUntil:        now.Add(time.Hour),
 			AllowedActivities: []string{"store"},
 			FacilityIDs:       []string{facility.ID},
+			ProtocolIDs:       []string{protocol.ID},
 		})
 		if err != nil {
 			return err
@@ -268,6 +273,7 @@ func TestMemStoreStateNormalization(t *testing.T) {
 			ValidUntil:        now.Add(time.Hour),
 			AllowedActivities: []string{"store"},
 			FacilityIDs:       []string{facility.ID},
+			ProtocolIDs:       []string{protocol.ID},
 		}); err == nil {
 			return fmt.Errorf("expected invalid permit status to error")
 		}
@@ -647,6 +653,11 @@ func TestMemStoreProcedureObservationSampleLifecycle(t *testing.T) {
 			Status:          domain.SampleStatusStored,
 			StorageLocation: "loc",
 			OrganismID:      &organism.ID,
+			ChainOfCustody: []domain.SampleCustodyEvent{{
+				Actor:     "tech",
+				Location:  "loc",
+				Timestamp: now,
+			}},
 		})
 		if err != nil {
 			return err

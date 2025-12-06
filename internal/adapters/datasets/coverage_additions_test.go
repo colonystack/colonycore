@@ -102,7 +102,11 @@ func TestHandlerRunAcceptHeaderNegotiation(t *testing.T) {
 	h := NewHandler(svc)
 
 	ctx := context.Background()
-	project, _, err := svc.CreateProject(ctx, domain.Project{Code: "PRJ-ACPT", Title: "Negotiate"})
+	facility, _, err := svc.CreateFacility(ctx, domain.Facility{Name: "Facility", Code: "FAC-ACPT"})
+	if err != nil {
+		t.Fatalf("create facility: %v", err)
+	}
+	project, _, err := svc.CreateProject(ctx, domain.Project{Code: "PRJ-ACPT", Title: "Negotiate", FacilityIDs: []string{facility.ID}})
 	if err != nil {
 		t.Fatalf("create project: %v", err)
 	}

@@ -134,8 +134,8 @@ func TestImportStateAppliesRelationshipMigrations(t *testing.T) {
 			"obs-2": {Base: domain.Base{ID: "obs-2"}, ProcedureID: ptr("missing"), Observer: "Tech", RecordedAt: now},
 		},
 		Samples: map[string]domain.Sample{
-			"sample-1": {Base: domain.Base{ID: "sample-1"}, Identifier: "S1", SourceType: "blood", FacilityID: facilityKey, OrganismID: ptr("org-1"), CollectedAt: now, Status: domain.SampleStatusStored, StorageLocation: "freezer"},
-			"sample-2": {Base: domain.Base{ID: "sample-2"}, Identifier: "S2", SourceType: "blood", FacilityID: "missing", CollectedAt: now, Status: domain.SampleStatusStored, StorageLocation: "freezer"},
+			"sample-1": {Base: domain.Base{ID: "sample-1"}, Identifier: "S1", SourceType: "blood", FacilityID: facilityKey, OrganismID: ptr("org-1"), CollectedAt: now, Status: domain.SampleStatusStored, StorageLocation: "freezer", ChainOfCustody: []domain.SampleCustodyEvent{{Actor: "tech", Location: "freezer", Timestamp: now}}},
+			"sample-2": {Base: domain.Base{ID: "sample-2"}, Identifier: "S2", SourceType: "blood", FacilityID: "missing", CollectedAt: now, Status: domain.SampleStatusStored, StorageLocation: "freezer", ChainOfCustody: []domain.SampleCustodyEvent{{Actor: "tech", Location: "freezer", Timestamp: now}}},
 		},
 		Protocols: protocols,
 		Permits: map[string]domain.Permit{
@@ -229,9 +229,9 @@ func TestMigrateSnapshotCleansDataVariants(t *testing.T) {
 			"observation-drop":  {Base: domain.Base{ID: "observation-drop"}, ProcedureID: ptr("missing"), Observer: "Tech", RecordedAt: now},
 		},
 		Samples: map[string]domain.Sample{
-			"sample-valid":            {Base: domain.Base{ID: "sample-valid"}, Identifier: "S", SourceType: "blood", FacilityID: facilityID, OrganismID: ptr("org-keep"), CollectedAt: now, Status: domain.SampleStatusStored, StorageLocation: "room"},
-			"sample-drop":             {Base: domain.Base{ID: "sample-drop"}, Identifier: "S2", SourceType: "blood", FacilityID: facilityID, OrganismID: ptr("missing"), CollectedAt: now, Status: domain.SampleStatusStored, StorageLocation: "room"},
-			"sample-missing-facility": {Base: domain.Base{ID: "sample-missing-facility"}, Identifier: "S3", SourceType: "blood", FacilityID: "missing", CollectedAt: now, Status: domain.SampleStatusStored, StorageLocation: "room"},
+			"sample-valid":            {Base: domain.Base{ID: "sample-valid"}, Identifier: "S", SourceType: "blood", FacilityID: facilityID, OrganismID: ptr("org-keep"), CollectedAt: now, Status: domain.SampleStatusStored, StorageLocation: "room", ChainOfCustody: []domain.SampleCustodyEvent{{Actor: "tech", Location: "room", Timestamp: now}}},
+			"sample-drop":             {Base: domain.Base{ID: "sample-drop"}, Identifier: "S2", SourceType: "blood", FacilityID: facilityID, OrganismID: ptr("missing"), CollectedAt: now, Status: domain.SampleStatusStored, StorageLocation: "room", ChainOfCustody: []domain.SampleCustodyEvent{{Actor: "tech", Location: "room", Timestamp: now}}},
+			"sample-missing-facility": {Base: domain.Base{ID: "sample-missing-facility"}, Identifier: "S3", SourceType: "blood", FacilityID: "missing", CollectedAt: now, Status: domain.SampleStatusStored, StorageLocation: "room", ChainOfCustody: []domain.SampleCustodyEvent{{Actor: "tech", Location: "room", Timestamp: now}}},
 		},
 		Protocols: map[string]domain.Protocol{
 			"prot-keep": {Base: domain.Base{ID: "prot-keep"}, Code: "PR", Title: "Protocol", MaxSubjects: 5, Status: domain.ProtocolStatusApproved},
@@ -706,6 +706,7 @@ func TestStateNormalizationDefaultsAndValidation(t *testing.T) {
 			ValidUntil:        now.Add(time.Hour),
 			AllowedActivities: []string{"store"},
 			FacilityIDs:       []string{facility.ID},
+			ProtocolIDs:       []string{protocol.ID},
 		})
 		if err != nil {
 			return err
@@ -721,6 +722,7 @@ func TestStateNormalizationDefaultsAndValidation(t *testing.T) {
 			ValidUntil:        now.Add(time.Hour),
 			AllowedActivities: []string{"store"},
 			FacilityIDs:       []string{facility.ID},
+			ProtocolIDs:       []string{protocol.ID},
 		}); err == nil {
 			return fmt.Errorf("expected invalid permit status to error")
 		}
@@ -825,6 +827,11 @@ func TestProcedureObservationSampleLifecycle(t *testing.T) {
 			Status:          domain.SampleStatusStored,
 			StorageLocation: "loc",
 			OrganismID:      &organism.ID,
+			ChainOfCustody: []domain.SampleCustodyEvent{{
+				Actor:     "tech",
+				Location:  "loc",
+				Timestamp: now,
+			}},
 		})
 		if err != nil {
 			return err

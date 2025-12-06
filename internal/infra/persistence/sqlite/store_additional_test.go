@@ -39,6 +39,11 @@ func TestSQLiteStorePersistMarshalError(t *testing.T) {
 			Status:          domain.SampleStatusStored,
 			StorageLocation: "cold",
 			AssayType:       "chromatography",
+			ChainOfCustody: []domain.SampleCustodyEvent{{
+				Actor:     "tech",
+				Location:  "cold",
+				Timestamp: now,
+			}},
 		})
 		if err != nil {
 			return err
@@ -66,6 +71,7 @@ func TestSQLiteStoreLoadInvalidJSON(t *testing.T) {
 	}
 
 	ctx := context.Background()
+	now := time.Now().UTC()
 	_, err = store.RunInTransaction(ctx, func(tx domain.Transaction) error {
 		facility, err := tx.CreateFacility(domain.Facility{Name: "Lab"})
 		if err != nil {
@@ -80,10 +86,15 @@ func TestSQLiteStoreLoadInvalidJSON(t *testing.T) {
 			SourceType:      "organism",
 			OrganismID:      &organism.ID,
 			FacilityID:      facility.ID,
-			CollectedAt:     time.Now().UTC(),
+			CollectedAt:     now,
 			Status:          domain.SampleStatusStored,
 			StorageLocation: "cold",
 			AssayType:       "chromatography",
+			ChainOfCustody: []domain.SampleCustodyEvent{{
+				Actor:     "tech",
+				Location:  "cold",
+				Timestamp: now,
+			}},
 		})
 		return err
 	})

@@ -26,7 +26,11 @@ func TestServiceOptionsCoversClockLogger(t *testing.T) {
 	log := &captureLogger{}
 	svc := NewInMemoryService(nil, WithClock(clk), WithLogger(log))
 	// invoke a couple operations to trigger logger usage in run()
-	if _, _, err := svc.CreateProject(context.Background(), domain.Project{Base: domain.Base{ID: "p1"}}); err != nil {
+	facility, _, err := svc.CreateFacility(context.Background(), domain.Facility{Name: "Options Facility"})
+	if err != nil {
+		t.Fatalf("create facility: %v", err)
+	}
+	if _, _, err := svc.CreateProject(context.Background(), domain.Project{Base: domain.Base{ID: "p1"}, FacilityIDs: []string{facility.ID}}); err != nil {
 		t.Fatalf("create project: %v", err)
 	}
 	if svc.clock == nil || svc.clock.Now().Unix() != fixed.Unix() {

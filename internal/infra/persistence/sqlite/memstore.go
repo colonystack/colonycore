@@ -933,6 +933,13 @@ func filterIDs(values []string, exists func(string) bool) ([]string, bool) {
 	return out, true
 }
 
+func requireNonEmpty(field string, values []string) error {
+	if len(values) == 0 {
+		return fmt.Errorf("%s requires at least one value", field)
+	}
+	return nil
+}
+
 func facilityHousingIDs(state *memoryState, facilityID string) []string {
 	var ids []string
 	for _, housing := range state.housing {
@@ -1652,6 +1659,9 @@ func (tx *transaction) CreateLine(l Line) (Line, error) {
 	if filtered, changed := filterIDs(l.GenotypeMarkerIDs, func(id string) bool { _, ok := tx.state.markers[id]; return ok }); changed {
 		l.GenotypeMarkerIDs = filtered
 	}
+	if err := requireNonEmpty("line.genotype_marker_ids", l.GenotypeMarkerIDs); err != nil {
+		return Line{}, err
+	}
 	if attrs := l.DefaultAttributes(); attrs == nil {
 		mustApply("apply line default attributes", l.ApplyDefaultAttributes(map[string]any{}))
 	} else {
@@ -1680,6 +1690,9 @@ func (tx *transaction) UpdateLine(id string, mutator func(*Line) error) (Line, e
 	}
 	if filtered, changed := filterIDs(current.GenotypeMarkerIDs, func(markerID string) bool { _, ok := tx.state.markers[markerID]; return ok }); changed {
 		current.GenotypeMarkerIDs = filtered
+	}
+	if err := requireNonEmpty("line.genotype_marker_ids", current.GenotypeMarkerIDs); err != nil {
+		return Line{}, err
 	}
 	if attrs := current.DefaultAttributes(); attrs == nil {
 		mustApply("apply line default attributes", current.ApplyDefaultAttributes(map[string]any{}))
@@ -2110,6 +2123,9 @@ func (tx *transaction) CreateSample(s Sample) (Sample, error) {
 			return Sample{}, fmt.Errorf("cohort %q not found for sample", *s.CohortID)
 		}
 	}
+	if len(s.ChainOfCustody) == 0 {
+		return Sample{}, errors.New("sample requires chain of custody")
+	}
 	s.CreatedAt = tx.now
 	s.UpdatedAt = tx.now
 	if attrs := s.SampleAttributes(); attrs == nil {
@@ -2148,6 +2164,9 @@ func (tx *transaction) UpdateSample(id string, mutator func(*Sample) error) (Sam
 		if _, ok := tx.state.cohorts[*current.CohortID]; !ok {
 			return Sample{}, fmt.Errorf("cohort %q not found for sample", *current.CohortID)
 		}
+	}
+	if len(current.ChainOfCustody) == 0 {
+		return Sample{}, errors.New("sample requires chain of custody")
 	}
 	if attrs := current.SampleAttributes(); attrs == nil {
 		mustApply("apply sample attributes", current.ApplySampleAttributes(map[string]any{}))
@@ -2224,13 +2243,22 @@ func (tx *transaction) CreatePermit(p Permit) (Permit, error) {
 	if _, exists := tx.state.permits[p.ID]; exists {
 		return Permit{}, fmt.Errorf("permit %q already exists", p.ID)
 	}
+	if err := requireNonEmpty("permit.allowed_activities", p.AllowedActivities); err != nil {
+		return Permit{}, err
+	}
 	p.FacilityIDs = dedupeStrings(p.FacilityIDs)
+	if err := requireNonEmpty("permit.facility_ids", p.FacilityIDs); err != nil {
+		return Permit{}, err
+	}
 	for _, facilityID := range p.FacilityIDs {
 		if _, ok := tx.state.facilities[facilityID]; !ok {
 			return Permit{}, fmt.Errorf("facility %q not found for permit", facilityID)
 		}
 	}
 	p.ProtocolIDs = dedupeStrings(p.ProtocolIDs)
+	if err := requireNonEmpty("permit.protocol_ids", p.ProtocolIDs); err != nil {
+		return Permit{}, err
+	}
 	for _, protocolID := range p.ProtocolIDs {
 		if _, ok := tx.state.protocols[protocolID]; !ok {
 			return Permit{}, fmt.Errorf("protocol %q not found for permit", protocolID)
@@ -2254,13 +2282,22 @@ func (tx *transaction) UpdatePermit(id string, mutator func(*Permit) error) (Per
 	if err := mutator(&current); err != nil {
 		return Permit{}, err
 	}
+	if err := requireNonEmpty("permit.allowed_activities", current.AllowedActivities); err != nil {
+		return Permit{}, err
+	}
 	current.FacilityIDs = dedupeStrings(current.FacilityIDs)
+	if err := requireNonEmpty("permit.facility_ids", current.FacilityIDs); err != nil {
+		return Permit{}, err
+	}
 	for _, facilityID := range current.FacilityIDs {
 		if _, ok := tx.state.facilities[facilityID]; !ok {
 			return Permit{}, fmt.Errorf("facility %q not found for permit", facilityID)
 		}
 	}
 	current.ProtocolIDs = dedupeStrings(current.ProtocolIDs)
+	if err := requireNonEmpty("permit.protocol_ids", current.ProtocolIDs); err != nil {
+		return Permit{}, err
+	}
 	for _, protocolID := range current.ProtocolIDs {
 		if _, ok := tx.state.protocols[protocolID]; !ok {
 			return Permit{}, fmt.Errorf("protocol %q not found for permit", protocolID)
@@ -2292,6 +2329,9 @@ func (tx *transaction) CreateProject(p Project) (Project, error) {
 		return Project{}, fmt.Errorf("project %q already exists", p.ID)
 	}
 	p.FacilityIDs = dedupeStrings(p.FacilityIDs)
+	if err := requireNonEmpty("project.facility_ids", p.FacilityIDs); err != nil {
+		return Project{}, err
+	}
 	for _, facilityID := range p.FacilityIDs {
 		if _, ok := tx.state.facilities[facilityID]; !ok {
 			return Project{}, fmt.Errorf("facility %q not found for project", facilityID)
@@ -2318,6 +2358,9 @@ func (tx *transaction) UpdateProject(id string, mutator func(*Project) error) (P
 		return Project{}, err
 	}
 	current.FacilityIDs = dedupeStrings(current.FacilityIDs)
+	if err := requireNonEmpty("project.facility_ids", current.FacilityIDs); err != nil {
+		return Project{}, err
+	}
 	for _, facilityID := range current.FacilityIDs {
 		if _, ok := tx.state.facilities[facilityID]; !ok {
 			return Project{}, fmt.Errorf("facility %q not found for project", facilityID)
@@ -2356,12 +2399,18 @@ func (tx *transaction) CreateSupplyItem(s SupplyItem) (SupplyItem, error) {
 		return SupplyItem{}, fmt.Errorf("supply item %q already exists", s.ID)
 	}
 	s.FacilityIDs = dedupeStrings(s.FacilityIDs)
+	if err := requireNonEmpty("supply_item.facility_ids", s.FacilityIDs); err != nil {
+		return SupplyItem{}, err
+	}
 	for _, facilityID := range s.FacilityIDs {
 		if _, ok := tx.state.facilities[facilityID]; !ok {
 			return SupplyItem{}, fmt.Errorf("facility %q not found for supply item", facilityID)
 		}
 	}
 	s.ProjectIDs = dedupeStrings(s.ProjectIDs)
+	if err := requireNonEmpty("supply_item.project_ids", s.ProjectIDs); err != nil {
+		return SupplyItem{}, err
+	}
 	for _, projectID := range s.ProjectIDs {
 		if _, ok := tx.state.projects[projectID]; !ok {
 			return SupplyItem{}, fmt.Errorf("project %q not found for supply item", projectID)
@@ -2388,12 +2437,18 @@ func (tx *transaction) UpdateSupplyItem(id string, mutator func(*SupplyItem) err
 		return SupplyItem{}, err
 	}
 	current.FacilityIDs = dedupeStrings(current.FacilityIDs)
+	if err := requireNonEmpty("supply_item.facility_ids", current.FacilityIDs); err != nil {
+		return SupplyItem{}, err
+	}
 	for _, facilityID := range current.FacilityIDs {
 		if _, ok := tx.state.facilities[facilityID]; !ok {
 			return SupplyItem{}, fmt.Errorf("facility %q not found for supply item", facilityID)
 		}
 	}
 	current.ProjectIDs = dedupeStrings(current.ProjectIDs)
+	if err := requireNonEmpty("supply_item.project_ids", current.ProjectIDs); err != nil {
+		return SupplyItem{}, err
+	}
 	for _, projectID := range current.ProjectIDs {
 		if _, ok := tx.state.projects[projectID]; !ok {
 			return SupplyItem{}, fmt.Errorf("project %q not found for supply item", projectID)

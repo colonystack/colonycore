@@ -13,11 +13,15 @@ func TestMemStoreDeleteStrainGuardsSQLite(t *testing.T) {
 	ctx := context.Background()
 
 	if _, err := store.RunInTransaction(ctx, func(tx domain.Transaction) error {
-		line, err := tx.CreateLine(domain.Line{Code: "L-guard", Name: "Line"})
+		marker, err := tx.CreateGenotypeMarker(domain.GenotypeMarker{Name: "Marker", Locus: "loc", Alleles: []string{"A"}, AssayMethod: "PCR", Interpretation: "ctrl", Version: "v1"})
 		if err != nil {
 			return err
 		}
-		strain, err := tx.CreateStrain(domain.Strain{Code: "S-guard", Name: "Strain", LineID: line.ID})
+		line, err := tx.CreateLine(domain.Line{Code: "L-guard", Name: "Line", GenotypeMarkerIDs: []string{marker.ID}})
+		if err != nil {
+			return err
+		}
+		strain, err := tx.CreateStrain(domain.Strain{Code: "S-guard", Name: "Strain", LineID: line.ID, GenotypeMarkerIDs: []string{marker.ID}})
 		if err != nil {
 			return err
 		}
@@ -73,7 +77,11 @@ func TestMemStoreDeleteLineGuardsSQLite(t *testing.T) {
 	ctx := context.Background()
 
 	if _, err := store.RunInTransaction(ctx, func(tx domain.Transaction) error {
-		line, err := tx.CreateLine(domain.Line{Code: "L-line-guard", Name: "Line"})
+		marker, err := tx.CreateGenotypeMarker(domain.GenotypeMarker{Name: "LineMarker", Locus: "loc", Alleles: []string{"A"}, AssayMethod: "PCR", Interpretation: "ctrl", Version: "v1"})
+		if err != nil {
+			return err
+		}
+		line, err := tx.CreateLine(domain.Line{Code: "L-line-guard", Name: "Line", GenotypeMarkerIDs: []string{marker.ID}})
 		if err != nil {
 			return err
 		}
@@ -138,6 +146,11 @@ func TestMemStoreUpdateSampleGuardsSQLite(t *testing.T) {
 			CollectedAt:     now,
 			Status:          domain.SampleStatusStored,
 			StorageLocation: "cold",
+			ChainOfCustody: []domain.SampleCustodyEvent{{
+				Actor:     "tech",
+				Location:  "cold",
+				Timestamp: now,
+			}},
 		})
 		if err != nil {
 			return err
@@ -373,6 +386,11 @@ func TestMemStoreDeleteOrganismAndCohortGuardsSQLite(t *testing.T) {
 			CollectedAt:     now,
 			Status:          domain.SampleStatusStored,
 			StorageLocation: "cold",
+			ChainOfCustody: []domain.SampleCustodyEvent{{
+				Actor:     "tech",
+				Location:  "cold",
+				Timestamp: now,
+			}},
 		})
 		if err != nil {
 			return err

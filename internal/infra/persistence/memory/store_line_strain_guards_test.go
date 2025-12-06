@@ -13,7 +13,11 @@ func TestDeleteLineGuardPaths(t *testing.T) {
 		store := NewStore(nil)
 		ctx := context.Background()
 		if _, err := store.RunInTransaction(ctx, func(tx domain.Transaction) error {
-			line, err := tx.CreateLine(domain.Line{Code: "L", Name: "Line", Origin: "field"})
+			marker, err := tx.CreateGenotypeMarker(domain.GenotypeMarker{Name: "Marker", Locus: "loc", Alleles: []string{"A"}, AssayMethod: "PCR", Interpretation: "ctrl", Version: "v1"})
+			if err != nil {
+				return err
+			}
+			line, err := tx.CreateLine(domain.Line{Code: "L", Name: "Line", Origin: "field", GenotypeMarkerIDs: []string{marker.ID}})
 			if err != nil {
 				return err
 			}
@@ -82,11 +86,15 @@ func TestDeleteStrainAndGenotypeMarkerGuards(t *testing.T) {
 		store := NewStore(nil)
 		ctx := context.Background()
 		if _, err := store.RunInTransaction(ctx, func(tx domain.Transaction) error {
-			line, err := tx.CreateLine(domain.Line{Base: domain.Base{ID: "line-guard"}, Code: "L", Name: "Line", Origin: "field"})
+			marker, err := tx.CreateGenotypeMarker(domain.GenotypeMarker{Name: "Marker", Locus: "loc", Alleles: []string{"A"}, AssayMethod: "PCR", Interpretation: "ctrl", Version: "v1"})
 			if err != nil {
 				return err
 			}
-			strain, err := tx.CreateStrain(domain.Strain{Base: domain.Base{ID: "strain-guard"}, Code: "S", Name: "Strain", LineID: line.ID})
+			line, err := tx.CreateLine(domain.Line{Base: domain.Base{ID: "line-guard"}, Code: "L", Name: "Line", Origin: "field", GenotypeMarkerIDs: []string{marker.ID}})
+			if err != nil {
+				return err
+			}
+			strain, err := tx.CreateStrain(domain.Strain{Base: domain.Base{ID: "strain-guard"}, Code: "S", Name: "Strain", LineID: line.ID, GenotypeMarkerIDs: []string{marker.ID}})
 			if err != nil {
 				return err
 			}
@@ -157,7 +165,7 @@ func TestDeleteStrainAndGenotypeMarkerGuards(t *testing.T) {
 				return err
 			}
 
-			freeLine, err := tx.CreateLine(domain.Line{Base: domain.Base{ID: "line-free"}, Code: "L2", Name: "Line2", Origin: "field"})
+			freeLine, err := tx.CreateLine(domain.Line{Base: domain.Base{ID: "line-free"}, Code: "L2", Name: "Line2", Origin: "field", GenotypeMarkerIDs: []string{marker.ID}})
 			if err != nil {
 				return err
 			}
@@ -169,6 +177,9 @@ func TestDeleteStrainAndGenotypeMarkerGuards(t *testing.T) {
 				t.Fatalf("expected delete marker to fail due to strain reference")
 			}
 			if err := tx.DeleteStrain(strain.ID); err != nil {
+				return err
+			}
+			if err := tx.DeleteLine(freeLine.ID); err != nil {
 				return err
 			}
 			if err := tx.DeleteGenotypeMarker(marker.ID); err != nil {

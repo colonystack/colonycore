@@ -36,7 +36,7 @@ func TestMemoryStoreCRUDAndQueries(t *testing.T) {
 			return fmt.Errorf("expected capacity validation error")
 		}
 
-		project, err := tx.CreateProject(domain.Project{Code: "PRJ-1", Title: "Project"})
+		project, err := tx.CreateProject(domain.Project{Code: "PRJ-1", Title: "Project", FacilityIDs: []string{facilityID}})
 		if err != nil {
 			return err
 		}
@@ -384,7 +384,11 @@ func TestRulesEngineAggregates(t *testing.T) {
 	ctx := context.Background()
 
 	res, err := store.RunInTransaction(ctx, func(tx domain.Transaction) error {
-		_, err := tx.CreateProject(domain.Project{Code: "P", Title: "Project"})
+		facility, err := tx.CreateFacility(domain.Facility{Name: "Rules Facility"})
+		if err != nil {
+			return err
+		}
+		_, err = tx.CreateProject(domain.Project{Code: "P", Title: "Project", FacilityIDs: []string{facility.ID}})
 		return err
 	})
 	if err == nil {

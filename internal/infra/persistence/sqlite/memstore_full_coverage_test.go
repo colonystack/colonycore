@@ -48,12 +48,12 @@ func TestSQLiteMemStoreFullCrudCoverage(t *testing.T) {
 			return err
 		}
 
-		project, err := tx.CreateProject(domain.Project{Base: domain.Base{ID: "project-full-sqlite"}, Code: "PRJ", Title: "Project"})
+		facility, err := tx.CreateFacility(domain.Facility{Base: domain.Base{ID: "facility-full-sqlite"}, Code: "FAC", Name: "Facility", Zone: "Z", AccessPolicy: "policy"})
 		if err != nil {
 			return err
 		}
 
-		facility, err := tx.CreateFacility(domain.Facility{Base: domain.Base{ID: "facility-full-sqlite"}, Code: "FAC", Name: "Facility", Zone: "Z", AccessPolicy: "policy", ProjectIDs: []string{project.ID}})
+		project, err := tx.CreateProject(domain.Project{Base: domain.Base{ID: "project-full-sqlite"}, Code: "PRJ", Title: "Project", FacilityIDs: []string{facility.ID}})
 		if err != nil {
 			return err
 		}
@@ -72,6 +72,7 @@ func TestSQLiteMemStoreFullCrudCoverage(t *testing.T) {
 
 		if _, err := tx.UpdateFacility(facility.ID, func(f *domain.Facility) error {
 			f.Zone = "Z2"
+			f.ProjectIDs = []string{project.ID}
 			return nil
 		}); err != nil {
 			return err
@@ -154,7 +155,7 @@ func TestSQLiteMemStoreFullCrudCoverage(t *testing.T) {
 			return err
 		}
 
-		sample, err := tx.CreateSample(domain.Sample{Base: domain.Base{ID: "sample-full-sqlite"}, Identifier: "S1", SourceType: "organism", OrganismID: &organism.ID, FacilityID: facility.ID, CollectedAt: now, Status: domain.SampleStatusStored, StorageLocation: "cold", AssayType: "type"})
+		sample, err := tx.CreateSample(domain.Sample{Base: domain.Base{ID: "sample-full-sqlite"}, Identifier: "S1", SourceType: "organism", OrganismID: &organism.ID, FacilityID: facility.ID, CollectedAt: now, Status: domain.SampleStatusStored, StorageLocation: "cold", AssayType: "type", ChainOfCustody: []domain.SampleCustodyEvent{{Actor: "tech", Location: "cold", Timestamp: now}}})
 		if err != nil {
 			return err
 		}
