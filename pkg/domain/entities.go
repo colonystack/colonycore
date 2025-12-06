@@ -392,13 +392,23 @@ type organismAlias Organism
 
 // MarshalJSON ensures organism attributes are serialised via the core plugin payload.
 func (o Organism) MarshalJSON() ([]byte, error) {
+	container, err := o.OrganismExtensions()
+	if err != nil {
+		return nil, err
+	}
+	extensions := container.Raw()
+	if len(extensions) == 0 {
+		extensions = nil
+	}
 	type payload struct {
 		organismAlias
-		Attributes map[string]any `json:"attributes,omitempty"`
+		Attributes map[string]any            `json:"attributes,omitempty"`
+		Extensions map[string]map[string]any `json:"extensions,omitempty"`
 	}
 	return json.Marshal(payload{
 		organismAlias: organismAlias(o),
 		Attributes:    (&o).CoreAttributes(),
+		Extensions:    extensions,
 	})
 }
 
@@ -406,13 +416,26 @@ func (o Organism) MarshalJSON() ([]byte, error) {
 func (o *Organism) UnmarshalJSON(data []byte) error {
 	type payload struct {
 		organismAlias
-		Attributes map[string]any `json:"attributes"`
+		Attributes map[string]any            `json:"attributes"`
+		Extensions map[string]map[string]any `json:"extensions"`
 	}
 	var aux payload
 	if err := json.Unmarshal(data, &aux); err != nil {
 		return err
 	}
 	*o = Organism(aux.organismAlias)
+	if len(aux.Extensions) != 0 {
+		container, err := extension.FromRaw(aux.Extensions)
+		if err != nil {
+			return err
+		}
+		if err := o.SetOrganismExtensions(container); err != nil {
+			return err
+		}
+	}
+	if aux.Attributes == nil {
+		return nil
+	}
 	return o.SetCoreAttributes(aux.Attributes)
 }
 
@@ -420,13 +443,23 @@ type facilityAlias Facility
 
 // MarshalJSON ensures facility environment baselines are serialised via the core plugin payload.
 func (f Facility) MarshalJSON() ([]byte, error) {
+	container, err := f.FacilityExtensions()
+	if err != nil {
+		return nil, err
+	}
+	extensions := container.Raw()
+	if len(extensions) == 0 {
+		extensions = nil
+	}
 	type payload struct {
 		facilityAlias
-		EnvironmentBaselines map[string]any `json:"environment_baselines,omitempty"`
+		EnvironmentBaselines map[string]any            `json:"environment_baselines,omitempty"`
+		Extensions           map[string]map[string]any `json:"extensions,omitempty"`
 	}
 	return json.Marshal(payload{
 		facilityAlias:        facilityAlias(f),
 		EnvironmentBaselines: (&f).EnvironmentBaselines(),
+		Extensions:           extensions,
 	})
 }
 
@@ -434,13 +467,23 @@ func (f Facility) MarshalJSON() ([]byte, error) {
 func (f *Facility) UnmarshalJSON(data []byte) error {
 	type payload struct {
 		facilityAlias
-		EnvironmentBaselines map[string]any `json:"environment_baselines"`
+		EnvironmentBaselines map[string]any            `json:"environment_baselines"`
+		Extensions           map[string]map[string]any `json:"extensions"`
 	}
 	var aux payload
 	if err := json.Unmarshal(data, &aux); err != nil {
 		return err
 	}
 	*f = Facility(aux.facilityAlias)
+	if len(aux.Extensions) != 0 {
+		container, err := extension.FromRaw(aux.Extensions)
+		if err != nil {
+			return err
+		}
+		if err := f.SetFacilityExtensions(container); err != nil {
+			return err
+		}
+	}
 	return f.ApplyEnvironmentBaselines(aux.EnvironmentBaselines)
 }
 
@@ -448,13 +491,23 @@ type breedingUnitAlias BreedingUnit
 
 // MarshalJSON ensures breeding unit pairing attributes are serialised via the core plugin payload.
 func (b BreedingUnit) MarshalJSON() ([]byte, error) {
+	container, err := b.BreedingUnitExtensions()
+	if err != nil {
+		return nil, err
+	}
+	extensions := container.Raw()
+	if len(extensions) == 0 {
+		extensions = nil
+	}
 	type payload struct {
 		breedingUnitAlias
-		PairingAttributes map[string]any `json:"pairing_attributes,omitempty"`
+		PairingAttributes map[string]any            `json:"pairing_attributes,omitempty"`
+		Extensions        map[string]map[string]any `json:"extensions,omitempty"`
 	}
 	return json.Marshal(payload{
 		breedingUnitAlias: breedingUnitAlias(b),
 		PairingAttributes: (&b).PairingAttributes(),
+		Extensions:        extensions,
 	})
 }
 
@@ -462,13 +515,23 @@ func (b BreedingUnit) MarshalJSON() ([]byte, error) {
 func (b *BreedingUnit) UnmarshalJSON(data []byte) error {
 	type payload struct {
 		breedingUnitAlias
-		PairingAttributes map[string]any `json:"pairing_attributes"`
+		PairingAttributes map[string]any            `json:"pairing_attributes"`
+		Extensions        map[string]map[string]any `json:"extensions"`
 	}
 	var aux payload
 	if err := json.Unmarshal(data, &aux); err != nil {
 		return err
 	}
 	*b = BreedingUnit(aux.breedingUnitAlias)
+	if len(aux.Extensions) != 0 {
+		container, err := extension.FromRaw(aux.Extensions)
+		if err != nil {
+			return err
+		}
+		if err := b.SetBreedingUnitExtensions(container); err != nil {
+			return err
+		}
+	}
 	return b.ApplyPairingAttributes(aux.PairingAttributes)
 }
 
@@ -527,13 +590,23 @@ type sampleAlias Sample
 
 // MarshalJSON ensures sample attributes are serialised via the core plugin payload.
 func (s Sample) MarshalJSON() ([]byte, error) {
+	container, err := s.SampleExtensions()
+	if err != nil {
+		return nil, err
+	}
+	extensions := container.Raw()
+	if len(extensions) == 0 {
+		extensions = nil
+	}
 	type payload struct {
 		sampleAlias
-		Attributes map[string]any `json:"attributes,omitempty"`
+		Attributes map[string]any            `json:"attributes,omitempty"`
+		Extensions map[string]map[string]any `json:"extensions,omitempty"`
 	}
 	return json.Marshal(payload{
 		sampleAlias: sampleAlias(s),
 		Attributes:  (&s).SampleAttributes(),
+		Extensions:  extensions,
 	})
 }
 
@@ -541,13 +614,26 @@ func (s Sample) MarshalJSON() ([]byte, error) {
 func (s *Sample) UnmarshalJSON(data []byte) error {
 	type payload struct {
 		sampleAlias
-		Attributes map[string]any `json:"attributes"`
+		Attributes map[string]any            `json:"attributes"`
+		Extensions map[string]map[string]any `json:"extensions"`
 	}
 	var aux payload
 	if err := json.Unmarshal(data, &aux); err != nil {
 		return err
 	}
 	*s = Sample(aux.sampleAlias)
+	if len(aux.Extensions) != 0 {
+		container, err := extension.FromRaw(aux.Extensions)
+		if err != nil {
+			return err
+		}
+		if err := s.SetSampleExtensions(container); err != nil {
+			return err
+		}
+	}
+	if aux.Attributes == nil {
+		return nil
+	}
 	return s.ApplySampleAttributes(aux.Attributes)
 }
 
@@ -555,13 +641,23 @@ type supplyAlias SupplyItem
 
 // MarshalJSON ensures supply item attributes are serialised via the core plugin payload.
 func (s SupplyItem) MarshalJSON() ([]byte, error) {
+	container, err := s.SupplyItemExtensions()
+	if err != nil {
+		return nil, err
+	}
+	extensions := container.Raw()
+	if len(extensions) == 0 {
+		extensions = nil
+	}
 	type payload struct {
 		supplyAlias
-		Attributes map[string]any `json:"attributes,omitempty"`
+		Attributes map[string]any            `json:"attributes,omitempty"`
+		Extensions map[string]map[string]any `json:"extensions,omitempty"`
 	}
 	return json.Marshal(payload{
 		supplyAlias: supplyAlias(s),
 		Attributes:  (&s).SupplyAttributes(),
+		Extensions:  extensions,
 	})
 }
 
@@ -569,13 +665,26 @@ func (s SupplyItem) MarshalJSON() ([]byte, error) {
 func (s *SupplyItem) UnmarshalJSON(data []byte) error {
 	type payload struct {
 		supplyAlias
-		Attributes map[string]any `json:"attributes"`
+		Attributes map[string]any            `json:"attributes"`
+		Extensions map[string]map[string]any `json:"extensions"`
 	}
 	var aux payload
 	if err := json.Unmarshal(data, &aux); err != nil {
 		return err
 	}
 	*s = SupplyItem(aux.supplyAlias)
+	if len(aux.Extensions) != 0 {
+		container, err := extension.FromRaw(aux.Extensions)
+		if err != nil {
+			return err
+		}
+		if err := s.SetSupplyItemExtensions(container); err != nil {
+			return err
+		}
+	}
+	if aux.Attributes == nil {
+		return nil
+	}
 	return s.ApplySupplyAttributes(aux.Attributes)
 }
 

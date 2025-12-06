@@ -398,6 +398,188 @@ func TestObservationMarshalJSONIncludesExtensions(t *testing.T) {
 	}
 }
 
+func TestOrganismMarshalUnmarshalPreservesExtensions(t *testing.T) {
+	container := extension.NewContainer()
+	mustNoError(t, "seed organism core payload", container.Set(extension.HookOrganismAttributes, extension.PluginCore, map[string]any{"note": "core"}))
+	mustNoError(t, "seed organism plugin payload", container.Set(extension.HookOrganismAttributes, extension.PluginID("plugin.organism"), map[string]any{"flag": true}))
+
+	organism := Organism{
+		Base:    Base{ID: "org-ext"},
+		Name:    "Org Ext",
+		Species: "Spec",
+	}
+	mustNoError(t, "apply organism extensions", organism.SetOrganismExtensions(container))
+
+	data, err := json.Marshal(organism)
+	if err != nil {
+		t.Fatalf("marshal organism: %v", err)
+	}
+
+	var decoded Organism
+	if err := json.Unmarshal(data, &decoded); err != nil {
+		t.Fatalf("unmarshal organism: %v", err)
+	}
+	decodedContainer, err := decoded.OrganismExtensions()
+	if err != nil {
+		t.Fatalf("load organism extensions: %v", err)
+	}
+	assertPluginHookPayload(t, decodedContainer, extension.HookOrganismAttributes, extension.PluginID("plugin.organism"), "flag", true)
+	if decoded.CoreAttributes()["note"] != "core" {
+		t.Fatalf("expected core attributes to persist, got %+v", decoded.CoreAttributes())
+	}
+}
+
+func TestFacilityMarshalUnmarshalPreservesExtensions(t *testing.T) {
+	container := extension.NewContainer()
+	mustNoError(t, "seed facility core payload", container.Set(extension.HookFacilityEnvironmentBaselines, extension.PluginCore, map[string]any{"temp": "21C"}))
+	mustNoError(t, "seed facility plugin payload", container.Set(extension.HookFacilityEnvironmentBaselines, extension.PluginID("plugin.facility"), map[string]any{"humidity": "65%"}))
+
+	facility := Facility{
+		Base:         Base{ID: "fac-ext"},
+		Code:         "FAC",
+		Name:         "Facility Ext",
+		Zone:         "A1",
+		AccessPolicy: "open",
+	}
+	mustNoError(t, "apply facility extensions", facility.SetFacilityExtensions(container))
+
+	data, err := json.Marshal(facility)
+	if err != nil {
+		t.Fatalf("marshal facility: %v", err)
+	}
+
+	var decoded Facility
+	if err := json.Unmarshal(data, &decoded); err != nil {
+		t.Fatalf("unmarshal facility: %v", err)
+	}
+	decodedContainer, err := decoded.FacilityExtensions()
+	if err != nil {
+		t.Fatalf("load facility extensions: %v", err)
+	}
+	assertPluginHookPayload(t, decodedContainer, extension.HookFacilityEnvironmentBaselines, extension.PluginID("plugin.facility"), "humidity", "65%")
+	if decoded.EnvironmentBaselines()["temp"] != "21C" {
+		t.Fatalf("expected facility core baselines to persist, got %+v", decoded.EnvironmentBaselines())
+	}
+}
+
+func TestBreedingUnitMarshalUnmarshalPreservesExtensions(t *testing.T) {
+	container := extension.NewContainer()
+	mustNoError(t, "seed breeding core payload", container.Set(extension.HookBreedingUnitPairingAttributes, extension.PluginCore, map[string]any{"strategy": "pair"}))
+	mustNoError(t, "seed breeding plugin payload", container.Set(extension.HookBreedingUnitPairingAttributes, extension.PluginID("plugin.breeding"), map[string]any{"note": "keep"}))
+
+	breeding := BreedingUnit{
+		Base:     Base{ID: "breed-ext"},
+		Name:     "Breeding Ext",
+		Strategy: "pair",
+	}
+	mustNoError(t, "apply breeding extensions", breeding.SetBreedingUnitExtensions(container))
+
+	data, err := json.Marshal(breeding)
+	if err != nil {
+		t.Fatalf("marshal breeding unit: %v", err)
+	}
+
+	var decoded BreedingUnit
+	if err := json.Unmarshal(data, &decoded); err != nil {
+		t.Fatalf("unmarshal breeding unit: %v", err)
+	}
+	decodedContainer, err := decoded.BreedingUnitExtensions()
+	if err != nil {
+		t.Fatalf("load breeding extensions: %v", err)
+	}
+	assertPluginHookPayload(t, decodedContainer, extension.HookBreedingUnitPairingAttributes, extension.PluginID("plugin.breeding"), "note", "keep")
+	if decoded.PairingAttributes()["strategy"] != "pair" {
+		t.Fatalf("expected pairing attributes to persist, got %+v", decoded.PairingAttributes())
+	}
+}
+
+func TestSampleMarshalUnmarshalPreservesExtensions(t *testing.T) {
+	container := extension.NewContainer()
+	mustNoError(t, "seed sample core payload", container.Set(extension.HookSampleAttributes, extension.PluginCore, map[string]any{"tissue": "blood"}))
+	mustNoError(t, "seed sample plugin payload", container.Set(extension.HookSampleAttributes, extension.PluginID("plugin.sample"), map[string]any{"note": "hemolyzed"}))
+
+	organismID := "org-ext"
+	sample := Sample{
+		Base:            Base{ID: "sample-ext"},
+		Identifier:      "S-EXT",
+		SourceType:      "blood",
+		OrganismID:      &organismID,
+		FacilityID:      "fac-ext",
+		CollectedAt:     time.Now().UTC(),
+		Status:          SampleStatusStored,
+		StorageLocation: "freezer",
+	}
+	mustNoError(t, "apply sample extensions", sample.SetSampleExtensions(container))
+
+	data, err := json.Marshal(sample)
+	if err != nil {
+		t.Fatalf("marshal sample: %v", err)
+	}
+
+	var decoded Sample
+	if err := json.Unmarshal(data, &decoded); err != nil {
+		t.Fatalf("unmarshal sample: %v", err)
+	}
+	decodedContainer, err := decoded.SampleExtensions()
+	if err != nil {
+		t.Fatalf("load sample extensions: %v", err)
+	}
+	assertPluginHookPayload(t, decodedContainer, extension.HookSampleAttributes, extension.PluginID("plugin.sample"), "note", "hemolyzed")
+	if decoded.SampleAttributes()["tissue"] != "blood" {
+		t.Fatalf("expected sample attributes to persist, got %+v", decoded.SampleAttributes())
+	}
+}
+
+func TestSupplyItemMarshalUnmarshalPreservesExtensions(t *testing.T) {
+	container := extension.NewContainer()
+	mustNoError(t, "seed supply core payload", container.Set(extension.HookSupplyItemAttributes, extension.PluginCore, map[string]any{"sku": "core"}))
+	mustNoError(t, "seed supply plugin payload", container.Set(extension.HookSupplyItemAttributes, extension.PluginID("plugin.supply"), map[string]any{"lot": "L-1"}))
+
+	supply := SupplyItem{
+		Base:           Base{ID: "supply-ext"},
+		SKU:            "SKU-EXT",
+		Name:           "Supply Ext",
+		QuantityOnHand: 1,
+		Unit:           "box",
+		FacilityIDs:    []string{"fac-ext"},
+		ProjectIDs:     []string{"proj-ext"},
+	}
+	mustNoError(t, "apply supply extensions", supply.SetSupplyItemExtensions(container))
+
+	data, err := json.Marshal(supply)
+	if err != nil {
+		t.Fatalf("marshal supply: %v", err)
+	}
+
+	var decoded SupplyItem
+	if err := json.Unmarshal(data, &decoded); err != nil {
+		t.Fatalf("unmarshal supply: %v", err)
+	}
+	decodedContainer, err := decoded.SupplyItemExtensions()
+	if err != nil {
+		t.Fatalf("load supply extensions: %v", err)
+	}
+	assertPluginHookPayload(t, decodedContainer, extension.HookSupplyItemAttributes, extension.PluginID("plugin.supply"), "lot", "L-1")
+	if decoded.SupplyAttributes()["sku"] != "core" {
+		t.Fatalf("expected supply attributes to persist, got %+v", decoded.SupplyAttributes())
+	}
+}
+
+func assertPluginHookPayload(t *testing.T, container extension.Container, hook extension.Hook, plugin extension.PluginID, key string, expected any) {
+	t.Helper()
+	raw := container.Raw()[string(hook)]
+	if raw == nil {
+		t.Fatalf("expected hook %s payload present", hook)
+	}
+	pluginPayload, ok := raw[plugin.String()].(map[string]any)
+	if !ok {
+		t.Fatalf("expected plugin %s payload present", plugin)
+	}
+	if pluginPayload[key] != expected {
+		t.Fatalf("expected %s=%v for plugin %s hook %s, got %#v", key, expected, plugin, hook, pluginPayload[key])
+	}
+}
+
 func TestObservationUnmarshalJSON(t *testing.T) {
 	jsonData := `{
 		"id": "test-observation",
