@@ -545,6 +545,123 @@ func assertPluginPayload(t *testing.T, container extension.Container, hook exten
 	}
 }
 
+func TestMigrateSnapshotNormalizesCoreExtensions(t *testing.T) {
+	orgContainer := extension.NewContainer()
+	if err := orgContainer.Set(extension.HookOrganismAttributes, extension.PluginID("plugin.organism"), map[string]any{"flag": "green"}); err != nil {
+		t.Fatalf("seed organism plugin payload: %v", err)
+	}
+	breedingContainer := extension.NewContainer()
+	if err := breedingContainer.Set(extension.HookBreedingUnitPairingAttributes, extension.PluginID("plugin.breeding"), map[string]any{"note": "kept"}); err != nil {
+		t.Fatalf("seed breeding plugin payload: %v", err)
+	}
+
+	snapshot := Snapshot{
+		Organisms: map[string]domain.Organism{
+			"org-empty": {Base: domain.Base{ID: "org-empty"}, Name: "Org", Species: "Spec"},
+			"org-ext": func() domain.Organism {
+				o := domain.Organism{Base: domain.Base{ID: "org-ext"}, Name: "OrgExt", Species: "Spec"}
+				if err := o.SetOrganismExtensions(orgContainer); err != nil {
+					t.Fatalf("apply organism extensions: %v", err)
+				}
+				return o
+			}(),
+		},
+		Breeding: map[string]domain.BreedingUnit{
+			"breed-empty": {Base: domain.Base{ID: "breed-empty"}, Name: "Breed"},
+			"breed-ext": func() domain.BreedingUnit {
+				b := domain.BreedingUnit{Base: domain.Base{ID: "breed-ext"}, Name: "BreedExt"}
+				if err := b.SetBreedingUnitExtensions(breedingContainer); err != nil {
+					t.Fatalf("apply breeding extensions: %v", err)
+				}
+				return b
+			}(),
+		},
+	}
+
+	migrated := migrateSnapshot(snapshot)
+
+	orgEmpty := migrated.Organisms["org-empty"]
+	if attrs := orgEmpty.CoreAttributes(); attrs == nil || len(attrs) != 0 {
+		t.Fatalf("expected organism core attributes initialised, got %+v", attrs)
+	}
+	orgExt := migrated.Organisms["org-ext"]
+	orgExtContainer, err := orgExt.OrganismExtensions()
+	if err != nil {
+		t.Fatalf("load organism extensions: %v", err)
+	}
+	if orgPluginPayload, ok := orgExtContainer.Raw()[string(extension.HookOrganismAttributes)]["plugin.organism"].(map[string]any); !ok || orgPluginPayload["flag"] != "green" {
+		t.Fatalf("expected organism plugin payload preserved, got %#v", orgExtContainer.Raw())
+	}
+
+	breedEmpty := migrated.Breeding["breed-empty"]
+	if attrs := breedEmpty.PairingAttributes(); attrs == nil || len(attrs) != 0 {
+		t.Fatalf("expected breeding core attributes initialised, got %+v", attrs)
+	}
+	breedExt := migrated.Breeding["breed-ext"]
+	breedExtContainer, err := breedExt.BreedingUnitExtensions()
+	if err != nil {
+		t.Fatalf("load breeding extensions: %v", err)
+	}
+	if breedPluginPayload, ok := breedExtContainer.Raw()[string(extension.HookBreedingUnitPairingAttributes)]["plugin.breeding"].(map[string]any); !ok || breedPluginPayload["note"] != "kept" {
+		t.Fatalf("expected breeding plugin payload preserved, got %#v", breedExtContainer.Raw())
+	}
+}
+
+func TestBreedingUnitPairingAttributesNormalizedInTransactions(t *testing.T) {
+	store := NewStore(nil)
+	if _, err := store.RunInTransaction(context.Background(), func(tx domain.Transaction) error {
+		created, err := tx.CreateBreedingUnit(domain.BreedingUnit{Name: "Pair"})
+		if err != nil {
+			return err
+		}
+		if attrs := created.PairingAttributes(); attrs == nil || len(attrs) != 0 {
+			return fmt.Errorf("expected pairing attributes initialised on create, got %+v", attrs)
+		}
+
+		updated, err := tx.UpdateBreedingUnit(created.ID, func(b *domain.BreedingUnit) error {
+			container := extension.NewContainer()
+			if err := container.Set(extension.HookBreedingUnitPairingAttributes, extension.PluginID("plugin.breeding"), map[string]any{"note": "txn"}); err != nil {
+				return err
+			}
+			if err := b.SetBreedingUnitExtensions(container); err != nil {
+				return err
+			}
+			return b.ApplyPairingAttributes(map[string]any{"strategy": "assisted"})
+		})
+		if err != nil {
+			return err
+		}
+		if attrs := updated.PairingAttributes(); attrs == nil || attrs["strategy"] != "assisted" {
+			return fmt.Errorf("expected updated pairing attributes preserved, got %+v", attrs)
+		}
+		container, err := updated.BreedingUnitExtensions()
+		if err != nil {
+			return err
+		}
+		if pluginPayload, ok := container.Raw()[string(extension.HookBreedingUnitPairingAttributes)]["plugin.breeding"].(map[string]any); !ok || pluginPayload["note"] != "txn" {
+			return fmt.Errorf("expected plugin payload preserved, got %#v", container.Raw())
+		}
+		return nil
+	}); err != nil {
+		t.Fatalf("transaction error: %v", err)
+	}
+
+	units := store.ListBreedingUnits()
+	if len(units) != 1 {
+		t.Fatalf("expected one breeding unit in store, got %d", len(units))
+	}
+	container, err := units[0].BreedingUnitExtensions()
+	if err != nil {
+		t.Fatalf("load breeding extensions from store: %v", err)
+	}
+	if pluginPayload, ok := container.Raw()[string(extension.HookBreedingUnitPairingAttributes)]["plugin.breeding"].(map[string]any); !ok || pluginPayload["note"] != "txn" {
+		t.Fatalf("expected persisted plugin payload, got %#v", container.Raw())
+	}
+	if attrs := units[0].PairingAttributes(); attrs == nil || attrs["strategy"] != "assisted" {
+		t.Fatalf("expected persisted pairing attributes, got %+v", attrs)
+	}
+}
+
 func TestStateNormalizationDefaultsAndValidation(t *testing.T) {
 	store := NewStore(nil)
 	now := time.Now().UTC()

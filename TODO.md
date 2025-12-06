@@ -5,6 +5,7 @@
   - Rewrite plugin/dataset facades and adapter flows to pass hook-scoped payloads via typed helpers (`ExtensionSet`, etc.) instead of raw maps (e.g., dataset exporters/handlers still exchange `map[string]any` payloads).
   - [ ] Update memory/SQLite stores and fixtures to serialize typed containers end-to-end, then rerun `make lint` and `make test`; document the container-only contract in ADR-0003/annex once stabilized.
     - [x] Memory store snapshots and export/import paths preserve hook-scoped extension containers for facility, breeding, sample, and supply entities.
+    - [x] Memory store normalizes organism and breeding extension containers during import/create/update (SQLite parity and fixtures still pending).
 - [ ] Ensure rule invariants have the data they need
   - Entity model now encodes housing, protocol, lineage, and lifecycle invariants with validator allowlists; synthetic datasets still need to exercise them end-to-end.
   - [ ] Complete Entity Model v0 canon

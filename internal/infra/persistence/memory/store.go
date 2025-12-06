@@ -349,6 +349,25 @@ func migrateSnapshot(snapshot Snapshot) Snapshot {
 		_, ok := snapshot.Cohorts[id]
 		return ok
 	}
+
+	for id, organism := range snapshot.Organisms {
+		if attrs := organism.CoreAttributes(); attrs == nil {
+			mustApply("apply organism attributes", organism.SetCoreAttributes(map[string]any{}))
+		} else {
+			mustApply("apply organism attributes", organism.SetCoreAttributes(attrs))
+		}
+		snapshot.Organisms[id] = organism
+	}
+
+	for id, breeding := range snapshot.Breeding {
+		if attrs := breeding.PairingAttributes(); attrs == nil {
+			mustApply("apply breeding attributes", breeding.ApplyPairingAttributes(map[string]any{}))
+		} else {
+			mustApply("apply breeding attributes", breeding.ApplyPairingAttributes(attrs))
+		}
+		snapshot.Breeding[id] = breeding
+	}
+
 	procedureExists := func(id string) bool {
 		_, ok := snapshot.Procedures[id]
 		return ok
@@ -1502,6 +1521,11 @@ func (tx *transaction) CreateBreedingUnit(b BreedingUnit) (BreedingUnit, error) 
 	}
 	b.CreatedAt = tx.now
 	b.UpdatedAt = tx.now
+	if attrs := b.PairingAttributes(); attrs == nil {
+		mustApply("apply breeding attributes", b.ApplyPairingAttributes(map[string]any{}))
+	} else {
+		mustApply("apply breeding attributes", b.ApplyPairingAttributes(attrs))
+	}
 	tx.state.breeding[b.ID] = cloneBreeding(b)
 	tx.recordChange(Change{Entity: domain.EntityBreeding, Action: domain.ActionCreate, After: cloneBreeding(b)})
 	return cloneBreeding(b), nil
@@ -1516,6 +1540,11 @@ func (tx *transaction) UpdateBreedingUnit(id string, mutator func(*BreedingUnit)
 	before := cloneBreeding(current)
 	if err := mutator(&current); err != nil {
 		return BreedingUnit{}, err
+	}
+	if attrs := current.PairingAttributes(); attrs == nil {
+		mustApply("apply breeding attributes", current.ApplyPairingAttributes(map[string]any{}))
+	} else {
+		mustApply("apply breeding attributes", current.ApplyPairingAttributes(attrs))
 	}
 	current.ID = id
 	current.UpdatedAt = tx.now
