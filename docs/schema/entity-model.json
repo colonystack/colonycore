@@ -623,6 +623,7 @@
           "items": {
             "$ref": "#/definitions/entity_id"
           },
+          "minItems": 1,
           "uniqueItems": true
         },
         "default_attributes": {
@@ -643,7 +644,7 @@
       "relationships": {
         "genotype_marker_ids": {
           "target": "GenotypeMarker",
-          "cardinality": "0..n"
+          "cardinality": "1..n"
         }
       },
       "invariants": []
@@ -1151,7 +1152,8 @@
           "type": "array",
           "items": {
             "$ref": "#/definitions/sample_custody_event"
-          }
+          },
+          "minItems": 1
         },
         "attributes": {
           "$ref": "#/definitions/extension_attributes",
@@ -1302,6 +1304,7 @@
           "items": {
             "type": "string"
           },
+          "minItems": 1,
           "uniqueItems": true
         },
         "facility_ids": {
@@ -1309,6 +1312,7 @@
           "items": {
             "$ref": "#/definitions/entity_id"
           },
+          "minItems": 1,
           "uniqueItems": true
         },
         "protocol_ids": {
@@ -1316,6 +1320,7 @@
           "items": {
             "$ref": "#/definitions/entity_id"
           },
+          "minItems": 1,
           "uniqueItems": true
         },
         "notes": {
@@ -1325,11 +1330,11 @@
       "relationships": {
         "facility_ids": {
           "target": "Facility",
-          "cardinality": "0..n"
+          "cardinality": "1..n"
         },
         "protocol_ids": {
           "target": "Protocol",
-          "cardinality": "0..n"
+          "cardinality": "1..n"
         }
       },
       "invariants": [
@@ -1380,6 +1385,7 @@
           "items": {
             "$ref": "#/definitions/entity_id"
           },
+          "minItems": 1,
           "uniqueItems": true
         },
         "protocol_ids": {
@@ -1414,7 +1420,7 @@
       "relationships": {
         "facility_ids": {
           "target": "Facility",
-          "cardinality": "0..n"
+          "cardinality": "1..n"
         },
         "protocol_ids": {
           "target": "Protocol",
@@ -1497,6 +1503,7 @@
           "items": {
             "$ref": "#/definitions/entity_id"
           },
+          "minItems": 1,
           "uniqueItems": true
         },
         "project_ids": {
@@ -1504,6 +1511,7 @@
           "items": {
             "$ref": "#/definitions/entity_id"
           },
+          "minItems": 1,
           "uniqueItems": true
         },
         "reorder_level": {
@@ -1518,11 +1526,11 @@
       "relationships": {
         "facility_ids": {
           "target": "Facility",
-          "cardinality": "0..n"
+          "cardinality": "1..n"
         },
         "project_ids": {
           "target": "Project",
-          "cardinality": "0..n"
+          "cardinality": "1..n"
         }
       },
       "invariants": []
