@@ -35,6 +35,6 @@
   - Fix join-table de-duplication so distinct array relationships to the same target both persist (schema defines `BreedingUnit.female_ids` and `BreedingUnit.male_ids`, and the generated DDL/ERD now includes both join tables).
   - Add required-join enforcement for schema-required arrays that currently lacked it (permits `protocol_ids`; supply items `project_ids`) so the DDL matches `docs/schema/entity-model.json`.
 - [ ] Address schema feedback from latest review
-  - [ ] Decide how to surface `Facility.housing_unit_ids`: mark it explicitly derived/read-only in the contract or persist a join so API/storage stay aligned (currently derived from `housing_units.facility_id` and dropped in DDL).
+  - [x] Decide how to surface `Facility.housing_unit_ids`: marked explicitly derived in the contract so DDL stays normalized to `housing_units.facility_id`.
   - [ ] Bring SQLite/memory enforcement closer to Postgres: Postgres uses constraint triggers for required relationship arrays, but SQLite/memory only enforce existence. Either document divergence or add parity checks.
   - [ ] Confirm cardinality encoding expectation with reviewer: the model validates `0..1/1..1/0..n/1..n`; no single-dot forms are present, so ensure downstream tooling matches this notation.

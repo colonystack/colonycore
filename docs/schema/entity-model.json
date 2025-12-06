@@ -441,7 +441,8 @@
       "relationships": {
         "housing_unit_ids": {
           "target": "HousingUnit",
-          "cardinality": "0..n"
+          "cardinality": "0..n",
+          "storage": "derived"
         },
         "project_ids": {
           "target": "Project",
