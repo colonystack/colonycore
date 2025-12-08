@@ -1,6 +1,9 @@
 package memory
 
-import "testing"
+import (
+	entitymodel "colonycore/pkg/domain/entitymodel"
+	"testing"
+)
 
 func TestContainsStringCoverage(t *testing.T) {
 	if !containsString([]string{"alpha", "beta"}, "beta") {
@@ -25,6 +28,7 @@ func TestTransactionViewFindersMissingEntities(t *testing.T) {
 		{"FindLine", func() bool { _, ok := view.FindLine("missing"); return ok }()},
 		{"FindStrain", func() bool { _, ok := view.FindStrain("missing"); return ok }()},
 		{"FindGenotypeMarker", func() bool { _, ok := view.FindGenotypeMarker("missing"); return ok }()},
+		{"FindProcedure", func() bool { _, ok := view.FindProcedure("missing"); return ok }()},
 	}
 
 	for _, check := range checks {
@@ -52,11 +56,32 @@ func TestTransactionFindersMissingEntities(t *testing.T) {
 		{"FindSample", func() bool { _, ok := tx.FindSample("missing"); return ok }()},
 		{"FindPermit", func() bool { _, ok := tx.FindPermit("missing"); return ok }()},
 		{"FindSupplyItem", func() bool { _, ok := tx.FindSupplyItem("missing"); return ok }()},
+		{"FindProcedure", func() bool { _, ok := tx.FindProcedure("missing"); return ok }()},
 	}
 
 	for _, check := range checks {
 		if check.ok {
 			t.Fatalf("expected %s to return ok=false for unknown ID", check.name)
 		}
+	}
+}
+
+func TestTransactionViewFindProcedureSuccess(t *testing.T) {
+	state := newMemoryState()
+	state.procedures["proc"] = Procedure{Procedure: entitymodel.Procedure{ID: "proc", Name: "Procedure"}}
+	view := transactionView{state: &state}
+	proc, ok := view.FindProcedure("proc")
+	if !ok || proc.ID != "proc" {
+		t.Fatalf("expected view.FindProcedure to return stored procedure")
+	}
+}
+
+func TestTransactionFindProcedureSuccess(t *testing.T) {
+	state := newMemoryState()
+	state.procedures["proc"] = Procedure{Procedure: entitymodel.Procedure{ID: "proc", Name: "Procedure"}}
+	tx := &transaction{state: state}
+	proc, ok := tx.FindProcedure("proc")
+	if !ok || proc.ID != "proc" {
+		t.Fatalf("expected tx.FindProcedure to return stored procedure")
 	}
 }

@@ -167,6 +167,12 @@ func TestMemStore_FullCRUDAndErrors(t *testing.T) { //nolint:gocyclo // exhausti
 		if _, ok := tx.FindSupplyItem("missing-supply"); ok {
 			return fmt.Errorf("unexpected supply lookup success")
 		}
+		if _, ok := tx.FindProcedure(procedure.ID); !ok {
+			return fmt.Errorf("expected procedure lookup success")
+		}
+		if _, ok := tx.FindProcedure("missing-procedure"); ok {
+			return fmt.Errorf("unexpected procedure lookup success")
+		}
 		return nil
 	})
 
@@ -226,6 +232,12 @@ func TestMemStore_FullCRUDAndErrors(t *testing.T) { //nolint:gocyclo // exhausti
 		}
 		if _, ok := view.FindSupplyItem("missing"); ok {
 			return errors.New("unexpected supply lookup success")
+		}
+		if _, ok := view.FindProcedure(procedure.ID); !ok {
+			return errors.New("procedure not found in view")
+		}
+		if _, ok := view.FindProcedure("missing"); ok {
+			return errors.New("unexpected procedure lookup success")
 		}
 		return nil
 	}); err != nil {

@@ -40,6 +40,7 @@ type TransactionView interface {
 	FindSample(id string) (Sample, bool)
 	FindPermit(id string) (Permit, bool)
 	FindSupplyItem(id string) (SupplyItem, bool)
+	FindProcedure(id string) (Procedure, bool)
 }
 
 // PersistentStore exposes read-only query helpers used by dataset binders.

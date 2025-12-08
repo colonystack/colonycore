@@ -12,5 +12,8 @@ func NewDefaultRulesEngine() *domain.RulesEngine {
 	engine := NewRulesEngine()
 	engine.Register(NewHousingCapacityRule())
 	engine.Register(NewProtocolSubjectCapRule())
+	engine.Register(LineageIntegrityRule())
+	engine.Register(LifecycleTransitionRule())
+	engine.Register(ProtocolCoverageRule())
 	return engine
 }

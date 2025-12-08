@@ -330,6 +330,9 @@ func TestMemStoreTransactionViewMissingFinders(t *testing.T) {
 		if _, ok := v.FindHousingUnit("missing"); ok {
 			t.Fatalf("expected missing housing unit")
 		}
+		if _, ok := v.FindProcedure("missing"); ok {
+			t.Fatalf("expected missing procedure")
+		}
 		return nil
 	}); err != nil {
 		t.Fatalf("view error: %v", err)

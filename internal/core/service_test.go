@@ -198,7 +198,7 @@ func TestServiceExtendedCRUD(t *testing.T) {
 	if err != nil {
 		t.Fatalf("create project: %v", err)
 	}
-	protocol, _, err := svc.CreateProtocol(ctx, domain.Protocol{Protocol: entitymodel.Protocol{Code: "PROT-EXT", Title: "Extended Protocol", MaxSubjects: 10}})
+	protocol, _, err := svc.CreateProtocol(ctx, domain.Protocol{Protocol: entitymodel.Protocol{Code: "PROT-EXT", Title: "Extended Protocol", MaxSubjects: 10, Status: domain.ProtocolStatusApproved}})
 	if err != nil {
 		t.Fatalf("create protocol: %v", err)
 	}
@@ -224,6 +224,11 @@ func TestServiceExtendedCRUD(t *testing.T) {
 	organismB, _, err := svc.CreateOrganism(ctx, domain.Organism{Organism: entitymodel.Organism{Name: "SpecimenB", Species: "Lithobates", Stage: domain.StageAdult, CohortID: &cohortID}})
 	if err != nil {
 		t.Fatalf("create organismB: %v", err)
+	}
+	if _, res, err := svc.AssignOrganismProtocol(ctx, organismA.ID, protID); err != nil {
+		t.Fatalf("assign protocol to organismA: %v", err)
+	} else if res.HasBlocking() {
+		t.Fatalf("unexpected violations assigning protocol: %+v", res.Violations)
 	}
 
 	updated, res, err := svc.UpdateOrganism(ctx, organismA.ID, func(o *domain.Organism) error {
@@ -442,7 +447,7 @@ func TestServiceEmitsChangesForNewEntities(t *testing.T) {
 	assertNoViolations(t, res)
 	collector.take()
 
-	protocol, res, err := svc.CreateProtocol(ctx, domain.Protocol{Protocol: entitymodel.Protocol{Code: "PROTO-CHG", Title: "Change Proto", MaxSubjects: 5}})
+	protocol, res, err := svc.CreateProtocol(ctx, domain.Protocol{Protocol: entitymodel.Protocol{Code: "PROTO-CHG", Title: "Change Proto", MaxSubjects: 5, Status: domain.ProtocolStatusApproved}})
 	if err != nil {
 		t.Fatalf("create protocol: %v", err)
 	}
@@ -455,6 +460,11 @@ func TestServiceEmitsChangesForNewEntities(t *testing.T) {
 	}
 	assertNoViolations(t, res)
 	collector.take()
+	if _, res, err := svc.AssignOrganismProtocol(ctx, organism.ID, protocol.ID); err != nil {
+		t.Fatalf("assign organism protocol: %v", err)
+	} else {
+		assertNoViolations(t, res)
+	}
 
 	procedure, res, err := svc.CreateProcedure(ctx, domain.Procedure{Procedure: entitymodel.Procedure{Name: "Proc",
 		Status:      "scheduled",

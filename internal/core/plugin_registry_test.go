@@ -150,6 +150,10 @@ func (emptyView) FindSupplyItem(string) (domain.SupplyItem, bool) {
 	return domain.SupplyItem{SupplyItem: entitymodel.SupplyItem{}}, false
 }
 
+func (emptyView) FindProcedure(string) (domain.Procedure, bool) {
+	return domain.Procedure{Procedure: entitymodel.Procedure{}}, false
+}
+
 func TestRulesEngineEvaluateDirect(t *testing.T) {
 	engine := NewRulesEngine()
 	engine.Register(staticRule{"first", domain.SeverityWarn})

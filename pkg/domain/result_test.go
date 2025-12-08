@@ -104,6 +104,12 @@ func (emptyView) FindSupplyItem(string) (SupplyItem, bool) {
 	}, false
 }
 
+func (emptyView) FindProcedure(string) (Procedure, bool) {
+	return Procedure{
+		Procedure: entitymodel.Procedure{},
+	}, false
+}
+
 func TestRulesEngineEvaluateError(t *testing.T) {
 	engine := NewRulesEngine()
 	engine.Register(errorRule{})

@@ -28,7 +28,9 @@
     - [x] Wire the generated Postgres/SQLite DDL into their adapters/migration flows and add a round-trip smoke test (apply migrations, run `entity-model-diff`, verify ERD) so code can’t diverge from stored schemas.
       - [x] SQLite snapshots execute the embedded schema DDL on startup, `entity-model-diff` now enforces the fingerprint during lint, and the generator round-trip test loads the DDL into SQLite and asserts the ERD contains every table.
         - [x] Runtime adapters now import the canonical docs-based DDL bundle (`docs/schema/sql/bundle.go` → `internal/entitymodel/sqlbundle`) instead of copied files, keeping schema consumers on the single generated source of truth.
-    - [ ] Map every schema-declared invariant (housing capacity, protocol subject cap, lineage integrity, lifecycle transition, protocol coverage) to a concrete rule handler in `internal/core` and fail validation when a schema entry lacks an implementation.
+      - [ ] Introduce a Postgres persistence adapter that applies the generated DDL at runtime and runs the same store conformance tests as SQLite so both backends satisfy the acceptance criteria.
+    - [x] Map every schema-declared invariant (housing capacity, protocol subject cap, lineage integrity, lifecycle transition, protocol coverage) to a concrete rule handler in `internal/core` and fail validation when a schema entry lacks an implementation.
+      - `internal/core/rule_lineage_integrity.go`, `rule_lifecycle_transition.go`, and `rule_protocol_coverage.go` now cover the remaining invariants and are registered via `NewDefaultRulesEngine`.
     - [ ] Ensure OpenAPI handlers/clients consume `docs/schema/openapi/entity-model.yaml`; add a CI guard that regenerates and diffs the components so stale DTOs fail `make lint`.
 - [x] Wire entity-model tooling into workflows
   - [x] Make `make entity-model-validate` runnable and execute it from `make lint` so schema drift fails fast.

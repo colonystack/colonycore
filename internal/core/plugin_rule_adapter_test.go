@@ -165,6 +165,10 @@ func (v stubDomainView) FindSupplyItem(id string) (domain.SupplyItem, bool) {
 	return domain.SupplyItem{SupplyItem: entitymodel.SupplyItem{}}, false
 }
 
+func (v stubDomainView) FindProcedure(string) (domain.Procedure, bool) {
+	return domain.Procedure{Procedure: entitymodel.Procedure{}}, false
+}
+
 func TestSampleViewAccessors(t *testing.T) {
 	now := time.Date(2024, 5, 10, 12, 0, 0, 0, time.UTC)
 	orgID := "org-1"

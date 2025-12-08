@@ -1266,6 +1266,14 @@ func (v transactionView) FindSupplyItem(id string) (SupplyItem, bool) {
 	return cloneSupplyItem(s), true
 }
 
+func (v transactionView) FindProcedure(id string) (Procedure, bool) {
+	p, ok := v.state.procedures[id]
+	if !ok {
+		return Procedure{Procedure: entitymodel.Procedure{}}, false
+	}
+	return cloneProcedure(p), true
+}
+
 func (s *memStore) RunInTransaction(ctx context.Context, fn func(tx Transaction) error) (Result, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -1379,9 +1387,20 @@ func (tx *transaction) FindSupplyItem(id string) (SupplyItem, bool) {
 	}
 	return cloneSupplyItem(s), true
 }
+
+func (tx *transaction) FindProcedure(id string) (Procedure, bool) {
+	p, ok := tx.state.procedures[id]
+	if !ok {
+		return Procedure{Procedure: entitymodel.Procedure{}}, false
+	}
+	return cloneProcedure(p), true
+}
 func (tx *transaction) CreateOrganism(o Organism) (Organism, error) {
 	if o.ID == "" {
 		o.ID = tx.store.newID()
+	}
+	if o.Stage == "" {
+		o.Stage = domain.StagePlanned
 	}
 	if _, exists := tx.state.organisms[o.ID]; exists {
 		return Organism{Organism: entitymodel.Organism{}}, fmt.Errorf("organism %q already exists", o.ID)

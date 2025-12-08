@@ -141,7 +141,7 @@ func TestServiceObservabilityComplianceEntities(t *testing.T) {
 		t.Fatalf("expected trace span for failed delete_facility")
 	}
 
-	protocol, _, err := svc.CreateProtocol(ctx, domain.Protocol{Protocol: entitymodel.Protocol{Code: "PR-1", Title: "Protocol", MaxSubjects: 5}})
+	protocol, _, err := svc.CreateProtocol(ctx, domain.Protocol{Protocol: entitymodel.Protocol{Code: "PR-1", Title: "Protocol", MaxSubjects: 5, Status: domain.ProtocolStatusApproved}})
 	if err != nil {
 		t.Fatalf("create protocol: %v", err)
 	}

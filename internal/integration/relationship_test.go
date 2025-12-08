@@ -114,6 +114,11 @@ func TestIntegrationEntityRelationships(t *testing.T) {
 			if res.HasBlocking() {
 				t.Fatalf("unexpected organism violations: %+v", res.Violations)
 			}
+			if _, res, err := svc.AssignOrganismProtocol(ctx, organism.ID, protocol.ID); err != nil {
+				t.Fatalf("assign organism protocol: %v", err)
+			} else if res.HasBlocking() {
+				t.Fatalf("unexpected protocol assignment violations: %+v", res.Violations)
+			}
 
 			procedure, res, err := svc.CreateProcedure(ctx, domain.Procedure{Procedure: entitymodel.Procedure{Name: "Procedure-1",
 				Status:      domain.ProcedureStatusScheduled,

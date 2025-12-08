@@ -65,6 +65,7 @@ type Transaction interface {
 	FindSample(id string) (Sample, bool)
 	FindPermit(id string) (Permit, bool)
 	FindSupplyItem(id string) (SupplyItem, bool)
+	FindProcedure(id string) (Procedure, bool)
 }
 
 // TransactionView provides read-only access to snapshot data for rules.
@@ -93,6 +94,7 @@ type TransactionView interface {
 	FindSample(id string) (Sample, bool)
 	FindPermit(id string) (Permit, bool)
 	FindSupplyItem(id string) (SupplyItem, bool)
+	FindProcedure(id string) (Procedure, bool)
 }
 
 // PersistentStore is a minimal abstraction over durable backends. It mirrors

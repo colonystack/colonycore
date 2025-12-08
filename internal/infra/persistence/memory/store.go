@@ -1398,6 +1398,15 @@ func (v transactionView) FindSupplyItem(id string) (SupplyItem, bool) {
 	return cloneSupplyItem(s), true
 }
 
+// FindProcedure retrieves a procedure by ID from the snapshot.
+func (v transactionView) FindProcedure(id string) (Procedure, bool) {
+	p, ok := v.state.procedures[id]
+	if !ok {
+		return Procedure{Procedure: entitymodel.Procedure{}}, false
+	}
+	return cloneProcedure(p), true
+}
+
 // RunInTransaction executes fn within a transactional copy of the store state.
 func (s *Store) RunInTransaction(ctx context.Context, fn func(tx Transaction) error) (Result, error) {
 	s.mu.Lock()
@@ -1549,10 +1558,22 @@ func (tx *transaction) FindSupplyItem(id string) (SupplyItem, bool) {
 	return cloneSupplyItem(s), true
 }
 
+// FindProcedure exposes procedure lookup within the transaction scope.
+func (tx *transaction) FindProcedure(id string) (Procedure, bool) {
+	p, ok := tx.state.procedures[id]
+	if !ok {
+		return Procedure{Procedure: entitymodel.Procedure{}}, false
+	}
+	return cloneProcedure(p), true
+}
+
 // CreateOrganism stores a new organism within the transaction.
 func (tx *transaction) CreateOrganism(o Organism) (Organism, error) {
 	if o.ID == "" {
 		o.ID = tx.store.newID()
+	}
+	if o.Stage == "" {
+		o.Stage = domain.StagePlanned
 	}
 	if _, exists := tx.state.organisms[o.ID]; exists {
 		return Organism{Organism: entitymodel.Organism{}}, fmt.Errorf("organism %q already exists", o.ID)

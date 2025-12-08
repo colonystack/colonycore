@@ -244,6 +244,13 @@ func TestDatasetPersistentStoreAdapter(t *testing.T) {
 		if _, ok := view.FindSupplyItem("missing"); ok {
 			t.Fatalf("expected missing supply lookup to fail")
 		}
+		procResult, ok := view.FindProcedure(procedure.ID)
+		if !ok || procResult.ID() != procedure.ID {
+			t.Fatalf("expected procedure lookup to convert")
+		}
+		if _, ok := view.FindProcedure("missing"); ok {
+			t.Fatalf("expected missing procedure lookup to fail")
+		}
 		foundFacility, ok := view.FindFacility(facility.ID)
 		if !ok || foundFacility.Name() != facility.Name {
 			t.Fatalf("expected facility lookup to convert")
@@ -532,4 +539,13 @@ func (v fakeTransactionView) FindSupplyItem(id string) (domain.SupplyItem, bool)
 		}
 	}
 	return domain.SupplyItem{SupplyItem: entitymodel.SupplyItem{}}, false
+}
+
+func (v fakeTransactionView) FindProcedure(id string) (domain.Procedure, bool) {
+	for _, p := range v.store.procedures {
+		if p.ID == id {
+			return p, true
+		}
+	}
+	return domain.Procedure{Procedure: entitymodel.Procedure{}}, false
 }
