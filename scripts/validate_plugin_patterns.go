@@ -21,10 +21,18 @@ var (
 )
 
 func main() {
-	os.Exit(run(os.Args, os.Stderr, validation.ValidatePluginDirectory, validateContract))
+	os.Exit(run(
+		os.Args,
+		os.Stderr,
+		validation.ValidatePluginDirectory,
+		validateContract,
+		func(pluginDir string) []validation.Error {
+			return validation.ValidateContractFlows(pluginDir, entityModelPath)
+		},
+	))
 }
 
-func run(args []string, stderr io.Writer, validate func(string) []validation.Error, enforceContract func(string) error) int {
+func run(args []string, stderr io.Writer, validate func(string) []validation.Error, enforceContract func(string) error, enforceFlows func(string) []validation.Error) int {
 	if len(args) < 2 {
 		progName := "validate_plugin_patterns"
 		if len(args) > 0 {
@@ -49,9 +57,7 @@ func run(args []string, stderr io.Writer, validate func(string) []validation.Err
 		return 1
 	}
 
-	errors := validate(pluginDir)
-
-	if len(errors) > 0 {
+	if errors := validate(pluginDir); len(errors) > 0 {
 		if _, err := fmt.Fprintf(stderr, "❌ Found %d hexagonal architecture violations:\n\n", len(errors)); err != nil {
 			return 1
 		}
@@ -63,6 +69,21 @@ func run(args []string, stderr io.Writer, validate func(string) []validation.Err
 				return 1
 			}
 			if _, writeErr := fmt.Fprintf(stderr, "   Code: %s\n\n", err.Code); writeErr != nil {
+				return 1
+			}
+		}
+		return 1
+	}
+
+	if flowErrors := enforceFlows(pluginDir); len(flowErrors) > 0 {
+		if _, err := fmt.Fprintf(stderr, "❌ Found %d plugin contract flow violations:\n\n", len(flowErrors)); err != nil {
+			return 1
+		}
+		for _, err := range flowErrors {
+			if _, writeErr := fmt.Fprintf(stderr, "🚨 %s\n", err.File); writeErr != nil {
+				return 1
+			}
+			if _, writeErr := fmt.Fprintf(stderr, "   %s\n\n", err.Message); writeErr != nil {
 				return 1
 			}
 		}
@@ -112,38 +133,19 @@ func extractContractMetadata(content []byte) (contractMetadata, error) {
 	return meta, nil
 }
 
-type schemaDoc struct {
-	Version  string                `json:"version"`
-	Entities map[string]entitySpec `json:"entities"`
-}
-
-type entitySpec struct {
-	Required   []string                   `json:"required"`
-	Properties map[string]json.RawMessage `json:"properties"`
-}
-
-type propertyRef struct {
-	Ref string `json:"$ref"`
-}
-
 func loadSchemaMetadata(path string) (contractMetadata, error) {
-	// #nosec G304 -- schema path is fixed within the repository
-	content, err := os.ReadFile(path)
+	meta, err := validation.LoadContractMetadata(path)
 	if err != nil {
-		return contractMetadata{}, fmt.Errorf("read entity-model schema: %w", err)
+		return contractMetadata{}, err
 	}
-	var doc schemaDoc
-	if err := json.Unmarshal(content, &doc); err != nil {
-		return contractMetadata{}, fmt.Errorf("parse entity-model schema: %w", err)
-	}
-	entities := make(map[string]contractEntityMetadata, len(doc.Entities))
-	for name, ent := range doc.Entities {
+	entities := make(map[string]contractEntityMetadata, len(meta.Entities))
+	for name, entity := range meta.Entities {
 		entities[name] = contractEntityMetadata{
-			Required:       sortedCopy(ent.Required),
-			ExtensionHooks: sortedHooks(ent.Properties),
+			Required:       sortedCopy(entity.Required),
+			ExtensionHooks: sortedCopy(entity.ExtensionHooks),
 		}
 	}
-	return contractMetadata{Version: strings.TrimSpace(doc.Version), Entities: entities}, nil
+	return contractMetadata{Version: strings.TrimSpace(meta.Version), Entities: entities}, nil
 }
 
 func sortedCopy(values []string) []string {
@@ -153,24 +155,6 @@ func sortedCopy(values []string) []string {
 	out := append([]string(nil), values...)
 	sort.Strings(out)
 	return out
-}
-
-func sortedHooks(props map[string]json.RawMessage) []string {
-	if len(props) == 0 {
-		return nil
-	}
-	var hooks []string
-	for name, raw := range props {
-		var ref propertyRef
-		if err := json.Unmarshal(raw, &ref); err != nil {
-			continue
-		}
-		if ref.Ref == "#/definitions/extension_attributes" {
-			hooks = append(hooks, name)
-		}
-	}
-	sort.Strings(hooks)
-	return hooks
 }
 
 func compareContractMetadata(contractMeta, schemaMeta contractMetadata) error {

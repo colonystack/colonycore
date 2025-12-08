@@ -13,11 +13,14 @@ import (
 	"colonycore/internal/validation"
 )
 
-var noopContractValidator = func(string) error { return nil }
+var (
+	noopContractValidator = func(string) error { return nil }
+	noopFlowValidator     = func(string) []validation.Error { return nil }
+)
 
 func TestRunUsage(t *testing.T) {
 	var stderr bytes.Buffer
-	exitCode := run([]string{"validate_plugin_patterns"}, &stderr, validation.ValidatePluginDirectory, noopContractValidator)
+	exitCode := run([]string{"validate_plugin_patterns"}, &stderr, validation.ValidatePluginDirectory, noopContractValidator, noopFlowValidator)
 	if exitCode == 0 {
 		t.Fatalf("expected non-zero exit code for missing args")
 	}
@@ -30,7 +33,7 @@ func TestRunSuccess(t *testing.T) {
 	var stderr bytes.Buffer
 	exitCode := run([]string{"validate_plugin_patterns", filepath.Join("..", "plugins", "frog")}, &stderr, func(string) []validation.Error {
 		return nil
-	}, noopContractValidator)
+	}, noopContractValidator, noopFlowValidator)
 	if exitCode != 0 {
 		t.Fatalf("expected success exit code, got %d", exitCode)
 	}
@@ -46,7 +49,7 @@ func TestRunWithViolations(t *testing.T) {
 	}
 	exitCode := run([]string{"validate_plugin_patterns", "plugin"}, &stderr, func(string) []validation.Error {
 		return mockErrors
-	}, noopContractValidator)
+	}, noopContractValidator, noopFlowValidator)
 	if exitCode == 0 {
 		t.Fatalf("expected non-zero exit code when violations reported")
 	}
@@ -64,9 +67,7 @@ func TestRunContractValidationFailure(t *testing.T) {
 	contractErr := errors.New("contract mismatch")
 	exitCode := run([]string{"validate_plugin_patterns", "plugin"}, &stderr, func(string) []validation.Error {
 		return nil
-	}, func(string) error {
-		return contractErr
-	})
+	}, func(string) error { return contractErr }, noopFlowValidator)
 	if exitCode != 1 {
 		t.Fatalf("expected exit code 1, got %d", exitCode)
 	}
@@ -82,7 +83,7 @@ func TestRunUsesDefaultContractPath(t *testing.T) {
 		return nil
 	}
 	var stderr bytes.Buffer
-	exit := run([]string{"cmd", "dir"}, &stderr, func(string) []validation.Error { return nil }, validator)
+	exit := run([]string{"cmd", "dir"}, &stderr, func(string) []validation.Error { return nil }, validator, noopFlowValidator)
 	if exit != 0 {
 		t.Fatalf("expected success, got %d", exit)
 	}
@@ -99,7 +100,7 @@ func TestRunUsesCustomContractPath(t *testing.T) {
 		return nil
 	}
 	var stderr bytes.Buffer
-	exit := run([]string{"cmd", "dir", custom}, &stderr, func(string) []validation.Error { return nil }, validator)
+	exit := run([]string{"cmd", "dir", custom}, &stderr, func(string) []validation.Error { return nil }, validator, noopFlowValidator)
 	if exit != 0 {
 		t.Fatalf("expected success, got %d", exit)
 	}
@@ -115,7 +116,7 @@ func TestMainInvokesRun(t *testing.T) {
 	pluginDir := filepath.Join("..", "plugins", "frog")
 	os.Args = []string{"validate_plugin_patterns", pluginDir}
 
-	exitCode := run(os.Args, &bytes.Buffer{}, validation.ValidatePluginDirectory, noopContractValidator)
+	exitCode := run(os.Args, &bytes.Buffer{}, validation.ValidatePluginDirectory, noopContractValidator, noopFlowValidator)
 	if exitCode != 0 {
 		t.Fatalf("expected run to succeed, got exit code %d", exitCode)
 	}
@@ -182,7 +183,7 @@ func TestRunErrorHandling(t *testing.T) {
 		tc := tt
 		t.Run(tc.name, func(t *testing.T) {
 			var stderr bytes.Buffer
-			exitCode := run(tc.args, &stderr, tc.validator, noopContractValidator)
+			exitCode := run(tc.args, &stderr, tc.validator, noopContractValidator, noopFlowValidator)
 
 			if exitCode != tc.wantExit {
 				t.Errorf("run() exit code = %v, want %v", exitCode, tc.wantExit)
@@ -197,7 +198,7 @@ func TestRunErrorHandling(t *testing.T) {
 
 func TestRunFailedWriter(t *testing.T) {
 	failWriter := &failingWriter{}
-	exitCode := run([]string{"cmd"}, failWriter, nil, noopContractValidator)
+	exitCode := run([]string{"cmd"}, failWriter, nil, noopContractValidator, noopFlowValidator)
 	if exitCode != 1 {
 		t.Errorf("expected exit code 1 when writer fails, got %d", exitCode)
 	}
@@ -217,7 +218,7 @@ func TestRunViolationWriterFailures(t *testing.T) {
 			writer := &limitedWriter{failAt: failAt}
 			exit := run([]string{"cmd", "dir"}, writer, func(string) []validation.Error {
 				return mockErrors
-			}, noopContractValidator)
+			}, noopContractValidator, noopFlowValidator)
 			if exit != 1 {
 				t.Fatalf("expected exit code 1 when writer fails at %s (call %d), got %d", name, failAt, exit)
 			}
@@ -281,7 +282,7 @@ func TestCompareContractMetadataEntityMismatch(t *testing.T) {
 func TestMainFunctionLogic(t *testing.T) {
 	testArgs := []string{"validate_plugin_patterns", "../plugins/frog"}
 	var stderr bytes.Buffer
-	exitCode := run(testArgs, &stderr, validation.ValidatePluginDirectory, noopContractValidator)
+	exitCode := run(testArgs, &stderr, validation.ValidatePluginDirectory, noopContractValidator, noopFlowValidator)
 	if exitCode != 0 {
 		t.Logf("Exit code: %d, stderr: %s", exitCode, stderr.String())
 	}
@@ -294,7 +295,7 @@ func TestMainForCoverage(t *testing.T) {
 	}()
 	os.Args = []string{"validate_plugin_patterns", "../plugins/frog"}
 	var mockStderr bytes.Buffer
-	exitCode := run(os.Args, &mockStderr, validation.ValidatePluginDirectory, noopContractValidator)
+	exitCode := run(os.Args, &mockStderr, validation.ValidatePluginDirectory, noopContractValidator, noopFlowValidator)
 	t.Logf("Main function code path executed with exit code: %d", exitCode)
 }
 

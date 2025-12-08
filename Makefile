@@ -181,6 +181,8 @@ entity-model-erd:
 	@docker run --rm -d --name $(SCHEMASPY_PG_CONTAINER) -e POSTGRES_PASSWORD=$(SCHEMASPY_PG_PASSWORD) -e POSTGRES_DB=$(SCHEMASPY_PG_DB) $(SCHEMASPY_PG_IMAGE) >/dev/null
 	@printf "waiting for postgres"
 	@until docker exec $(SCHEMASPY_PG_CONTAINER) pg_isready -U $(SCHEMASPY_PG_USER) -d $(SCHEMASPY_PG_DB) >/dev/null 2>&1; do printf "."; sleep 1; done; echo
+	@printf "ensuring schema database"
+	@until docker exec $(SCHEMASPY_PG_CONTAINER) sh -c "psql -X -U $(SCHEMASPY_PG_USER) -d postgres -tc \"SELECT 1 FROM pg_database WHERE datname='$(SCHEMASPY_PG_DB)';\" | grep -q 1 || createdb -U $(SCHEMASPY_PG_USER) $(SCHEMASPY_PG_DB)" >/dev/null 2>&1; do printf "."; sleep 1; done; echo
 	@docker exec -i $(SCHEMASPY_PG_CONTAINER) psql -X -v ON_ERROR_STOP=1 -1 -U $(SCHEMASPY_PG_USER) -d $(SCHEMASPY_PG_DB) > /dev/null < docs/schema/sql/postgres.sql
 	@docker run --rm $(if $(SCHEMASPY_PLATFORM),--platform $(SCHEMASPY_PLATFORM),) -v "$(SCHEMASPY_TMP)":/output --network container:$(SCHEMASPY_PG_CONTAINER) $(SCHEMASPY_IMAGE) -t pgsql11 -db $(SCHEMASPY_PG_DB) -host localhost -port 5432 -s public -u $(SCHEMASPY_PG_USER) -p $(SCHEMASPY_PG_PASSWORD) -dbthreads 1 -hq -imageformat svg > /dev/null
 	@cp "$(SCHEMASPY_TMP)/diagrams/summary/relationships.real.large.svg" "$(SCHEMASPY_SVG_OUT)"
