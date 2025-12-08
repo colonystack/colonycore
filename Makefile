@@ -21,7 +21,7 @@ SCHEMASPY_PG_DB ?= entitymodel
 SCHEMASPY_PG_USER ?= postgres
 SCHEMASPY_PG_PASSWORD ?= postgres
 
-.PHONY: all build lint go-test test registry-check fmt-check vet registry-lint golangci golangci-install python-lint r-lint go-lint import-boss import-boss-install entity-model-validate entity-model-generate entity-model-verify entity-model-erd
+.PHONY: all build lint go-test test registry-check fmt-check vet registry-lint golangci golangci-install python-lint r-lint go-lint import-boss import-boss-install entity-model-validate entity-model-generate entity-model-verify entity-model-erd entity-model-diff entity-model-diff-update
 
 all: build
 
@@ -33,6 +33,7 @@ registry-check:
 
 lint:
 	@$(MAKE) --no-print-directory entity-model-verify
+	@$(MAKE) --no-print-directory entity-model-diff
 	@$(MAKE) --no-print-directory go-lint
 	@$(MAKE) --no-print-directory validate-plugin-patterns
 	@$(MAKE) --no-print-directory python-lint
@@ -173,6 +174,14 @@ entity-model-generate:
 entity-model-verify: entity-model-validate entity-model-generate
 	@echo "==> entity-model verify (validate + generation)"
 
+entity-model-diff:
+	@echo "==> entity-model diff"
+	@GOCACHE=$(GOCACHE) go run ./internal/tools/entitymodel/diff -schema docs/schema/entity-model.json -fingerprint docs/schema/entity-model.fingerprint.json
+
+entity-model-diff-update:
+	@echo "==> entity-model diff (write)"
+	@GOCACHE=$(GOCACHE) go run ./internal/tools/entitymodel/diff -schema docs/schema/entity-model.json -fingerprint docs/schema/entity-model.fingerprint.json -write
+
 entity-model-erd:
 	@echo "==> entity-model erd (SchemaSpy via generated Postgres DDL)"
 	@rm -rf $(SCHEMASPY_TMP)
@@ -180,9 +189,8 @@ entity-model-erd:
 	@docker rm -f $(SCHEMASPY_PG_CONTAINER) >/dev/null 2>&1 || true
 	@docker run --rm -d --name $(SCHEMASPY_PG_CONTAINER) -e POSTGRES_PASSWORD=$(SCHEMASPY_PG_PASSWORD) -e POSTGRES_DB=$(SCHEMASPY_PG_DB) $(SCHEMASPY_PG_IMAGE) >/dev/null
 	@printf "waiting for postgres"
-	@until docker exec $(SCHEMASPY_PG_CONTAINER) pg_isready -U $(SCHEMASPY_PG_USER) -d $(SCHEMASPY_PG_DB) >/dev/null 2>&1; do printf "."; sleep 1; done; echo
-	@printf "ensuring schema database"
-	@until docker exec $(SCHEMASPY_PG_CONTAINER) sh -c "psql -X -U $(SCHEMASPY_PG_USER) -d postgres -tc \"SELECT 1 FROM pg_database WHERE datname='$(SCHEMASPY_PG_DB)';\" | grep -q 1 || createdb -U $(SCHEMASPY_PG_USER) $(SCHEMASPY_PG_DB)" >/dev/null 2>&1; do printf "."; sleep 1; done; echo
+	@until docker exec $(SCHEMASPY_PG_CONTAINER) pg_isready -U $(SCHEMASPY_PG_USER) -d $(SCHEMASPY_PG_DB) >/dev/null 2>&1; do printf "."; sleep 1; done
+	@until docker exec $(SCHEMASPY_PG_CONTAINER) sh -c "psql -X -U $(SCHEMASPY_PG_USER) -d postgres -tc \"SELECT 1 FROM pg_database WHERE datname='$(SCHEMASPY_PG_DB)';\" | grep -q 1 || createdb -U $(SCHEMASPY_PG_USER) $(SCHEMASPY_PG_DB)" >/dev/null 2>&1; do printf "."; sleep 1; done; echo "OK"
 	@docker exec -i $(SCHEMASPY_PG_CONTAINER) psql -X -v ON_ERROR_STOP=1 -1 -U $(SCHEMASPY_PG_USER) -d $(SCHEMASPY_PG_DB) > /dev/null < docs/schema/sql/postgres.sql
 	@docker run --rm $(if $(SCHEMASPY_PLATFORM),--platform $(SCHEMASPY_PLATFORM),) -v "$(SCHEMASPY_TMP)":/output --network container:$(SCHEMASPY_PG_CONTAINER) $(SCHEMASPY_IMAGE) -t pgsql11 -db $(SCHEMASPY_PG_DB) -host localhost -port 5432 -s public -u $(SCHEMASPY_PG_USER) -p $(SCHEMASPY_PG_PASSWORD) -dbthreads 1 -hq -imageformat svg > /dev/null
 	@cp "$(SCHEMASPY_TMP)/diagrams/summary/relationships.real.large.svg" "$(SCHEMASPY_SVG_OUT)"

@@ -8,8 +8,9 @@ import (
 )
 
 var allowedDomainImports = map[string]struct{}{
-	"colonycore/pkg/domain":             {},
-	"colonycore/pkg/domain/entitymodel": {},
+	"colonycore/pkg/domain":                     {},
+	"colonycore/pkg/domain/entitymodel":         {},
+	"colonycore/internal/entitymodel/sqlbundle": {},
 }
 
 func TestImportsAreDomainOrStdlib(t *testing.T) {

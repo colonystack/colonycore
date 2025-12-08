@@ -1,6 +1,7 @@
 package sqlite
 
 import (
+	"colonycore/internal/entitymodel/sqlbundle"
 	"context"
 	"database/sql"
 	"encoding/json"
@@ -8,6 +9,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 
 	_ "modernc.org/sqlite" // pure go sqlite driver
@@ -41,6 +43,9 @@ func NewStore(path string, engine *RulesEngine) (*Store, error) {
 		payload BLOB NOT NULL
 	)`); err != nil {
 		return nil, fmt.Errorf("create state table: %w", err)
+	}
+	if err := applyEntityModelDDL(db); err != nil {
+		return nil, fmt.Errorf("apply entity-model ddl: %w", err)
 	}
 	ms := newMemStore(engine)
 	s := &Store{memStore: ms, db: db, path: path}
@@ -244,3 +249,15 @@ func (s *Store) DB() *sql.DB { return s.db }
 
 // Path returns the configured database path.
 func (s *Store) Path() string { return s.path }
+
+func applyEntityModelDDL(db *sql.DB) error {
+	for _, stmt := range sqlbundle.SplitStatements(sqlbundle.SQLite()) {
+		if strings.TrimSpace(stmt) == "" {
+			continue
+		}
+		if _, err := db.Exec(stmt); err != nil {
+			return fmt.Errorf("execute ddl: %w", err)
+		}
+	}
+	return nil
+}
