@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"colonycore/pkg/domain"
+	entitymodel "colonycore/pkg/domain/entitymodel"
 )
 
 func TestSQLiteStorePersistMarshalError(t *testing.T) {
@@ -22,16 +23,15 @@ func TestSQLiteStorePersistMarshalError(t *testing.T) {
 	now := time.Now().UTC()
 
 	_, err = store.RunInTransaction(ctx, func(tx domain.Transaction) error {
-		facility, err := tx.CreateFacility(domain.Facility{Name: "Lab"})
+		facility, err := tx.CreateFacility(domain.Facility{Facility: entitymodel.Facility{Name: "Lab"}})
 		if err != nil {
 			return err
 		}
-		organism, err := tx.CreateOrganism(domain.Organism{Name: "Specimen", Species: "test"})
+		organism, err := tx.CreateOrganism(domain.Organism{Organism: entitymodel.Organism{Name: "Specimen", Species: "test"}})
 		if err != nil {
 			return err
 		}
-		sample, err := tx.CreateSample(domain.Sample{
-			Identifier:      "S-1",
+		sample, err := tx.CreateSample(domain.Sample{Sample: entitymodel.Sample{Identifier: "S-1",
 			SourceType:      "organism",
 			OrganismID:      &organism.ID,
 			FacilityID:      facility.ID,
@@ -43,7 +43,7 @@ func TestSQLiteStorePersistMarshalError(t *testing.T) {
 				Actor:     "tech",
 				Location:  "cold",
 				Timestamp: now,
-			}},
+			}}},
 		})
 		if err != nil {
 			return err
@@ -73,16 +73,15 @@ func TestSQLiteStoreLoadInvalidJSON(t *testing.T) {
 	ctx := context.Background()
 	now := time.Now().UTC()
 	_, err = store.RunInTransaction(ctx, func(tx domain.Transaction) error {
-		facility, err := tx.CreateFacility(domain.Facility{Name: "Lab"})
+		facility, err := tx.CreateFacility(domain.Facility{Facility: entitymodel.Facility{Name: "Lab"}})
 		if err != nil {
 			return err
 		}
-		organism, err := tx.CreateOrganism(domain.Organism{Name: "Specimen", Species: "test"})
+		organism, err := tx.CreateOrganism(domain.Organism{Organism: entitymodel.Organism{Name: "Specimen", Species: "test"}})
 		if err != nil {
 			return err
 		}
-		_, err = tx.CreateSample(domain.Sample{
-			Identifier:      "S-1",
+		_, err = tx.CreateSample(domain.Sample{Sample: entitymodel.Sample{Identifier: "S-1",
 			SourceType:      "organism",
 			OrganismID:      &organism.ID,
 			FacilityID:      facility.ID,
@@ -94,7 +93,7 @@ func TestSQLiteStoreLoadInvalidJSON(t *testing.T) {
 				Actor:     "tech",
 				Location:  "cold",
 				Timestamp: now,
-			}},
+			}}},
 		})
 		return err
 	})
@@ -134,17 +133,17 @@ func TestSQLiteStorePersistsLineStrainMarker(t *testing.T) {
 	}
 
 	if _, err := store.RunInTransaction(ctx, func(tx domain.Transaction) error {
-		marker, err := tx.CreateGenotypeMarker(domain.GenotypeMarker{Base: domain.Base{ID: "marker-store"}, Name: "Marker", Locus: "loc", Alleles: []string{"A"}, AssayMethod: "PCR", Interpretation: "ctrl", Version: "v1"})
+		marker, err := tx.CreateGenotypeMarker(domain.GenotypeMarker{GenotypeMarker: entitymodel.GenotypeMarker{ID: "marker-store", Name: "Marker", Locus: "loc", Alleles: []string{"A"}, AssayMethod: "PCR", Interpretation: "ctrl", Version: "v1"}})
 		if err != nil {
 			return err
 		}
 		ids.marker = marker.ID
-		line, err := tx.CreateLine(domain.Line{Base: domain.Base{ID: "line-store"}, Code: "L", Name: "Line", Origin: "field", GenotypeMarkerIDs: []string{marker.ID}})
+		line, err := tx.CreateLine(domain.Line{Line: entitymodel.Line{ID: "line-store", Code: "L", Name: "Line", Origin: "field", GenotypeMarkerIDs: []string{marker.ID}}})
 		if err != nil {
 			return err
 		}
 		ids.line = line.ID
-		strain, err := tx.CreateStrain(domain.Strain{Base: domain.Base{ID: "strain-store"}, Code: "S", Name: "Strain", LineID: line.ID, GenotypeMarkerIDs: []string{marker.ID}})
+		strain, err := tx.CreateStrain(domain.Strain{Strain: entitymodel.Strain{ID: "strain-store", Code: "S", Name: "Strain", LineID: line.ID, GenotypeMarkerIDs: []string{marker.ID}}})
 		if err != nil {
 			return err
 		}

@@ -3,13 +3,16 @@ package domain
 import (
 	"testing"
 
+	entitymodel "colonycore/pkg/domain/entitymodel"
 	"colonycore/pkg/domain/extension"
 )
 
 const testMutated = "mutated"
 
 func TestLineEnsureSlots(t *testing.T) {
-	line := &Line{}
+	line := &Line{
+		Line: entitymodel.Line{},
+	}
 	defaultSlot := line.EnsureDefaultAttributes()
 	if err := defaultSlot.Set(extension.PluginCore, map[string]any{"seed": "value"}); err != nil {
 		t.Fatalf("set default slot: %v", err)

@@ -14,6 +14,7 @@ import (
 	"colonycore/internal/core"
 	"colonycore/pkg/datasetapi"
 	"colonycore/pkg/domain"
+	entitymodel "colonycore/pkg/domain/entitymodel"
 )
 
 // (Helper types are defined in exporter_worker_test.go; reuse them here.)
@@ -102,16 +103,16 @@ func TestHandlerRunAcceptHeaderNegotiation(t *testing.T) {
 	h := NewHandler(svc)
 
 	ctx := context.Background()
-	facility, _, err := svc.CreateFacility(ctx, domain.Facility{Name: "Facility", Code: "FAC-ACPT"})
+	facility, _, err := svc.CreateFacility(ctx, domain.Facility{Facility: entitymodel.Facility{Name: "Facility", Code: "FAC-ACPT"}})
 	if err != nil {
 		t.Fatalf("create facility: %v", err)
 	}
-	project, _, err := svc.CreateProject(ctx, domain.Project{Code: "PRJ-ACPT", Title: "Negotiate", FacilityIDs: []string{facility.ID}})
+	project, _, err := svc.CreateProject(ctx, domain.Project{Project: entitymodel.Project{Code: "PRJ-ACPT", Title: "Negotiate", FacilityIDs: []string{facility.ID}}})
 	if err != nil {
 		t.Fatalf("create project: %v", err)
 	}
 	projectID := project.ID
-	if _, _, err := svc.CreateOrganism(ctx, domain.Organism{Name: "Frog", Species: "Tree Frog", Stage: domain.StageAdult, ProjectID: &projectID}); err != nil {
+	if _, _, err := svc.CreateOrganism(ctx, domain.Organism{Organism: entitymodel.Organism{Name: "Frog", Species: "Tree Frog", Stage: domain.StageAdult, ProjectID: &projectID}}); err != nil {
 		t.Fatalf("create organism: %v", err)
 	}
 

@@ -9,6 +9,7 @@ import (
 	"colonycore/internal/core"
 	"colonycore/pkg/datasetapi"
 	"colonycore/pkg/domain"
+	entitymodel "colonycore/pkg/domain/entitymodel"
 )
 
 func TestWorkerProcessesExport(t *testing.T) {
@@ -27,16 +28,16 @@ func TestWorkerProcessesExport(t *testing.T) {
 	t.Cleanup(func() { _ = worker.Stop(context.Background()) })
 
 	ctx := context.Background()
-	facility, _, err := svc.CreateFacility(ctx, domain.Facility{Name: "Worker Facility"})
+	facility, _, err := svc.CreateFacility(ctx, domain.Facility{Facility: entitymodel.Facility{Name: "Worker Facility"}})
 	if err != nil {
 		t.Fatalf("create facility: %v", err)
 	}
-	project, _, err := svc.CreateProject(ctx, domain.Project{Code: "PRJ-WORK", Title: "Worker", FacilityIDs: []string{facility.ID}})
+	project, _, err := svc.CreateProject(ctx, domain.Project{Project: entitymodel.Project{Code: "PRJ-WORK", Title: "Worker", FacilityIDs: []string{facility.ID}}})
 	if err != nil {
 		t.Fatalf("create project: %v", err)
 	}
 	projectID := project.ID
-	if _, _, err := svc.CreateOrganism(ctx, domain.Organism{Name: "Frog", Species: "Tree Frog", Stage: domain.StageAdult, ProjectID: &projectID}); err != nil {
+	if _, _, err := svc.CreateOrganism(ctx, domain.Organism{Organism: entitymodel.Organism{Name: "Frog", Species: "Tree Frog", Stage: domain.StageAdult, ProjectID: &projectID}}); err != nil {
 		t.Fatalf("create organism: %v", err)
 	}
 

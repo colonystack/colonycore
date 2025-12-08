@@ -3,6 +3,7 @@ package memory_test
 import (
 	"colonycore/internal/infra/persistence/memory"
 	"colonycore/pkg/domain"
+	entitymodel "colonycore/pkg/domain/entitymodel"
 	"context"
 	"fmt"
 	"testing"
@@ -21,28 +22,26 @@ func TestMemoryStoreLineStrainGenotypeLifecycle(t *testing.T) {
 	}
 
 	if _, err := store.RunInTransaction(ctx, func(tx domain.Transaction) error {
-		marker, err := tx.CreateGenotypeMarker(domain.GenotypeMarker{
-			Name:           "Marker-1",
+		marker, err := tx.CreateGenotypeMarker(domain.GenotypeMarker{GenotypeMarker: entitymodel.GenotypeMarker{Name: "Marker-1",
 			Locus:          "loc-1",
 			Alleles:        []string{"A", "A", "B"},
 			AssayMethod:    "PCR",
 			Interpretation: "control",
-			Version:        "v1",
+			Version:        "v1"},
 		})
 		if err != nil {
 			return err
 		}
 		ids.marker = marker.ID
 
-		if _, err := tx.CreateStrain(domain.Strain{Code: "bad", Name: "No line"}); err == nil {
+		if _, err := tx.CreateStrain(domain.Strain{Strain: entitymodel.Strain{Code: "bad", Name: "No line"}}); err == nil {
 			return fmt.Errorf("expected strain creation to require line")
 		}
 
-		line, err := tx.CreateLine(domain.Line{
-			Code:              "L-1",
+		line, err := tx.CreateLine(domain.Line{Line: entitymodel.Line{Code: "L-1",
 			Name:              "Line",
 			Origin:            "wild",
-			GenotypeMarkerIDs: []string{marker.ID, "missing-marker", marker.ID},
+			GenotypeMarkerIDs: []string{marker.ID, "missing-marker", marker.ID}},
 		})
 		if err != nil {
 			return err
@@ -52,36 +51,33 @@ func TestMemoryStoreLineStrainGenotypeLifecycle(t *testing.T) {
 			return fmt.Errorf("expected line marker dedupe, got %d", got)
 		}
 
-		strain, err := tx.CreateStrain(domain.Strain{
-			Code:              "S-1",
+		strain, err := tx.CreateStrain(domain.Strain{Strain: entitymodel.Strain{Code: "S-1",
 			Name:              "Strain",
 			LineID:            line.ID,
-			GenotypeMarkerIDs: []string{marker.ID, "missing-marker"},
+			GenotypeMarkerIDs: []string{marker.ID, "missing-marker"}},
 		})
 		if err != nil {
 			return err
 		}
 		ids.strain = strain.ID
 
-		breeding, err := tx.CreateBreedingUnit(domain.BreedingUnit{
-			Name:     "Breeding",
+		breeding, err := tx.CreateBreedingUnit(domain.BreedingUnit{BreedingUnit: entitymodel.BreedingUnit{Name: "Breeding",
 			Strategy: "pair",
 			LineID:   &line.ID,
 			StrainID: &strain.ID,
 			FemaleIDs: []string{
 				ids.strain,
-			},
+			}},
 		})
 		if err != nil {
 			return err
 		}
 		ids.breeding = breeding.ID
 
-		org, err := tx.CreateOrganism(domain.Organism{
-			Name:     "Org",
+		org, err := tx.CreateOrganism(domain.Organism{Organism: entitymodel.Organism{Name: "Org",
 			Species:  "Spec",
 			LineID:   &line.ID,
-			StrainID: &strain.ID,
+			StrainID: &strain.ID},
 		})
 		if err != nil {
 			return err
@@ -219,38 +215,35 @@ func TestMemoryImportStateLineStrainNormalization(t *testing.T) {
 
 	snapshot := memory.Snapshot{
 		Lines: map[string]domain.Line{
-			lineID: {
-				Base:              domain.Base{ID: lineID},
+			lineID: {Line: entitymodel.Line{ID: lineID,
 				Code:              "L-IMP",
 				Name:              "Imported Line",
 				Origin:            "field",
-				GenotypeMarkerIDs: []string{markerID, markerID, "missing-marker"},
+				GenotypeMarkerIDs: []string{markerID, markerID, "missing-marker"}},
 			},
 		},
 		Strains: map[string]domain.Strain{
-			strainID: {
-				Base:              domain.Base{ID: strainID},
+			strainID: {Strain: entitymodel.Strain{ID: strainID,
 				Code:              "S-IMP",
 				Name:              "Imported Strain",
 				LineID:            "missing-line",
-				GenotypeMarkerIDs: []string{"missing-marker"},
+				GenotypeMarkerIDs: []string{"missing-marker"}},
 			},
 		},
 		Markers: map[string]domain.GenotypeMarker{
-			markerID: {
-				Base:        domain.Base{ID: markerID},
+			markerID: {GenotypeMarker: entitymodel.GenotypeMarker{ID: markerID,
 				Name:        "Marker",
 				Locus:       "locus",
 				Alleles:     []string{"A", "A"},
 				AssayMethod: "PCR",
-				Version:     "v1",
+				Version:     "v1"},
 			},
 		},
 		Organisms: map[string]domain.Organism{
-			"org-import": {Base: domain.Base{ID: "org-import"}, Name: "Org", Species: "Spec", LineID: &orgLine, StrainID: &orgStrain},
+			"org-import": {Organism: entitymodel.Organism{ID: "org-import", Name: "Org", Species: "Spec", LineID: &orgLine, StrainID: &orgStrain}},
 		},
 		Breeding: map[string]domain.BreedingUnit{
-			"breed-import": {Base: domain.Base{ID: "breed-import"}, Name: "Breed", LineID: &breedingLine, TargetStrainID: &breedingTargetStrain},
+			"breed-import": {BreedingUnit: entitymodel.BreedingUnit{ID: "breed-import", Name: "Breed", LineID: &breedingLine, TargetStrainID: &breedingTargetStrain}},
 		},
 	}
 

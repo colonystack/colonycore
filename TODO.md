@@ -9,17 +9,24 @@
     - [x] Memory store normalizes organism and breeding extension containers during import/create/update (SQLite parity and fixtures still pending).
 - [ ] Ensure rule invariants have the data they need
   - Entity model now encodes housing, protocol, lineage, and lifecycle invariants with validator allowlists; synthetic datasets still need to exercise them end-to-end.
+  - [x] Normalize embedded entitymodel literals across domain/plugin tests to avoid drift between manual fixtures and generated structs; revisit if schema introduces new fields.
   - [ ] Complete Entity Model v0 canon
     - [x] Anchor plugin contract outline at `docs/annex/plugin-contract.md` and fixtures path at `testutil/fixtures/entity-model/`.
     - [x] Align schema enums/states with RFC-0001 compliance + housing lifecycles (code/plugins to follow).
     - [ ] Bring domain/constants and contexts up to the RFC-aligned schema (protocol/permit/housing states): domain enums now alias the generated entity model and housing lifecycle contexts are exposed in pluginapi/datasetapi with updated API snapshots; persistence adapters/memory+sqlite snapshots, fixtures, and dataset facades still need to consume the new state accessors.
       - [x] Persistence adapters normalise housing/protocol/permit states and environments to generated enums (memory + sqlite).
+    - [ ] Replace handwritten structs in `pkg/domain/entities.go` with wrappers or embeddings of `pkg/domain/entitymodel` outputs so schema-driven fields can’t drift; confirm extension containers and persistence adapters continue to operate with the generated shapes.
     - [x] Fill `entity-model.json` gaps: natural keys, invariants, relationships, and enums for every RFC-0001 entity (Line/Strain/GenotypeMarker included) — relationships/invariants are now explicit (including lineage/protocol/lifecycle constraints), natural keys scoped, and enums/natural-key scopes reviewed against RFC-0001 before freeze.
     - [x] Stand up generators driven solely from the JSON plus `make entity-model-generate` wiring (Go/OpenAPI/SQL/ERD targets hooked into `make entity-model-verify`; SVGs rendered via Graphviz).
       - [x] Go types/enums emitted to `pkg/domain/entitymodel`.
     - [x] OpenAPI components.
     - [x] Postgres/SQLite DDL with FK-aware ordering, join tables for array relationships, derived arrays omitted, and FK indexes.
     - [x] ERD export (DOT + SVG) with Graphviz rendering and SVG fallback for headless runs; SchemaSpy target now loads generated DDL with `ON_ERROR_STOP` and emits `docs/annex/entity-model-erd.svg` from a temp Postgres container.
+    - [ ] Generate the plugin contract content from `entity-model.json` (replacing the outline) and update `scripts/validate_plugin_patterns.go` to enforce mandatory fields/extension hooks directly from the contract.
+    - [ ] Emit canonical fixtures from the schema under `testutil/fixtures/entity-model`, then load them into SQLite/Postgres adapters during CI to hit ≥95% invariant coverage and prove storage parity.
+    - [ ] Wire the generated Postgres/SQLite DDL into their adapters/migration flows and add a round-trip smoke test (apply migrations, run `entity-model-diff`, verify ERD) so code can’t diverge from stored schemas.
+    - [ ] Map every schema-declared invariant (housing capacity, protocol subject cap, lineage integrity, lifecycle transition, protocol coverage) to a concrete rule handler in `internal/core` and fail validation when a schema entry lacks an implementation.
+    - [ ] Ensure OpenAPI handlers/clients consume `docs/schema/openapi/entity-model.yaml`; add a CI guard that regenerates and diffs the components so stale DTOs fail `make lint`.
 - [x] Wire entity-model tooling into workflows
   - [x] Make `make entity-model-validate` runnable and execute it from `make lint` so schema drift fails fast.
   - [x] Extend `entity-model-generate`/`entity-model-verify` placeholders into real generators plus a pre-commit hook so CI and contributors run the same checks and outputs (Go/OpenAPI/SQL/ERD now generated; pre-commit hook runs `make lint` → `entity-model-verify`).

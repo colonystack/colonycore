@@ -158,11 +158,11 @@ type baseView struct {
 	updatedAt time.Time
 }
 
-func newBaseView(base domain.Base) baseView {
+func newBaseView(id string, createdAt, updatedAt time.Time) baseView {
 	return baseView{
-		id:        base.ID,
-		createdAt: base.CreatedAt,
-		updatedAt: base.UpdatedAt,
+		id:        id,
+		createdAt: createdAt,
+		updatedAt: updatedAt,
 	}
 }
 
@@ -195,7 +195,7 @@ func newOrganismView(org domain.Organism) organismView {
 	extSet := pluginapi.NewExtensionSet(container.Raw())
 	corePayload := org.CoreAttributesPayload().Map()
 	return organismView{
-		baseView:       newBaseView(org.Base),
+		baseView:       newBaseView(org.ID, org.CreatedAt, org.UpdatedAt),
 		name:           org.Name,
 		species:        org.Species,
 		line:           org.Line,
@@ -303,7 +303,7 @@ type housingUnitView struct {
 
 func newHousingUnitView(unit domain.HousingUnit) housingUnitView {
 	return housingUnitView{
-		baseView:    newBaseView(unit.Base),
+		baseView:    newBaseView(unit.ID, unit.CreatedAt, unit.UpdatedAt),
 		name:        unit.Name,
 		facilityID:  unit.FacilityID,
 		capacity:    unit.Capacity,
@@ -402,7 +402,7 @@ func newFacilityView(facility domain.Facility) facilityView {
 	extSet := pluginapi.NewExtensionSet(container.Raw())
 	baselines := facility.EnvironmentBaselinesPayload().Map()
 	return facilityView{
-		baseView:       newBaseView(facility.Base),
+		baseView:       newBaseView(facility.ID, facility.CreatedAt, facility.UpdatedAt),
 		code:           facility.Code,
 		name:           facility.Name,
 		zone:           facility.Zone,
@@ -489,7 +489,7 @@ type treatmentView struct {
 
 func newTreatmentView(treatment domain.Treatment) treatmentView {
 	return treatmentView{
-		baseView:          newBaseView(treatment.Base),
+		baseView:          newBaseView(treatment.ID, treatment.CreatedAt, treatment.UpdatedAt),
 		name:              treatment.Name,
 		procedureID:       treatment.ProcedureID,
 		organismIDs:       cloneStringSlice(treatment.OrganismIDs),
@@ -546,7 +546,7 @@ func newObservationView(observation domain.Observation) observationView {
 	extSet := pluginapi.NewExtensionSet(container.Raw())
 	coreData := observation.ObservationDataPayload().Map()
 	return observationView{
-		baseView:    newBaseView(observation.Base),
+		baseView:    newBaseView(observation.ID, observation.CreatedAt, observation.UpdatedAt),
 		procedureID: cloneOptionalString(observation.ProcedureID),
 		organismID:  cloneOptionalString(observation.OrganismID),
 		cohortID:    cloneOptionalString(observation.CohortID),
@@ -635,7 +635,7 @@ func newSampleView(sample domain.Sample) sampleView {
 	extSet := pluginapi.NewExtensionSet(container.Raw())
 	corePayload := sample.SampleAttributesPayload().Map()
 	return sampleView{
-		baseView:        newBaseView(sample.Base),
+		baseView:        newBaseView(sample.ID, sample.CreatedAt, sample.UpdatedAt),
 		identifier:      sample.Identifier,
 		sourceType:      sample.SourceType,
 		organismID:      cloneOptionalString(sample.OrganismID),
@@ -733,7 +733,7 @@ type protocolView struct {
 
 func newProtocolView(protocol domain.Protocol) protocolView {
 	return protocolView{
-		baseView:    newBaseView(protocol.Base),
+		baseView:    newBaseView(protocol.ID, protocol.CreatedAt, protocol.UpdatedAt),
 		code:        protocol.Code,
 		title:       protocol.Title,
 		description: cloneOptionalString(protocol.Description),
@@ -801,7 +801,7 @@ type permitView struct {
 
 func newPermitView(permit domain.Permit) permitView {
 	return permitView{
-		baseView:          newBaseView(permit.Base),
+		baseView:          newBaseView(permit.ID, permit.CreatedAt, permit.UpdatedAt),
 		permitNumber:      permit.PermitNumber,
 		authority:         permit.Authority,
 		status:            string(permit.Status),
@@ -872,7 +872,7 @@ type projectView struct {
 
 func newProjectView(project domain.Project) projectView {
 	return projectView{
-		baseView:    newBaseView(project.Base),
+		baseView:    newBaseView(project.ID, project.CreatedAt, project.UpdatedAt),
 		code:        project.Code,
 		title:       project.Title,
 		description: cloneOptionalString(project.Description),
@@ -916,7 +916,7 @@ func newSupplyItemView(item domain.SupplyItem) supplyItemView {
 	extSet := pluginapi.NewExtensionSet(container.Raw())
 	corePayload := item.SupplyAttributesPayload().Map()
 	return supplyItemView{
-		baseView:       newBaseView(item.Base),
+		baseView:       newBaseView(item.ID, item.CreatedAt, item.UpdatedAt),
 		sku:            item.SKU,
 		name:           item.Name,
 		description:    cloneOptionalString(item.Description),

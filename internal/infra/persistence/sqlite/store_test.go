@@ -2,6 +2,7 @@ package sqlite
 
 import (
 	"colonycore/pkg/domain"
+	entitymodel "colonycore/pkg/domain/entitymodel"
 	"context"
 	"path/filepath"
 	"testing"
@@ -15,7 +16,7 @@ func TestSQLiteStorePersistAndReloadReduced(t *testing.T) {
 		t.Skipf("sqlite unavailable: %v", err)
 	}
 	if _, err := store.RunInTransaction(context.Background(), func(tx domain.Transaction) error {
-		_, e := tx.CreateOrganism(domain.Organism{Name: "Persist"})
+		_, e := tx.CreateOrganism(domain.Organism{Organism: entitymodel.Organism{Name: "Persist"}})
 		return e
 	}); err != nil {
 		t.Fatalf("create: %v", err)

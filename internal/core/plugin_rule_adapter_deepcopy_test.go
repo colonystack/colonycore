@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"colonycore/pkg/domain"
+	entitymodel "colonycore/pkg/domain/entitymodel"
 )
 
 // TestOrganismViewAttributesDeepCopy ensures that nested reference types returned
@@ -72,7 +73,9 @@ func TestOrganismViewAttributesDeepCopy(t *testing.T) {
 // domainOrganismFixture provides a minimal domain.Organism; replaced if a helper exists.
 func domainOrganismFixture() domain.Organism {
 	now := time.Now().UTC()
-	return domain.Organism{Base: domain.Base{ID: "o1", CreatedAt: now, UpdatedAt: now}}
+	return domain.Organism{Organism: entitymodel.Organism{ID: "o1",
+		CreatedAt: now,
+		UpdatedAt: now}}
 }
 
 func TestCoreAttributesHelperClone(t *testing.T) {

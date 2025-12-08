@@ -2,6 +2,7 @@ package sqlite
 
 import (
 	"colonycore/pkg/domain"
+	entitymodel "colonycore/pkg/domain/entitymodel"
 	"context"
 	"fmt"
 	"testing"
@@ -13,27 +14,27 @@ func TestMemStoreDeleteStrainGuardsSQLite(t *testing.T) {
 	ctx := context.Background()
 
 	if _, err := store.RunInTransaction(ctx, func(tx domain.Transaction) error {
-		marker, err := tx.CreateGenotypeMarker(domain.GenotypeMarker{Name: "Marker", Locus: "loc", Alleles: []string{"A"}, AssayMethod: "PCR", Interpretation: "ctrl", Version: "v1"})
+		marker, err := tx.CreateGenotypeMarker(domain.GenotypeMarker{GenotypeMarker: entitymodel.GenotypeMarker{Name: "Marker", Locus: "loc", Alleles: []string{"A"}, AssayMethod: "PCR", Interpretation: "ctrl", Version: "v1"}})
 		if err != nil {
 			return err
 		}
-		line, err := tx.CreateLine(domain.Line{Code: "L-guard", Name: "Line", GenotypeMarkerIDs: []string{marker.ID}})
+		line, err := tx.CreateLine(domain.Line{Line: entitymodel.Line{Code: "L-guard", Name: "Line", GenotypeMarkerIDs: []string{marker.ID}}})
 		if err != nil {
 			return err
 		}
-		strain, err := tx.CreateStrain(domain.Strain{Code: "S-guard", Name: "Strain", LineID: line.ID, GenotypeMarkerIDs: []string{marker.ID}})
+		strain, err := tx.CreateStrain(domain.Strain{Strain: entitymodel.Strain{Code: "S-guard", Name: "Strain", LineID: line.ID, GenotypeMarkerIDs: []string{marker.ID}}})
 		if err != nil {
 			return err
 		}
-		organism, err := tx.CreateOrganism(domain.Organism{Name: "Org", Species: "Spec", StrainID: &strain.ID})
+		organism, err := tx.CreateOrganism(domain.Organism{Organism: entitymodel.Organism{Name: "Org", Species: "Spec", StrainID: &strain.ID}})
 		if err != nil {
 			return err
 		}
-		breedingPrimary, err := tx.CreateBreedingUnit(domain.BreedingUnit{Name: "Breed-primary", Strategy: "pair", StrainID: &strain.ID})
+		breedingPrimary, err := tx.CreateBreedingUnit(domain.BreedingUnit{BreedingUnit: entitymodel.BreedingUnit{Name: "Breed-primary", Strategy: "pair", StrainID: &strain.ID}})
 		if err != nil {
 			return err
 		}
-		breedingTarget, err := tx.CreateBreedingUnit(domain.BreedingUnit{Name: "Breed-target", Strategy: "pair", TargetStrainID: &strain.ID})
+		breedingTarget, err := tx.CreateBreedingUnit(domain.BreedingUnit{BreedingUnit: entitymodel.BreedingUnit{Name: "Breed-target", Strategy: "pair", TargetStrainID: &strain.ID}})
 		if err != nil {
 			return err
 		}
@@ -52,7 +53,7 @@ func TestMemStoreDeleteStrainGuardsSQLite(t *testing.T) {
 			return fmt.Errorf("expected delete to fail while breeding strain reference present")
 		}
 
-		targetOnly, err := tx.CreateBreedingUnit(domain.BreedingUnit{Name: "Breed-target-only", Strategy: "pair", TargetStrainID: &strain.ID})
+		targetOnly, err := tx.CreateBreedingUnit(domain.BreedingUnit{BreedingUnit: entitymodel.BreedingUnit{Name: "Breed-target-only", Strategy: "pair", TargetStrainID: &strain.ID}})
 		if err != nil {
 			return err
 		}
@@ -77,15 +78,15 @@ func TestMemStoreDeleteLineGuardsSQLite(t *testing.T) {
 	ctx := context.Background()
 
 	if _, err := store.RunInTransaction(ctx, func(tx domain.Transaction) error {
-		marker, err := tx.CreateGenotypeMarker(domain.GenotypeMarker{Name: "LineMarker", Locus: "loc", Alleles: []string{"A"}, AssayMethod: "PCR", Interpretation: "ctrl", Version: "v1"})
+		marker, err := tx.CreateGenotypeMarker(domain.GenotypeMarker{GenotypeMarker: entitymodel.GenotypeMarker{Name: "LineMarker", Locus: "loc", Alleles: []string{"A"}, AssayMethod: "PCR", Interpretation: "ctrl", Version: "v1"}})
 		if err != nil {
 			return err
 		}
-		line, err := tx.CreateLine(domain.Line{Code: "L-line-guard", Name: "Line", GenotypeMarkerIDs: []string{marker.ID}})
+		line, err := tx.CreateLine(domain.Line{Line: entitymodel.Line{Code: "L-line-guard", Name: "Line", GenotypeMarkerIDs: []string{marker.ID}}})
 		if err != nil {
 			return err
 		}
-		breedingLine, err := tx.CreateBreedingUnit(domain.BreedingUnit{Name: "BreedLine", Strategy: "pair", LineID: &line.ID})
+		breedingLine, err := tx.CreateBreedingUnit(domain.BreedingUnit{BreedingUnit: entitymodel.BreedingUnit{Name: "BreedLine", Strategy: "pair", LineID: &line.ID}})
 		if err != nil {
 			return err
 		}
@@ -96,7 +97,7 @@ func TestMemStoreDeleteLineGuardsSQLite(t *testing.T) {
 			return err
 		}
 
-		breedingTarget, err := tx.CreateBreedingUnit(domain.BreedingUnit{Name: "BreedTargetLine", Strategy: "pair", TargetLineID: &line.ID})
+		breedingTarget, err := tx.CreateBreedingUnit(domain.BreedingUnit{BreedingUnit: entitymodel.BreedingUnit{Name: "BreedTargetLine", Strategy: "pair", TargetLineID: &line.ID}})
 		if err != nil {
 			return err
 		}
@@ -107,7 +108,7 @@ func TestMemStoreDeleteLineGuardsSQLite(t *testing.T) {
 			return err
 		}
 
-		organism, err := tx.CreateOrganism(domain.Organism{Name: "Org", Species: "Spec", LineID: &line.ID})
+		organism, err := tx.CreateOrganism(domain.Organism{Organism: entitymodel.Organism{Name: "Org", Species: "Spec", LineID: &line.ID}})
 		if err != nil {
 			return err
 		}
@@ -130,16 +131,15 @@ func TestMemStoreUpdateSampleGuardsSQLite(t *testing.T) {
 	now := time.Now().UTC()
 
 	if _, err := store.RunInTransaction(ctx, func(tx domain.Transaction) error {
-		facility, err := tx.CreateFacility(domain.Facility{Name: "Lab"})
+		facility, err := tx.CreateFacility(domain.Facility{Facility: entitymodel.Facility{Name: "Lab"}})
 		if err != nil {
 			return err
 		}
-		organism, err := tx.CreateOrganism(domain.Organism{Name: "Subject", Species: "Spec"})
+		organism, err := tx.CreateOrganism(domain.Organism{Organism: entitymodel.Organism{Name: "Subject", Species: "Spec"}})
 		if err != nil {
 			return err
 		}
-		sample, err := tx.CreateSample(domain.Sample{
-			Identifier:      "S-guard",
+		sample, err := tx.CreateSample(domain.Sample{Sample: entitymodel.Sample{Identifier: "S-guard",
 			SourceType:      "organism",
 			OrganismID:      &organism.ID,
 			FacilityID:      facility.ID,
@@ -150,7 +150,7 @@ func TestMemStoreUpdateSampleGuardsSQLite(t *testing.T) {
 				Actor:     "tech",
 				Location:  "cold",
 				Timestamp: now,
-			}},
+			}}},
 		})
 		if err != nil {
 			return err
@@ -217,19 +217,19 @@ func TestMemStoreUpdateTreatmentGuardsSQLite(t *testing.T) {
 	now := time.Now().UTC()
 
 	if _, err := store.RunInTransaction(ctx, func(tx domain.Transaction) error {
-		protocol, err := tx.CreateProtocol(domain.Protocol{Code: "P-guard", Title: "Protocol", MaxSubjects: 1})
+		protocol, err := tx.CreateProtocol(domain.Protocol{Protocol: entitymodel.Protocol{Code: "P-guard", Title: "Protocol", MaxSubjects: 1}})
 		if err != nil {
 			return err
 		}
-		procedure, err := tx.CreateProcedure(domain.Procedure{Name: "Proc", Status: domain.ProcedureStatusScheduled, ScheduledAt: now, ProtocolID: protocol.ID})
+		procedure, err := tx.CreateProcedure(domain.Procedure{Procedure: entitymodel.Procedure{Name: "Proc", Status: domain.ProcedureStatusScheduled, ScheduledAt: now, ProtocolID: protocol.ID}})
 		if err != nil {
 			return err
 		}
-		organism, err := tx.CreateOrganism(domain.Organism{Name: "Org", Species: "Spec"})
+		organism, err := tx.CreateOrganism(domain.Organism{Organism: entitymodel.Organism{Name: "Org", Species: "Spec"}})
 		if err != nil {
 			return err
 		}
-		treatment, err := tx.CreateTreatment(domain.Treatment{Base: domain.Base{ID: "treat-guard"}, Name: "Treat", Status: domain.TreatmentStatusPlanned, ProcedureID: procedure.ID, OrganismIDs: []string{organism.ID}})
+		treatment, err := tx.CreateTreatment(domain.Treatment{Treatment: entitymodel.Treatment{ID: "treat-guard", Name: "Treat", Status: domain.TreatmentStatusPlanned, ProcedureID: procedure.ID, OrganismIDs: []string{organism.ID}}})
 		if err != nil {
 			return err
 		}
@@ -276,24 +276,24 @@ func TestMemStoreUpdateObservationGuardsSQLite(t *testing.T) {
 	now := time.Now().UTC()
 
 	if _, err := store.RunInTransaction(ctx, func(tx domain.Transaction) error {
-		protocol, err := tx.CreateProtocol(domain.Protocol{Code: "OBS-PROT", Title: "Protocol", MaxSubjects: 1})
+		protocol, err := tx.CreateProtocol(domain.Protocol{Protocol: entitymodel.Protocol{Code: "OBS-PROT", Title: "Protocol", MaxSubjects: 1}})
 		if err != nil {
 			return err
 		}
-		procedure, err := tx.CreateProcedure(domain.Procedure{Name: "ObsProc", Status: domain.ProcedureStatusScheduled, ScheduledAt: now, ProtocolID: protocol.ID})
+		procedure, err := tx.CreateProcedure(domain.Procedure{Procedure: entitymodel.Procedure{Name: "ObsProc", Status: domain.ProcedureStatusScheduled, ScheduledAt: now, ProtocolID: protocol.ID}})
 		if err != nil {
 			return err
 		}
-		organism, err := tx.CreateOrganism(domain.Organism{Name: "ObsOrg", Species: "Spec"})
+		organism, err := tx.CreateOrganism(domain.Organism{Organism: entitymodel.Organism{Name: "ObsOrg", Species: "Spec"}})
 		if err != nil {
 			return err
 		}
-		cohort, err := tx.CreateCohort(domain.Cohort{Name: "ObsCohort"})
+		cohort, err := tx.CreateCohort(domain.Cohort{Cohort: entitymodel.Cohort{Name: "ObsCohort"}})
 		if err != nil {
 			return err
 		}
 
-		observation, err := tx.CreateObservation(domain.Observation{Base: domain.Base{ID: "obs-guard"}, ProcedureID: &procedure.ID, RecordedAt: now, Observer: "tech"})
+		observation, err := tx.CreateObservation(domain.Observation{Observation: entitymodel.Observation{ID: "obs-guard", ProcedureID: &procedure.ID, RecordedAt: now, Observer: "tech"}})
 		if err != nil {
 			return err
 		}
@@ -365,20 +365,19 @@ func TestMemStoreDeleteOrganismAndCohortGuardsSQLite(t *testing.T) {
 	now := time.Now().UTC()
 
 	if _, err := store.RunInTransaction(ctx, func(tx domain.Transaction) error {
-		facility, err := tx.CreateFacility(domain.Facility{Name: "Lab"})
+		facility, err := tx.CreateFacility(domain.Facility{Facility: entitymodel.Facility{Name: "Lab"}})
 		if err != nil {
 			return err
 		}
-		cohort, err := tx.CreateCohort(domain.Cohort{Name: "Cohort"})
+		cohort, err := tx.CreateCohort(domain.Cohort{Cohort: entitymodel.Cohort{Name: "Cohort"}})
 		if err != nil {
 			return err
 		}
-		organism, err := tx.CreateOrganism(domain.Organism{Name: "Org", Species: "Spec"})
+		organism, err := tx.CreateOrganism(domain.Organism{Organism: entitymodel.Organism{Name: "Org", Species: "Spec"}})
 		if err != nil {
 			return err
 		}
-		sample, err := tx.CreateSample(domain.Sample{
-			Identifier:      "S-org",
+		sample, err := tx.CreateSample(domain.Sample{Sample: entitymodel.Sample{Identifier: "S-org",
 			SourceType:      "organism",
 			OrganismID:      &organism.ID,
 			CohortID:        &cohort.ID,
@@ -390,7 +389,7 @@ func TestMemStoreDeleteOrganismAndCohortGuardsSQLite(t *testing.T) {
 				Actor:     "tech",
 				Location:  "cold",
 				Timestamp: now,
-			}},
+			}}},
 		})
 		if err != nil {
 			return err
@@ -418,10 +417,10 @@ func TestMemStoreDeleteOrganismAndCohortGuardsSQLite(t *testing.T) {
 func TestMemStoreCreateStrainGuardsSQLite(t *testing.T) {
 	store := newMemStore(nil)
 	if _, err := store.RunInTransaction(context.Background(), func(tx domain.Transaction) error {
-		if _, err := tx.CreateStrain(domain.Strain{Code: "S-missing", Name: "Strain"}); err == nil {
+		if _, err := tx.CreateStrain(domain.Strain{Strain: entitymodel.Strain{Code: "S-missing", Name: "Strain"}}); err == nil {
 			return fmt.Errorf("expected missing line id error")
 		}
-		if _, err := tx.CreateStrain(domain.Strain{Code: "S-missing-line", Name: "Strain", LineID: "missing"}); err == nil {
+		if _, err := tx.CreateStrain(domain.Strain{Strain: entitymodel.Strain{Code: "S-missing-line", Name: "Strain", LineID: "missing"}}); err == nil {
 			return fmt.Errorf("expected missing line reference error")
 		}
 		return nil

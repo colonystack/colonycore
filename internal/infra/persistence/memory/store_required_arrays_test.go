@@ -2,6 +2,7 @@ package memory
 
 import (
 	"colonycore/pkg/domain"
+	entitymodel "colonycore/pkg/domain/entitymodel"
 	"context"
 	"strings"
 	"testing"
@@ -12,14 +13,14 @@ func TestLineRequiresGenotypeMarkers(t *testing.T) {
 	store := NewStore(nil)
 	ctx := context.Background()
 	if _, err := store.RunInTransaction(ctx, func(tx domain.Transaction) error {
-		marker, err := tx.CreateGenotypeMarker(domain.GenotypeMarker{Name: "m1", Locus: "loc1", Alleles: []string{"A"}, AssayMethod: "pcr", Interpretation: "ok", Version: "v1"})
+		marker, err := tx.CreateGenotypeMarker(domain.GenotypeMarker{GenotypeMarker: entitymodel.GenotypeMarker{Name: "m1", Locus: "loc1", Alleles: []string{"A"}, AssayMethod: "pcr", Interpretation: "ok", Version: "v1"}})
 		if err != nil {
 			return err
 		}
-		if _, err := tx.CreateLine(domain.Line{Code: "L-empty", Name: "Line", Origin: "lab"}); err == nil {
+		if _, err := tx.CreateLine(domain.Line{Line: entitymodel.Line{Code: "L-empty", Name: "Line", Origin: "lab"}}); err == nil {
 			t.Fatalf("expected error for missing genotype markers")
 		}
-		line, err := tx.CreateLine(domain.Line{Code: "L-one", Name: "Line", Origin: "lab", GenotypeMarkerIDs: []string{marker.ID}})
+		line, err := tx.CreateLine(domain.Line{Line: entitymodel.Line{Code: "L-one", Name: "Line", Origin: "lab", GenotypeMarkerIDs: []string{marker.ID}}})
 		if err != nil {
 			return err
 		}
@@ -40,25 +41,24 @@ func TestPermitRequiresRequiredArrays(t *testing.T) {
 	ctx := context.Background()
 	now := time.Now()
 	if _, err := store.RunInTransaction(ctx, func(tx domain.Transaction) error {
-		facility, err := tx.CreateFacility(domain.Facility{Name: "Facility"})
+		facility, err := tx.CreateFacility(domain.Facility{Facility: entitymodel.Facility{Name: "Facility"}})
 		if err != nil {
 			return err
 		}
-		protocol, err := tx.CreateProtocol(domain.Protocol{Code: "P-1", Title: "Protocol", MaxSubjects: 5})
+		protocol, err := tx.CreateProtocol(domain.Protocol{Protocol: entitymodel.Protocol{Code: "P-1", Title: "Protocol", MaxSubjects: 5}})
 		if err != nil {
 			return err
 		}
-		if _, err := tx.CreatePermit(domain.Permit{PermitNumber: "PERM-0", Authority: "Auth", ValidFrom: now, ValidUntil: now.Add(time.Hour), FacilityIDs: []string{facility.ID}, ProtocolIDs: []string{protocol.ID}}); err == nil {
+		if _, err := tx.CreatePermit(domain.Permit{Permit: entitymodel.Permit{PermitNumber: "PERM-0", Authority: "Auth", ValidFrom: now, ValidUntil: now.Add(time.Hour), FacilityIDs: []string{facility.ID}, ProtocolIDs: []string{protocol.ID}}}); err == nil {
 			t.Fatalf("expected error for missing allowed activities")
 		}
-		permit, err := tx.CreatePermit(domain.Permit{
-			PermitNumber:      "PERM-1",
+		permit, err := tx.CreatePermit(domain.Permit{Permit: entitymodel.Permit{PermitNumber: "PERM-1",
 			Authority:         "Auth",
 			ValidFrom:         now,
 			ValidUntil:        now.Add(time.Hour),
 			AllowedActivities: []string{"store"},
 			FacilityIDs:       []string{facility.ID},
-			ProtocolIDs:       []string{protocol.ID},
+			ProtocolIDs:       []string{protocol.ID}},
 		})
 		if err != nil {
 			return err
@@ -91,14 +91,14 @@ func TestProjectRequiresFacilities(t *testing.T) {
 	store := NewStore(nil)
 	ctx := context.Background()
 	if _, err := store.RunInTransaction(ctx, func(tx domain.Transaction) error {
-		if _, err := tx.CreateProject(domain.Project{Code: "PRJ-0", Title: "Empty"}); err == nil {
+		if _, err := tx.CreateProject(domain.Project{Project: entitymodel.Project{Code: "PRJ-0", Title: "Empty"}}); err == nil {
 			t.Fatalf("expected error for missing facility_ids")
 		}
-		facility, err := tx.CreateFacility(domain.Facility{Name: "Facility"})
+		facility, err := tx.CreateFacility(domain.Facility{Facility: entitymodel.Facility{Name: "Facility"}})
 		if err != nil {
 			return err
 		}
-		project, err := tx.CreateProject(domain.Project{Code: "PRJ-1", Title: "Project", FacilityIDs: []string{facility.ID}})
+		project, err := tx.CreateProject(domain.Project{Project: entitymodel.Project{Code: "PRJ-1", Title: "Project", FacilityIDs: []string{facility.ID}}})
 		if err != nil {
 			return err
 		}
@@ -118,25 +118,24 @@ func TestSupplyRequiresFacilitiesAndProjects(t *testing.T) {
 	store := NewStore(nil)
 	ctx := context.Background()
 	if _, err := store.RunInTransaction(ctx, func(tx domain.Transaction) error {
-		facility, err := tx.CreateFacility(domain.Facility{Name: "Facility"})
+		facility, err := tx.CreateFacility(domain.Facility{Facility: entitymodel.Facility{Name: "Facility"}})
 		if err != nil {
 			return err
 		}
-		project, err := tx.CreateProject(domain.Project{Code: "PRJ-S", Title: "Project", FacilityIDs: []string{facility.ID}})
+		project, err := tx.CreateProject(domain.Project{Project: entitymodel.Project{Code: "PRJ-S", Title: "Project", FacilityIDs: []string{facility.ID}}})
 		if err != nil {
 			return err
 		}
-		if _, err := tx.CreateSupplyItem(domain.SupplyItem{SKU: "SKU-1", Name: "Item", QuantityOnHand: 1, Unit: "u", FacilityIDs: []string{facility.ID}}); err == nil {
+		if _, err := tx.CreateSupplyItem(domain.SupplyItem{SupplyItem: entitymodel.SupplyItem{SKU: "SKU-1", Name: "Item", QuantityOnHand: 1, Unit: "u", FacilityIDs: []string{facility.ID}}}); err == nil {
 			t.Fatalf("expected error for missing project_ids")
 		}
-		item, err := tx.CreateSupplyItem(domain.SupplyItem{
-			SKU:            "SKU-2",
+		item, err := tx.CreateSupplyItem(domain.SupplyItem{SupplyItem: entitymodel.SupplyItem{SKU: "SKU-2",
 			Name:           "Item",
 			QuantityOnHand: 1,
 			Unit:           "u",
 			FacilityIDs:    []string{facility.ID},
 			ProjectIDs:     []string{project.ID},
-			ReorderLevel:   1,
+			ReorderLevel:   1},
 		})
 		if err != nil {
 			return err
@@ -164,28 +163,26 @@ func TestSampleRequiresChainOfCustody(t *testing.T) {
 	ctx := context.Background()
 	now := time.Now()
 	if _, err := store.RunInTransaction(ctx, func(tx domain.Transaction) error {
-		facility, err := tx.CreateFacility(domain.Facility{Name: "Facility"})
+		facility, err := tx.CreateFacility(domain.Facility{Facility: entitymodel.Facility{Name: "Facility"}})
 		if err != nil {
 			return err
 		}
-		org, err := tx.CreateOrganism(domain.Organism{Name: "Specimen", Species: "sp"})
+		org, err := tx.CreateOrganism(domain.Organism{Organism: entitymodel.Organism{Name: "Specimen", Species: "sp"}})
 		if err != nil {
 			return err
 		}
-		if _, err := tx.CreateSample(domain.Sample{
-			Identifier:      "S-0",
+		if _, err := tx.CreateSample(domain.Sample{Sample: entitymodel.Sample{Identifier: "S-0",
 			SourceType:      "blood",
 			OrganismID:      &org.ID,
 			FacilityID:      facility.ID,
 			CollectedAt:     now,
 			Status:          domain.SampleStatusStored,
 			StorageLocation: "loc",
-			AssayType:       "assay",
+			AssayType:       "assay"},
 		}); err == nil {
 			t.Fatalf("expected error for missing chain of custody")
 		}
-		sample, err := tx.CreateSample(domain.Sample{
-			Identifier:      "S-1",
+		sample, err := tx.CreateSample(domain.Sample{Sample: entitymodel.Sample{Identifier: "S-1",
 			SourceType:      "blood",
 			OrganismID:      &org.ID,
 			FacilityID:      facility.ID,
@@ -197,7 +194,7 @@ func TestSampleRequiresChainOfCustody(t *testing.T) {
 				Actor:     "tech",
 				Location:  "loc",
 				Timestamp: now,
-			}},
+			}}},
 		})
 		if err != nil {
 			return err

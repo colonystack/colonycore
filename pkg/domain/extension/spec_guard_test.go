@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"colonycore/pkg/domain"
+	entitymodel "colonycore/pkg/domain/entitymodel"
 	domainext "colonycore/pkg/domain/extension"
 )
 
@@ -18,22 +19,134 @@ func TestHookSpecsReferenceExistingMembers(t *testing.T) {
 		value reflect.Type
 		ptr   reflect.Type
 	}{
-		"Organism":       {value: reflect.TypeOf(domain.Organism{}), ptr: reflect.TypeOf(&domain.Organism{})},
-		"Cohort":         {value: reflect.TypeOf(domain.Cohort{}), ptr: reflect.TypeOf(&domain.Cohort{})},
-		"HousingUnit":    {value: reflect.TypeOf(domain.HousingUnit{}), ptr: reflect.TypeOf(&domain.HousingUnit{})},
-		"Facility":       {value: reflect.TypeOf(domain.Facility{}), ptr: reflect.TypeOf(&domain.Facility{})},
-		"BreedingUnit":   {value: reflect.TypeOf(domain.BreedingUnit{}), ptr: reflect.TypeOf(&domain.BreedingUnit{})},
-		"Line":           {value: reflect.TypeOf(domain.Line{}), ptr: reflect.TypeOf(&domain.Line{})},
-		"Strain":         {value: reflect.TypeOf(domain.Strain{}), ptr: reflect.TypeOf(&domain.Strain{})},
-		"GenotypeMarker": {value: reflect.TypeOf(domain.GenotypeMarker{}), ptr: reflect.TypeOf(&domain.GenotypeMarker{})},
-		"Procedure":      {value: reflect.TypeOf(domain.Procedure{}), ptr: reflect.TypeOf(&domain.Procedure{})},
-		"Treatment":      {value: reflect.TypeOf(domain.Treatment{}), ptr: reflect.TypeOf(&domain.Treatment{})},
-		"Observation":    {value: reflect.TypeOf(domain.Observation{}), ptr: reflect.TypeOf(&domain.Observation{})},
-		"Sample":         {value: reflect.TypeOf(domain.Sample{}), ptr: reflect.TypeOf(&domain.Sample{})},
-		"Protocol":       {value: reflect.TypeOf(domain.Protocol{}), ptr: reflect.TypeOf(&domain.Protocol{})},
-		"Permit":         {value: reflect.TypeOf(domain.Permit{}), ptr: reflect.TypeOf(&domain.Permit{})},
-		"Project":        {value: reflect.TypeOf(domain.Project{}), ptr: reflect.TypeOf(&domain.Project{})},
-		"SupplyItem":     {value: reflect.TypeOf(domain.SupplyItem{}), ptr: reflect.TypeOf(&domain.SupplyItem{})},
+		"Organism": {
+			value: reflect.TypeOf(domain.Organism{
+				Organism: entitymodel.Organism{},
+			}),
+			ptr: reflect.TypeOf(&domain.Organism{
+				Organism: entitymodel.Organism{},
+			}),
+		},
+		"Cohort": {
+			value: reflect.TypeOf(domain.Cohort{
+				Cohort: entitymodel.Cohort{},
+			}),
+			ptr: reflect.TypeOf(&domain.Cohort{
+				Cohort: entitymodel.Cohort{},
+			}),
+		},
+		"HousingUnit": {
+			value: reflect.TypeOf(domain.HousingUnit{
+				HousingUnit: entitymodel.HousingUnit{},
+			}),
+			ptr: reflect.TypeOf(&domain.HousingUnit{
+				HousingUnit: entitymodel.HousingUnit{},
+			}),
+		},
+		"Facility": {
+			value: reflect.TypeOf(domain.Facility{
+				Facility: entitymodel.Facility{},
+			}),
+			ptr: reflect.TypeOf(&domain.Facility{
+				Facility: entitymodel.Facility{},
+			}),
+		},
+		"BreedingUnit": {
+			value: reflect.TypeOf(domain.BreedingUnit{
+				BreedingUnit: entitymodel.BreedingUnit{},
+			}),
+			ptr: reflect.TypeOf(&domain.BreedingUnit{
+				BreedingUnit: entitymodel.BreedingUnit{},
+			}),
+		},
+		"Line": {
+			value: reflect.TypeOf(domain.Line{
+				Line: entitymodel.Line{},
+			}),
+			ptr: reflect.TypeOf(&domain.Line{
+				Line: entitymodel.Line{},
+			}),
+		},
+		"Strain": {
+			value: reflect.TypeOf(domain.Strain{
+				Strain: entitymodel.Strain{},
+			}),
+			ptr: reflect.TypeOf(&domain.Strain{
+				Strain: entitymodel.Strain{},
+			}),
+		},
+		"GenotypeMarker": {
+			value: reflect.TypeOf(domain.GenotypeMarker{
+				GenotypeMarker: entitymodel.GenotypeMarker{},
+			}),
+			ptr: reflect.TypeOf(&domain.GenotypeMarker{
+				GenotypeMarker: entitymodel.GenotypeMarker{},
+			}),
+		},
+		"Procedure": {
+			value: reflect.TypeOf(domain.Procedure{
+				Procedure: entitymodel.Procedure{},
+			}),
+			ptr: reflect.TypeOf(&domain.Procedure{
+				Procedure: entitymodel.Procedure{},
+			}),
+		},
+		"Treatment": {
+			value: reflect.TypeOf(domain.Treatment{
+				Treatment: entitymodel.Treatment{},
+			}),
+			ptr: reflect.TypeOf(&domain.Treatment{
+				Treatment: entitymodel.Treatment{},
+			}),
+		},
+		"Observation": {
+			value: reflect.TypeOf(domain.Observation{
+				Observation: entitymodel.Observation{},
+			}),
+			ptr: reflect.TypeOf(&domain.Observation{
+				Observation: entitymodel.Observation{},
+			}),
+		},
+		"Sample": {
+			value: reflect.TypeOf(domain.Sample{
+				Sample: entitymodel.Sample{},
+			}),
+			ptr: reflect.TypeOf(&domain.Sample{
+				Sample: entitymodel.Sample{},
+			}),
+		},
+		"Protocol": {
+			value: reflect.TypeOf(domain.Protocol{
+				Protocol: entitymodel.Protocol{},
+			}),
+			ptr: reflect.TypeOf(&domain.Protocol{
+				Protocol: entitymodel.Protocol{},
+			}),
+		},
+		"Permit": {
+			value: reflect.TypeOf(domain.Permit{
+				Permit: entitymodel.Permit{},
+			}),
+			ptr: reflect.TypeOf(&domain.Permit{
+				Permit: entitymodel.Permit{},
+			}),
+		},
+		"Project": {
+			value: reflect.TypeOf(domain.Project{
+				Project: entitymodel.Project{},
+			}),
+			ptr: reflect.TypeOf(&domain.Project{
+				Project: entitymodel.Project{},
+			}),
+		},
+		"SupplyItem": {
+			value: reflect.TypeOf(domain.SupplyItem{
+				SupplyItem: entitymodel.SupplyItem{},
+			}),
+			ptr: reflect.TypeOf(&domain.SupplyItem{
+				SupplyItem: entitymodel.SupplyItem{},
+			}),
+		},
 	}
 
 	for _, hook := range domainext.KnownHooks() {

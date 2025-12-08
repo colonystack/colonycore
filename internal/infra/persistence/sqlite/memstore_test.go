@@ -2,6 +2,7 @@ package sqlite
 
 import (
 	"colonycore/pkg/domain"
+	entitymodel "colonycore/pkg/domain/entitymodel"
 	"context"
 	"fmt"
 	"testing"
@@ -37,7 +38,7 @@ func TestMemStoreBasicLifecycle(t *testing.T) {
 		t.Fatalf("expected NowFunc to be initialized")
 	}
 	if _, err := store.RunInTransaction(ctx, func(tx domain.Transaction) error {
-		_, err := tx.CreateOrganism(domain.Organism{Name: "Specimen", Species: "Test"})
+		_, err := tx.CreateOrganism(domain.Organism{Organism: entitymodel.Organism{Name: "Specimen", Species: "Test"}})
 		return err
 	}); err != nil {
 		t.Fatalf("create organism: %v", err)
@@ -60,7 +61,7 @@ func TestMemStoreRuleViolation(t *testing.T) {
 	store := newMemStore(domain.NewRulesEngine())
 	store.RulesEngine().Register(blockingRule{})
 	if _, err := store.RunInTransaction(context.Background(), func(tx domain.Transaction) error {
-		_, e := tx.CreateOrganism(domain.Organism{Name: "Fail"})
+		_, e := tx.CreateOrganism(domain.Organism{Organism: entitymodel.Organism{Name: "Fail"}})
 		return e
 	}); err == nil {
 		t.Fatalf("expected violation error")
@@ -82,16 +83,16 @@ func TestMemStoreCRUDReduced(t *testing.T) {
 	var projectID string
 	const updatedDesc = "updated"
 	if _, err := store.RunInTransaction(ctx, func(tx domain.Transaction) error {
-		facility, err := tx.CreateFacility(domain.Facility{Name: "Project Facility"})
+		facility, err := tx.CreateFacility(domain.Facility{Facility: entitymodel.Facility{Name: "Project Facility"}})
 		if err != nil {
 			return err
 		}
-		proj, err := tx.CreateProject(domain.Project{Code: "PRJ", Title: "Project", FacilityIDs: []string{facility.ID}})
+		proj, err := tx.CreateProject(domain.Project{Project: entitymodel.Project{Code: "PRJ", Title: "Project", FacilityIDs: []string{facility.ID}}})
 		if err != nil {
 			return err
 		}
 		projectID = proj.ID
-		if _, err := tx.CreateOrganism(domain.Organism{Name: "Alpha", Species: "Frog"}); err != nil {
+		if _, err := tx.CreateOrganism(domain.Organism{Organism: entitymodel.Organism{Name: "Alpha", Species: "Frog"}}); err != nil {
 			return err
 		}
 		return nil
@@ -119,11 +120,11 @@ func TestMemStoreProcedureLifecycleReduced(t *testing.T) {
 	ctx := context.Background()
 	now := time.Now().UTC()
 	if _, err := store.RunInTransaction(ctx, func(tx domain.Transaction) error {
-		prot, err := tx.CreateProtocol(domain.Protocol{Code: "P", Title: "Proto", MaxSubjects: 5})
+		prot, err := tx.CreateProtocol(domain.Protocol{Protocol: entitymodel.Protocol{Code: "P", Title: "Proto", MaxSubjects: 5}})
 		if err != nil {
 			return err
 		}
-		_, err = tx.CreateProcedure(domain.Procedure{Name: "Check", Status: domain.ProcedureStatusScheduled, ScheduledAt: now, ProtocolID: prot.ID})
+		_, err = tx.CreateProcedure(domain.Procedure{Procedure: entitymodel.Procedure{Name: "Check", Status: domain.ProcedureStatusScheduled, ScheduledAt: now, ProtocolID: prot.ID}})
 		return err
 	}); err != nil {
 		t.Fatalf("create procedure: %v", err)
@@ -151,46 +152,46 @@ func TestMigrateSnapshotRelationships(t *testing.T) {
 	now := time.Now().UTC()
 
 	organisms := map[string]domain.Organism{
-		"org-1": {Base: domain.Base{ID: "org-1"}, Name: "Org", Species: "Spec"},
+		"org-1": {Organism: entitymodel.Organism{ID: "org-1", Name: "Org", Species: "Spec"}},
 	}
 	cohorts := map[string]domain.Cohort{
-		"cohort-1": {Base: domain.Base{ID: "cohort-1"}, Name: "Cohort"},
+		"cohort-1": {Cohort: entitymodel.Cohort{ID: "cohort-1", Name: "Cohort"}},
 	}
 	protocols := map[string]domain.Protocol{
-		"prot-1": {Base: domain.Base{ID: "prot-1"}, Code: "PR", Title: "Protocol", MaxSubjects: 10, Status: domain.ProtocolStatusApproved},
+		"prot-1": {Protocol: entitymodel.Protocol{ID: "prot-1", Code: "PR", Title: "Protocol", MaxSubjects: 10, Status: domain.ProtocolStatusApproved}},
 	}
 	procedures := map[string]domain.Procedure{
-		"proc-1": {Base: domain.Base{ID: "proc-1"}, Name: "Proc", Status: domain.ProcedureStatusScheduled, ScheduledAt: now, ProtocolID: "prot-1", OrganismIDs: []string{"org-1"}},
+		"proc-1": {Procedure: entitymodel.Procedure{ID: "proc-1", Name: "Proc", Status: domain.ProcedureStatusScheduled, ScheduledAt: now, ProtocolID: "prot-1", OrganismIDs: []string{"org-1"}}},
 	}
 
 	snapshot := Snapshot{
 		Organisms: organisms,
 		Cohorts:   cohorts,
 		Housing: map[string]domain.HousingUnit{
-			"house-1": {Base: domain.Base{ID: "house-1"}, Name: "Housing", FacilityID: "fac-1", Capacity: 2},
+			"house-1": {HousingUnit: entitymodel.HousingUnit{ID: "house-1", Name: "Housing", FacilityID: "fac-1", Capacity: 2}},
 		},
 		Facilities: map[string]domain.Facility{
-			"fac-1": {Base: domain.Base{ID: "fac-1"}, Name: "Facility"},
+			"fac-1": {Facility: entitymodel.Facility{ID: "fac-1", Name: "Facility"}},
 		},
 		Procedures: procedures,
 		Treatments: map[string]domain.Treatment{
-			"treat-1": {Base: domain.Base{ID: "treat-1"}, Name: "Treat", Status: domain.TreatmentStatusPlanned, ProcedureID: "proc-1", OrganismIDs: []string{"org-1", "org-1"}, CohortIDs: []string{"missing"}},
+			"treat-1": {Treatment: entitymodel.Treatment{ID: "treat-1", Name: "Treat", Status: domain.TreatmentStatusPlanned, ProcedureID: "proc-1", OrganismIDs: []string{"org-1", "org-1"}, CohortIDs: []string{"missing"}}},
 		},
 		Observations: map[string]domain.Observation{
-			"obs-1": {Base: domain.Base{ID: "obs-1"}, ProcedureID: ptr("proc-1"), Observer: "Tech", RecordedAt: now},
+			"obs-1": {Observation: entitymodel.Observation{ID: "obs-1", ProcedureID: ptr("proc-1"), Observer: "Tech", RecordedAt: now}},
 		},
 		Samples: map[string]domain.Sample{
-			"sample-1": {Base: domain.Base{ID: "sample-1"}, Identifier: "S1", SourceType: "blood", FacilityID: "fac-1", OrganismID: ptr("org-1"), CollectedAt: now, Status: domain.SampleStatusStored, StorageLocation: "freezer", ChainOfCustody: []domain.SampleCustodyEvent{{Actor: "tech", Location: "freezer", Timestamp: now}}},
+			"sample-1": {Sample: entitymodel.Sample{ID: "sample-1", Identifier: "S1", SourceType: "blood", FacilityID: "fac-1", OrganismID: ptr("org-1"), CollectedAt: now, Status: domain.SampleStatusStored, StorageLocation: "freezer", ChainOfCustody: []domain.SampleCustodyEvent{{Actor: "tech", Location: "freezer", Timestamp: now}}}},
 		},
 		Protocols: protocols,
 		Permits: map[string]domain.Permit{
-			"permit-1": {Base: domain.Base{ID: "permit-1"}, PermitNumber: "P1", Authority: "Gov", Status: domain.PermitStatusApproved, ValidFrom: now, ValidUntil: now.AddDate(1, 0, 0), FacilityIDs: []string{"fac-1", "fac-1"}, ProtocolIDs: []string{"prot-1"}},
+			"permit-1": {Permit: entitymodel.Permit{ID: "permit-1", PermitNumber: "P1", Authority: "Gov", Status: domain.PermitStatusApproved, ValidFrom: now, ValidUntil: now.AddDate(1, 0, 0), FacilityIDs: []string{"fac-1", "fac-1"}, ProtocolIDs: []string{"prot-1"}}},
 		},
 		Projects: map[string]domain.Project{
-			"proj-1": {Base: domain.Base{ID: "proj-1"}, Code: "P1", Title: "Project", FacilityIDs: []string{"fac-1", "fac-1"}},
+			"proj-1": {Project: entitymodel.Project{ID: "proj-1", Code: "P1", Title: "Project", FacilityIDs: []string{"fac-1", "fac-1"}}},
 		},
 		Supplies: map[string]domain.SupplyItem{
-			"supply-1": {Base: domain.Base{ID: "supply-1"}, SKU: "SKU", Name: "Gloves", QuantityOnHand: 5, Unit: "box", FacilityIDs: []string{"fac-1"}, ProjectIDs: []string{"proj-1", "proj-1"}},
+			"supply-1": {SupplyItem: entitymodel.SupplyItem{ID: "supply-1", SKU: "SKU", Name: "Gloves", QuantityOnHand: 5, Unit: "box", FacilityIDs: []string{"fac-1"}, ProjectIDs: []string{"proj-1", "proj-1"}}},
 		},
 	}
 
@@ -224,40 +225,39 @@ func TestMemStoreStateNormalization(t *testing.T) {
 	store := newMemStore(nil)
 	now := time.Now().UTC()
 	if _, err := store.RunInTransaction(context.Background(), func(tx domain.Transaction) error {
-		facility, err := tx.CreateFacility(domain.Facility{Name: "Lab"})
+		facility, err := tx.CreateFacility(domain.Facility{Facility: entitymodel.Facility{Name: "Lab"}})
 		if err != nil {
 			return err
 		}
-		housing, err := tx.CreateHousingUnit(domain.HousingUnit{Name: "H", FacilityID: facility.ID, Capacity: 1})
+		housing, err := tx.CreateHousingUnit(domain.HousingUnit{HousingUnit: entitymodel.HousingUnit{Name: "H", FacilityID: facility.ID, Capacity: 1}})
 		if err != nil {
 			return err
 		}
 		if housing.State != domain.HousingStateQuarantine || housing.Environment != domain.HousingEnvironmentTerrestrial {
 			return fmt.Errorf("expected housing defaults applied, got state=%q env=%q", housing.State, housing.Environment)
 		}
-		if _, err := tx.CreateHousingUnit(domain.HousingUnit{Name: "InvalidEnv", FacilityID: facility.ID, Capacity: 1, Environment: domain.HousingEnvironment("invalid")}); err == nil {
+		if _, err := tx.CreateHousingUnit(domain.HousingUnit{HousingUnit: entitymodel.HousingUnit{Name: "InvalidEnv", FacilityID: facility.ID, Capacity: 1, Environment: domain.HousingEnvironment("invalid")}}); err == nil {
 			return fmt.Errorf("expected invalid housing environment to error")
 		}
 
-		protocol, err := tx.CreateProtocol(domain.Protocol{Code: "P", Title: "Proto", MaxSubjects: 1})
+		protocol, err := tx.CreateProtocol(domain.Protocol{Protocol: entitymodel.Protocol{Code: "P", Title: "Proto", MaxSubjects: 1}})
 		if err != nil {
 			return err
 		}
 		if protocol.Status != domain.ProtocolStatusDraft {
 			return fmt.Errorf("expected protocol status defaulted, got %q", protocol.Status)
 		}
-		if _, err := tx.CreateProtocol(domain.Protocol{Code: "P2", Title: "Invalid", MaxSubjects: 1, Status: domain.ProtocolStatus("invalid")}); err == nil {
+		if _, err := tx.CreateProtocol(domain.Protocol{Protocol: entitymodel.Protocol{Code: "P2", Title: "Invalid", MaxSubjects: 1, Status: domain.ProtocolStatus("invalid")}}); err == nil {
 			return fmt.Errorf("expected invalid protocol status to error")
 		}
 
-		permit, err := tx.CreatePermit(domain.Permit{
-			PermitNumber:      "PER",
+		permit, err := tx.CreatePermit(domain.Permit{Permit: entitymodel.Permit{PermitNumber: "PER",
 			Authority:         "Gov",
 			ValidFrom:         now,
 			ValidUntil:        now.Add(time.Hour),
 			AllowedActivities: []string{"store"},
 			FacilityIDs:       []string{facility.ID},
-			ProtocolIDs:       []string{protocol.ID},
+			ProtocolIDs:       []string{protocol.ID}},
 		})
 		if err != nil {
 			return err
@@ -265,15 +265,14 @@ func TestMemStoreStateNormalization(t *testing.T) {
 		if permit.Status != domain.PermitStatusDraft {
 			return fmt.Errorf("expected permit status defaulted, got %q", permit.Status)
 		}
-		if _, err := tx.CreatePermit(domain.Permit{
-			PermitNumber:      "PER-2",
+		if _, err := tx.CreatePermit(domain.Permit{Permit: entitymodel.Permit{PermitNumber: "PER-2",
 			Authority:         "Gov",
 			Status:            domain.PermitStatus("invalid"),
 			ValidFrom:         now,
 			ValidUntil:        now.Add(time.Hour),
 			AllowedActivities: []string{"store"},
 			FacilityIDs:       []string{facility.ID},
-			ProtocolIDs:       []string{protocol.ID},
+			ProtocolIDs:       []string{protocol.ID}},
 		}); err == nil {
 			return fmt.Errorf("expected invalid permit status to error")
 		}
@@ -342,12 +341,11 @@ func TestCloneDeepCopiesSQLite(t *testing.T) {
 	reason := "reason"
 	now := time.Now().UTC()
 
-	line := Line{
-		Description:       &desc,
+	line := Line{Line: entitymodel.Line{Description: &desc,
 		Origin:            "field",
 		GenotypeMarkerIDs: []string{"marker-1"},
 		DeprecatedAt:      &now,
-		DeprecationReason: &reason,
+		DeprecationReason: &reason},
 	}
 	if err := line.ApplyDefaultAttributes(map[string]any{"core": map[string]any{"seed": true}}); err != nil {
 		t.Fatalf("apply line defaults: %v", err)
@@ -364,13 +362,12 @@ func TestCloneDeepCopiesSQLite(t *testing.T) {
 		t.Fatalf("expected line pointers to be copied, not shared")
 	}
 
-	strain := Strain{
-		Description:       &desc,
+	strain := Strain{Strain: entitymodel.Strain{Description: &desc,
 		Generation:        &desc,
 		RetiredAt:         &now,
 		RetirementReason:  &reason,
 		LineID:            "line-1",
-		GenotypeMarkerIDs: []string{"marker-1"},
+		GenotypeMarkerIDs: []string{"marker-1"}},
 	}
 	if err := strain.ApplyStrainAttributes(map[string]any{"core": map[string]any{"note": "strain"}}); err != nil {
 		t.Fatalf("apply strain attributes: %v", err)
@@ -384,13 +381,12 @@ func TestCloneDeepCopiesSQLite(t *testing.T) {
 		t.Fatalf("expected strain pointers to be copied, not shared")
 	}
 
-	marker := GenotypeMarker{
-		Name:           "Marker",
+	marker := GenotypeMarker{GenotypeMarker: entitymodel.GenotypeMarker{Name: "Marker",
 		Locus:          "loc",
 		Alleles:        []string{"A"},
 		AssayMethod:    "PCR",
 		Interpretation: "control",
-		Version:        "v1",
+		Version:        "v1"},
 	}
 	if err := marker.ApplyGenotypeMarkerAttributes(map[string]any{"core": map[string]any{"attr": "value"}}); err != nil {
 		t.Fatalf("apply marker attributes: %v", err)
@@ -404,9 +400,8 @@ func TestCloneDeepCopiesSQLite(t *testing.T) {
 		t.Fatalf("expected marker interpretation copied")
 	}
 
-	breeding := BreedingUnit{
-		FemaleIDs: []string{"f1"},
-		MaleIDs:   []string{"m1"},
+	breeding := BreedingUnit{BreedingUnit: entitymodel.BreedingUnit{FemaleIDs: []string{"f1"},
+		MaleIDs: []string{"m1"}},
 	}
 	if err := breeding.ApplyPairingAttributes(map[string]any{"core": map[string]any{"note": "pair"}}); err != nil {
 		t.Fatalf("apply breeding attributes: %v", err)
@@ -417,7 +412,7 @@ func TestCloneDeepCopiesSQLite(t *testing.T) {
 		t.Fatalf("expected breeding IDs deep copied")
 	}
 
-	observation := Observation{}
+	observation := Observation{Observation: entitymodel.Observation{}}
 	if err := observation.ApplyObservationData(map[string]any{"score": 5}); err != nil {
 		t.Fatalf("apply observation data: %v", err)
 	}
@@ -427,7 +422,7 @@ func TestCloneDeepCopiesSQLite(t *testing.T) {
 		t.Fatalf("expected observation data copied, got %+v", data)
 	}
 
-	facility := Facility{HousingUnitIDs: []string{"h1"}, ProjectIDs: []string{"p1"}}
+	facility := Facility{Facility: entitymodel.Facility{HousingUnitIDs: []string{"h1"}, ProjectIDs: []string{"p1"}}}
 	if err := facility.ApplyEnvironmentBaselines(map[string]any{"temp": 22}); err != nil {
 		t.Fatalf("apply facility baselines: %v", err)
 	}
@@ -452,17 +447,16 @@ func TestSnapshotRoundTripCoverageSQLite(t *testing.T) {
 	cohortID := "cohort-rtt"
 	projectID := "project-rtt"
 
-	org := Organism{Base: domain.Base{ID: orgID}, Name: "Org", Species: "Spec", ParentIDs: []string{"parent"}}
+	org := Organism{Organism: entitymodel.Organism{ID: orgID, Name: "Org", Species: "Spec", ParentIDs: []string{"parent"}}}
 	if err := org.SetCoreAttributes(map[string]any{}); err != nil {
 		t.Fatalf("set organism attrs: %v", err)
 	}
 
-	line := Line{
-		Base:              domain.Base{ID: lineID},
+	line := Line{Line: entitymodel.Line{ID: lineID,
 		Code:              "L-RT",
 		Name:              "Line",
 		Origin:            "field",
-		GenotypeMarkerIDs: []string{markerID},
+		GenotypeMarkerIDs: []string{markerID}},
 	}
 	if err := line.ApplyDefaultAttributes(map[string]any{}); err != nil {
 		t.Fatalf("apply line defaults: %v", err)
@@ -471,61 +465,58 @@ func TestSnapshotRoundTripCoverageSQLite(t *testing.T) {
 		t.Fatalf("apply line overrides: %v", err)
 	}
 
-	strain := Strain{
-		Base:              domain.Base{ID: strainID},
+	strain := Strain{Strain: entitymodel.Strain{ID: strainID,
 		Code:              "S-RT",
 		Name:              "Strain",
 		LineID:            lineID,
-		GenotypeMarkerIDs: []string{markerID},
+		GenotypeMarkerIDs: []string{markerID}},
 	}
 	if err := strain.ApplyStrainAttributes(map[string]any{}); err != nil {
 		t.Fatalf("apply strain attrs: %v", err)
 	}
 
-	marker := GenotypeMarker{
-		Base:        domain.Base{ID: markerID},
+	marker := GenotypeMarker{GenotypeMarker: entitymodel.GenotypeMarker{ID: markerID,
 		Name:        "Marker",
 		Locus:       "loc",
 		Alleles:     []string{"A"},
 		AssayMethod: "PCR",
-		Version:     "v1",
+		Version:     "v1"},
 	}
 	if err := marker.ApplyGenotypeMarkerAttributes(map[string]any{}); err != nil {
 		t.Fatalf("apply marker attrs: %v", err)
 	}
 
-	breeding := BreedingUnit{Base: domain.Base{ID: "breed-rtt"}, Name: "Breed", Strategy: "pair", LineID: &lineID, StrainID: &strainID, FemaleIDs: []string{"f"}, MaleIDs: []string{"m"}}
+	breeding := BreedingUnit{BreedingUnit: entitymodel.BreedingUnit{ID: "breed-rtt", Name: "Breed", Strategy: "pair", LineID: &lineID, StrainID: &strainID, FemaleIDs: []string{"f"}, MaleIDs: []string{"m"}}}
 	if err := breeding.ApplyPairingAttributes(map[string]any{}); err != nil {
 		t.Fatalf("apply breeding attrs: %v", err)
 	}
 
-	protocol := Protocol{Base: domain.Base{ID: "prot-rtt"}, Code: "PR", Title: "Protocol", MaxSubjects: 1, Status: domain.ProtocolStatusApproved}
+	protocol := Protocol{Protocol: entitymodel.Protocol{ID: "prot-rtt", Code: "PR", Title: "Protocol", MaxSubjects: 1, Status: domain.ProtocolStatusApproved}}
 
-	housing := HousingUnit{Base: domain.Base{ID: "house-rtt"}, Name: "Housing", FacilityID: facilityID, Capacity: 2, Environment: domain.HousingEnvironmentAquatic}
+	housing := HousingUnit{HousingUnit: entitymodel.HousingUnit{ID: "house-rtt", Name: "Housing", FacilityID: facilityID, Capacity: 2, Environment: domain.HousingEnvironmentAquatic}}
 
-	facility := Facility{Base: domain.Base{ID: facilityID}, Code: "FAC", Name: "Facility", Zone: "zone", AccessPolicy: "policy", HousingUnitIDs: []string{housing.ID}, ProjectIDs: []string{projectID}}
+	facility := Facility{Facility: entitymodel.Facility{ID: facilityID, Code: "FAC", Name: "Facility", Zone: "zone", AccessPolicy: "policy", HousingUnitIDs: []string{housing.ID}, ProjectIDs: []string{projectID}}}
 	if err := facility.ApplyEnvironmentBaselines(map[string]any{"temp": 21}); err != nil {
 		t.Fatalf("apply baselines: %v", err)
 	}
 
-	cohort := Cohort{Base: domain.Base{ID: cohortID}, Name: "Cohort", Purpose: "Study", ProjectID: &projectID, HousingID: &housing.FacilityID, ProtocolID: &protocol.ID}
+	cohort := Cohort{Cohort: entitymodel.Cohort{ID: cohortID, Name: "Cohort", Purpose: "Study", ProjectID: &projectID, HousingID: &housing.FacilityID, ProtocolID: &protocol.ID}}
 
-	procedure := Procedure{Base: domain.Base{ID: procID}, Name: "Proc", Status: domain.ProcedureStatusScheduled, ScheduledAt: now, ProtocolID: protocol.ID, CohortID: &cohortID, OrganismIDs: []string{orgID}}
+	procedure := Procedure{Procedure: entitymodel.Procedure{ID: procID, Name: "Proc", Status: domain.ProcedureStatusScheduled, ScheduledAt: now, ProtocolID: protocol.ID, CohortID: &cohortID, OrganismIDs: []string{orgID}}}
 
-	treatment := Treatment{Base: domain.Base{ID: "treat-rtt"}, Name: "Treat", Status: domain.TreatmentStatusPlanned, ProcedureID: procID, OrganismIDs: []string{orgID}, CohortIDs: []string{cohortID}}
+	treatment := Treatment{Treatment: entitymodel.Treatment{ID: "treat-rtt", Name: "Treat", Status: domain.TreatmentStatusPlanned, ProcedureID: procID, OrganismIDs: []string{orgID}, CohortIDs: []string{cohortID}}}
 
-	obs := Observation{Base: domain.Base{ID: "obs-rtt"}, ProcedureID: &procID, OrganismID: &orgID, RecordedAt: now, Observer: "tech"}
+	obs := Observation{Observation: entitymodel.Observation{ID: "obs-rtt", ProcedureID: &procID, OrganismID: &orgID, RecordedAt: now, Observer: "tech"}}
 	if err := obs.ApplyObservationData(map[string]any{"score": 1}); err != nil {
 		t.Fatalf("apply observation data: %v", err)
 	}
 
-	sample := Sample{Base: domain.Base{ID: "samp-rtt"}, Identifier: "S", SourceType: "blood", FacilityID: facilityID, OrganismID: &orgID, CollectedAt: now, Status: domain.SampleStatusStored, StorageLocation: "cold"}
+	sample := Sample{Sample: entitymodel.Sample{ID: "samp-rtt", Identifier: "S", SourceType: "blood", FacilityID: facilityID, OrganismID: &orgID, CollectedAt: now, Status: domain.SampleStatusStored, StorageLocation: "cold"}}
 	if err := sample.ApplySampleAttributes(map[string]any{}); err != nil {
 		t.Fatalf("apply sample attrs: %v", err)
 	}
 
-	permit := Permit{
-		Base:              domain.Base{ID: "permit-rtt"},
+	permit := Permit{Permit: entitymodel.Permit{ID: "permit-rtt",
 		PermitNumber:      "PERMIT",
 		Authority:         "Gov",
 		Status:            domain.PermitStatusApproved,
@@ -533,19 +524,18 @@ func TestSnapshotRoundTripCoverageSQLite(t *testing.T) {
 		ValidUntil:        now.Add(time.Hour),
 		AllowedActivities: []string{"store"},
 		FacilityIDs:       []string{facilityID},
-		ProtocolIDs:       []string{protocol.ID},
+		ProtocolIDs:       []string{protocol.ID}},
 	}
 
-	project := Project{Base: domain.Base{ID: projectID}, Code: "PRJ", Title: "Project", FacilityIDs: []string{facilityID}}
+	project := Project{Project: entitymodel.Project{ID: projectID, Code: "PRJ", Title: "Project", FacilityIDs: []string{facilityID}}}
 
-	supply := SupplyItem{
-		Base:           domain.Base{ID: "supply-rtt"},
+	supply := SupplyItem{SupplyItem: entitymodel.SupplyItem{ID: "supply-rtt",
 		SKU:            "SKU",
 		Name:           "Supply",
 		QuantityOnHand: 1,
 		Unit:           "unit",
 		FacilityIDs:    []string{facilityID},
-		ProjectIDs:     []string{projectID},
+		ProjectIDs:     []string{projectID}},
 	}
 	if err := supply.ApplySupplyAttributes(map[string]any{}); err != nil {
 		t.Fatalf("apply supply attrs: %v", err)
@@ -580,44 +570,42 @@ func TestMemStoreProcedureObservationSampleLifecycle(t *testing.T) {
 	store := newMemStore(nil)
 	now := time.Now().UTC()
 	if _, err := store.RunInTransaction(context.Background(), func(tx domain.Transaction) error {
-		facility, err := tx.CreateFacility(domain.Facility{Name: "Lab-2"})
+		facility, err := tx.CreateFacility(domain.Facility{Facility: entitymodel.Facility{Name: "Lab-2"}})
 		if err != nil {
 			return err
 		}
-		housing, err := tx.CreateHousingUnit(domain.HousingUnit{Name: "H2", FacilityID: facility.ID, Capacity: 1, Environment: domain.HousingEnvironmentTerrestrial})
+		housing, err := tx.CreateHousingUnit(domain.HousingUnit{HousingUnit: entitymodel.HousingUnit{Name: "H2", FacilityID: facility.ID, Capacity: 1, Environment: domain.HousingEnvironmentTerrestrial}})
 		if err != nil {
 			return err
 		}
-		cohort, err := tx.CreateCohort(domain.Cohort{Name: "C2"})
+		cohort, err := tx.CreateCohort(domain.Cohort{Cohort: entitymodel.Cohort{Name: "C2"}})
 		if err != nil {
 			return err
 		}
 		housingID := housing.ID
-		organism, err := tx.CreateOrganism(domain.Organism{Name: "Org", Species: "Spec", HousingID: &housingID})
+		organism, err := tx.CreateOrganism(domain.Organism{Organism: entitymodel.Organism{Name: "Org", Species: "Spec", HousingID: &housingID}})
 		if err != nil {
 			return err
 		}
-		protocol, err := tx.CreateProtocol(domain.Protocol{Code: "PR-2", Title: "Protocol 2", MaxSubjects: 1, Status: domain.ProtocolStatusApproved})
+		protocol, err := tx.CreateProtocol(domain.Protocol{Protocol: entitymodel.Protocol{Code: "PR-2", Title: "Protocol 2", MaxSubjects: 1, Status: domain.ProtocolStatusApproved}})
 		if err != nil {
 			return err
 		}
-		procedure, err := tx.CreateProcedure(domain.Procedure{
-			Name:        "Proc",
+		procedure, err := tx.CreateProcedure(domain.Procedure{Procedure: entitymodel.Procedure{Name: "Proc",
 			Status:      domain.ProcedureStatusScheduled,
 			ScheduledAt: now,
 			ProtocolID:  protocol.ID,
-			OrganismIDs: []string{organism.ID},
+			OrganismIDs: []string{organism.ID}},
 		})
 		if err != nil {
 			return err
 		}
-		treatment, err := tx.CreateTreatment(domain.Treatment{
-			Name:              "Treat",
+		treatment, err := tx.CreateTreatment(domain.Treatment{Treatment: entitymodel.Treatment{Name: "Treat",
 			Status:            domain.TreatmentStatusPlanned,
 			ProcedureID:       procedure.ID,
 			OrganismIDs:       []string{organism.ID},
 			AdministrationLog: []string{},
-			AdverseEvents:     []string{},
+			AdverseEvents:     []string{}},
 		})
 		if err != nil {
 			return err
@@ -628,12 +616,11 @@ func TestMemStoreProcedureObservationSampleLifecycle(t *testing.T) {
 		}); err != nil {
 			return err
 		}
-		observation, err := tx.CreateObservation(domain.Observation{
-			ProcedureID: &procedure.ID,
-			OrganismID:  &organism.ID,
-			CohortID:    &cohort.ID,
-			Observer:    "Tech",
-			RecordedAt:  now,
+		observation, err := tx.CreateObservation(domain.Observation{Observation: entitymodel.Observation{ProcedureID: &procedure.ID,
+			OrganismID: &organism.ID,
+			CohortID:   &cohort.ID,
+			Observer:   "Tech",
+			RecordedAt: now},
 		})
 		if err != nil {
 			return err
@@ -645,8 +632,7 @@ func TestMemStoreProcedureObservationSampleLifecycle(t *testing.T) {
 		}); err != nil {
 			return err
 		}
-		sample, err := tx.CreateSample(domain.Sample{
-			Identifier:      "S-1",
+		sample, err := tx.CreateSample(domain.Sample{Sample: entitymodel.Sample{Identifier: "S-1",
 			SourceType:      "blood",
 			FacilityID:      facility.ID,
 			CollectedAt:     now,
@@ -657,7 +643,7 @@ func TestMemStoreProcedureObservationSampleLifecycle(t *testing.T) {
 				Actor:     "tech",
 				Location:  "loc",
 				Timestamp: now,
-			}},
+			}}},
 		})
 		if err != nil {
 			return err

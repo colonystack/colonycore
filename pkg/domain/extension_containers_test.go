@@ -3,6 +3,7 @@ package domain
 import (
 	"testing"
 
+	entitymodel "colonycore/pkg/domain/entitymodel"
 	"colonycore/pkg/domain/extension"
 )
 
@@ -380,7 +381,11 @@ func TestMapAccessorsWithNilExtensions(t *testing.T) {
 
 // TestContainerPluginMethods tests plugin management in containers
 func TestContainerPluginMethods(t *testing.T) {
-	organism := &Organism{Base: Base{ID: "test"}}
+	organism := &Organism{
+		Organism: entitymodel.Organism{
+			ID: "test",
+		},
+	}
 	container := organism.ensureExtensionContainer()
 
 	// Test plugins method when no data exists
@@ -416,27 +421,51 @@ func TestAllContainerTypes(t *testing.T) {
 		test func() *extension.Container
 	}{
 		{"Organism", func() *extension.Container {
-			o := &Organism{Base: Base{ID: "test"}}
+			o := &Organism{
+				Organism: entitymodel.Organism{
+					ID: "test",
+				},
+			}
 			return o.ensureExtensionContainer()
 		}},
 		{"Facility", func() *extension.Container {
-			f := &Facility{Base: Base{ID: "test"}}
+			f := &Facility{
+				Facility: entitymodel.Facility{
+					ID: "test",
+				},
+			}
 			return f.ensureExtensionContainer()
 		}},
 		{"BreedingUnit", func() *extension.Container {
-			b := &BreedingUnit{Base: Base{ID: "test"}}
+			b := &BreedingUnit{
+				BreedingUnit: entitymodel.BreedingUnit{
+					ID: "test",
+				},
+			}
 			return b.ensureExtensionContainer()
 		}},
 		{"Observation", func() *extension.Container {
-			o := &Observation{Base: Base{ID: "test"}}
+			o := &Observation{
+				Observation: entitymodel.Observation{
+					ID: "test",
+				},
+			}
 			return o.ensureExtensionContainer()
 		}},
 		{"Sample", func() *extension.Container {
-			s := &Sample{Base: Base{ID: "test"}}
+			s := &Sample{
+				Sample: entitymodel.Sample{
+					ID: "test",
+				},
+			}
 			return s.ensureExtensionContainer()
 		}},
 		{"SupplyItem", func() *extension.Container {
-			s := &SupplyItem{Base: Base{ID: "test"}}
+			s := &SupplyItem{
+				SupplyItem: entitymodel.SupplyItem{
+					ID: "test",
+				},
+			}
 			return s.ensureExtensionContainer()
 		}},
 	}
@@ -454,7 +483,11 @@ func TestAllContainerTypes(t *testing.T) {
 // TestEnsureExtensionContainerWithExistingData tests container initialization with existing data
 func TestEnsureExtensionContainerWithExistingData(t *testing.T) {
 	// Test Organism with existing attributes
-	organism := &Organism{Base: Base{ID: "test"}}
+	organism := &Organism{
+		Organism: entitymodel.Organism{
+			ID: "test",
+		},
+	}
 	mustNoError(t, "SetCoreAttributes", organism.SetCoreAttributes(map[string]any{"initial": "data"}))
 
 	container := organism.ensureExtensionContainer()
@@ -469,7 +502,11 @@ func TestEnsureExtensionContainerWithExistingData(t *testing.T) {
 	}
 
 	// Test Facility with existing environment baselines
-	facility := &Facility{Base: Base{ID: "test"}}
+	facility := &Facility{
+		Facility: entitymodel.Facility{
+			ID: "test",
+		},
+	}
 	mustNoError(t, "ApplyEnvironmentBaselines", facility.ApplyEnvironmentBaselines(map[string]any{"temp": "20C"}))
 
 	facilityContainer := facility.ensureExtensionContainer()
@@ -479,7 +516,11 @@ func TestEnsureExtensionContainerWithExistingData(t *testing.T) {
 	}
 
 	// Test BreedingUnit with existing pairing attributes
-	breedingUnit := &BreedingUnit{Base: Base{ID: "test"}}
+	breedingUnit := &BreedingUnit{
+		BreedingUnit: entitymodel.BreedingUnit{
+			ID: "test",
+		},
+	}
 	mustNoError(t, "ApplyPairingAttributes", breedingUnit.ApplyPairingAttributes(map[string]any{"pairing": "data"}))
 
 	breedingContainer := breedingUnit.ensureExtensionContainer()
@@ -489,7 +530,11 @@ func TestEnsureExtensionContainerWithExistingData(t *testing.T) {
 	}
 
 	// Test Observation with existing data
-	observation := &Observation{Base: Base{ID: "test"}}
+	observation := &Observation{
+		Observation: entitymodel.Observation{
+			ID: "test",
+		},
+	}
 	mustNoError(t, "ApplyObservationData", observation.ApplyObservationData(map[string]any{"measurement": testAttrValue}))
 
 	obsContainer := observation.ensureExtensionContainer()
@@ -499,7 +544,11 @@ func TestEnsureExtensionContainerWithExistingData(t *testing.T) {
 	}
 
 	// Test Sample with existing attributes
-	sample := &Sample{Base: Base{ID: "test"}}
+	sample := &Sample{
+		Sample: entitymodel.Sample{
+			ID: "test",
+		},
+	}
 	mustNoError(t, "ApplySampleAttributes", sample.ApplySampleAttributes(map[string]any{"sample": "data"}))
 
 	sampleContainer := sample.ensureExtensionContainer()
@@ -509,7 +558,11 @@ func TestEnsureExtensionContainerWithExistingData(t *testing.T) {
 	}
 
 	// Test SupplyItem with existing attributes
-	supplyItem := &SupplyItem{Base: Base{ID: "test"}}
+	supplyItem := &SupplyItem{
+		SupplyItem: entitymodel.SupplyItem{
+			ID: "test",
+		},
+	}
 	mustNoError(t, "ApplySupplyAttributes", supplyItem.ApplySupplyAttributes(map[string]any{"supply": "data"}))
 
 	supplyContainer := supplyItem.ensureExtensionContainer()
@@ -522,7 +575,11 @@ func TestEnsureExtensionContainerWithExistingData(t *testing.T) {
 // TestEnsureExtensionContainerNilSlots tests container creation when slots are nil
 func TestEnsureExtensionContainerNilSlots(t *testing.T) {
 	// Test all entity types with completely empty extension state
-	organism := &Organism{Base: Base{ID: "test"}}
+	organism := &Organism{
+		Organism: entitymodel.Organism{
+			ID: "test",
+		},
+	}
 
 	container := organism.ensureExtensionContainer()
 	if container == nil {

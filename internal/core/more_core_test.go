@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"colonycore/pkg/domain"
+	entitymodel "colonycore/pkg/domain/entitymodel"
 )
 
 // These supplemental tests exercise a few lower-coverage paths to raise overall threshold.
@@ -12,11 +13,11 @@ func TestStore_UpdateHousingUnit_InvalidCapacity(t *testing.T) {
 	eng := NewDefaultRulesEngine()
 	store := NewMemoryStore(eng)
 	_, err := store.RunInTransaction(context.Background(), func(tx domain.Transaction) error {
-		f, err := tx.CreateFacility(domain.Facility{Name: "F"})
+		f, err := tx.CreateFacility(domain.Facility{Facility: entitymodel.Facility{Name: "F"}})
 		if err != nil {
 			return err
 		}
-		h, err := tx.CreateHousingUnit(domain.HousingUnit{Capacity: 1, Name: "A", FacilityID: f.ID})
+		h, err := tx.CreateHousingUnit(domain.HousingUnit{HousingUnit: entitymodel.HousingUnit{Capacity: 1, Name: "A", FacilityID: f.ID}})
 		if err != nil {
 			return err
 		}

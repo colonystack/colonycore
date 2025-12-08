@@ -2,6 +2,7 @@ package sqlite
 
 import (
 	"colonycore/pkg/domain"
+	entitymodel "colonycore/pkg/domain/entitymodel"
 	"context"
 	"errors"
 	"fmt"
@@ -47,52 +48,50 @@ func TestMemStore_FullCRUDAndErrors(t *testing.T) { //nolint:gocyclo // exhausti
 
 	// Create all entities
 	runTx(t, store, func(tx domain.Transaction) error {
-		orgAInput := domain.Organism{Name: "Alpha", Species: "Frog"}
+		orgAInput := domain.Organism{Organism: entitymodel.Organism{Name: "Alpha", Species: "Frog"}}
 		if err := orgAInput.SetCoreAttributes(map[string]any{"a": 1}); err != nil {
 			return err
 		}
 		o1, _ := tx.CreateOrganism(orgAInput)
-		o2, _ := tx.CreateOrganism(domain.Organism{Name: "Beta", Species: "Frog"})
+		o2, _ := tx.CreateOrganism(domain.Organism{Organism: entitymodel.Organism{Name: "Beta", Species: "Frog"}})
 		orgA, orgB = o1, o2
-		c, _ := tx.CreateCohort(domain.Cohort{Name: "C1", Purpose: "testing"})
+		c, _ := tx.CreateCohort(domain.Cohort{Cohort: entitymodel.Cohort{Name: "C1", Purpose: "testing"}})
 		cohort = c
-		fInput := domain.Facility{
-			Name:         "Vivarium",
+		fInput := domain.Facility{Facility: entitymodel.Facility{Name: "Vivarium",
 			Zone:         "Zone-A",
-			AccessPolicy: "badge",
+			AccessPolicy: "badge"},
 		}
 		if err := fInput.ApplyEnvironmentBaselines(map[string]any{"temperature": "22C"}); err != nil {
 			return err
 		}
 		f, _ := tx.CreateFacility(fInput)
 		facility = f
-		pj, _ := tx.CreateProject(domain.Project{Code: "PRJ1", Title: "Proj", FacilityIDs: []string{facility.ID}})
+		pj, _ := tx.CreateProject(domain.Project{Project: entitymodel.Project{Code: "PRJ1", Title: "Proj", FacilityIDs: []string{facility.ID}}})
 		project = pj
-		h, _ := tx.CreateHousingUnit(domain.HousingUnit{Name: "H1", Capacity: 2, Environment: domain.HousingEnvironmentTerrestrial, FacilityID: facility.ID})
+		h, _ := tx.CreateHousingUnit(domain.HousingUnit{HousingUnit: entitymodel.HousingUnit{Name: "H1", Capacity: 2, Environment: domain.HousingEnvironmentTerrestrial, FacilityID: facility.ID}})
 		housing = h
 		_, _ = tx.UpdateFacility(facility.ID, func(fc *domain.Facility) error {
 			fc.HousingUnitIDs = append(fc.HousingUnitIDs, housing.ID)
 			fc.ProjectIDs = []string{project.ID}
 			return nil
 		})
-		b, _ := tx.CreateBreedingUnit(domain.BreedingUnit{Name: "B1", FemaleIDs: []string{o1.ID}, MaleIDs: []string{o2.ID}})
+		b, _ := tx.CreateBreedingUnit(domain.BreedingUnit{BreedingUnit: entitymodel.BreedingUnit{Name: "B1", FemaleIDs: []string{o1.ID}, MaleIDs: []string{o2.ID}}})
 		breeding = b
-		p, _ := tx.CreateProtocol(domain.Protocol{Code: "P1", Title: "Proto", MaxSubjects: 10})
+		p, _ := tx.CreateProtocol(domain.Protocol{Protocol: entitymodel.Protocol{Code: "P1", Title: "Proto", MaxSubjects: 10}})
 		protocol = p
-		pr, _ := tx.CreateProcedure(domain.Procedure{Name: "Proc", Status: domain.ProcedureStatusScheduled, ProtocolID: protocol.ID, OrganismIDs: []string{o1.ID}, ScheduledAt: time.Now().UTC()})
+		pr, _ := tx.CreateProcedure(domain.Procedure{Procedure: entitymodel.Procedure{Name: "Proc", Status: domain.ProcedureStatusScheduled, ProtocolID: protocol.ID, OrganismIDs: []string{o1.ID}, ScheduledAt: time.Now().UTC()}})
 		procedure = pr
-		t, _ := tx.CreateTreatment(domain.Treatment{Name: "Dose", Status: domain.TreatmentStatusPlanned, ProcedureID: procedure.ID, OrganismIDs: []string{o1.ID}, CohortIDs: []string{cohort.ID}, DosagePlan: "10mg"})
+		t, _ := tx.CreateTreatment(domain.Treatment{Treatment: entitymodel.Treatment{Name: "Dose", Status: domain.TreatmentStatusPlanned, ProcedureID: procedure.ID, OrganismIDs: []string{o1.ID}, CohortIDs: []string{cohort.ID}, DosagePlan: "10mg"}})
 		treatment = t
 		now := time.Now().UTC()
-		obInput := domain.Observation{ProcedureID: &procedure.ID, OrganismID: &o1.ID, RecordedAt: now, Observer: "tech"}
+		obInput := domain.Observation{Observation: entitymodel.Observation{ProcedureID: &procedure.ID, OrganismID: &o1.ID, RecordedAt: now, Observer: "tech"}}
 		if err := obInput.ApplyObservationData(map[string]any{"score": 5}); err != nil {
 			return err
 		}
 		ob, _ := tx.CreateObservation(obInput)
 		observation = ob
 		custody := []domain.SampleCustodyEvent{{Actor: "tech", Location: "bench", Timestamp: now}}
-		sampleInput := domain.Sample{
-			Identifier:      "S1",
+		sampleInput := domain.Sample{Sample: entitymodel.Sample{Identifier: "S1",
 			SourceType:      "blood",
 			OrganismID:      &o1.ID,
 			FacilityID:      facility.ID,
@@ -100,15 +99,14 @@ func TestMemStore_FullCRUDAndErrors(t *testing.T) { //nolint:gocyclo // exhausti
 			Status:          domain.SampleStatusStored,
 			StorageLocation: "freezer",
 			AssayType:       "PCR",
-			ChainOfCustody:  custody,
+			ChainOfCustody:  custody},
 		}
 		if err := sampleInput.ApplySampleAttributes(map[string]any{"volume_ml": 1.0}); err != nil {
 			return err
 		}
 		sa, _ := tx.CreateSample(sampleInput)
 		sample = sa
-		per, _ := tx.CreatePermit(domain.Permit{
-			PermitNumber:      "PER-1",
+		per, _ := tx.CreatePermit(domain.Permit{Permit: entitymodel.Permit{PermitNumber: "PER-1",
 			Authority:         "Agency",
 			Status:            domain.PermitStatusApproved,
 			ValidFrom:         now.Add(-time.Hour),
@@ -116,12 +114,11 @@ func TestMemStore_FullCRUDAndErrors(t *testing.T) { //nolint:gocyclo // exhausti
 			AllowedActivities: []string{"collect"},
 			FacilityIDs:       []string{facility.ID},
 			ProtocolIDs:       []string{protocol.ID},
-			Notes:             strPtr("issue"),
+			Notes:             strPtr("issue")},
 		})
 		permit = per
 		expiry := time.Now().Add(48 * time.Hour)
-		supplyInput := domain.SupplyItem{
-			SKU:            "SKU1",
+		supplyInput := domain.SupplyItem{SupplyItem: entitymodel.SupplyItem{SKU: "SKU1",
 			Name:           "Feed",
 			Description:    strPtr("daily feed"),
 			QuantityOnHand: 50,
@@ -130,7 +127,7 @@ func TestMemStore_FullCRUDAndErrors(t *testing.T) { //nolint:gocyclo // exhausti
 			ExpiresAt:      &expiry,
 			FacilityIDs:    []string{facility.ID},
 			ProjectIDs:     []string{project.ID},
-			ReorderLevel:   10,
+			ReorderLevel:   10},
 		}
 		if err := supplyInput.ApplySupplyAttributes(map[string]any{"supplier": "Acme"}); err != nil {
 			return err
@@ -373,7 +370,10 @@ func TestMemStore_FullCRUDAndErrors(t *testing.T) { //nolint:gocyclo // exhausti
 
 func TestMemStore_ViewAndFinds(t *testing.T) {
 	store := newMemStore(nil)
-	runTx(t, store, func(tx domain.Transaction) error { _, _ = tx.CreateOrganism(domain.Organism{Name: "X"}); return nil })
+	runTx(t, store, func(tx domain.Transaction) error {
+		_, _ = tx.CreateOrganism(domain.Organism{Organism: entitymodel.Organism{Name: "X"}})
+		return nil
+	})
 	if err := store.View(context.Background(), func(v domain.TransactionView) error {
 		if len(v.ListOrganisms()) != 1 {
 			return fmt.Errorf("expected 1 organism in view")
@@ -412,10 +412,9 @@ func TestSQLiteStore_Persist_Reload_Full(t *testing.T) {
 	)
 	now := time.Now().UTC()
 	if _, err := store.RunInTransaction(ctx, func(tx domain.Transaction) error {
-		facilityInput := domain.Facility{
-			Name:         "Vivarium",
+		facilityInput := domain.Facility{Facility: entitymodel.Facility{Name: "Vivarium",
 			Zone:         "Zone-A",
-			AccessPolicy: "badge",
+			AccessPolicy: "badge"},
 		}
 		if err := facilityInput.ApplyEnvironmentBaselines(map[string]any{"temperature": "22C"}); err != nil {
 			t.Fatalf("apply facility baselines: %v", err)
@@ -426,13 +425,13 @@ func TestSQLiteStore_Persist_Reload_Full(t *testing.T) {
 		}
 		facilityID = facility.ID
 
-		project, err := tx.CreateProject(domain.Project{Code: "C", Title: "T", FacilityIDs: []string{facility.ID}})
+		project, err := tx.CreateProject(domain.Project{Project: entitymodel.Project{Code: "C", Title: "T", FacilityIDs: []string{facility.ID}}})
 		if err != nil {
 			return err
 		}
 		projectID = project.ID
 
-		housing, err := tx.CreateHousingUnit(domain.HousingUnit{Name: "Tank", Capacity: 2, Environment: domain.HousingEnvironmentTerrestrial, FacilityID: facility.ID})
+		housing, err := tx.CreateHousingUnit(domain.HousingUnit{HousingUnit: entitymodel.HousingUnit{Name: "Tank", Capacity: 2, Environment: domain.HousingEnvironmentTerrestrial, FacilityID: facility.ID}})
 		if err != nil {
 			return err
 		}
@@ -445,7 +444,7 @@ func TestSQLiteStore_Persist_Reload_Full(t *testing.T) {
 			return err
 		}
 
-		protocol, err := tx.CreateProtocol(domain.Protocol{Code: "P-1", Title: "Protocol", MaxSubjects: 5})
+		protocol, err := tx.CreateProtocol(domain.Protocol{Protocol: entitymodel.Protocol{Code: "P-1", Title: "Protocol", MaxSubjects: 5}})
 		if err != nil {
 			return err
 		}
@@ -454,12 +453,11 @@ func TestSQLiteStore_Persist_Reload_Full(t *testing.T) {
 		housingPtr := housingID
 		protocolPtr := protocolID
 		projectPtr := projectID
-		cohort, err := tx.CreateCohort(domain.Cohort{
-			Name:       "C-1",
+		cohort, err := tx.CreateCohort(domain.Cohort{Cohort: entitymodel.Cohort{Name: "C-1",
 			Purpose:    "baseline",
 			ProjectID:  &projectPtr,
 			HousingID:  &housingPtr,
-			ProtocolID: &protocolPtr,
+			ProtocolID: &protocolPtr},
 		})
 		if err != nil {
 			return err
@@ -467,14 +465,13 @@ func TestSQLiteStore_Persist_Reload_Full(t *testing.T) {
 		cohortID = cohort.ID
 
 		cohortPtr := cohortID
-		organismInput := domain.Organism{
-			Name:       "Persisted",
+		organismInput := domain.Organism{Organism: entitymodel.Organism{Name: "Persisted",
 			Species:    "Test",
 			Stage:      domain.StageJuvenile,
 			CohortID:   &cohortPtr,
 			HousingID:  &housingPtr,
 			ProjectID:  &projectPtr,
-			ProtocolID: &protocolPtr,
+			ProtocolID: &protocolPtr},
 		}
 		if err := organismInput.SetCoreAttributes(map[string]any{"tag": "alpha"}); err != nil {
 			return err
@@ -485,36 +482,33 @@ func TestSQLiteStore_Persist_Reload_Full(t *testing.T) {
 		}
 		organismID = organism.ID
 
-		procedure, err := tx.CreateProcedure(domain.Procedure{
-			Name:        "Procedure",
+		procedure, err := tx.CreateProcedure(domain.Procedure{Procedure: entitymodel.Procedure{Name: "Procedure",
 			Status:      domain.ProcedureStatusScheduled,
 			ScheduledAt: now,
 			ProtocolID:  protocol.ID,
-			OrganismIDs: []string{organism.ID},
+			OrganismIDs: []string{organism.ID}},
 		})
 		if err != nil {
 			return err
 		}
 		procedureID = procedure.ID
 
-		treatment, err := tx.CreateTreatment(domain.Treatment{
-			Name:        "Treatment",
+		treatment, err := tx.CreateTreatment(domain.Treatment{Treatment: entitymodel.Treatment{Name: "Treatment",
 			Status:      domain.TreatmentStatusPlanned,
 			ProcedureID: procedure.ID,
 			OrganismIDs: []string{organism.ID},
 			CohortIDs:   []string{cohort.ID},
-			DosagePlan:  "10mg/kg",
+			DosagePlan:  "10mg/kg"},
 		})
 		if err != nil {
 			return err
 		}
 		treatmentID = treatment.ID
 
-		observationInput := domain.Observation{
-			ProcedureID: &procedure.ID,
-			OrganismID:  &organism.ID,
-			RecordedAt:  now,
-			Observer:    "tech",
+		observationInput := domain.Observation{Observation: entitymodel.Observation{ProcedureID: &procedure.ID,
+			OrganismID: &organism.ID,
+			RecordedAt: now,
+			Observer:   "tech"},
 		}
 		if err := observationInput.ApplyObservationData(map[string]any{"score": 5}); err != nil {
 			return err
@@ -526,8 +520,7 @@ func TestSQLiteStore_Persist_Reload_Full(t *testing.T) {
 		observationID = observation.ID
 
 		custody := []domain.SampleCustodyEvent{{Actor: "tech", Location: "bench", Timestamp: now}}
-		sampleInput2 := domain.Sample{
-			Identifier:      "S-1",
+		sampleInput2 := domain.Sample{Sample: entitymodel.Sample{Identifier: "S-1",
 			SourceType:      "blood",
 			OrganismID:      &organism.ID,
 			FacilityID:      facility.ID,
@@ -535,7 +528,7 @@ func TestSQLiteStore_Persist_Reload_Full(t *testing.T) {
 			Status:          domain.SampleStatusStored,
 			StorageLocation: "freezer",
 			AssayType:       "PCR",
-			ChainOfCustody:  custody,
+			ChainOfCustody:  custody},
 		}
 		if err := sampleInput2.ApplySampleAttributes(map[string]any{"volume_ml": 1.0}); err != nil {
 			return err
@@ -546,8 +539,7 @@ func TestSQLiteStore_Persist_Reload_Full(t *testing.T) {
 		}
 		sampleID = sample.ID
 
-		permit, err := tx.CreatePermit(domain.Permit{
-			PermitNumber:      "PER-1",
+		permit, err := tx.CreatePermit(domain.Permit{Permit: entitymodel.Permit{PermitNumber: "PER-1",
 			Authority:         "Agency",
 			Status:            domain.PermitStatusApproved,
 			ValidFrom:         now.Add(-time.Hour),
@@ -555,7 +547,7 @@ func TestSQLiteStore_Persist_Reload_Full(t *testing.T) {
 			AllowedActivities: []string{"collect"},
 			FacilityIDs:       []string{facility.ID},
 			ProtocolIDs:       []string{protocol.ID},
-			Notes:             strPtr("initial issuance"),
+			Notes:             strPtr("initial issuance")},
 		})
 		if err != nil {
 			return err
@@ -563,8 +555,7 @@ func TestSQLiteStore_Persist_Reload_Full(t *testing.T) {
 		permitID = permit.ID
 
 		expiry := now.Add(24 * time.Hour)
-		supplyInput2 := domain.SupplyItem{
-			SKU:            "SKU-1",
+		supplyInput2 := domain.SupplyItem{SupplyItem: entitymodel.SupplyItem{SKU: "SKU-1",
 			Name:           "Diet Blocks",
 			Description:    strPtr("nutrient feed"),
 			QuantityOnHand: 100,
@@ -573,7 +564,7 @@ func TestSQLiteStore_Persist_Reload_Full(t *testing.T) {
 			ExpiresAt:      &expiry,
 			FacilityIDs:    []string{facility.ID},
 			ProjectIDs:     []string{project.ID},
-			ReorderLevel:   25,
+			ReorderLevel:   25},
 		}
 		if err := supplyInput2.ApplySupplyAttributes(map[string]any{"supplier": "Acme"}); err != nil {
 			return err
@@ -672,7 +663,10 @@ func TestSQLiteStore_CorruptBucketHandling(t *testing.T) {
 func TestMemStore_RuleBlockingCoverage(t *testing.T) {
 	store := newMemStore(domain.NewRulesEngine())
 	store.RulesEngine().Register(blockingRule{})
-	if _, err := store.RunInTransaction(context.Background(), func(tx domain.Transaction) error { _, e := tx.CreateOrganism(domain.Organism{Name: "Block"}); return e }); err == nil {
+	if _, err := store.RunInTransaction(context.Background(), func(tx domain.Transaction) error {
+		_, e := tx.CreateOrganism(domain.Organism{Organism: entitymodel.Organism{Name: "Block"}})
+		return e
+	}); err == nil {
 		t.Fatalf("expected blocking violation")
 	}
 }
@@ -686,16 +680,16 @@ func TestMemStore_TransactionViewFinds(t *testing.T) {
 	var housing domain.HousingUnit
 	var protocol domain.Protocol
 	runTx(t, store, func(tx domain.Transaction) error {
-		f, err := tx.CreateFacility(domain.Facility{Name: "F"})
+		f, err := tx.CreateFacility(domain.Facility{Facility: entitymodel.Facility{Name: "F"}})
 		if err != nil {
 			return err
 		}
-		h, err := tx.CreateHousingUnit(domain.HousingUnit{Name: "T-H", Capacity: 1, Environment: domain.HousingEnvironmentHumid, FacilityID: f.ID})
+		h, err := tx.CreateHousingUnit(domain.HousingUnit{HousingUnit: entitymodel.HousingUnit{Name: "T-H", Capacity: 1, Environment: domain.HousingEnvironmentHumid, FacilityID: f.ID}})
 		if err != nil {
 			return err
 		}
 		housing = h
-		p, err := tx.CreateProtocol(domain.Protocol{Code: "TP", Title: "T", MaxSubjects: 1})
+		p, err := tx.CreateProtocol(domain.Protocol{Protocol: entitymodel.Protocol{Code: "TP", Title: "T", MaxSubjects: 1}})
 		if err != nil {
 			return err
 		}
@@ -743,16 +737,16 @@ func TestMemStore_ErrorBranchesAdditional(t *testing.T) {
 	var prot domain.Protocol
 	var proj domain.Project
 	runTx(t, store, func(tx domain.Transaction) error {
-		facility, err := tx.CreateFacility(domain.Facility{Name: "Dup Facility"})
+		facility, err := tx.CreateFacility(domain.Facility{Facility: entitymodel.Facility{Name: "Dup Facility"}})
 		if err != nil {
 			return err
 		}
-		p, err := tx.CreateProtocol(domain.Protocol{Code: "DUP", Title: "Dup", MaxSubjects: 1})
+		p, err := tx.CreateProtocol(domain.Protocol{Protocol: entitymodel.Protocol{Code: "DUP", Title: "Dup", MaxSubjects: 1}})
 		if err != nil {
 			return err
 		}
 		prot = p
-		pr, err := tx.CreateProject(domain.Project{Code: "DUPP", Title: "DupProj", FacilityIDs: []string{facility.ID}})
+		pr, err := tx.CreateProject(domain.Project{Project: entitymodel.Project{Code: "DUPP", Title: "DupProj", FacilityIDs: []string{facility.ID}}})
 		if err != nil {
 			return err
 		}
@@ -820,14 +814,14 @@ func TestMemStore_ErrorBranchesAdditional(t *testing.T) {
 func TestMemStoreCreateHousingUnitRequiresFacility(t *testing.T) {
 	store := newMemStore(nil)
 	if _, err := store.RunInTransaction(context.Background(), func(tx domain.Transaction) error {
-		if _, err := tx.CreateHousingUnit(domain.HousingUnit{Name: "NoFacility", FacilityID: "missing", Capacity: 1}); err == nil {
+		if _, err := tx.CreateHousingUnit(domain.HousingUnit{HousingUnit: entitymodel.HousingUnit{Name: "NoFacility", FacilityID: "missing", Capacity: 1}}); err == nil {
 			t.Fatalf("expected error when facility is missing")
 		}
-		facility, err := tx.CreateFacility(domain.Facility{Name: "Vivarium"})
+		facility, err := tx.CreateFacility(domain.Facility{Facility: entitymodel.Facility{Name: "Vivarium"}})
 		if err != nil {
 			return err
 		}
-		if _, err := tx.CreateHousingUnit(domain.HousingUnit{Name: "Valid", FacilityID: facility.ID, Capacity: 2}); err != nil {
+		if _, err := tx.CreateHousingUnit(domain.HousingUnit{HousingUnit: entitymodel.HousingUnit{Name: "Valid", FacilityID: facility.ID, Capacity: 2}}); err != nil {
 			t.Fatalf("expected housing creation to succeed: %v", err)
 		}
 		return nil
@@ -853,28 +847,27 @@ func TestMemStoreDeleteFacilityEnforcesReferences(t *testing.T) {
 
 	runTx(t, store, func(tx domain.Transaction) error {
 		var err error
-		facility, err = tx.CreateFacility(domain.Facility{Name: "Constraints"})
+		facility, err = tx.CreateFacility(domain.Facility{Facility: entitymodel.Facility{Name: "Constraints"}})
 		if err != nil {
 			return err
 		}
-		project, err = tx.CreateProject(domain.Project{Code: "PRJ", Title: "Project", FacilityIDs: []string{facility.ID}})
+		project, err = tx.CreateProject(domain.Project{Project: entitymodel.Project{Code: "PRJ", Title: "Project", FacilityIDs: []string{facility.ID}}})
 		if err != nil {
 			return err
 		}
-		protocol, err = tx.CreateProtocol(domain.Protocol{Code: "PROTO", Title: "Protocol", MaxSubjects: 5})
+		protocol, err = tx.CreateProtocol(domain.Protocol{Protocol: entitymodel.Protocol{Code: "PROTO", Title: "Protocol", MaxSubjects: 5}})
 		if err != nil {
 			return err
 		}
-		housing, err = tx.CreateHousingUnit(domain.HousingUnit{Name: "Tank", FacilityID: facility.ID, Capacity: 2})
+		housing, err = tx.CreateHousingUnit(domain.HousingUnit{HousingUnit: entitymodel.HousingUnit{Name: "Tank", FacilityID: facility.ID, Capacity: 2}})
 		if err != nil {
 			return err
 		}
-		org, err = tx.CreateOrganism(domain.Organism{Name: "Specimen"})
+		org, err = tx.CreateOrganism(domain.Organism{Organism: entitymodel.Organism{Name: "Specimen"}})
 		if err != nil {
 			return err
 		}
-		sample, err = tx.CreateSample(domain.Sample{
-			Identifier:      "S",
+		sample, err = tx.CreateSample(domain.Sample{Sample: entitymodel.Sample{Identifier: "S",
 			SourceType:      "blood",
 			FacilityID:      facility.ID,
 			OrganismID:      &org.ID,
@@ -885,30 +878,28 @@ func TestMemStoreDeleteFacilityEnforcesReferences(t *testing.T) {
 				Actor:     "tech",
 				Location:  "room",
 				Timestamp: now,
-			}},
+			}}},
 		})
 		if err != nil {
 			return err
 		}
-		permit, err = tx.CreatePermit(domain.Permit{
-			PermitNumber:      "PERM",
+		permit, err = tx.CreatePermit(domain.Permit{Permit: entitymodel.Permit{PermitNumber: "PERM",
 			Authority:         "Gov",
 			ValidFrom:         now,
 			ValidUntil:        now.Add(time.Hour),
 			AllowedActivities: []string{"collect"},
 			FacilityIDs:       []string{facility.ID},
-			ProtocolIDs:       []string{protocol.ID},
+			ProtocolIDs:       []string{protocol.ID}},
 		})
 		if err != nil {
 			return err
 		}
-		supply, err = tx.CreateSupplyItem(domain.SupplyItem{
-			SKU:            "SKU",
+		supply, err = tx.CreateSupplyItem(domain.SupplyItem{SupplyItem: entitymodel.SupplyItem{SKU: "SKU",
 			Name:           "Gloves",
 			QuantityOnHand: 5,
 			Unit:           "box",
 			FacilityIDs:    []string{facility.ID},
-			ProjectIDs:     []string{project.ID},
+			ProjectIDs:     []string{project.ID}},
 		})
 		return err
 	})
@@ -961,111 +952,107 @@ func TestMemStoreRelationshipValidations(t *testing.T) {
 	now := time.Now().UTC()
 
 	if _, err := store.RunInTransaction(ctx, func(tx domain.Transaction) error {
-		if _, err := tx.CreateTreatment(domain.Treatment{Name: "NoProcedure"}); err == nil {
+		if _, err := tx.CreateTreatment(domain.Treatment{Treatment: entitymodel.Treatment{Name: "NoProcedure"}}); err == nil {
 			t.Fatalf("expected treatment creation without procedure to fail")
 		}
 
-		facility, err := tx.CreateFacility(domain.Facility{Name: "Facility"})
+		facility, err := tx.CreateFacility(domain.Facility{Facility: entitymodel.Facility{Name: "Facility"}})
 		if err != nil {
 			return err
 		}
-		protocol, err := tx.CreateProtocol(domain.Protocol{Code: "PROT", Title: "Protocol", MaxSubjects: 5})
+		protocol, err := tx.CreateProtocol(domain.Protocol{Protocol: entitymodel.Protocol{Code: "PROT", Title: "Protocol", MaxSubjects: 5}})
 		if err != nil {
 			return err
 		}
 
-		if _, err := tx.CreateTreatment(domain.Treatment{Name: "MissingProcedureRef", ProcedureID: "missing"}); err == nil {
+		if _, err := tx.CreateTreatment(domain.Treatment{Treatment: entitymodel.Treatment{Name: "MissingProcedureRef", ProcedureID: "missing"}}); err == nil {
 			t.Fatalf("expected treatment missing procedure to fail")
 		}
 
-		procedure, err := tx.CreateProcedure(domain.Procedure{Name: "Proc", Status: domain.ProcedureStatusScheduled, ScheduledAt: now, ProtocolID: protocol.ID})
+		procedure, err := tx.CreateProcedure(domain.Procedure{Procedure: entitymodel.Procedure{Name: "Proc", Status: domain.ProcedureStatusScheduled, ScheduledAt: now, ProtocolID: protocol.ID}})
 		if err != nil {
 			return err
 		}
 
-		if _, err := tx.CreateTreatment(domain.Treatment{Name: "MissingOrganism", ProcedureID: procedure.ID, OrganismIDs: []string{"missing"}}); err == nil {
+		if _, err := tx.CreateTreatment(domain.Treatment{Treatment: entitymodel.Treatment{Name: "MissingOrganism", ProcedureID: procedure.ID, OrganismIDs: []string{"missing"}}}); err == nil {
 			t.Fatalf("expected missing organism validation to fail")
 		}
 
-		organism, err := tx.CreateOrganism(domain.Organism{Name: "Org"})
+		organism, err := tx.CreateOrganism(domain.Organism{Organism: entitymodel.Organism{Name: "Org"}})
 		if err != nil {
 			return err
 		}
 
-		if _, err := tx.CreateTreatment(domain.Treatment{Name: "ValidTreatment", ProcedureID: procedure.ID, OrganismIDs: []string{organism.ID}}); err != nil {
+		if _, err := tx.CreateTreatment(domain.Treatment{Treatment: entitymodel.Treatment{Name: "ValidTreatment", ProcedureID: procedure.ID, OrganismIDs: []string{organism.ID}}}); err != nil {
 			t.Fatalf("expected treatment creation to succeed: %v", err)
 		}
 
-		if _, err := tx.CreateObservation(domain.Observation{Observer: "Tech", RecordedAt: now}); err == nil {
+		if _, err := tx.CreateObservation(domain.Observation{Observation: entitymodel.Observation{Observer: "Tech", RecordedAt: now}}); err == nil {
 			t.Fatalf("expected observation without context to fail")
 		}
 		procID := procedure.ID
-		if _, err := tx.CreateObservation(domain.Observation{ProcedureID: &procID, Observer: "Tech", RecordedAt: now}); err != nil {
+		if _, err := tx.CreateObservation(domain.Observation{Observation: entitymodel.Observation{ProcedureID: &procID, Observer: "Tech", RecordedAt: now}}); err != nil {
 			t.Fatalf("expected observation creation to succeed: %v", err)
 		}
 
-		if _, err := tx.CreateSample(domain.Sample{Identifier: "S0", SourceType: "blood", CollectedAt: now, Status: domain.SampleStatusStored, StorageLocation: "room", ChainOfCustody: []domain.SampleCustodyEvent{{Actor: "tech", Location: "room", Timestamp: now}}}); err == nil {
+		if _, err := tx.CreateSample(domain.Sample{Sample: entitymodel.Sample{Identifier: "S0", SourceType: "blood", CollectedAt: now, Status: domain.SampleStatusStored, StorageLocation: "room", ChainOfCustody: []domain.SampleCustodyEvent{{Actor: "tech", Location: "room", Timestamp: now}}}}); err == nil {
 			t.Fatalf("expected sample without facility to fail")
 		}
-		if _, err := tx.CreateSample(domain.Sample{Identifier: "S1", SourceType: "blood", FacilityID: facility.ID, CollectedAt: now, Status: domain.SampleStatusStored, StorageLocation: "room", ChainOfCustody: []domain.SampleCustodyEvent{{Actor: "tech", Location: "room", Timestamp: now}}}); err == nil {
+		if _, err := tx.CreateSample(domain.Sample{Sample: entitymodel.Sample{Identifier: "S1", SourceType: "blood", FacilityID: facility.ID, CollectedAt: now, Status: domain.SampleStatusStored, StorageLocation: "room", ChainOfCustody: []domain.SampleCustodyEvent{{Actor: "tech", Location: "room", Timestamp: now}}}}); err == nil {
 			t.Fatalf("expected sample without organism or cohort to fail")
 		}
-		if _, err := tx.CreateSample(domain.Sample{Identifier: "S2", SourceType: "blood", FacilityID: facility.ID, OrganismID: &organism.ID, CollectedAt: now, Status: domain.SampleStatusStored, StorageLocation: "room", ChainOfCustody: []domain.SampleCustodyEvent{{
+		if _, err := tx.CreateSample(domain.Sample{Sample: entitymodel.Sample{Identifier: "S2", SourceType: "blood", FacilityID: facility.ID, OrganismID: &organism.ID, CollectedAt: now, Status: domain.SampleStatusStored, StorageLocation: "room", ChainOfCustody: []domain.SampleCustodyEvent{{
 			Actor:     "tech",
 			Location:  "room",
 			Timestamp: now,
-		}}}); err != nil {
+		}}}}); err != nil {
 			t.Fatalf("expected sample creation to succeed: %v", err)
 		}
 
-		if _, err := tx.CreatePermit(domain.Permit{PermitNumber: "PERM-FAIL", AllowedActivities: []string{"collect"}, FacilityIDs: []string{"missing"}, ProtocolIDs: []string{"prot"}}); err == nil {
+		if _, err := tx.CreatePermit(domain.Permit{Permit: entitymodel.Permit{PermitNumber: "PERM-FAIL", AllowedActivities: []string{"collect"}, FacilityIDs: []string{"missing"}, ProtocolIDs: []string{"prot"}}}); err == nil {
 			t.Fatalf("expected permit with missing facility to fail")
 		}
-		if _, err := tx.CreatePermit(domain.Permit{
-			PermitNumber:      "PERM-FAIL2",
+		if _, err := tx.CreatePermit(domain.Permit{Permit: entitymodel.Permit{PermitNumber: "PERM-FAIL2",
 			AllowedActivities: []string{"collect"},
 			FacilityIDs:       []string{facility.ID},
 			ProtocolIDs:       []string{"missing"},
 			ValidFrom:         now,
-			ValidUntil:        now.Add(time.Hour),
+			ValidUntil:        now.Add(time.Hour)},
 		}); err == nil {
 			t.Fatalf("expected permit with missing protocol to fail")
 		}
-		if _, err := tx.CreatePermit(domain.Permit{
-			PermitNumber:      "PERM-OK",
+		if _, err := tx.CreatePermit(domain.Permit{Permit: entitymodel.Permit{PermitNumber: "PERM-OK",
 			Authority:         "Gov",
 			ValidFrom:         now,
 			ValidUntil:        now.Add(time.Hour),
 			AllowedActivities: []string{"collect"},
 			FacilityIDs:       []string{facility.ID},
-			ProtocolIDs:       []string{protocol.ID},
+			ProtocolIDs:       []string{protocol.ID}},
 		}); err != nil {
 			t.Fatalf("expected permit creation to succeed: %v", err)
 		}
 
-		if _, err := tx.CreateSupplyItem(domain.SupplyItem{SKU: "SKU-FAIL", Name: "Supply", FacilityIDs: []string{"missing"}, ProjectIDs: []string{"missing"}}); err == nil {
+		if _, err := tx.CreateSupplyItem(domain.SupplyItem{SupplyItem: entitymodel.SupplyItem{SKU: "SKU-FAIL", Name: "Supply", FacilityIDs: []string{"missing"}, ProjectIDs: []string{"missing"}}}); err == nil {
 			t.Fatalf("expected supply creation with missing facility to fail")
 		}
-		if _, err := tx.CreateSupplyItem(domain.SupplyItem{
-			SKU:         "SKU-FAIL2",
+		if _, err := tx.CreateSupplyItem(domain.SupplyItem{SupplyItem: entitymodel.SupplyItem{SKU: "SKU-FAIL2",
 			Name:        "Supply",
 			FacilityIDs: []string{facility.ID},
-			ProjectIDs:  []string{"missing"},
+			ProjectIDs:  []string{"missing"}},
 		}); err == nil {
 			t.Fatalf("expected supply creation with missing project to fail")
 		}
 
-		project, err := tx.CreateProject(domain.Project{Code: "PRJ-REL", Title: "Project", FacilityIDs: []string{facility.ID}})
+		project, err := tx.CreateProject(domain.Project{Project: entitymodel.Project{Code: "PRJ-REL", Title: "Project", FacilityIDs: []string{facility.ID}}})
 		if err != nil {
 			return err
 		}
-		if _, err := tx.CreateSupplyItem(domain.SupplyItem{
-			SKU:            "SKU-OK",
+		if _, err := tx.CreateSupplyItem(domain.SupplyItem{SupplyItem: entitymodel.SupplyItem{SKU: "SKU-OK",
 			Name:           "Supply",
 			QuantityOnHand: 10,
 			Unit:           "box",
 			FacilityIDs:    []string{facility.ID},
-			ProjectIDs:     []string{project.ID},
+			ProjectIDs:     []string{project.ID}},
 		}); err != nil {
 			t.Fatalf("expected supply creation to succeed: %v", err)
 		}
@@ -1080,45 +1067,45 @@ func TestSQLiteMigrateSnapshotCleansDataVariants(t *testing.T) {
 	now := time.Now().UTC()
 	snapshot := Snapshot{
 		Organisms: map[string]domain.Organism{
-			"org-keep": {Base: domain.Base{ID: "org-keep"}, Name: "Org", Species: "Spec"},
+			"org-keep": {Organism: entitymodel.Organism{ID: "org-keep", Name: "Org", Species: "Spec"}},
 		},
 		Cohorts: map[string]domain.Cohort{
-			"cohort-keep": {Base: domain.Base{ID: "cohort-keep"}, Name: "Cohort"},
+			"cohort-keep": {Cohort: entitymodel.Cohort{ID: "cohort-keep", Name: "Cohort"}},
 		},
 		Facilities: map[string]domain.Facility{
-			facilityID: {Base: domain.Base{ID: facilityID}},
+			facilityID: {Facility: entitymodel.Facility{ID: facilityID}},
 		},
 		Housing: map[string]domain.HousingUnit{
-			"housing-valid":  {Base: domain.Base{ID: "housing-valid"}, Name: "HV", FacilityID: facilityID, Capacity: 0},
-			"housing-remove": {Base: domain.Base{ID: "housing-remove"}, Name: "HR", FacilityID: "missing", Capacity: 2},
+			"housing-valid":  {HousingUnit: entitymodel.HousingUnit{ID: "housing-valid", Name: "HV", FacilityID: facilityID, Capacity: 0}},
+			"housing-remove": {HousingUnit: entitymodel.HousingUnit{ID: "housing-remove", Name: "HR", FacilityID: "missing", Capacity: 2}},
 		},
 		Procedures: map[string]domain.Procedure{
-			"proc-keep": {Base: domain.Base{ID: "proc-keep"}, Name: "Proc", Status: domain.ProcedureStatusScheduled, ScheduledAt: now, ProtocolID: "prot-keep"},
+			"proc-keep": {Procedure: entitymodel.Procedure{ID: "proc-keep", Name: "Proc", Status: domain.ProcedureStatusScheduled, ScheduledAt: now, ProtocolID: "prot-keep"}},
 		},
 		Treatments: map[string]domain.Treatment{
-			"treatment-valid":  {Base: domain.Base{ID: "treatment-valid"}, Name: "Treat", ProcedureID: "proc-keep", OrganismIDs: []string{"org-keep", "org-keep", "missing"}, CohortIDs: []string{"cohort-keep", "missing"}},
-			"treatment-remove": {Base: domain.Base{ID: "treatment-remove"}, Name: "TreatBad", ProcedureID: "missing"},
+			"treatment-valid":  {Treatment: entitymodel.Treatment{ID: "treatment-valid", Name: "Treat", ProcedureID: "proc-keep", OrganismIDs: []string{"org-keep", "org-keep", "missing"}, CohortIDs: []string{"cohort-keep", "missing"}}},
+			"treatment-remove": {Treatment: entitymodel.Treatment{ID: "treatment-remove", Name: "TreatBad", ProcedureID: "missing"}},
 		},
 		Observations: map[string]domain.Observation{
-			"observation-valid": {Base: domain.Base{ID: "observation-valid"}, ProcedureID: ptr("proc-keep"), Observer: "Tech", RecordedAt: now},
-			"observation-drop":  {Base: domain.Base{ID: "observation-drop"}, ProcedureID: ptr("missing"), Observer: "Tech", RecordedAt: now},
+			"observation-valid": {Observation: entitymodel.Observation{ID: "observation-valid", ProcedureID: ptr("proc-keep"), Observer: "Tech", RecordedAt: now}},
+			"observation-drop":  {Observation: entitymodel.Observation{ID: "observation-drop", ProcedureID: ptr("missing"), Observer: "Tech", RecordedAt: now}},
 		},
 		Samples: map[string]domain.Sample{
-			"sample-valid":            {Base: domain.Base{ID: "sample-valid"}, Identifier: "S", SourceType: "blood", FacilityID: facilityID, OrganismID: ptr("org-keep"), CollectedAt: now, Status: domain.SampleStatusStored, StorageLocation: "room"},
-			"sample-drop":             {Base: domain.Base{ID: "sample-drop"}, Identifier: "S2", SourceType: "blood", FacilityID: facilityID, OrganismID: ptr("missing"), CollectedAt: now, Status: domain.SampleStatusStored, StorageLocation: "room"},
-			"sample-missing-facility": {Base: domain.Base{ID: "sample-missing-facility"}, Identifier: "S3", SourceType: "blood", FacilityID: "missing", CollectedAt: now, Status: domain.SampleStatusStored, StorageLocation: "room"},
+			"sample-valid":            {Sample: entitymodel.Sample{ID: "sample-valid", Identifier: "S", SourceType: "blood", FacilityID: facilityID, OrganismID: ptr("org-keep"), CollectedAt: now, Status: domain.SampleStatusStored, StorageLocation: "room"}},
+			"sample-drop":             {Sample: entitymodel.Sample{ID: "sample-drop", Identifier: "S2", SourceType: "blood", FacilityID: facilityID, OrganismID: ptr("missing"), CollectedAt: now, Status: domain.SampleStatusStored, StorageLocation: "room"}},
+			"sample-missing-facility": {Sample: entitymodel.Sample{ID: "sample-missing-facility", Identifier: "S3", SourceType: "blood", FacilityID: "missing", CollectedAt: now, Status: domain.SampleStatusStored, StorageLocation: "room"}},
 		},
 		Protocols: map[string]domain.Protocol{
-			"prot-keep": {Base: domain.Base{ID: "prot-keep"}, Code: "PR", Title: "Protocol", MaxSubjects: 5, Status: domain.ProtocolStatusApproved},
+			"prot-keep": {Protocol: entitymodel.Protocol{ID: "prot-keep", Code: "PR", Title: "Protocol", MaxSubjects: 5, Status: domain.ProtocolStatusApproved}},
 		},
 		Permits: map[string]domain.Permit{
-			"permit-valid": {Base: domain.Base{ID: "permit-valid"}, PermitNumber: "P", Authority: "Gov", ValidFrom: now, ValidUntil: now.Add(time.Hour), FacilityIDs: []string{facilityID, facilityID, "missing"}, ProtocolIDs: []string{"prot-keep", "missing"}},
+			"permit-valid": {Permit: entitymodel.Permit{ID: "permit-valid", PermitNumber: "P", Authority: "Gov", ValidFrom: now, ValidUntil: now.Add(time.Hour), FacilityIDs: []string{facilityID, facilityID, "missing"}, ProtocolIDs: []string{"prot-keep", "missing"}}},
 		},
 		Projects: map[string]domain.Project{
-			"project-valid": {Base: domain.Base{ID: "project-valid"}, Code: "PRJ", Title: "Project", FacilityIDs: []string{facilityID, facilityID, "missing"}},
+			"project-valid": {Project: entitymodel.Project{ID: "project-valid", Code: "PRJ", Title: "Project", FacilityIDs: []string{facilityID, facilityID, "missing"}}},
 		},
 		Supplies: map[string]domain.SupplyItem{
-			"supply-valid": {Base: domain.Base{ID: "supply-valid"}, SKU: "SKU", Name: "Supply", FacilityIDs: []string{facilityID, facilityID, "missing"}, ProjectIDs: []string{"project-valid", "missing"}},
+			"supply-valid": {SupplyItem: entitymodel.SupplyItem{ID: "supply-valid", SKU: "SKU", Name: "Supply", FacilityIDs: []string{facilityID, facilityID, "missing"}, ProjectIDs: []string{"project-valid", "missing"}}},
 		},
 	}
 
@@ -1195,21 +1182,20 @@ func TestMemStoreUpdateSupplyItemDedupe(t *testing.T) {
 
 	runTx(t, store, func(tx domain.Transaction) error {
 		var err error
-		facility, err = tx.CreateFacility(domain.Facility{Name: "Supply Facility"})
+		facility, err = tx.CreateFacility(domain.Facility{Facility: entitymodel.Facility{Name: "Supply Facility"}})
 		if err != nil {
 			return err
 		}
-		project, err = tx.CreateProject(domain.Project{Code: "SUP", Title: "Supply Project", FacilityIDs: []string{facility.ID}})
+		project, err = tx.CreateProject(domain.Project{Project: entitymodel.Project{Code: "SUP", Title: "Supply Project", FacilityIDs: []string{facility.ID}}})
 		if err != nil {
 			return err
 		}
-		supply, err = tx.CreateSupplyItem(domain.SupplyItem{
-			SKU:            "SKU-DEDUP",
+		supply, err = tx.CreateSupplyItem(domain.SupplyItem{SupplyItem: entitymodel.SupplyItem{SKU: "SKU-DEDUP",
 			Name:           "Gloves",
 			QuantityOnHand: 5,
 			Unit:           "box",
 			FacilityIDs:    []string{facility.ID},
-			ProjectIDs:     []string{project.ID},
+			ProjectIDs:     []string{project.ID}},
 		})
 		return err
 	})
@@ -1254,22 +1240,21 @@ func TestMemStoreUpdatePermitDedupe(t *testing.T) {
 
 	runTx(t, store, func(tx domain.Transaction) error {
 		var err error
-		facility, err = tx.CreateFacility(domain.Facility{Name: "Permit Facility"})
+		facility, err = tx.CreateFacility(domain.Facility{Facility: entitymodel.Facility{Name: "Permit Facility"}})
 		if err != nil {
 			return err
 		}
-		protocol, err = tx.CreateProtocol(domain.Protocol{Code: "PERM", Title: "Permit Proto", MaxSubjects: 2})
+		protocol, err = tx.CreateProtocol(domain.Protocol{Protocol: entitymodel.Protocol{Code: "PERM", Title: "Permit Proto", MaxSubjects: 2}})
 		if err != nil {
 			return err
 		}
-		permit, err = tx.CreatePermit(domain.Permit{
-			PermitNumber:      "PERM-DEDUP",
+		permit, err = tx.CreatePermit(domain.Permit{Permit: entitymodel.Permit{PermitNumber: "PERM-DEDUP",
 			Authority:         "Gov",
 			ValidFrom:         time.Now().UTC(),
 			ValidUntil:        time.Now().UTC().Add(time.Hour),
 			AllowedActivities: []string{"collect"},
 			FacilityIDs:       []string{facility.ID},
-			ProtocolIDs:       []string{protocol.ID},
+			ProtocolIDs:       []string{protocol.ID}},
 		})
 		return err
 	})

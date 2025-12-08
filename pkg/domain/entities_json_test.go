@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	entitymodel "colonycore/pkg/domain/entitymodel"
 	"colonycore/pkg/domain/extension"
 )
 
@@ -16,14 +17,14 @@ const (
 func TestOrganismMarshalJSON(t *testing.T) {
 	now := time.Now().UTC()
 	organism := Organism{
-		Base: Base{
+		Organism: entitymodel.Organism{
 			ID:        "test-organism",
 			CreatedAt: now.Add(-time.Hour),
 			UpdatedAt: now,
+			Name:      "Test Organism",
+			Species:   "Test Species",
+			Stage:     StageAdult,
 		},
-		Name:    "Test Organism",
-		Species: "Test Species",
-		Stage:   StageAdult,
 	}
 
 	// Set attributes to test marshaling
@@ -156,14 +157,14 @@ func TestGenotypeMarkerUnmarshalJSONInvalidPlugin(t *testing.T) {
 
 func TestOrganismMarshalUnmarshalRoundTrip(t *testing.T) {
 	original := Organism{
-		Base: Base{
+		Organism: entitymodel.Organism{
 			ID:        "roundtrip-test",
 			CreatedAt: time.Now().UTC().Add(-time.Hour),
 			UpdatedAt: time.Now().UTC(),
+			Name:      "Roundtrip Test",
+			Species:   "Test Species",
+			Stage:     StageJuvenile,
 		},
-		Name:    "Roundtrip Test",
-		Species: "Test Species",
-		Stage:   StageJuvenile,
 	}
 
 	mustNoError(t, "SetCoreAttributes", original.SetCoreAttributes(map[string]any{
@@ -207,9 +208,11 @@ func TestOrganismMarshalUnmarshalRoundTrip(t *testing.T) {
 
 func TestFacilityMarshalJSON(t *testing.T) {
 	facility := Facility{
-		Base: Base{ID: "test-facility"},
-		Name: "Test Facility",
-		Zone: "Test Zone",
+		Facility: entitymodel.Facility{
+			ID:   "test-facility",
+			Name: "Test Facility",
+			Zone: "Test Zone",
+		},
 	}
 
 	mustNoError(t, "ApplyEnvironmentBaselines", facility.ApplyEnvironmentBaselines(map[string]any{
@@ -265,9 +268,11 @@ func TestFacilityUnmarshalJSON(t *testing.T) {
 
 func TestBreedingUnitMarshalJSON(t *testing.T) {
 	unit := BreedingUnit{
-		Base:     Base{ID: "test-breeding"},
-		Name:     "Test Breeding Unit",
-		Strategy: "pair",
+		BreedingUnit: entitymodel.BreedingUnit{
+			ID:       "test-breeding",
+			Name:     "Test Breeding Unit",
+			Strategy: "pair",
+		},
 	}
 
 	mustNoError(t, "ApplyPairingAttributes", unit.ApplyPairingAttributes(map[string]any{
@@ -323,8 +328,10 @@ func TestBreedingUnitUnmarshalJSON(t *testing.T) {
 
 func TestObservationMarshalJSON(t *testing.T) {
 	obs := Observation{
-		Base:     Base{ID: "test-observation"},
-		Observer: "Test Observer",
+		Observation: entitymodel.Observation{
+			ID:       "test-observation",
+			Observer: "Test Observer",
+		},
 	}
 
 	mustNoError(t, "ApplyObservationData", obs.ApplyObservationData(map[string]any{
@@ -355,8 +362,10 @@ func TestObservationMarshalJSON(t *testing.T) {
 
 func TestObservationMarshalJSONIncludesExtensions(t *testing.T) {
 	obs := Observation{
-		Base:     Base{ID: "obs-ext"},
-		Observer: "Tech",
+		Observation: entitymodel.Observation{
+			ID:       "obs-ext",
+			Observer: "Tech",
+		},
 	}
 	container, err := extension.FromRaw(map[string]map[string]any{
 		string(extension.HookObservationData): {
@@ -404,9 +413,11 @@ func TestOrganismMarshalUnmarshalPreservesExtensions(t *testing.T) {
 	mustNoError(t, "seed organism plugin payload", container.Set(extension.HookOrganismAttributes, extension.PluginID("plugin.organism"), map[string]any{"flag": true}))
 
 	organism := Organism{
-		Base:    Base{ID: "org-ext"},
-		Name:    "Org Ext",
-		Species: "Spec",
+		Organism: entitymodel.Organism{
+			ID:      "org-ext",
+			Name:    "Org Ext",
+			Species: "Spec",
+		},
 	}
 	mustNoError(t, "apply organism extensions", organism.SetOrganismExtensions(container))
 
@@ -435,11 +446,13 @@ func TestFacilityMarshalUnmarshalPreservesExtensions(t *testing.T) {
 	mustNoError(t, "seed facility plugin payload", container.Set(extension.HookFacilityEnvironmentBaselines, extension.PluginID("plugin.facility"), map[string]any{"humidity": "65%"}))
 
 	facility := Facility{
-		Base:         Base{ID: "fac-ext"},
-		Code:         "FAC",
-		Name:         "Facility Ext",
-		Zone:         "A1",
-		AccessPolicy: "open",
+		Facility: entitymodel.Facility{
+			ID:           "fac-ext",
+			Code:         "FAC",
+			Name:         "Facility Ext",
+			Zone:         "A1",
+			AccessPolicy: "open",
+		},
 	}
 	mustNoError(t, "apply facility extensions", facility.SetFacilityExtensions(container))
 
@@ -468,9 +481,11 @@ func TestBreedingUnitMarshalUnmarshalPreservesExtensions(t *testing.T) {
 	mustNoError(t, "seed breeding plugin payload", container.Set(extension.HookBreedingUnitPairingAttributes, extension.PluginID("plugin.breeding"), map[string]any{"note": "keep"}))
 
 	breeding := BreedingUnit{
-		Base:     Base{ID: "breed-ext"},
-		Name:     "Breeding Ext",
-		Strategy: "pair",
+		BreedingUnit: entitymodel.BreedingUnit{
+			ID:       "breed-ext",
+			Name:     "Breeding Ext",
+			Strategy: "pair",
+		},
 	}
 	mustNoError(t, "apply breeding extensions", breeding.SetBreedingUnitExtensions(container))
 
@@ -500,14 +515,16 @@ func TestSampleMarshalUnmarshalPreservesExtensions(t *testing.T) {
 
 	organismID := "org-ext"
 	sample := Sample{
-		Base:            Base{ID: "sample-ext"},
-		Identifier:      "S-EXT",
-		SourceType:      "blood",
-		OrganismID:      &organismID,
-		FacilityID:      "fac-ext",
-		CollectedAt:     time.Now().UTC(),
-		Status:          SampleStatusStored,
-		StorageLocation: "freezer",
+		Sample: entitymodel.Sample{
+			ID:              "sample-ext",
+			Identifier:      "S-EXT",
+			SourceType:      "blood",
+			OrganismID:      &organismID,
+			FacilityID:      "fac-ext",
+			CollectedAt:     time.Now().UTC(),
+			Status:          SampleStatusStored,
+			StorageLocation: "freezer",
+		},
 	}
 	mustNoError(t, "apply sample extensions", sample.SetSampleExtensions(container))
 
@@ -536,13 +553,15 @@ func TestSupplyItemMarshalUnmarshalPreservesExtensions(t *testing.T) {
 	mustNoError(t, "seed supply plugin payload", container.Set(extension.HookSupplyItemAttributes, extension.PluginID("plugin.supply"), map[string]any{"lot": "L-1"}))
 
 	supply := SupplyItem{
-		Base:           Base{ID: "supply-ext"},
-		SKU:            "SKU-EXT",
-		Name:           "Supply Ext",
-		QuantityOnHand: 1,
-		Unit:           "box",
-		FacilityIDs:    []string{"fac-ext"},
-		ProjectIDs:     []string{"proj-ext"},
+		SupplyItem: entitymodel.SupplyItem{
+			ID:             "supply-ext",
+			SKU:            "SKU-EXT",
+			Name:           "Supply Ext",
+			QuantityOnHand: 1,
+			Unit:           "box",
+			FacilityIDs:    []string{"fac-ext"},
+			ProjectIDs:     []string{"proj-ext"},
+		},
 	}
 	mustNoError(t, "apply supply extensions", supply.SetSupplyItemExtensions(container))
 
@@ -650,9 +669,11 @@ const testVolumeAttribute = "5ml"
 
 func TestSampleMarshalJSON(t *testing.T) {
 	sample := Sample{
-		Base:       Base{ID: "test-sample"},
-		Identifier: "SAMPLE-001",
-		SourceType: "blood",
+		Sample: entitymodel.Sample{
+			ID:         "test-sample",
+			Identifier: "SAMPLE-001",
+			SourceType: "blood",
+		},
 	}
 
 	mustNoError(t, "ApplySampleAttributes", sample.ApplySampleAttributes(map[string]any{
@@ -708,9 +729,11 @@ func TestSampleUnmarshalJSON(t *testing.T) {
 
 func TestSupplyItemMarshalJSON(t *testing.T) {
 	supply := SupplyItem{
-		Base: Base{ID: "test-supply"},
-		SKU:  "SKU-001",
-		Name: "Test Supply",
+		SupplyItem: entitymodel.SupplyItem{
+			ID:   "test-supply",
+			SKU:  "SKU-001",
+			Name: "Test Supply",
+		},
 	}
 
 	mustNoError(t, "ApplySupplyAttributes", supply.ApplySupplyAttributes(map[string]any{
@@ -767,9 +790,11 @@ func TestSupplyItemUnmarshalJSON(t *testing.T) {
 func TestJSONMarshalWithNilAttributes(t *testing.T) {
 	// Test that entities with nil attributes marshal correctly
 	organism := Organism{
-		Base:    Base{ID: "nil-attrs"},
-		Name:    "No Attributes",
-		Species: "Test",
+		Organism: entitymodel.Organism{
+			ID:      "nil-attrs",
+			Name:    "No Attributes",
+			Species: "Test",
+		},
 	}
 
 	data, err := json.Marshal(organism)
@@ -815,8 +840,10 @@ func TestJSONUnmarshalWithMissingAttributes(t *testing.T) {
 func TestJSONMarshalErrorCases(t *testing.T) {
 	// Test marshaling organism with invalid data in attributes
 	organism := Organism{
-		Base: Base{ID: "test"},
-		Name: "Test",
+		Organism: entitymodel.Organism{
+			ID:   "test",
+			Name: "Test",
+		},
 	}
 
 	// Set attributes with data that could cause issues
@@ -846,7 +873,11 @@ func TestJSONMarshalErrorCases(t *testing.T) {
 
 // TestAttributesEdgeCases tests edge cases in attribute handling
 func TestAttributesEdgeCases(t *testing.T) {
-	organism := &Organism{Base: Base{ID: "test"}}
+	organism := &Organism{
+		Organism: entitymodel.Organism{
+			ID: "test",
+		},
+	}
 
 	// Test setting empty attributes
 	mustNoError(t, "SetCoreAttributes", organism.SetCoreAttributes(map[string]any{}))
@@ -959,10 +990,12 @@ func TestUnmarshalJSONMalformedAttributes(t *testing.T) {
 // TestJSONRoundTripComplexData tests round-trip with complex attribute data
 func TestJSONRoundTripComplexData(t *testing.T) {
 	original := Organism{
-		Base:    Base{ID: "complex-test"},
-		Name:    "Complex Test Organism",
-		Species: "Test Species",
-		Stage:   StageAdult,
+		Organism: entitymodel.Organism{
+			ID:      "complex-test",
+			Name:    "Complex Test Organism",
+			Species: "Test Species",
+			Stage:   StageAdult,
+		},
 	}
 
 	// Set complex attributes
@@ -1021,12 +1054,24 @@ func TestJSONUnmarshalAdditionalErrorPaths(t *testing.T) {
 
 	// Test all entity types with empty JSON - should work without errors
 	entities := []interface{}{
-		&Organism{},
-		&Facility{},
-		&BreedingUnit{},
-		&Observation{},
-		&Sample{},
-		&SupplyItem{},
+		&Organism{
+			Organism: entitymodel.Organism{},
+		},
+		&Facility{
+			Facility: entitymodel.Facility{},
+		},
+		&BreedingUnit{
+			BreedingUnit: entitymodel.BreedingUnit{},
+		},
+		&Observation{
+			Observation: entitymodel.Observation{},
+		},
+		&Sample{
+			Sample: entitymodel.Sample{},
+		},
+		&SupplyItem{
+			SupplyItem: entitymodel.SupplyItem{},
+		},
 	}
 
 	for i, entity := range entities {
@@ -1055,15 +1100,15 @@ func TestJSONUnmarshalAdditionalErrorPaths(t *testing.T) {
 func TestLineMarshalUnmarshalJSON(t *testing.T) {
 	now := time.Now().UTC()
 	line := Line{
-		Base: Base{
-			ID:        "line-1",
-			CreatedAt: now.Add(-time.Hour),
-			UpdatedAt: now,
+		Line: entitymodel.Line{
+			ID:                "line-1",
+			CreatedAt:         now.Add(-time.Hour),
+			UpdatedAt:         now,
+			Code:              "L-001",
+			Name:              "Line One",
+			Origin:            "in-house",
+			GenotypeMarkerIDs: []string{"gm-1"},
 		},
-		Code:              "L-001",
-		Name:              "Line One",
-		Origin:            "in-house",
-		GenotypeMarkerIDs: []string{"gm-1"},
 	}
 
 	mustNoError(t, "ApplyDefaultAttributes", line.ApplyDefaultAttributes(map[string]any{
@@ -1150,15 +1195,15 @@ func TestLineMarshalUnmarshalJSON(t *testing.T) {
 func TestStrainMarshalUnmarshalJSON(t *testing.T) {
 	now := time.Now().UTC()
 	strain := Strain{
-		Base: Base{
-			ID:        "strain-1",
-			CreatedAt: now.Add(-2 * time.Hour),
-			UpdatedAt: now,
+		Strain: entitymodel.Strain{
+			ID:                "strain-1",
+			CreatedAt:         now.Add(-2 * time.Hour),
+			UpdatedAt:         now,
+			Code:              "S-001",
+			Name:              "Strain One",
+			LineID:            "line-1",
+			GenotypeMarkerIDs: []string{"gm-1", "gm-2"},
 		},
-		Code:              "S-001",
-		Name:              "Strain One",
-		LineID:            "line-1",
-		GenotypeMarkerIDs: []string{"gm-1", "gm-2"},
 	}
 
 	mustNoError(t, "ApplyStrainAttributes", strain.ApplyStrainAttributes(map[string]any{
@@ -1198,17 +1243,17 @@ func TestStrainMarshalUnmarshalJSON(t *testing.T) {
 func TestGenotypeMarkerMarshalUnmarshalJSON(t *testing.T) {
 	now := time.Now().UTC()
 	marker := GenotypeMarker{
-		Base: Base{
-			ID:        "marker-1",
-			CreatedAt: now.Add(-3 * time.Hour),
-			UpdatedAt: now,
+		GenotypeMarker: entitymodel.GenotypeMarker{
+			ID:             "marker-1",
+			CreatedAt:      now.Add(-3 * time.Hour),
+			UpdatedAt:      now,
+			Name:           "Marker One",
+			Locus:          "chr1:100-200",
+			Alleles:        []string{"A", "B"},
+			AssayMethod:    "PCR",
+			Interpretation: "call",
+			Version:        "v1",
 		},
-		Name:           "Marker One",
-		Locus:          "chr1:100-200",
-		Alleles:        []string{"A", "B"},
-		AssayMethod:    "PCR",
-		Interpretation: "call",
-		Version:        "v1",
 	}
 
 	mustNoError(t, "ApplyGenotypeMarkerAttributes", marker.ApplyGenotypeMarkerAttributes(map[string]any{
@@ -1246,7 +1291,13 @@ func TestGenotypeMarkerMarshalUnmarshalJSON(t *testing.T) {
 }
 
 func TestLineMarshalJSONWithContainerWithoutSlots(t *testing.T) {
-	line := Line{Code: "bare-line", Name: "Bare", Origin: "wild"}
+	line := Line{
+		Line: entitymodel.Line{
+			Code:   "bare-line",
+			Name:   "Bare",
+			Origin: "wild",
+		},
+	}
 	container := extension.NewContainer()
 	if err := container.Set(extension.HookLineDefaultAttributes, extension.PluginCore, map[string]any{"seed": true}); err != nil {
 		t.Fatalf("set container: %v", err)
@@ -1291,7 +1342,13 @@ func TestLineUnmarshalJSONWithoutAttributesClearsSlots(t *testing.T) {
 }
 
 func TestStrainMarshalJSONWithContainerWithoutSlot(t *testing.T) {
-	strain := Strain{Code: "S-bare", Name: "Bare Strain", LineID: "line"}
+	strain := Strain{
+		Strain: entitymodel.Strain{
+			Code:   "S-bare",
+			Name:   "Bare Strain",
+			LineID: "line",
+		},
+	}
 	container := extension.NewContainer()
 	if err := container.Set(extension.HookStrainAttributes, extension.PluginCore, map[string]any{"note": "core"}); err != nil {
 		t.Fatalf("set strain container: %v", err)
@@ -1324,7 +1381,16 @@ func TestStrainUnmarshalJSONWithoutAttributesClearsState(t *testing.T) {
 }
 
 func TestGenotypeMarkerMarshalJSONWithContainerWithoutSlot(t *testing.T) {
-	marker := GenotypeMarker{Name: "Bare Marker", Locus: "chr1:1-10", Alleles: []string{"A"}, AssayMethod: "PCR", Interpretation: "call", Version: "v0"}
+	marker := GenotypeMarker{
+		GenotypeMarker: entitymodel.GenotypeMarker{
+			Name:           "Bare Marker",
+			Locus:          "chr1:1-10",
+			Alleles:        []string{"A"},
+			AssayMethod:    "PCR",
+			Interpretation: "call",
+			Version:        "v0",
+		},
+	}
 	container := extension.NewContainer()
 	if err := container.Set(extension.HookGenotypeMarkerAttributes, extension.PluginCore, map[string]any{"note": "core"}); err != nil {
 		t.Fatalf("set marker container: %v", err)

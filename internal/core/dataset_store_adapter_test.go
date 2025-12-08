@@ -7,6 +7,7 @@ import (
 
 	"colonycore/pkg/datasetapi"
 	"colonycore/pkg/domain"
+	entitymodel "colonycore/pkg/domain/entitymodel"
 )
 
 //nolint:gocyclo // This comprehensive integration test covers many entity types and has inherent complexity
@@ -24,31 +25,34 @@ func TestDatasetPersistentStoreAdapter(t *testing.T) {
 	protocolRef := protocolID
 	projectRef := projectID
 	junkAttr := map[string]any{"flag": true}
-	organism := domain.Organism{
-		Base:       domain.Base{ID: organismID, CreatedAt: now.Add(-time.Hour), UpdatedAt: now},
+	organism := domain.Organism{Organism: entitymodel.Organism{ID: organismID,
+
+		CreatedAt: now.Add(-time.Hour),
+
+		UpdatedAt:  now,
 		Name:       "Alpha",
 		Species:    "Frog",
 		Stage:      domain.StageAdult,
 		CohortID:   &cohort,
 		HousingID:  &housingRef,
 		ProtocolID: &protocolRef,
-		ProjectID:  &projectRef,
+		ProjectID:  &projectRef},
 	}
 	if err := organism.SetCoreAttributes(junkAttr); err != nil {
 		t.Fatalf("SetCoreAttributes: %v", err)
 	}
-	unit := domain.HousingUnit{Base: domain.Base{ID: housingID}, Name: "Hab", Environment: "humid"}
-	protocol := domain.Protocol{Base: domain.Base{ID: protocolID}, Code: "P", Title: "Protocol", Description: strPtr("Desc"), MaxSubjects: 10}
-	project := domain.Project{Base: domain.Base{ID: projectID}, Code: "PR", Title: "Project", Description: strPtr("Research")}
-	cohortEntity := domain.Cohort{Base: domain.Base{ID: cohortID}, Name: "Group", Purpose: "Study", ProjectID: &projectRef, HousingID: &housingRef, ProtocolID: &protocolRef}
-	breeding := domain.BreedingUnit{Base: domain.Base{ID: "breeding"}, Name: "Pair", Strategy: "pair", HousingID: &housingRef, ProtocolID: &protocolRef, FemaleIDs: []string{"f"}, MaleIDs: []string{"m"}}
-	procedure := domain.Procedure{Base: domain.Base{ID: "procedure"}, Name: "Proc", Status: domain.ProcedureStatusScheduled, ScheduledAt: now.Add(time.Hour), ProtocolID: protocolID, CohortID: &cohort, OrganismIDs: []string{organismID}}
-	facility := domain.Facility{Base: domain.Base{ID: "facility"}, Code: "FAC", Name: "Facility", Zone: "biosecure", AccessPolicy: "restricted", HousingUnitIDs: []string{housingID}}
-	treatment := domain.Treatment{Base: domain.Base{ID: "treatment"}, Name: "Treatment", Status: domain.TreatmentStatusInProgress, ProcedureID: procedure.ID, OrganismIDs: []string{organismID}, AdministrationLog: []string{"dose1"}}
-	observation := domain.Observation{Base: domain.Base{ID: "observation"}, RecordedAt: now, Observer: "tech"}
-	sample := domain.Sample{Base: domain.Base{ID: "sample"}, Identifier: "S1", SourceType: "organism", FacilityID: facility.ID, CollectedAt: now, Status: domain.SampleStatusStored}
-	permit := domain.Permit{Base: domain.Base{ID: "permit"}, PermitNumber: "PERMIT", Authority: "Gov", Status: domain.PermitStatusApproved, ValidFrom: now.Add(-24 * time.Hour), ValidUntil: now.Add(24 * time.Hour)}
-	supply := domain.SupplyItem{Base: domain.Base{ID: "supply"}, SKU: "SKU", Name: "Item", QuantityOnHand: 5, ReorderLevel: 1}
+	unit := domain.HousingUnit{HousingUnit: entitymodel.HousingUnit{ID: housingID, Name: "Hab", Environment: "humid"}}
+	protocol := domain.Protocol{Protocol: entitymodel.Protocol{ID: protocolID, Code: "P", Title: "Protocol", Description: strPtr("Desc"), MaxSubjects: 10}}
+	project := domain.Project{Project: entitymodel.Project{ID: projectID, Code: "PR", Title: "Project", Description: strPtr("Research")}}
+	cohortEntity := domain.Cohort{Cohort: entitymodel.Cohort{ID: cohortID, Name: "Group", Purpose: "Study", ProjectID: &projectRef, HousingID: &housingRef, ProtocolID: &protocolRef}}
+	breeding := domain.BreedingUnit{BreedingUnit: entitymodel.BreedingUnit{ID: "breeding", Name: "Pair", Strategy: "pair", HousingID: &housingRef, ProtocolID: &protocolRef, FemaleIDs: []string{"f"}, MaleIDs: []string{"m"}}}
+	procedure := domain.Procedure{Procedure: entitymodel.Procedure{ID: "procedure", Name: "Proc", Status: domain.ProcedureStatusScheduled, ScheduledAt: now.Add(time.Hour), ProtocolID: protocolID, CohortID: &cohort, OrganismIDs: []string{organismID}}}
+	facility := domain.Facility{Facility: entitymodel.Facility{ID: "facility", Code: "FAC", Name: "Facility", Zone: "biosecure", AccessPolicy: "restricted", HousingUnitIDs: []string{housingID}}}
+	treatment := domain.Treatment{Treatment: entitymodel.Treatment{ID: "treatment", Name: "Treatment", Status: domain.TreatmentStatusInProgress, ProcedureID: procedure.ID, OrganismIDs: []string{organismID}, AdministrationLog: []string{"dose1"}}}
+	observation := domain.Observation{Observation: entitymodel.Observation{ID: "observation", RecordedAt: now, Observer: "tech"}}
+	sample := domain.Sample{Sample: entitymodel.Sample{ID: "sample", Identifier: "S1", SourceType: "organism", FacilityID: facility.ID, CollectedAt: now, Status: domain.SampleStatusStored}}
+	permit := domain.Permit{Permit: entitymodel.Permit{ID: "permit", PermitNumber: "PERMIT", Authority: "Gov", Status: domain.PermitStatusApproved, ValidFrom: now.Add(-24 * time.Hour), ValidUntil: now.Add(24 * time.Hour)}}
+	supply := domain.SupplyItem{SupplyItem: entitymodel.SupplyItem{ID: "supply", SKU: "SKU", Name: "Item", QuantityOnHand: 5, ReorderLevel: 1}}
 
 	fake := &fakePersistentStore{
 		organisms:     []domain.Organism{organism},
@@ -315,7 +319,7 @@ func (f *fakePersistentStore) GetOrganism(id string) (domain.Organism, bool) {
 			return org, true
 		}
 	}
-	return domain.Organism{}, false
+	return domain.Organism{Organism: entitymodel.Organism{}}, false
 }
 
 func (f *fakePersistentStore) ListOrganisms() []domain.Organism {
@@ -328,7 +332,7 @@ func (f *fakePersistentStore) GetHousingUnit(id string) (domain.HousingUnit, boo
 			return unit, true
 		}
 	}
-	return domain.HousingUnit{}, false
+	return domain.HousingUnit{HousingUnit: entitymodel.HousingUnit{}}, false
 }
 
 func (f *fakePersistentStore) ListHousingUnits() []domain.HousingUnit {
@@ -341,7 +345,7 @@ func (f *fakePersistentStore) GetFacility(id string) (domain.Facility, bool) {
 			return fac, true
 		}
 	}
-	return domain.Facility{}, false
+	return domain.Facility{Facility: entitymodel.Facility{}}, false
 }
 
 func (f *fakePersistentStore) ListFacilities() []domain.Facility {
@@ -354,7 +358,7 @@ func (f *fakePersistentStore) GetLine(id string) (domain.Line, bool) {
 			return line, true
 		}
 	}
-	return domain.Line{}, false
+	return domain.Line{Line: entitymodel.Line{}}, false
 }
 
 func (f *fakePersistentStore) ListLines() []domain.Line {
@@ -367,7 +371,7 @@ func (f *fakePersistentStore) GetStrain(id string) (domain.Strain, bool) {
 			return strain, true
 		}
 	}
-	return domain.Strain{}, false
+	return domain.Strain{Strain: entitymodel.Strain{}}, false
 }
 
 func (f *fakePersistentStore) ListStrains() []domain.Strain {
@@ -380,7 +384,7 @@ func (f *fakePersistentStore) GetGenotypeMarker(id string) (domain.GenotypeMarke
 			return marker, true
 		}
 	}
-	return domain.GenotypeMarker{}, false
+	return domain.GenotypeMarker{GenotypeMarker: entitymodel.GenotypeMarker{}}, false
 }
 
 func (f *fakePersistentStore) ListGenotypeMarkers() []domain.GenotypeMarker {
@@ -413,7 +417,7 @@ func (f *fakePersistentStore) GetPermit(id string) (domain.Permit, bool) {
 			return permit, true
 		}
 	}
-	return domain.Permit{}, false
+	return domain.Permit{Permit: entitymodel.Permit{}}, false
 }
 
 func (f *fakePersistentStore) ListPermits() []domain.Permit {
@@ -496,7 +500,7 @@ func (v fakeTransactionView) FindTreatment(id string) (domain.Treatment, bool) {
 			return t, true
 		}
 	}
-	return domain.Treatment{}, false
+	return domain.Treatment{Treatment: entitymodel.Treatment{}}, false
 }
 
 func (v fakeTransactionView) FindObservation(id string) (domain.Observation, bool) {
@@ -505,7 +509,7 @@ func (v fakeTransactionView) FindObservation(id string) (domain.Observation, boo
 			return o, true
 		}
 	}
-	return domain.Observation{}, false
+	return domain.Observation{Observation: entitymodel.Observation{}}, false
 }
 
 func (v fakeTransactionView) FindSample(id string) (domain.Sample, bool) {
@@ -514,7 +518,7 @@ func (v fakeTransactionView) FindSample(id string) (domain.Sample, bool) {
 			return s, true
 		}
 	}
-	return domain.Sample{}, false
+	return domain.Sample{Sample: entitymodel.Sample{}}, false
 }
 
 func (v fakeTransactionView) FindPermit(id string) (domain.Permit, bool) {
@@ -527,5 +531,5 @@ func (v fakeTransactionView) FindSupplyItem(id string) (domain.SupplyItem, bool)
 			return s, true
 		}
 	}
-	return domain.SupplyItem{}, false
+	return domain.SupplyItem{SupplyItem: entitymodel.SupplyItem{}}, false
 }

@@ -13,6 +13,7 @@ import (
 	"time"
 
 	memory "colonycore/internal/infra/persistence/memory"
+	entitymodel "colonycore/pkg/domain/entitymodel"
 )
 
 func strPtr(v string) *string {
@@ -23,12 +24,12 @@ func TestHousingCapacityRuleBlocksOverCapacity(t *testing.T) {
 	svc := core.NewInMemoryService(core.NewDefaultRulesEngine())
 	ctx := context.Background()
 
-	facility, _, err := svc.CreateFacility(ctx, domain.Facility{Name: "Greenhouse"})
+	facility, _, err := svc.CreateFacility(ctx, domain.Facility{Facility: entitymodel.Facility{Name: "Greenhouse"}})
 	if err != nil {
 		t.Fatalf("create facility: %v", err)
 	}
 
-	housing, res, err := svc.CreateHousingUnit(ctx, domain.HousingUnit{Name: "Tank A", FacilityID: facility.ID, Capacity: 1})
+	housing, res, err := svc.CreateHousingUnit(ctx, domain.HousingUnit{HousingUnit: entitymodel.HousingUnit{Name: "Tank A", FacilityID: facility.ID, Capacity: 1}})
 	if err != nil {
 		t.Fatalf("create housing: %v", err)
 	}
@@ -36,7 +37,7 @@ func TestHousingCapacityRuleBlocksOverCapacity(t *testing.T) {
 		t.Fatalf("unexpected violations: %+v", res.Violations)
 	}
 
-	frogA, res, err := svc.CreateOrganism(ctx, domain.Organism{Name: "Frog A", Species: "Lithobates", Stage: domain.StageJuvenile})
+	frogA, res, err := svc.CreateOrganism(ctx, domain.Organism{Organism: entitymodel.Organism{Name: "Frog A", Species: "Lithobates", Stage: domain.StageJuvenile}})
 	if err != nil {
 		t.Fatalf("create organism A: %v", err)
 	}
@@ -44,7 +45,7 @@ func TestHousingCapacityRuleBlocksOverCapacity(t *testing.T) {
 		t.Fatalf("unexpected violations for organism A: %+v", res.Violations)
 	}
 
-	frogB, res, err := svc.CreateOrganism(ctx, domain.Organism{Name: "Frog B", Species: "Lithobates", Stage: domain.StageJuvenile})
+	frogB, res, err := svc.CreateOrganism(ctx, domain.Organism{Organism: entitymodel.Organism{Name: "Frog B", Species: "Lithobates", Stage: domain.StageJuvenile}})
 	if err != nil {
 		t.Fatalf("create organism B: %v", err)
 	}
@@ -78,11 +79,11 @@ func TestProtocolSubjectCapBlocksOverage(t *testing.T) {
 	svc := core.NewInMemoryService(core.NewDefaultRulesEngine())
 	ctx := context.Background()
 
-	facility, _, err := svc.CreateFacility(ctx, domain.Facility{Name: "Protocol Facility"})
+	facility, _, err := svc.CreateFacility(ctx, domain.Facility{Facility: entitymodel.Facility{Name: "Protocol Facility"}})
 	if err != nil {
 		t.Fatalf("create facility: %v", err)
 	}
-	project, _, err := svc.CreateProject(ctx, domain.Project{Code: "PRJ-1", Title: "Regeneration", FacilityIDs: []string{facility.ID}})
+	project, _, err := svc.CreateProject(ctx, domain.Project{Project: entitymodel.Project{Code: "PRJ-1", Title: "Regeneration", FacilityIDs: []string{facility.ID}}})
 	if err != nil {
 		t.Fatalf("create project: %v", err)
 	}
@@ -90,7 +91,7 @@ func TestProtocolSubjectCapBlocksOverage(t *testing.T) {
 		t.Fatalf("expected project ID to be set")
 	}
 
-	protocol, res, err := svc.CreateProtocol(ctx, domain.Protocol{Code: "PROTO-1", Title: "Tadpole Study", MaxSubjects: 1})
+	protocol, res, err := svc.CreateProtocol(ctx, domain.Protocol{Protocol: entitymodel.Protocol{Code: "PROTO-1", Title: "Tadpole Study", MaxSubjects: 1}})
 	if err != nil {
 		t.Fatalf("create protocol: %v", err)
 	}
@@ -98,11 +99,11 @@ func TestProtocolSubjectCapBlocksOverage(t *testing.T) {
 		t.Fatalf("unexpected violations on protocol create: %+v", res.Violations)
 	}
 
-	frogA, _, err := svc.CreateOrganism(ctx, domain.Organism{Name: "Frog A", Species: "Lithobates", ProjectID: &project.ID})
+	frogA, _, err := svc.CreateOrganism(ctx, domain.Organism{Organism: entitymodel.Organism{Name: "Frog A", Species: "Lithobates", ProjectID: &project.ID}})
 	if err != nil {
 		t.Fatalf("create organism A: %v", err)
 	}
-	frogB, _, err := svc.CreateOrganism(ctx, domain.Organism{Name: "Frog B", Species: "Lithobates", ProjectID: &project.ID})
+	frogB, _, err := svc.CreateOrganism(ctx, domain.Organism{Organism: entitymodel.Organism{Name: "Frog B", Species: "Lithobates", ProjectID: &project.ID}})
 	if err != nil {
 		t.Fatalf("create organism B: %v", err)
 	}
@@ -153,17 +154,17 @@ func TestFrogPluginRegistersSchemasAndRules(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	facility, _, err := svc.CreateFacility(ctx, domain.Facility{Name: "Lab"})
+	facility, _, err := svc.CreateFacility(ctx, domain.Facility{Facility: entitymodel.Facility{Name: "Lab"}})
 	if err != nil {
 		t.Fatalf("create facility: %v", err)
 	}
 
-	housing, _, err := svc.CreateHousingUnit(ctx, domain.HousingUnit{Name: "Dry Terrarium", FacilityID: facility.ID, Capacity: 2, Environment: domain.HousingEnvironmentTerrestrial})
+	housing, _, err := svc.CreateHousingUnit(ctx, domain.HousingUnit{HousingUnit: entitymodel.HousingUnit{Name: "Dry Terrarium", FacilityID: facility.ID, Capacity: 2, Environment: domain.HousingEnvironmentTerrestrial}})
 	if err != nil {
 		t.Fatalf("create housing: %v", err)
 	}
 
-	frogA, _, err := svc.CreateOrganism(ctx, domain.Organism{Name: "DryFrog", Species: "Poison Frog"})
+	frogA, _, err := svc.CreateOrganism(ctx, domain.Organism{Organism: entitymodel.Organism{Name: "DryFrog", Species: "Poison Frog"}})
 	if err != nil {
 		t.Fatalf("create organism: %v", err)
 	}
@@ -188,20 +189,20 @@ func TestServiceExtendedCRUD(t *testing.T) {
 	svc := core.NewInMemoryService(core.NewDefaultRulesEngine())
 	ctx := context.Background()
 
-	facility, _, err := svc.CreateFacility(ctx, domain.Facility{Name: "Lab"})
+	facility, _, err := svc.CreateFacility(ctx, domain.Facility{Facility: entitymodel.Facility{Name: "Lab"}})
 	if err != nil {
 		t.Fatalf("create facility: %v", err)
 	}
 
-	project, _, err := svc.CreateProject(ctx, domain.Project{Code: "PRJ-EXT", Title: "Extended", FacilityIDs: []string{facility.ID}})
+	project, _, err := svc.CreateProject(ctx, domain.Project{Project: entitymodel.Project{Code: "PRJ-EXT", Title: "Extended", FacilityIDs: []string{facility.ID}}})
 	if err != nil {
 		t.Fatalf("create project: %v", err)
 	}
-	protocol, _, err := svc.CreateProtocol(ctx, domain.Protocol{Code: "PROT-EXT", Title: "Extended Protocol", MaxSubjects: 10})
+	protocol, _, err := svc.CreateProtocol(ctx, domain.Protocol{Protocol: entitymodel.Protocol{Code: "PROT-EXT", Title: "Extended Protocol", MaxSubjects: 10}})
 	if err != nil {
 		t.Fatalf("create protocol: %v", err)
 	}
-	housing, _, err := svc.CreateHousingUnit(ctx, domain.HousingUnit{Name: "Humid", FacilityID: facility.ID, Capacity: 4, Environment: "humid"})
+	housing, _, err := svc.CreateHousingUnit(ctx, domain.HousingUnit{HousingUnit: entitymodel.HousingUnit{Name: "Humid", FacilityID: facility.ID, Capacity: 4, Environment: "humid"}})
 	if err != nil {
 		t.Fatalf("create housing: %v", err)
 	}
@@ -210,17 +211,17 @@ func TestServiceExtendedCRUD(t *testing.T) {
 	protID := protocol.ID
 	housingID := housing.ID
 
-	cohort, _, err := svc.CreateCohort(ctx, domain.Cohort{Name: "Cohort", Purpose: "Study", ProjectID: &projID, HousingID: &housingID, ProtocolID: &protID})
+	cohort, _, err := svc.CreateCohort(ctx, domain.Cohort{Cohort: entitymodel.Cohort{Name: "Cohort", Purpose: "Study", ProjectID: &projID, HousingID: &housingID, ProtocolID: &protID}})
 	if err != nil {
 		t.Fatalf("create cohort: %v", err)
 	}
 
 	cohortID := cohort.ID
-	organismA, _, err := svc.CreateOrganism(ctx, domain.Organism{Name: "SpecimenA", Species: "Lithobates", Stage: domain.StageJuvenile, CohortID: &cohortID})
+	organismA, _, err := svc.CreateOrganism(ctx, domain.Organism{Organism: entitymodel.Organism{Name: "SpecimenA", Species: "Lithobates", Stage: domain.StageJuvenile, CohortID: &cohortID}})
 	if err != nil {
 		t.Fatalf("create organismA: %v", err)
 	}
-	organismB, _, err := svc.CreateOrganism(ctx, domain.Organism{Name: "SpecimenB", Species: "Lithobates", Stage: domain.StageAdult, CohortID: &cohortID})
+	organismB, _, err := svc.CreateOrganism(ctx, domain.Organism{Organism: entitymodel.Organism{Name: "SpecimenB", Species: "Lithobates", Stage: domain.StageAdult, CohortID: &cohortID}})
 	if err != nil {
 		t.Fatalf("create organismB: %v", err)
 	}
@@ -239,13 +240,12 @@ func TestServiceExtendedCRUD(t *testing.T) {
 		t.Fatalf("expected line to update, got %s", updated.Line)
 	}
 
-	breeding, _, err := svc.CreateBreedingUnit(ctx, domain.BreedingUnit{
-		Name:       "Pair",
+	breeding, _, err := svc.CreateBreedingUnit(ctx, domain.BreedingUnit{BreedingUnit: entitymodel.BreedingUnit{Name: "Pair",
 		Strategy:   "pair",
 		HousingID:  &housingID,
 		ProtocolID: &protID,
 		FemaleIDs:  []string{organismA.ID},
-		MaleIDs:    []string{organismB.ID},
+		MaleIDs:    []string{organismB.ID}},
 	})
 	if err != nil {
 		t.Fatalf("create breeding unit: %v", err)
@@ -254,12 +254,11 @@ func TestServiceExtendedCRUD(t *testing.T) {
 		t.Fatalf("expected breeding unit to have name")
 	}
 
-	procedure, _, err := svc.CreateProcedure(ctx, domain.Procedure{
-		Name:        "Procedure",
+	procedure, _, err := svc.CreateProcedure(ctx, domain.Procedure{Procedure: entitymodel.Procedure{Name: "Procedure",
 		Status:      domain.ProcedureStatusScheduled,
 		ScheduledAt: time.Now().Add(time.Minute),
 		ProtocolID:  protID,
-		OrganismIDs: []string{organismA.ID},
+		OrganismIDs: []string{organismA.ID}},
 	})
 	if err != nil {
 		t.Fatalf("create procedure: %v", err)
@@ -288,12 +287,12 @@ func TestServiceUpdateDeleteWrappers(t *testing.T) {
 
 	const updatedDesc = "updated"
 
-	facility, _, err := svc.CreateFacility(ctx, domain.Facility{Name: "Facility Wrap"})
+	facility, _, err := svc.CreateFacility(ctx, domain.Facility{Facility: entitymodel.Facility{Name: "Facility Wrap"}})
 	if err != nil {
 		t.Fatalf("create facility: %v", err)
 	}
 
-	project, _, err := svc.CreateProject(ctx, domain.Project{Code: "PRJ-WRAP", Title: "Wrap", FacilityIDs: []string{facility.ID}})
+	project, _, err := svc.CreateProject(ctx, domain.Project{Project: entitymodel.Project{Code: "PRJ-WRAP", Title: "Wrap", FacilityIDs: []string{facility.ID}}})
 	if err != nil {
 		t.Fatalf("create project: %v", err)
 	}
@@ -316,7 +315,7 @@ func TestServiceUpdateDeleteWrappers(t *testing.T) {
 		t.Fatalf("unexpected violations on project delete: %+v", res.Violations)
 	}
 
-	protocol, _, err := svc.CreateProtocol(ctx, domain.Protocol{Code: "PROTO-WRAP", Title: "Wrap Proto", MaxSubjects: 3})
+	protocol, _, err := svc.CreateProtocol(ctx, domain.Protocol{Protocol: entitymodel.Protocol{Code: "PROTO-WRAP", Title: "Wrap Proto", MaxSubjects: 3}})
 	if err != nil {
 		t.Fatalf("create protocol: %v", err)
 	}
@@ -339,7 +338,7 @@ func TestServiceUpdateDeleteWrappers(t *testing.T) {
 		t.Fatalf("unexpected protocol delete violations: %+v", res.Violations)
 	}
 
-	housing, _, err := svc.CreateHousingUnit(ctx, domain.HousingUnit{Name: "Housing Wrap", FacilityID: facility.ID, Capacity: 2})
+	housing, _, err := svc.CreateHousingUnit(ctx, domain.HousingUnit{HousingUnit: entitymodel.HousingUnit{Name: "Housing Wrap", FacilityID: facility.ID, Capacity: 2}})
 	if err != nil {
 		t.Fatalf("create housing: %v", err)
 	}
@@ -368,7 +367,7 @@ func TestServiceFacilityLifecycle(t *testing.T) {
 	svc := core.NewInMemoryService(core.NewDefaultRulesEngine())
 	ctx := context.Background()
 
-	facility, _, err := svc.CreateFacility(ctx, domain.Facility{Name: "Lifecycle Facility"})
+	facility, _, err := svc.CreateFacility(ctx, domain.Facility{Facility: entitymodel.Facility{Name: "Lifecycle Facility"}})
 	if err != nil {
 		t.Fatalf("create facility: %v", err)
 	}
@@ -405,7 +404,7 @@ func TestServiceEmitsChangesForNewEntities(t *testing.T) {
 	svc := core.NewService(core.NewMemoryStore(engine))
 	ctx := context.Background()
 
-	facilityA, res, err := svc.CreateFacility(ctx, domain.Facility{Name: "Vivarium-A", Zone: "Zone-A", AccessPolicy: "badge"})
+	facilityA, res, err := svc.CreateFacility(ctx, domain.Facility{Facility: entitymodel.Facility{Name: "Vivarium-A", Zone: "Zone-A", AccessPolicy: "badge"}})
 	if err != nil {
 		t.Fatalf("create facility: %v", err)
 	}
@@ -429,40 +428,39 @@ func TestServiceEmitsChangesForNewEntities(t *testing.T) {
 	}
 	assertSingleChange(t, collector.take(), domain.EntityFacility, domain.ActionDelete)
 
-	facilityB, res, err := svc.CreateFacility(ctx, domain.Facility{Name: "Vivarium-B", Zone: "Zone-C", AccessPolicy: "pin"})
+	facilityB, res, err := svc.CreateFacility(ctx, domain.Facility{Facility: entitymodel.Facility{Name: "Vivarium-B", Zone: "Zone-C", AccessPolicy: "pin"}})
 	if err != nil {
 		t.Fatalf("create facility for dependencies: %v", err)
 	}
 	assertNoViolations(t, res)
 	assertSingleChange(t, collector.take(), domain.EntityFacility, domain.ActionCreate)
 
-	project, res, err := svc.CreateProject(ctx, domain.Project{Code: "PRJ-CHG", Title: "Change Tracking", FacilityIDs: []string{facilityB.ID}})
+	project, res, err := svc.CreateProject(ctx, domain.Project{Project: entitymodel.Project{Code: "PRJ-CHG", Title: "Change Tracking", FacilityIDs: []string{facilityB.ID}}})
 	if err != nil {
 		t.Fatalf("create project: %v", err)
 	}
 	assertNoViolations(t, res)
 	collector.take()
 
-	protocol, res, err := svc.CreateProtocol(ctx, domain.Protocol{Code: "PROTO-CHG", Title: "Change Proto", MaxSubjects: 5})
+	protocol, res, err := svc.CreateProtocol(ctx, domain.Protocol{Protocol: entitymodel.Protocol{Code: "PROTO-CHG", Title: "Change Proto", MaxSubjects: 5}})
 	if err != nil {
 		t.Fatalf("create protocol: %v", err)
 	}
 	assertNoViolations(t, res)
 	collector.take()
 
-	organism, res, err := svc.CreateOrganism(ctx, domain.Organism{Name: "Specimen", Species: "Lithobates"})
+	organism, res, err := svc.CreateOrganism(ctx, domain.Organism{Organism: entitymodel.Organism{Name: "Specimen", Species: "Lithobates"}})
 	if err != nil {
 		t.Fatalf("create organism: %v", err)
 	}
 	assertNoViolations(t, res)
 	collector.take()
 
-	procedure, res, err := svc.CreateProcedure(ctx, domain.Procedure{
-		Name:        "Proc",
+	procedure, res, err := svc.CreateProcedure(ctx, domain.Procedure{Procedure: entitymodel.Procedure{Name: "Proc",
 		Status:      "scheduled",
 		ProtocolID:  protocol.ID,
 		OrganismIDs: []string{organism.ID},
-		ScheduledAt: time.Now().UTC(),
+		ScheduledAt: time.Now().UTC()},
 	})
 	if err != nil {
 		t.Fatalf("create procedure: %v", err)
@@ -470,11 +468,10 @@ func TestServiceEmitsChangesForNewEntities(t *testing.T) {
 	assertNoViolations(t, res)
 	collector.take()
 
-	treatment, res, err := svc.CreateTreatment(ctx, domain.Treatment{
-		Name:        "Dose",
+	treatment, res, err := svc.CreateTreatment(ctx, domain.Treatment{Treatment: entitymodel.Treatment{Name: "Dose",
 		ProcedureID: procedure.ID,
 		OrganismIDs: []string{organism.ID},
-		DosagePlan:  "10mg",
+		DosagePlan:  "10mg"},
 	})
 	if err != nil {
 		t.Fatalf("create treatment: %v", err)
@@ -500,11 +497,10 @@ func TestServiceEmitsChangesForNewEntities(t *testing.T) {
 	assertSingleChange(t, collector.take(), domain.EntityTreatment, domain.ActionDelete)
 
 	now := time.Now().UTC()
-	observationInput := domain.Observation{
-		ProcedureID: &procedure.ID,
-		OrganismID:  &organism.ID,
-		RecordedAt:  now,
-		Observer:    "tech",
+	observationInput := domain.Observation{Observation: entitymodel.Observation{ProcedureID: &procedure.ID,
+		OrganismID: &organism.ID,
+		RecordedAt: now,
+		Observer:   "tech"},
 	}
 	if err := observationInput.ApplyObservationData(map[string]any{"score": 5}); err != nil {
 		t.Fatalf("apply observation data: %v", err)
@@ -533,8 +529,7 @@ func TestServiceEmitsChangesForNewEntities(t *testing.T) {
 	}
 	assertSingleChange(t, collector.take(), domain.EntityObservation, domain.ActionDelete)
 
-	sample, res, err := svc.CreateSample(ctx, domain.Sample{
-		Identifier:      "S-1",
+	sample, res, err := svc.CreateSample(ctx, domain.Sample{Sample: entitymodel.Sample{Identifier: "S-1",
 		SourceType:      "blood",
 		OrganismID:      &organism.ID,
 		FacilityID:      facilityB.ID,
@@ -545,7 +540,7 @@ func TestServiceEmitsChangesForNewEntities(t *testing.T) {
 			Actor:     "tech",
 			Location:  "freezer-1",
 			Timestamp: now,
-		}},
+		}}},
 	})
 	if err != nil {
 		t.Fatalf("create sample: %v", err)
@@ -570,15 +565,14 @@ func TestServiceEmitsChangesForNewEntities(t *testing.T) {
 	}
 	assertSingleChange(t, collector.take(), domain.EntitySample, domain.ActionDelete)
 
-	permit, res, err := svc.CreatePermit(ctx, domain.Permit{
-		PermitNumber:      "P-1",
+	permit, res, err := svc.CreatePermit(ctx, domain.Permit{Permit: entitymodel.Permit{PermitNumber: "P-1",
 		Authority:         "Gov",
 		Status:            domain.PermitStatusApproved,
 		ValidFrom:         now.Add(-time.Hour),
 		ValidUntil:        now.Add(time.Hour),
 		AllowedActivities: []string{"collect"},
 		FacilityIDs:       []string{facilityB.ID},
-		ProtocolIDs:       []string{protocol.ID},
+		ProtocolIDs:       []string{protocol.ID}},
 	})
 	if err != nil {
 		t.Fatalf("create permit: %v", err)
@@ -603,14 +597,13 @@ func TestServiceEmitsChangesForNewEntities(t *testing.T) {
 	}
 	assertSingleChange(t, collector.take(), domain.EntityPermit, domain.ActionDelete)
 
-	supply, res, err := svc.CreateSupplyItem(ctx, domain.SupplyItem{
-		SKU:            "SKU-1",
+	supply, res, err := svc.CreateSupplyItem(ctx, domain.SupplyItem{SupplyItem: entitymodel.SupplyItem{SKU: "SKU-1",
 		Name:           "Feed",
 		Description:    strPtr("Standard feed"),
 		QuantityOnHand: 10,
 		Unit:           "kg",
 		FacilityIDs:    []string{facilityB.ID},
-		ProjectIDs:     []string{project.ID},
+		ProjectIDs:     []string{project.ID}},
 	})
 	if err != nil {
 		t.Fatalf("create supply item: %v", err)
@@ -711,7 +704,7 @@ func TestInstallPluginValidations(t *testing.T) {
 func TestServiceAssignInvalidReferences(t *testing.T) {
 	svc := core.NewInMemoryService(core.NewDefaultRulesEngine())
 	ctx := context.Background()
-	organism, _, err := svc.CreateOrganism(ctx, domain.Organism{Name: "Lonely", Species: "Frog"})
+	organism, _, err := svc.CreateOrganism(ctx, domain.Organism{Organism: entitymodel.Organism{Name: "Lonely", Species: "Frog"}})
 	if err != nil {
 		t.Fatalf("create organism: %v", err)
 	}

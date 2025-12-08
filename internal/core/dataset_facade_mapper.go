@@ -2,16 +2,17 @@ package core
 
 import (
 	"fmt"
+	"time"
 
 	"colonycore/pkg/datasetapi"
 	"colonycore/pkg/domain"
 )
 
-func baseDataFromDomain(base domain.Base) datasetapi.BaseData {
+func baseDataFromDomain(id string, createdAt, updatedAt time.Time) datasetapi.BaseData {
 	return datasetapi.BaseData{
-		ID:        base.ID,
-		CreatedAt: base.CreatedAt,
-		UpdatedAt: base.UpdatedAt,
+		ID:        id,
+		CreatedAt: createdAt,
+		UpdatedAt: updatedAt,
 	}
 }
 
@@ -22,7 +23,7 @@ func facadeOrganismFromDomain(org domain.Organism) datasetapi.Organism {
 	}
 	extSet := datasetapi.NewExtensionSet(container.Raw())
 	return datasetapi.NewOrganism(datasetapi.OrganismData{
-		Base:       baseDataFromDomain(org.Base),
+		Base:       baseDataFromDomain(org.ID, org.CreatedAt, org.UpdatedAt),
 		Name:       org.Name,
 		Species:    org.Species,
 		Line:       org.Line,
@@ -51,7 +52,7 @@ func facadeOrganismsFromDomain(orgs []domain.Organism) []datasetapi.Organism {
 
 func facadeHousingUnitFromDomain(unit domain.HousingUnit) datasetapi.HousingUnit {
 	return datasetapi.NewHousingUnit(datasetapi.HousingUnitData{
-		Base:        baseDataFromDomain(unit.Base),
+		Base:        baseDataFromDomain(unit.ID, unit.CreatedAt, unit.UpdatedAt),
 		Name:        unit.Name,
 		FacilityID:  unit.FacilityID,
 		Capacity:    unit.Capacity,
@@ -73,7 +74,7 @@ func facadeHousingUnitsFromDomain(units []domain.HousingUnit) []datasetapi.Housi
 
 func facadeProtocolFromDomain(protocol domain.Protocol) datasetapi.Protocol {
 	return datasetapi.NewProtocol(datasetapi.ProtocolData{
-		Base:        baseDataFromDomain(protocol.Base),
+		Base:        baseDataFromDomain(protocol.ID, protocol.CreatedAt, protocol.UpdatedAt),
 		Code:        protocol.Code,
 		Title:       protocol.Title,
 		Description: protocol.Description,
@@ -95,7 +96,7 @@ func facadeProtocolsFromDomain(protocols []domain.Protocol) []datasetapi.Protoco
 
 func facadeProjectFromDomain(project domain.Project) datasetapi.Project {
 	return datasetapi.NewProject(datasetapi.ProjectData{
-		Base:          baseDataFromDomain(project.Base),
+		Base:          baseDataFromDomain(project.ID, project.CreatedAt, project.UpdatedAt),
 		Code:          project.Code,
 		Title:         project.Title,
 		Description:   project.Description,
@@ -120,7 +121,7 @@ func facadeProjectsFromDomain(projects []domain.Project) []datasetapi.Project {
 
 func facadeCohortFromDomain(cohort domain.Cohort) datasetapi.Cohort {
 	return datasetapi.NewCohort(datasetapi.CohortData{
-		Base:       baseDataFromDomain(cohort.Base),
+		Base:       baseDataFromDomain(cohort.ID, cohort.CreatedAt, cohort.UpdatedAt),
 		Name:       cohort.Name,
 		Purpose:    cohort.Purpose,
 		ProjectID:  cohort.ProjectID,
@@ -147,7 +148,7 @@ func facadeBreedingUnitFromDomain(unit domain.BreedingUnit) datasetapi.BreedingU
 	}
 	extSet := datasetapi.NewExtensionSet(container.Raw())
 	return datasetapi.NewBreedingUnit(datasetapi.BreedingUnitData{
-		Base:           baseDataFromDomain(unit.Base),
+		Base:           baseDataFromDomain(unit.ID, unit.CreatedAt, unit.UpdatedAt),
 		Name:           unit.Name,
 		Strategy:       unit.Strategy,
 		HousingID:      unit.HousingID,
@@ -177,7 +178,7 @@ func facadeBreedingUnitsFromDomain(units []domain.BreedingUnit) []datasetapi.Bre
 
 func facadeProcedureFromDomain(proc domain.Procedure) datasetapi.Procedure {
 	return datasetapi.NewProcedure(datasetapi.ProcedureData{
-		Base:           baseDataFromDomain(proc.Base),
+		Base:           baseDataFromDomain(proc.ID, proc.CreatedAt, proc.UpdatedAt),
 		Name:           proc.Name,
 		Status:         string(proc.Status),
 		ScheduledAt:    proc.ScheduledAt,
@@ -208,7 +209,7 @@ func facadeFacilityFromDomain(facility domain.Facility) datasetapi.Facility {
 	}
 	extSet := datasetapi.NewExtensionSet(container.Raw())
 	return datasetapi.NewFacility(datasetapi.FacilityData{
-		Base:           baseDataFromDomain(facility.Base),
+		Base:           baseDataFromDomain(facility.ID, facility.CreatedAt, facility.UpdatedAt),
 		Code:           facility.Code,
 		Name:           facility.Name,
 		Zone:           facility.Zone,
@@ -232,7 +233,7 @@ func facadeFacilitiesFromDomain(facilities []domain.Facility) []datasetapi.Facil
 
 func facadeTreatmentFromDomain(treatment domain.Treatment) datasetapi.Treatment {
 	return datasetapi.NewTreatment(datasetapi.TreatmentData{
-		Base:              baseDataFromDomain(treatment.Base),
+		Base:              baseDataFromDomain(treatment.ID, treatment.CreatedAt, treatment.UpdatedAt),
 		Name:              treatment.Name,
 		ProcedureID:       treatment.ProcedureID,
 		OrganismIDs:       treatment.OrganismIDs,
@@ -261,7 +262,7 @@ func facadeObservationFromDomain(observation domain.Observation) datasetapi.Obse
 	}
 	extSet := datasetapi.NewExtensionSet(container.Raw())
 	return datasetapi.NewObservation(datasetapi.ObservationData{
-		Base:        baseDataFromDomain(observation.Base),
+		Base:        baseDataFromDomain(observation.ID, observation.CreatedAt, observation.UpdatedAt),
 		ProcedureID: observation.ProcedureID,
 		OrganismID:  observation.OrganismID,
 		CohortID:    observation.CohortID,
@@ -290,7 +291,7 @@ func facadeSampleFromDomain(sample domain.Sample) datasetapi.Sample {
 	}
 	extSet := datasetapi.NewExtensionSet(container.Raw())
 	return datasetapi.NewSample(datasetapi.SampleData{
-		Base:            baseDataFromDomain(sample.Base),
+		Base:            baseDataFromDomain(sample.ID, sample.CreatedAt, sample.UpdatedAt),
 		Identifier:      sample.Identifier,
 		SourceType:      sample.SourceType,
 		OrganismID:      sample.OrganismID,
@@ -318,7 +319,7 @@ func facadeSamplesFromDomain(samples []domain.Sample) []datasetapi.Sample {
 
 func facadePermitFromDomain(permit domain.Permit) datasetapi.Permit {
 	return datasetapi.NewPermit(datasetapi.PermitData{
-		Base:              baseDataFromDomain(permit.Base),
+		Base:              baseDataFromDomain(permit.ID, permit.CreatedAt, permit.UpdatedAt),
 		PermitNumber:      permit.PermitNumber,
 		Authority:         permit.Authority,
 		Status:            string(permit.Status),
@@ -349,7 +350,7 @@ func facadeSupplyItemFromDomain(item domain.SupplyItem) datasetapi.SupplyItem {
 	}
 	extSet := datasetapi.NewExtensionSet(container.Raw())
 	return datasetapi.NewSupplyItem(datasetapi.SupplyItemData{
-		Base:           baseDataFromDomain(item.Base),
+		Base:           baseDataFromDomain(item.ID, item.CreatedAt, item.UpdatedAt),
 		SKU:            item.SKU,
 		Name:           item.Name,
 		Description:    item.Description,

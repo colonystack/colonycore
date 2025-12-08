@@ -2,6 +2,7 @@ package sqlite
 
 import (
 	"colonycore/pkg/domain"
+	entitymodel "colonycore/pkg/domain/entitymodel"
 	"context"
 	"testing"
 	"time"
@@ -14,51 +15,48 @@ func TestSQLiteMemStoreFullCrudCoverage(t *testing.T) {
 	now := time.Now().UTC()
 
 	if _, err := store.RunInTransaction(ctx, func(tx domain.Transaction) error {
-		marker, err := tx.CreateGenotypeMarker(domain.GenotypeMarker{
-			Base:           domain.Base{ID: "marker-full-sqlite"},
+		marker, err := tx.CreateGenotypeMarker(domain.GenotypeMarker{GenotypeMarker: entitymodel.GenotypeMarker{ID: "marker-full-sqlite",
 			Name:           "Marker",
 			Locus:          "loc",
 			Alleles:        []string{"A", "C", "C"},
 			AssayMethod:    "PCR",
 			Interpretation: "ctrl",
-			Version:        "v1",
+			Version:        "v1"},
 		})
 		if err != nil {
 			return err
 		}
 
-		line, err := tx.CreateLine(domain.Line{
-			Base:              domain.Base{ID: "line-full-sqlite"},
+		line, err := tx.CreateLine(domain.Line{Line: entitymodel.Line{ID: "line-full-sqlite",
 			Code:              "L",
 			Name:              "Line",
 			Origin:            "field",
-			GenotypeMarkerIDs: []string{marker.ID},
+			GenotypeMarkerIDs: []string{marker.ID}},
 		})
 		if err != nil {
 			return err
 		}
-		strain, err := tx.CreateStrain(domain.Strain{
-			Base:              domain.Base{ID: "strain-full-sqlite"},
+		strain, err := tx.CreateStrain(domain.Strain{Strain: entitymodel.Strain{ID: "strain-full-sqlite",
 			Code:              "S",
 			Name:              "Strain",
 			LineID:            line.ID,
-			GenotypeMarkerIDs: []string{marker.ID},
+			GenotypeMarkerIDs: []string{marker.ID}},
 		})
 		if err != nil {
 			return err
 		}
 
-		facility, err := tx.CreateFacility(domain.Facility{Base: domain.Base{ID: "facility-full-sqlite"}, Code: "FAC", Name: "Facility", Zone: "Z", AccessPolicy: "policy"})
+		facility, err := tx.CreateFacility(domain.Facility{Facility: entitymodel.Facility{ID: "facility-full-sqlite", Code: "FAC", Name: "Facility", Zone: "Z", AccessPolicy: "policy"}})
 		if err != nil {
 			return err
 		}
 
-		project, err := tx.CreateProject(domain.Project{Base: domain.Base{ID: "project-full-sqlite"}, Code: "PRJ", Title: "Project", FacilityIDs: []string{facility.ID}})
+		project, err := tx.CreateProject(domain.Project{Project: entitymodel.Project{ID: "project-full-sqlite", Code: "PRJ", Title: "Project", FacilityIDs: []string{facility.ID}}})
 		if err != nil {
 			return err
 		}
 
-		housing, err := tx.CreateHousingUnit(domain.HousingUnit{Base: domain.Base{ID: "housing-full-sqlite"}, Name: "Housing", FacilityID: facility.ID, Capacity: 2, Environment: domain.HousingEnvironmentAquatic})
+		housing, err := tx.CreateHousingUnit(domain.HousingUnit{HousingUnit: entitymodel.HousingUnit{ID: "housing-full-sqlite", Name: "Housing", FacilityID: facility.ID, Capacity: 2, Environment: domain.HousingEnvironmentAquatic}})
 		if err != nil {
 			return err
 		}
@@ -78,7 +76,7 @@ func TestSQLiteMemStoreFullCrudCoverage(t *testing.T) {
 			return err
 		}
 
-		protocol, err := tx.CreateProtocol(domain.Protocol{Base: domain.Base{ID: "protocol-full-sqlite"}, Code: "PROT", Title: "Protocol", MaxSubjects: 5})
+		protocol, err := tx.CreateProtocol(domain.Protocol{Protocol: entitymodel.Protocol{ID: "protocol-full-sqlite", Code: "PROT", Title: "Protocol", MaxSubjects: 5}})
 		if err != nil {
 			return err
 		}
@@ -90,12 +88,12 @@ func TestSQLiteMemStoreFullCrudCoverage(t *testing.T) {
 			return err
 		}
 
-		cohort, err := tx.CreateCohort(domain.Cohort{Base: domain.Base{ID: "cohort-full-sqlite"}, Name: "Cohort", Purpose: "Study", ProjectID: &project.ID, HousingID: &housing.ID, ProtocolID: &protocol.ID})
+		cohort, err := tx.CreateCohort(domain.Cohort{Cohort: entitymodel.Cohort{ID: "cohort-full-sqlite", Name: "Cohort", Purpose: "Study", ProjectID: &project.ID, HousingID: &housing.ID, ProtocolID: &protocol.ID}})
 		if err != nil {
 			return err
 		}
 
-		breeding, err := tx.CreateBreedingUnit(domain.BreedingUnit{Base: domain.Base{ID: "breeding-full-sqlite"}, Name: "Breeding", Strategy: "pair", LineID: &line.ID, StrainID: &strain.ID})
+		breeding, err := tx.CreateBreedingUnit(domain.BreedingUnit{BreedingUnit: entitymodel.BreedingUnit{ID: "breeding-full-sqlite", Name: "Breeding", Strategy: "pair", LineID: &line.ID, StrainID: &strain.ID}})
 		if err != nil {
 			return err
 		}
@@ -107,7 +105,7 @@ func TestSQLiteMemStoreFullCrudCoverage(t *testing.T) {
 			return err
 		}
 
-		organism, err := tx.CreateOrganism(domain.Organism{Base: domain.Base{ID: "organism-full-sqlite"}, Name: "Org", Species: "Spec", LineID: &line.ID, StrainID: &strain.ID, CohortID: &cohort.ID, HousingID: &housing.ID})
+		organism, err := tx.CreateOrganism(domain.Organism{Organism: entitymodel.Organism{ID: "organism-full-sqlite", Name: "Org", Species: "Spec", LineID: &line.ID, StrainID: &strain.ID, CohortID: &cohort.ID, HousingID: &housing.ID}})
 		if err != nil {
 			return err
 		}
@@ -119,7 +117,7 @@ func TestSQLiteMemStoreFullCrudCoverage(t *testing.T) {
 			return err
 		}
 
-		procedure, err := tx.CreateProcedure(domain.Procedure{Base: domain.Base{ID: "procedure-full-sqlite"}, Name: "Proc", Status: domain.ProcedureStatusScheduled, ScheduledAt: now, ProtocolID: protocol.ID, CohortID: &cohort.ID, OrganismIDs: []string{organism.ID}})
+		procedure, err := tx.CreateProcedure(domain.Procedure{Procedure: entitymodel.Procedure{ID: "procedure-full-sqlite", Name: "Proc", Status: domain.ProcedureStatusScheduled, ScheduledAt: now, ProtocolID: protocol.ID, CohortID: &cohort.ID, OrganismIDs: []string{organism.ID}}})
 		if err != nil {
 			return err
 		}
@@ -131,7 +129,7 @@ func TestSQLiteMemStoreFullCrudCoverage(t *testing.T) {
 			return err
 		}
 
-		treatment, err := tx.CreateTreatment(domain.Treatment{Base: domain.Base{ID: "treatment-full-sqlite"}, Name: "Treat", Status: domain.TreatmentStatusPlanned, ProcedureID: procedure.ID, OrganismIDs: []string{organism.ID}, CohortIDs: []string{cohort.ID}})
+		treatment, err := tx.CreateTreatment(domain.Treatment{Treatment: entitymodel.Treatment{ID: "treatment-full-sqlite", Name: "Treat", Status: domain.TreatmentStatusPlanned, ProcedureID: procedure.ID, OrganismIDs: []string{organism.ID}, CohortIDs: []string{cohort.ID}}})
 		if err != nil {
 			return err
 		}
@@ -143,7 +141,7 @@ func TestSQLiteMemStoreFullCrudCoverage(t *testing.T) {
 			return err
 		}
 
-		observation, err := tx.CreateObservation(domain.Observation{Base: domain.Base{ID: "observation-full-sqlite"}, ProcedureID: &procedure.ID, OrganismID: &organism.ID, RecordedAt: now, Observer: "tech"})
+		observation, err := tx.CreateObservation(domain.Observation{Observation: entitymodel.Observation{ID: "observation-full-sqlite", ProcedureID: &procedure.ID, OrganismID: &organism.ID, RecordedAt: now, Observer: "tech"}})
 		if err != nil {
 			return err
 		}
@@ -155,7 +153,7 @@ func TestSQLiteMemStoreFullCrudCoverage(t *testing.T) {
 			return err
 		}
 
-		sample, err := tx.CreateSample(domain.Sample{Base: domain.Base{ID: "sample-full-sqlite"}, Identifier: "S1", SourceType: "organism", OrganismID: &organism.ID, FacilityID: facility.ID, CollectedAt: now, Status: domain.SampleStatusStored, StorageLocation: "cold", AssayType: "type", ChainOfCustody: []domain.SampleCustodyEvent{{Actor: "tech", Location: "cold", Timestamp: now}}})
+		sample, err := tx.CreateSample(domain.Sample{Sample: entitymodel.Sample{ID: "sample-full-sqlite", Identifier: "S1", SourceType: "organism", OrganismID: &organism.ID, FacilityID: facility.ID, CollectedAt: now, Status: domain.SampleStatusStored, StorageLocation: "cold", AssayType: "type", ChainOfCustody: []domain.SampleCustodyEvent{{Actor: "tech", Location: "cold", Timestamp: now}}}})
 		if err != nil {
 			return err
 		}
@@ -167,7 +165,7 @@ func TestSQLiteMemStoreFullCrudCoverage(t *testing.T) {
 			return err
 		}
 
-		permit, err := tx.CreatePermit(domain.Permit{Base: domain.Base{ID: "permit-full-sqlite"}, PermitNumber: "PERMIT", Authority: "Gov", ValidFrom: now, ValidUntil: now.Add(time.Hour), AllowedActivities: []string{"store"}, FacilityIDs: []string{facility.ID}, ProtocolIDs: []string{protocol.ID}})
+		permit, err := tx.CreatePermit(domain.Permit{Permit: entitymodel.Permit{ID: "permit-full-sqlite", PermitNumber: "PERMIT", Authority: "Gov", ValidFrom: now, ValidUntil: now.Add(time.Hour), AllowedActivities: []string{"store"}, FacilityIDs: []string{facility.ID}, ProtocolIDs: []string{protocol.ID}}})
 		if err != nil {
 			return err
 		}
@@ -179,7 +177,7 @@ func TestSQLiteMemStoreFullCrudCoverage(t *testing.T) {
 			return err
 		}
 
-		supply, err := tx.CreateSupplyItem(domain.SupplyItem{Base: domain.Base{ID: "supply-full-sqlite"}, SKU: "SKU", Name: "Item", QuantityOnHand: 1, Unit: "unit", FacilityIDs: []string{facility.ID}, ProjectIDs: []string{project.ID}})
+		supply, err := tx.CreateSupplyItem(domain.SupplyItem{SupplyItem: entitymodel.SupplyItem{ID: "supply-full-sqlite", SKU: "SKU", Name: "Item", QuantityOnHand: 1, Unit: "unit", FacilityIDs: []string{facility.ID}, ProjectIDs: []string{project.ID}}})
 		if err != nil {
 			return err
 		}

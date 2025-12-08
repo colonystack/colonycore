@@ -1,6 +1,7 @@
 package domain
 
 import (
+	entitymodel "colonycore/pkg/domain/entitymodel"
 	"encoding/json"
 	"testing"
 	"time"
@@ -10,16 +11,16 @@ func TestHousingUnitJSONRoundTrip(t *testing.T) {
 	now := time.Date(2024, time.November, 5, 10, 0, 0, 0, time.UTC)
 
 	original := HousingUnit{
-		Base: Base{
-			ID:        "housing-1",
-			CreatedAt: now,
-			UpdatedAt: now,
+		HousingUnit: entitymodel.HousingUnit{
+			ID:          "housing-1",
+			CreatedAt:   now,
+			UpdatedAt:   now,
+			Name:        "Habitat A",
+			FacilityID:  "facility-1",
+			Capacity:    3,
+			State:       HousingStateActive,
+			Environment: HousingEnvironmentHumid,
 		},
-		Name:        "Habitat A",
-		FacilityID:  "facility-1",
-		Capacity:    3,
-		State:       HousingStateActive,
-		Environment: HousingEnvironmentHumid,
 	}
 
 	payload, err := json.Marshal(original)

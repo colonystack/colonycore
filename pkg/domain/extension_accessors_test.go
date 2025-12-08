@@ -4,6 +4,7 @@ import (
 	"testing"
 	"time"
 
+	entitymodel "colonycore/pkg/domain/entitymodel"
 	"colonycore/pkg/domain/extension"
 )
 
@@ -417,7 +418,13 @@ const testNotesAttribute = "updated"
 func TestObservationAndSampleHooks(t *testing.T) {
 	now := time.Now()
 
-	observation := Observation{Base: Base{ID: "obs", CreatedAt: now, UpdatedAt: now}}
+	observation := Observation{
+		Observation: entitymodel.Observation{
+			ID:        "obs",
+			CreatedAt: now,
+			UpdatedAt: now,
+		},
+	}
 	if err := observation.ApplyObservationData(map[string]any{"notes": testAttrValue}); err != nil {
 		t.Fatalf("ApplyObservationData: %v", err)
 	}
@@ -471,7 +478,13 @@ func TestObservationAndSampleHooks(t *testing.T) {
 		t.Fatalf("expected observation payload wrapper cleared")
 	}
 
-	sample := Sample{Base: Base{ID: "sample", CreatedAt: now, UpdatedAt: now}}
+	sample := Sample{
+		Sample: entitymodel.Sample{
+			ID:        "sample",
+			CreatedAt: now,
+			UpdatedAt: now,
+		},
+	}
 	if err := sample.ApplySampleAttributes(map[string]any{"volume": testSampleVolume}); err != nil {
 		t.Fatalf("ApplySampleAttributes: %v", err)
 	}

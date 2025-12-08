@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"colonycore/pkg/domain"
+	entitymodel "colonycore/pkg/domain/entitymodel"
 )
 
 type captureAuditRecorder struct {
@@ -105,14 +106,14 @@ func TestServiceObservabilityComplianceEntities(t *testing.T) {
 
 	const updatedDesc = "updated"
 
-	facility, _, err := svc.CreateFacility(ctx, domain.Facility{Name: "Main Facility"})
+	facility, _, err := svc.CreateFacility(ctx, domain.Facility{Facility: entitymodel.Facility{Name: "Main Facility"}})
 	if err != nil {
 		t.Fatalf("create facility: %v", err)
 	}
 	if !audit.has("create_facility", AuditStatusSuccess, func(entry AuditEntry) bool { return entry.EntityID == facility.ID }) {
 		t.Fatalf("expected audit entry for create_facility success")
 	}
-	project, _, err := svc.CreateProject(ctx, domain.Project{Code: "PRJ-OBS", Title: "Observability", FacilityIDs: []string{facility.ID}})
+	project, _, err := svc.CreateProject(ctx, domain.Project{Project: entitymodel.Project{Code: "PRJ-OBS", Title: "Observability", FacilityIDs: []string{facility.ID}}})
 	if err != nil {
 		t.Fatalf("create project: %v", err)
 	}
@@ -140,23 +141,21 @@ func TestServiceObservabilityComplianceEntities(t *testing.T) {
 		t.Fatalf("expected trace span for failed delete_facility")
 	}
 
-	protocol, _, err := svc.CreateProtocol(ctx, domain.Protocol{Code: "PR-1", Title: "Protocol", MaxSubjects: 5})
+	protocol, _, err := svc.CreateProtocol(ctx, domain.Protocol{Protocol: entitymodel.Protocol{Code: "PR-1", Title: "Protocol", MaxSubjects: 5}})
 	if err != nil {
 		t.Fatalf("create protocol: %v", err)
 	}
-	procedure, _, err := svc.CreateProcedure(ctx, domain.Procedure{
-		Name:        "Procedure",
+	procedure, _, err := svc.CreateProcedure(ctx, domain.Procedure{Procedure: entitymodel.Procedure{Name: "Procedure",
 		Status:      domain.ProcedureStatusScheduled,
 		ScheduledAt: time.Now().UTC(),
-		ProtocolID:  protocol.ID,
+		ProtocolID:  protocol.ID},
 	})
 	if err != nil {
 		t.Fatalf("create procedure: %v", err)
 	}
 
-	treatment, _, err := svc.CreateTreatment(ctx, domain.Treatment{
-		Name:        "Treatment",
-		ProcedureID: procedure.ID,
+	treatment, _, err := svc.CreateTreatment(ctx, domain.Treatment{Treatment: entitymodel.Treatment{Name: "Treatment",
+		ProcedureID: procedure.ID},
 	})
 	if err != nil {
 		t.Fatalf("create treatment: %v", err)
@@ -171,10 +170,9 @@ func TestServiceObservabilityComplianceEntities(t *testing.T) {
 		t.Fatalf("update treatment: %v", err)
 	}
 
-	observationInput := domain.Observation{
-		ProcedureID: &procedure.ID,
-		RecordedAt:  time.Now().UTC(),
-		Observer:    "tech",
+	observationInput := domain.Observation{Observation: entitymodel.Observation{ProcedureID: &procedure.ID,
+		RecordedAt: time.Now().UTC(),
+		Observer:   "tech"},
 	}
 	if err := observationInput.ApplyObservationData(map[string]any{"key": "value"}); err != nil {
 		t.Fatalf("apply observation data: %v", err)
@@ -190,13 +188,12 @@ func TestServiceObservabilityComplianceEntities(t *testing.T) {
 		t.Fatalf("update observation: %v", err)
 	}
 
-	org, _, err := svc.CreateOrganism(ctx, domain.Organism{Name: "Org", Species: "Frog"})
+	org, _, err := svc.CreateOrganism(ctx, domain.Organism{Organism: entitymodel.Organism{Name: "Org", Species: "Frog"}})
 	if err != nil {
 		t.Fatalf("create organism: %v", err)
 	}
 	sampleTime := time.Now().UTC()
-	sample, _, err := svc.CreateSample(ctx, domain.Sample{
-		Identifier:      "S-1",
+	sample, _, err := svc.CreateSample(ctx, domain.Sample{Sample: entitymodel.Sample{Identifier: "S-1",
 		SourceType:      "blood",
 		OrganismID:      &org.ID,
 		FacilityID:      facility.ID,
@@ -208,7 +205,7 @@ func TestServiceObservabilityComplianceEntities(t *testing.T) {
 			Actor:     "tech",
 			Location:  "Freezer-1",
 			Timestamp: sampleTime,
-		}},
+		}}},
 	})
 	if err != nil {
 		t.Fatalf("create sample: %v", err)
@@ -220,14 +217,13 @@ func TestServiceObservabilityComplianceEntities(t *testing.T) {
 		t.Fatalf("update sample: %v", err)
 	}
 
-	permit, _, err := svc.CreatePermit(ctx, domain.Permit{
-		PermitNumber:      "PER-1",
+	permit, _, err := svc.CreatePermit(ctx, domain.Permit{Permit: entitymodel.Permit{PermitNumber: "PER-1",
 		Authority:         "Regulator",
 		ValidFrom:         time.Now().UTC(),
 		ValidUntil:        time.Now().UTC().Add(24 * time.Hour),
 		AllowedActivities: []string{"collect"},
 		FacilityIDs:       []string{facility.ID},
-		ProtocolIDs:       []string{protocol.ID},
+		ProtocolIDs:       []string{protocol.ID}},
 	})
 	if err != nil {
 		t.Fatalf("create permit: %v", err)
@@ -239,12 +235,11 @@ func TestServiceObservabilityComplianceEntities(t *testing.T) {
 		t.Fatalf("update permit: %v", err)
 	}
 
-	item, _, err := svc.CreateSupplyItem(ctx, domain.SupplyItem{
-		SKU:            "SKU-1",
+	item, _, err := svc.CreateSupplyItem(ctx, domain.SupplyItem{SupplyItem: entitymodel.SupplyItem{SKU: "SKU-1",
 		Name:           "Supply",
 		QuantityOnHand: 10,
 		FacilityIDs:    []string{facility.ID},
-		ProjectIDs:     []string{project.ID},
+		ProjectIDs:     []string{project.ID}},
 	})
 	if err != nil {
 		t.Fatalf("create supply item: %v", err)

@@ -10,6 +10,7 @@ import (
 
 	core "colonycore/internal/core"
 	domain "colonycore/pkg/domain"
+	entitymodel "colonycore/pkg/domain/entitymodel"
 )
 
 // TestIntegrationSmoke exercises a minimal end-to-end write/read cycle for
@@ -81,19 +82,19 @@ func TestIntegrationSmoke(t *testing.T) {
 				core.WithMetricsRecorder(metricsRecorder),
 				core.WithTracer(tracer),
 			)
-			facility, _, err := svc.CreateFacility(ctx, domain.Facility{Name: "Lab"})
+			facility, _, err := svc.CreateFacility(ctx, domain.Facility{Facility: entitymodel.Facility{Name: "Lab"}})
 			if err != nil {
 				t.Fatalf("create facility: %v", err)
 			}
 			// Write one housing unit and one organism referencing it.
-			created, res, err := svc.CreateHousingUnit(ctx, domain.HousingUnit{Name: "Tank", FacilityID: facility.ID, Capacity: 1})
+			created, res, err := svc.CreateHousingUnit(ctx, domain.HousingUnit{HousingUnit: entitymodel.HousingUnit{Name: "Tank", FacilityID: facility.ID, Capacity: 1}})
 			if err != nil {
 				t.Fatalf("create housing: %v", err)
 			}
 			if res.HasBlocking() {
 				t.Fatalf("unexpected blocking violations: %+v", res.Violations)
 			}
-			org, res, err := svc.CreateOrganism(ctx, domain.Organism{Name: "Specimen", Species: "Testus"})
+			org, res, err := svc.CreateOrganism(ctx, domain.Organism{Organism: entitymodel.Organism{Name: "Specimen", Species: "Testus"}})
 			if err != nil {
 				t.Fatalf("create organism: %v", err)
 			}

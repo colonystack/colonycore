@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"colonycore/pkg/domain"
+	entitymodel "colonycore/pkg/domain/entitymodel"
 	"colonycore/pkg/pluginapi"
 )
 
@@ -98,7 +99,7 @@ func (v stubDomainView) FindOrganism(id string) (domain.Organism, bool) {
 			return organism, true
 		}
 	}
-	return domain.Organism{}, false
+	return domain.Organism{Organism: entitymodel.Organism{}}, false
 }
 
 func (v stubDomainView) FindHousingUnit(id string) (domain.HousingUnit, bool) {
@@ -107,7 +108,7 @@ func (v stubDomainView) FindHousingUnit(id string) (domain.HousingUnit, bool) {
 			return housing, true
 		}
 	}
-	return domain.HousingUnit{}, false
+	return domain.HousingUnit{HousingUnit: entitymodel.HousingUnit{}}, false
 }
 
 func (v stubDomainView) FindFacility(id string) (domain.Facility, bool) {
@@ -116,7 +117,7 @@ func (v stubDomainView) FindFacility(id string) (domain.Facility, bool) {
 			return facility, true
 		}
 	}
-	return domain.Facility{}, false
+	return domain.Facility{Facility: entitymodel.Facility{}}, false
 }
 
 func (v stubDomainView) FindTreatment(id string) (domain.Treatment, bool) {
@@ -125,7 +126,7 @@ func (v stubDomainView) FindTreatment(id string) (domain.Treatment, bool) {
 			return treatment, true
 		}
 	}
-	return domain.Treatment{}, false
+	return domain.Treatment{Treatment: entitymodel.Treatment{}}, false
 }
 
 func (v stubDomainView) FindObservation(id string) (domain.Observation, bool) {
@@ -134,7 +135,7 @@ func (v stubDomainView) FindObservation(id string) (domain.Observation, bool) {
 			return observation, true
 		}
 	}
-	return domain.Observation{}, false
+	return domain.Observation{Observation: entitymodel.Observation{}}, false
 }
 
 func (v stubDomainView) FindSample(id string) (domain.Sample, bool) {
@@ -143,7 +144,7 @@ func (v stubDomainView) FindSample(id string) (domain.Sample, bool) {
 			return sample, true
 		}
 	}
-	return domain.Sample{}, false
+	return domain.Sample{Sample: entitymodel.Sample{}}, false
 }
 
 func (v stubDomainView) FindPermit(id string) (domain.Permit, bool) {
@@ -152,7 +153,7 @@ func (v stubDomainView) FindPermit(id string) (domain.Permit, bool) {
 			return permit, true
 		}
 	}
-	return domain.Permit{}, false
+	return domain.Permit{Permit: entitymodel.Permit{}}, false
 }
 
 func (v stubDomainView) FindSupplyItem(id string) (domain.SupplyItem, bool) {
@@ -161,7 +162,7 @@ func (v stubDomainView) FindSupplyItem(id string) (domain.SupplyItem, bool) {
 			return item, true
 		}
 	}
-	return domain.SupplyItem{}, false
+	return domain.SupplyItem{SupplyItem: entitymodel.SupplyItem{}}, false
 }
 
 func TestSampleViewAccessors(t *testing.T) {
@@ -169,12 +170,11 @@ func TestSampleViewAccessors(t *testing.T) {
 	orgID := "org-1"
 	note := "logged"
 	testSampleColor := "red"
-	sample := domain.Sample{
-		Base: domain.Base{
-			ID:        "sample-1",
-			CreatedAt: now,
-			UpdatedAt: now,
-		},
+	sample := domain.Sample{Sample: entitymodel.Sample{ID: "sample-1",
+
+		CreatedAt: now,
+
+		UpdatedAt:       now,
 		Identifier:      "S-1",
 		SourceType:      "Organism",
 		OrganismID:      &orgID,
@@ -190,7 +190,7 @@ func TestSampleViewAccessors(t *testing.T) {
 				Timestamp: now,
 				Notes:     &note,
 			},
-		},
+		}},
 	}
 	if err := sample.ApplySampleAttributes(map[string]any{"color": testSampleColor}); err != nil {
 		t.Fatalf("apply sample attributes: %v", err)
@@ -275,16 +275,16 @@ func TestAdaptPluginRuleBridgesDomainInterfaces(t *testing.T) {
 	permitID := "permit-1"
 	supplyID := "supply-1"
 	view := stubDomainView{
-		organisms:    []domain.Organism{{Base: domain.Base{ID: organismID}, HousingID: &housingID}},
-		housing:      []domain.HousingUnit{{Base: domain.Base{ID: housingID}}},
-		protocols:    []domain.Protocol{{Base: domain.Base{ID: protocolID}}},
-		facilities:   []domain.Facility{{Base: domain.Base{ID: facilityID}}},
-		treatments:   []domain.Treatment{{Base: domain.Base{ID: treatmentID}, ProcedureID: "proc"}},
-		observations: []domain.Observation{{Base: domain.Base{ID: observationID}}},
-		samples:      []domain.Sample{{Base: domain.Base{ID: sampleID}, FacilityID: facilityID}},
-		permits:      []domain.Permit{{Base: domain.Base{ID: permitID}}},
-		projects:     []domain.Project{{Base: domain.Base{ID: "project-1"}}},
-		supply:       []domain.SupplyItem{{Base: domain.Base{ID: supplyID}}},
+		organisms:    []domain.Organism{{Organism: entitymodel.Organism{ID: organismID, HousingID: &housingID}}},
+		housing:      []domain.HousingUnit{{HousingUnit: entitymodel.HousingUnit{ID: housingID}}},
+		protocols:    []domain.Protocol{{Protocol: entitymodel.Protocol{ID: protocolID}}},
+		facilities:   []domain.Facility{{Facility: entitymodel.Facility{ID: facilityID}}},
+		treatments:   []domain.Treatment{{Treatment: entitymodel.Treatment{ID: treatmentID, ProcedureID: "proc"}}},
+		observations: []domain.Observation{{Observation: entitymodel.Observation{ID: observationID}}},
+		samples:      []domain.Sample{{Sample: entitymodel.Sample{ID: sampleID, FacilityID: facilityID}}},
+		permits:      []domain.Permit{{Permit: entitymodel.Permit{ID: permitID}}},
+		projects:     []domain.Project{{Project: entitymodel.Project{ID: "project-1"}}},
+		supply:       []domain.SupplyItem{{SupplyItem: entitymodel.SupplyItem{ID: supplyID}}},
 	}
 	rule := &capturingRule{}
 	adapted := adaptPluginRule(rule)
@@ -353,14 +353,17 @@ func (r *nilViewRule) Evaluate(_ context.Context, view pluginapi.RuleView, _ []p
 
 func TestNewViewAccessors(t *testing.T) {
 	now := time.Now()
-	domainFacility := domain.Facility{
-		Base:           domain.Base{ID: "facility", CreatedAt: now, UpdatedAt: now},
+	domainFacility := domain.Facility{Facility: entitymodel.Facility{ID: "facility",
+
+		CreatedAt: now,
+
+		UpdatedAt:      now,
 		Code:           "FAC-99",
 		Name:           "Facility",
 		Zone:           "Quarantine Zone",
 		AccessPolicy:   "Restricted",
 		HousingUnitIDs: []string{"H1"},
-		ProjectIDs:     []string{"P1"},
+		ProjectIDs:     []string{"P1"}},
 	}
 	if err := domainFacility.ApplyEnvironmentBaselines(map[string]any{"temp": 21}); err != nil {
 		t.Fatalf("apply facility baselines: %v", err)
@@ -389,15 +392,16 @@ func TestNewViewAccessors(t *testing.T) {
 		t.Fatal("facility access policy should report restricted")
 	}
 
-	treatment := newTreatmentView(domain.Treatment{
-		Base:              domain.Base{ID: "treatment", CreatedAt: now},
+	treatment := newTreatmentView(domain.Treatment{Treatment: entitymodel.Treatment{ID: "treatment",
+
+		CreatedAt:         now,
 		Name:              "Treatment",
 		ProcedureID:       "proc",
 		OrganismIDs:       []string{"org"},
 		CohortIDs:         []string{"cohort"},
 		DosagePlan:        "dose plan",
 		AdministrationLog: []string{"dose"},
-		AdverseEvents:     []string{"note"},
+		AdverseEvents:     []string{"note"}},
 	})
 	if treatment.Name() == "" || treatment.ProcedureID() == "" {
 		t.Fatal("treatment view should expose base fields")
@@ -413,12 +417,13 @@ func TestNewViewAccessors(t *testing.T) {
 	}
 
 	procID := "proc"
-	observationDomain := domain.Observation{
-		Base:        domain.Base{ID: "observation", CreatedAt: now},
+	observationDomain := domain.Observation{Observation: entitymodel.Observation{ID: "observation",
+
+		CreatedAt:   now,
 		RecordedAt:  now,
 		Observer:    "tech",
 		ProcedureID: &procID,
-		Notes:       strPtr("text"),
+		Notes:       strPtr("text")},
 	}
 	if err := observationDomain.ApplyObservationData(map[string]any{"score": 1}); err != nil {
 		t.Fatalf("apply observation data: %v", err)
@@ -439,8 +444,9 @@ func TestNewViewAccessors(t *testing.T) {
 	}
 
 	organID := "org"
-	sampleDomain := domain.Sample{
-		Base:            domain.Base{ID: "sample", CreatedAt: now},
+	sampleDomain := domain.Sample{Sample: entitymodel.Sample{ID: "sample",
+
+		CreatedAt:       now,
 		Identifier:      "S1",
 		SourceType:      "organism",
 		OrganismID:      &organID,
@@ -454,7 +460,7 @@ func TestNewViewAccessors(t *testing.T) {
 			Location:  "lab",
 			Timestamp: now,
 			Notes:     strPtr("note"),
-		}},
+		}}},
 	}
 	if err := sampleDomain.ApplySampleAttributes(map[string]any{"k": "v"}); err != nil {
 		t.Fatalf("ApplySampleAttributes: %v", err)
@@ -477,8 +483,9 @@ func TestNewViewAccessors(t *testing.T) {
 		t.Fatal("sample payload should expose stored attributes")
 	}
 
-	permit := newPermitView(domain.Permit{
-		Base:              domain.Base{ID: "permit", CreatedAt: now},
+	permit := newPermitView(domain.Permit{Permit: entitymodel.Permit{ID: "permit",
+
+		CreatedAt:         now,
 		PermitNumber:      "PERMIT",
 		Authority:         "Gov",
 		Status:            domain.PermitStatusApproved,
@@ -487,7 +494,7 @@ func TestNewViewAccessors(t *testing.T) {
 		AllowedActivities: []string{"activity"},
 		FacilityIDs:       []string{"facility"},
 		ProtocolIDs:       []string{"protocol"},
-		Notes:             strPtr("note"),
+		Notes:             strPtr("note")},
 	})
 	if permit.PermitNumber() == "" || permit.Authority() == "" || permit.Notes() == "" {
 		t.Fatal("permit view should expose base fields")
@@ -499,8 +506,11 @@ func TestNewViewAccessors(t *testing.T) {
 		t.Fatal("permit view should consider validity window active")
 	}
 
-	supplyDomain := domain.SupplyItem{
-		Base:           domain.Base{ID: "supply", CreatedAt: now, UpdatedAt: now},
+	supplyDomain := domain.SupplyItem{SupplyItem: entitymodel.SupplyItem{ID: "supply",
+
+		CreatedAt: now,
+
+		UpdatedAt:      now,
 		SKU:            "SKU",
 		Name:           "Feed",
 		Description:    strPtr("desc"),
@@ -509,7 +519,7 @@ func TestNewViewAccessors(t *testing.T) {
 		LotNumber:      strPtr("LOT"),
 		FacilityIDs:    []string{"facility"},
 		ProjectIDs:     []string{"project"},
-		ReorderLevel:   2,
+		ReorderLevel:   2},
 	}
 	if err := supplyDomain.ApplySupplyAttributes(map[string]any{"k": "v"}); err != nil {
 		t.Fatalf("ApplySupplyAttributes: %v", err)
@@ -561,8 +571,11 @@ func TestOrganismViewAccessors(t *testing.T) {
 	parentIDs := []string{"p1", "p2"}
 	attributes := map[string]any{"key": "value"}
 
-	domainOrg := domain.Organism{
-		Base:       domain.Base{ID: "O1", CreatedAt: createdAt, UpdatedAt: updatedAt},
+	domainOrg := domain.Organism{Organism: entitymodel.Organism{ID: "O1",
+
+		CreatedAt: createdAt,
+
+		UpdatedAt:  updatedAt,
 		Name:       "Specimen",
 		Species:    "Frogus",
 		Line:       "LineA",
@@ -572,7 +585,7 @@ func TestOrganismViewAccessors(t *testing.T) {
 		Stage:      domain.StageAdult,
 		HousingID:  &housingID,
 		ProtocolID: &protocolID,
-		ProjectID:  &projectID,
+		ProjectID:  &projectID},
 	}
 	if err := domainOrg.SetCoreAttributes(attributes); err != nil {
 		t.Fatalf("SetCoreAttributes: %v", err)
@@ -639,12 +652,15 @@ func TestHousingAndProtocolViews(t *testing.T) {
 	createdAt := time.Date(2024, 2, 2, 0, 0, 0, 0, time.UTC)
 	updatedAt := createdAt.Add(2 * time.Hour)
 
-	domainUnit := domain.HousingUnit{
-		Base:        domain.Base{ID: "HU", CreatedAt: createdAt, UpdatedAt: updatedAt},
+	domainUnit := domain.HousingUnit{HousingUnit: entitymodel.HousingUnit{ID: "HU",
+
+		CreatedAt: createdAt,
+
+		UpdatedAt:   updatedAt,
 		Name:        "Tank",
 		FacilityID:  "North",
 		Capacity:    12,
-		Environment: domain.HousingEnvironmentHumid,
+		Environment: domain.HousingEnvironmentHumid},
 	}
 	unitView := newHousingUnitView(domainUnit)
 	if unitView.ID() != domainUnit.ID || unitView.Name() != domainUnit.Name {
@@ -657,12 +673,15 @@ func TestHousingAndProtocolViews(t *testing.T) {
 		t.Fatalf("unexpected housing facility/capacity: %s %d", unitView.FacilityID(), unitView.Capacity())
 	}
 
-	domainProtocol := domain.Protocol{
-		Base:        domain.Base{ID: "PROTO", CreatedAt: createdAt, UpdatedAt: updatedAt},
+	domainProtocol := domain.Protocol{Protocol: entitymodel.Protocol{ID: "PROTO",
+
+		CreatedAt: createdAt,
+
+		UpdatedAt:   updatedAt,
 		Code:        "PR",
 		Title:       "Protocol",
 		Description: strPtr("Desc"),
-		MaxSubjects: 5,
+		MaxSubjects: 5},
 	}
 	protocolView := newProtocolView(domainProtocol)
 	if protocolView.ID() != domainProtocol.ID || protocolView.Code() != domainProtocol.Code {
@@ -689,16 +708,15 @@ func TestEmptyViewHelpers(t *testing.T) {
 }
 
 func TestOrganismViewContextualAccessors(t *testing.T) {
-	domainOrganism := &domain.Organism{
-		Base: domain.Base{
-			ID:        "organism-1",
-			CreatedAt: time.Now(),
-			UpdatedAt: time.Now(),
-		},
-		Name:    "Test Organism",
-		Species: "TestSpecies",
-		Line:    "TestLine",
-		Stage:   "adult",
+	domainOrganism := &domain.Organism{Organism: entitymodel.Organism{ID: "organism-1",
+
+		CreatedAt: time.Now(),
+
+		UpdatedAt: time.Now(),
+		Name:      "Test Organism",
+		Species:   "TestSpecies",
+		Line:      "TestLine",
+		Stage:     "adult"},
 	}
 
 	organismView := newOrganismView(*domainOrganism)
@@ -730,17 +748,16 @@ func TestOrganismViewContextualAccessors(t *testing.T) {
 }
 
 func TestHousingUnitViewContextualAccessors(t *testing.T) {
-	domainHousing := &domain.HousingUnit{
-		Base: domain.Base{
-			ID:        "housing-1",
-			CreatedAt: time.Now(),
-			UpdatedAt: time.Now(),
-		},
+	domainHousing := &domain.HousingUnit{HousingUnit: entitymodel.HousingUnit{ID: "housing-1",
+
+		CreatedAt: time.Now(),
+
+		UpdatedAt:   time.Now(),
 		Name:        "Test Tank",
 		FacilityID:  "Lab A",
 		Capacity:    10,
 		Environment: "aquatic",
-		State:       domain.HousingStateActive,
+		State:       domain.HousingStateActive},
 	}
 
 	housingView := newHousingUnitView(*domainHousing)
@@ -788,13 +805,12 @@ func TestHousingUnitViewContextualAccessors(t *testing.T) {
 	})
 
 	t.Run("GetCurrentState covers cleaning and decommissioned states", func(t *testing.T) {
-		cleaning := newHousingUnitView(domain.HousingUnit{
-			Base:        domain.Base{ID: "housing-2"},
+		cleaning := newHousingUnitView(domain.HousingUnit{HousingUnit: entitymodel.HousingUnit{ID: "housing-2",
 			Name:        "Cleaning Unit",
 			FacilityID:  "Lab B",
 			Capacity:    5,
 			Environment: "terrestrial",
-			State:       domain.HousingStateCleaning,
+			State:       domain.HousingStateCleaning},
 		})
 		state := cleaning.GetCurrentState()
 		if state.String() != string(domain.HousingStateCleaning) {
@@ -804,13 +820,12 @@ func TestHousingUnitViewContextualAccessors(t *testing.T) {
 			t.Fatal("cleaning housing should not be treated as active")
 		}
 
-		decommissioned := newHousingUnitView(domain.HousingUnit{
-			Base:        domain.Base{ID: "housing-3"},
+		decommissioned := newHousingUnitView(domain.HousingUnit{HousingUnit: entitymodel.HousingUnit{ID: "housing-3",
 			Name:        "Retired Unit",
 			FacilityID:  "Lab C",
 			Capacity:    2,
 			Environment: "terrestrial",
-			State:       domain.HousingStateDecommissioned,
+			State:       domain.HousingStateDecommissioned},
 		})
 		if !decommissioned.IsDecommissioned() {
 			t.Fatal("decommissioned housing should report terminal state")
@@ -821,13 +836,12 @@ func TestHousingUnitViewContextualAccessors(t *testing.T) {
 	})
 
 	t.Run("GetCurrentState handles quarantine and unknown states", func(t *testing.T) {
-		quarantine := newHousingUnitView(domain.HousingUnit{
-			Base:        domain.Base{ID: "housing-4"},
+		quarantine := newHousingUnitView(domain.HousingUnit{HousingUnit: entitymodel.HousingUnit{ID: "housing-4",
 			Name:        "Quarantine Unit",
 			FacilityID:  "Lab D",
 			Capacity:    2,
 			Environment: "aquatic",
-			State:       domain.HousingStateQuarantine,
+			State:       domain.HousingStateQuarantine},
 		})
 		if quarantine.GetCurrentState().String() != string(domain.HousingStateQuarantine) {
 			t.Fatalf("expected quarantine state, got %s", quarantine.GetCurrentState().String())
@@ -837,7 +851,7 @@ func TestHousingUnitViewContextualAccessors(t *testing.T) {
 		}
 
 		unknown := housingUnitView{
-			baseView:    newBaseView(domain.Base{ID: "housing-5"}),
+			baseView:    newBaseView("housing-5", time.Time{}, time.Time{}),
 			name:        "Unknown State",
 			facilityID:  "Lab E",
 			capacity:    1,
@@ -851,17 +865,16 @@ func TestHousingUnitViewContextualAccessors(t *testing.T) {
 }
 
 func TestProtocolViewContextualAccessors(t *testing.T) {
-	domainProtocol := &domain.Protocol{
-		Base: domain.Base{
-			ID:        "protocol-1",
-			CreatedAt: time.Now(),
-			UpdatedAt: time.Now(),
-		},
+	domainProtocol := &domain.Protocol{Protocol: entitymodel.Protocol{ID: "protocol-1",
+
+		CreatedAt: time.Now(),
+
+		UpdatedAt:   time.Now(),
 		Code:        "P001",
 		Title:       "Test Protocol",
 		Description: strPtr("Test description"),
 		MaxSubjects: 10,
-		Status:      domain.ProtocolStatusApproved,
+		Status:      domain.ProtocolStatusApproved},
 	}
 
 	protocolView := newProtocolView(*domainProtocol)
@@ -893,15 +906,11 @@ func TestProtocolViewContextualAccessors(t *testing.T) {
 }
 
 func TestRuleViewFindOrganism(t *testing.T) {
-	organisms := []domain.Organism{
-		{
-			Base: domain.Base{ID: "org1"},
-			Name: "Organism 1",
-		},
-		{
-			Base: domain.Base{ID: "org2"},
-			Name: "Organism 2",
-		},
+	organisms := []domain.Organism{{Organism: entitymodel.Organism{ID: "org1",
+		Name: "Organism 1"},
+	}, {Organism: entitymodel.Organism{ID: "org2",
+		Name: "Organism 2"},
+	},
 	}
 
 	domainView := stubDomainView{organisms: organisms}
@@ -926,15 +935,11 @@ func TestRuleViewFindOrganism(t *testing.T) {
 }
 
 func TestRuleViewFindHousing(t *testing.T) {
-	housings := []domain.HousingUnit{
-		{
-			Base: domain.Base{ID: "house1"},
-			Name: "Housing 1",
-		},
-		{
-			Base: domain.Base{ID: "house2"},
-			Name: "Housing 2",
-		},
+	housings := []domain.HousingUnit{{HousingUnit: entitymodel.HousingUnit{ID: "house1",
+		Name: "Housing 1"},
+	}, {HousingUnit: entitymodel.HousingUnit{ID: "house2",
+		Name: "Housing 2"},
+	},
 	}
 
 	domainView := stubDomainView{housing: housings}

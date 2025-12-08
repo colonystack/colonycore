@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"colonycore/pkg/domain"
+	entitymodel "colonycore/pkg/domain/entitymodel"
 )
 
 func TestMemoryStoreCRUDAndQueries(t *testing.T) {
@@ -26,29 +27,29 @@ func TestMemoryStoreCRUDAndQueries(t *testing.T) {
 	)
 
 	if _, err := store.RunInTransaction(ctx, func(tx domain.Transaction) error {
-		facility, err := tx.CreateFacility(domain.Facility{Name: "Lab"})
+		facility, err := tx.CreateFacility(domain.Facility{Facility: entitymodel.Facility{Name: "Lab"}})
 		if err != nil {
 			return err
 		}
 		facilityID = facility.ID
 
-		if _, err := tx.CreateHousingUnit(domain.HousingUnit{Name: "Invalid", FacilityID: facilityID, Capacity: 0}); err == nil {
+		if _, err := tx.CreateHousingUnit(domain.HousingUnit{HousingUnit: entitymodel.HousingUnit{Name: "Invalid", FacilityID: facilityID, Capacity: 0}}); err == nil {
 			return fmt.Errorf("expected capacity validation error")
 		}
 
-		project, err := tx.CreateProject(domain.Project{Code: "PRJ-1", Title: "Project", FacilityIDs: []string{facilityID}})
+		project, err := tx.CreateProject(domain.Project{Project: entitymodel.Project{Code: "PRJ-1", Title: "Project", FacilityIDs: []string{facilityID}}})
 		if err != nil {
 			return err
 		}
 		projectID = project.ID
 
-		protocol, err := tx.CreateProtocol(domain.Protocol{Code: "PROT-1", Title: "Protocol", MaxSubjects: 5})
+		protocol, err := tx.CreateProtocol(domain.Protocol{Protocol: entitymodel.Protocol{Code: "PROT-1", Title: "Protocol", MaxSubjects: 5}})
 		if err != nil {
 			return err
 		}
 		protocolID = protocol.ID
 
-		housing, err := tx.CreateHousingUnit(domain.HousingUnit{Name: "Tank", FacilityID: facilityID, Capacity: 2, Environment: domain.HousingEnvironmentTerrestrial})
+		housing, err := tx.CreateHousingUnit(domain.HousingUnit{HousingUnit: entitymodel.HousingUnit{Name: "Tank", FacilityID: facilityID, Capacity: 2, Environment: domain.HousingEnvironmentTerrestrial}})
 		if err != nil {
 			return err
 		}
@@ -58,7 +59,7 @@ func TestMemoryStoreCRUDAndQueries(t *testing.T) {
 		housingPtr := housingID
 		protocolPtr := protocolID
 
-		cohort, err := tx.CreateCohort(domain.Cohort{Name: "Cohort", Purpose: "Observation", ProjectID: &projectPtr, HousingID: &housingPtr, ProtocolID: &protocolPtr})
+		cohort, err := tx.CreateCohort(domain.Cohort{Cohort: entitymodel.Cohort{Name: "Cohort", Purpose: "Observation", ProjectID: &projectPtr, HousingID: &housingPtr, ProtocolID: &protocolPtr}})
 		if err != nil {
 			return err
 		}
@@ -67,14 +68,13 @@ func TestMemoryStoreCRUDAndQueries(t *testing.T) {
 		cohortPtr := cohortID
 
 		attrs := map[string]any{"skin_color_index": 5}
-		organismAInput := domain.Organism{
-			Name:       "Alpha",
+		organismAInput := domain.Organism{Organism: entitymodel.Organism{Name: "Alpha",
 			Species:    "Test Frog",
 			Stage:      domain.StageJuvenile,
 			ProjectID:  &projectPtr,
 			ProtocolID: &protocolPtr,
 			CohortID:   &cohortPtr,
-			HousingID:  &housingPtr,
+			HousingID:  &housingPtr},
 		}
 		if err := organismAInput.SetCoreAttributes(attrs); err != nil {
 			return err
@@ -87,11 +87,10 @@ func TestMemoryStoreCRUDAndQueries(t *testing.T) {
 
 		attrs["skin_color_index"] = 9
 
-		organismBInput := domain.Organism{
-			Name:     "Beta",
+		organismBInput := domain.Organism{Organism: entitymodel.Organism{Name: "Beta",
 			Species:  "Test Toad",
 			Stage:    domain.StageAdult,
-			CohortID: &cohortPtr,
+			CohortID: &cohortPtr},
 		}
 		organismB, err := tx.CreateOrganism(organismBInput)
 		if err != nil {
@@ -99,29 +98,27 @@ func TestMemoryStoreCRUDAndQueries(t *testing.T) {
 		}
 		organismBID = organismB.ID
 
-		if _, err := tx.CreateOrganism(domain.Organism{Base: domain.Base{ID: organismAID}, Name: "Duplicate"}); err == nil {
+		if _, err := tx.CreateOrganism(domain.Organism{Organism: entitymodel.Organism{ID: organismAID, Name: "Duplicate"}}); err == nil {
 			return fmt.Errorf("expected duplicate organism error")
 		}
 
-		breeding, err := tx.CreateBreedingUnit(domain.BreedingUnit{
-			Name:       "Pair",
+		breeding, err := tx.CreateBreedingUnit(domain.BreedingUnit{BreedingUnit: entitymodel.BreedingUnit{Name: "Pair",
 			Strategy:   "pair",
 			HousingID:  &housingPtr,
 			ProtocolID: &protocolPtr,
 			FemaleIDs:  []string{organismAID},
-			MaleIDs:    []string{organismBID},
+			MaleIDs:    []string{organismBID}},
 		})
 		if err != nil {
 			return err
 		}
 		breedingID = breeding.ID
 
-		procedure, err := tx.CreateProcedure(domain.Procedure{
-			Name:        "Check",
+		procedure, err := tx.CreateProcedure(domain.Procedure{Procedure: entitymodel.Procedure{Name: "Check",
 			Status:      domain.ProcedureStatusScheduled,
 			ScheduledAt: time.Now().Add(time.Minute),
 			ProtocolID:  protocolID,
-			OrganismIDs: []string{organismAID, organismBID},
+			OrganismIDs: []string{organismAID, organismBID}},
 		})
 		if err != nil {
 			return err
@@ -308,11 +305,11 @@ func TestMemoryStoreViewReadOnly(t *testing.T) {
 	ctx := context.Background()
 	var housing domain.HousingUnit
 	if _, err := store.RunInTransaction(ctx, func(tx domain.Transaction) error {
-		facility, err := tx.CreateFacility(domain.Facility{Name: "Lab"})
+		facility, err := tx.CreateFacility(domain.Facility{Facility: entitymodel.Facility{Name: "Lab"}})
 		if err != nil {
 			return err
 		}
-		housing, err = tx.CreateHousingUnit(domain.HousingUnit{Name: "Tank", FacilityID: facility.ID, Capacity: 1})
+		housing, err = tx.CreateHousingUnit(domain.HousingUnit{HousingUnit: entitymodel.HousingUnit{Name: "Tank", FacilityID: facility.ID, Capacity: 1}})
 		return err
 	}); err != nil {
 		t.Fatalf("create housing: %v", err)
@@ -337,11 +334,11 @@ func TestUpdateHousingUnitValidation(t *testing.T) {
 	ctx := context.Background()
 	var housing domain.HousingUnit
 	if _, err := store.RunInTransaction(ctx, func(tx domain.Transaction) error {
-		facility, err := tx.CreateFacility(domain.Facility{Name: "Lab"})
+		facility, err := tx.CreateFacility(domain.Facility{Facility: entitymodel.Facility{Name: "Lab"}})
 		if err != nil {
 			return err
 		}
-		housing, err = tx.CreateHousingUnit(domain.HousingUnit{Name: "Validated", FacilityID: facility.ID, Capacity: 2})
+		housing, err = tx.CreateHousingUnit(domain.HousingUnit{HousingUnit: entitymodel.HousingUnit{Name: "Validated", FacilityID: facility.ID, Capacity: 2}})
 		return err
 	}); err != nil {
 		t.Fatalf("create housing: %v", err)
@@ -384,11 +381,11 @@ func TestRulesEngineAggregates(t *testing.T) {
 	ctx := context.Background()
 
 	res, err := store.RunInTransaction(ctx, func(tx domain.Transaction) error {
-		facility, err := tx.CreateFacility(domain.Facility{Name: "Rules Facility"})
+		facility, err := tx.CreateFacility(domain.Facility{Facility: entitymodel.Facility{Name: "Rules Facility"}})
 		if err != nil {
 			return err
 		}
-		_, err = tx.CreateProject(domain.Project{Code: "P", Title: "Project", FacilityIDs: []string{facility.ID}})
+		_, err = tx.CreateProject(domain.Project{Project: entitymodel.Project{Code: "P", Title: "Project", FacilityIDs: []string{facility.ID}}})
 		return err
 	})
 	if err == nil {

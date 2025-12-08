@@ -6,6 +6,7 @@ import (
 
 	"colonycore/pkg/datasetapi"
 	"colonycore/pkg/domain"
+	entitymodel "colonycore/pkg/domain/entitymodel"
 )
 
 const (
@@ -17,13 +18,16 @@ const (
 
 func TestFacadeHousingUnitFromDomain(t *testing.T) {
 	now := time.Now()
-	unit := domain.HousingUnit{
-		Base:        domain.Base{ID: "housing-1", CreatedAt: now, UpdatedAt: now},
+	unit := domain.HousingUnit{HousingUnit: entitymodel.HousingUnit{ID: "housing-1",
+
+		CreatedAt: now,
+
+		UpdatedAt:   now,
 		Name:        "Quarantine Tank",
 		FacilityID:  testMapperFacilityID,
 		Capacity:    4,
 		Environment: domain.HousingEnvironmentAquatic,
-		State:       domain.HousingStateQuarantine,
+		State:       domain.HousingStateQuarantine},
 	}
 
 	facade := facadeHousingUnitFromDomain(unit)
@@ -49,13 +53,16 @@ func TestFacadeHousingUnitsFromDomainEmpty(t *testing.T) {
 
 func TestFacadeProtocolMapping(t *testing.T) {
 	now := time.Now()
-	protocol := domain.Protocol{
-		Base:        domain.Base{ID: "protocol-1", CreatedAt: now, UpdatedAt: now},
+	protocol := domain.Protocol{Protocol: entitymodel.Protocol{ID: "protocol-1",
+
+		CreatedAt: now,
+
+		UpdatedAt:   now,
 		Code:        "P1",
 		Title:       "Title",
 		Description: strPtr("desc"),
 		MaxSubjects: 5,
-		Status:      domain.ProtocolStatusApproved,
+		Status:      domain.ProtocolStatusApproved},
 	}
 
 	mapped := facadeProtocolFromDomain(protocol)
@@ -74,8 +81,7 @@ func TestFacadeProtocolMapping(t *testing.T) {
 }
 
 func TestFacadeProjectMappingClonesSlices(t *testing.T) {
-	project := domain.Project{
-		Base:         domain.Base{ID: "project-1"},
+	project := domain.Project{Project: entitymodel.Project{ID: "project-1",
 		Code:         "PRJ",
 		Title:        "Project",
 		Description:  strPtr("desc"),
@@ -85,7 +91,7 @@ func TestFacadeProjectMappingClonesSlices(t *testing.T) {
 		ProcedureIDs: []string{"procedure-1"},
 		SupplyItemIDs: []string{
 			"supply-1",
-		},
+		}},
 	}
 
 	mapped := facadeProjectFromDomain(project)
@@ -104,12 +110,11 @@ func TestFacadeProjectMappingClonesSlices(t *testing.T) {
 }
 
 func TestFacadeCohortAndTreatmentMapping(t *testing.T) {
-	cohort := domain.Cohort{
-		Base:      domain.Base{ID: "cohort-1"},
+	cohort := domain.Cohort{Cohort: entitymodel.Cohort{ID: "cohort-1",
 		Name:      "Cohort",
 		Purpose:   "Research",
 		ProjectID: strPtr("project-1"),
-		HousingID: strPtr("housing-1"),
+		HousingID: strPtr("housing-1")},
 	}
 	mappedCohort := facadeCohortFromDomain(cohort)
 	if mappedCohort.Name() != "Cohort" || mappedCohort.Purpose() != "Research" {
@@ -119,8 +124,7 @@ func TestFacadeCohortAndTreatmentMapping(t *testing.T) {
 		t.Fatal("expected nil slices for empty cohort inputs")
 	}
 
-	treatment := domain.Treatment{
-		Base:              domain.Base{ID: "treatment-1"},
+	treatment := domain.Treatment{Treatment: entitymodel.Treatment{ID: "treatment-1",
 		Name:              "Treatment",
 		Status:            domain.TreatmentStatusCompleted,
 		ProcedureID:       "procedure-1",
@@ -128,7 +132,7 @@ func TestFacadeCohortAndTreatmentMapping(t *testing.T) {
 		CohortIDs:         []string{"cohort-1"},
 		DosagePlan:        "plan",
 		AdministrationLog: []string{"log"},
-		AdverseEvents:     nil,
+		AdverseEvents:     nil},
 	}
 	mappedTreatment := facadeTreatmentFromDomain(treatment)
 	if mappedTreatment.Name() != "Treatment" || mappedTreatment.GetCurrentStatus().String() != "completed" {
@@ -140,13 +144,12 @@ func TestFacadeCohortAndTreatmentMapping(t *testing.T) {
 }
 
 func TestFacadeOrganismMapping(t *testing.T) {
-	org := domain.Organism{
-		Base:      domain.Base{ID: "org-1"},
+	org := domain.Organism{Organism: entitymodel.Organism{ID: "org-1",
 		Name:      "Org",
 		Species:   "species",
 		Line:      "line",
 		Stage:     domain.StageAdult,
-		ParentIDs: []string{"parent-1"},
+		ParentIDs: []string{"parent-1"}},
 	}
 	mapped := facadeOrganismFromDomain(org)
 	if mapped.Name() != "Org" || mapped.Species() != "species" || mapped.GetCurrentStage().String() != testMapperAdultStage {
@@ -159,14 +162,13 @@ func TestFacadeOrganismMapping(t *testing.T) {
 
 func TestFacadeBreedingAndProcedureMapping(t *testing.T) {
 	now := time.Now()
-	breeding := domain.BreedingUnit{
-		Base:          domain.Base{ID: "breeding-1"},
+	breeding := domain.BreedingUnit{BreedingUnit: entitymodel.BreedingUnit{ID: "breeding-1",
 		Name:          "Breeding",
 		Strategy:      "natural",
 		FemaleIDs:     []string{"f1"},
 		MaleIDs:       []string{"m1"},
 		PairingIntent: strPtr("pair"),
-		PairingNotes:  strPtr("notes"),
+		PairingNotes:  strPtr("notes")},
 	}
 	mappedBreeding := facadeBreedingUnitFromDomain(breeding)
 	if mappedBreeding.Name() != "Breeding" || len(mappedBreeding.FemaleIDs()) != 1 {
@@ -176,13 +178,12 @@ func TestFacadeBreedingAndProcedureMapping(t *testing.T) {
 		t.Fatal("expected nil slices for empty breeding inputs")
 	}
 
-	procedure := domain.Procedure{
-		Base:        domain.Base{ID: "procedure-1"},
+	procedure := domain.Procedure{Procedure: entitymodel.Procedure{ID: "procedure-1",
 		Name:        "Procedure",
 		Status:      domain.ProcedureStatusScheduled,
 		ScheduledAt: now,
 		ProtocolID:  "protocol-1",
-		OrganismIDs: []string{"org-1"},
+		OrganismIDs: []string{"org-1"}},
 	}
 	mappedProcedure := facadeProcedureFromDomain(procedure)
 	if mappedProcedure.Name() != "Procedure" || mappedProcedure.GetCurrentStatus().String() != "scheduled" {
@@ -195,14 +196,13 @@ func TestFacadeBreedingAndProcedureMapping(t *testing.T) {
 
 func TestFacadeFacilityPermitSampleSupplyMapping(t *testing.T) {
 	now := time.Now()
-	facility := domain.Facility{
-		Base:           domain.Base{ID: testMapperFacilityID},
+	facility := domain.Facility{Facility: entitymodel.Facility{ID: testMapperFacilityID,
 		Code:           "FAC",
 		Name:           "Facility",
 		Zone:           "ZoneA",
 		AccessPolicy:   "restricted",
 		HousingUnitIDs: []string{"housing-1"},
-		ProjectIDs:     []string{"project-1"},
+		ProjectIDs:     []string{"project-1"}},
 	}
 	facilityFacade := facadeFacilityFromDomain(facility)
 	if facilityFacade.Code() != "FAC" || facilityFacade.AccessPolicy() != "restricted" {
@@ -212,8 +212,7 @@ func TestFacadeFacilityPermitSampleSupplyMapping(t *testing.T) {
 		t.Fatal("expected nil slices for empty facility inputs")
 	}
 
-	permit := domain.Permit{
-		Base:              domain.Base{ID: "permit-1"},
+	permit := domain.Permit{Permit: entitymodel.Permit{ID: "permit-1",
 		PermitNumber:      "P1",
 		Authority:         "Auth",
 		Status:            domain.PermitStatusApproved,
@@ -222,7 +221,7 @@ func TestFacadeFacilityPermitSampleSupplyMapping(t *testing.T) {
 		AllowedActivities: []string{"Activity"},
 		FacilityIDs:       []string{testMapperFacilityID},
 		ProtocolIDs:       []string{"protocol-1"},
-		Notes:             strPtr("note"),
+		Notes:             strPtr("note")},
 	}
 	permitFacade := facadePermitFromDomain(permit)
 	if permitFacade.GetStatus(now).String() != testMapperStatusApproved || !permitFacade.IsActive(now) {
@@ -232,8 +231,7 @@ func TestFacadeFacilityPermitSampleSupplyMapping(t *testing.T) {
 		t.Fatal("expected nil slices for empty permit inputs")
 	}
 
-	sample := domain.Sample{
-		Base:            domain.Base{ID: "sample-1"},
+	sample := domain.Sample{Sample: entitymodel.Sample{ID: "sample-1",
 		Identifier:      "S1",
 		SourceType:      "organism",
 		FacilityID:      testMapperFacilityID,
@@ -243,7 +241,7 @@ func TestFacadeFacilityPermitSampleSupplyMapping(t *testing.T) {
 		AssayType:       "assay",
 		ChainOfCustody: []domain.SampleCustodyEvent{
 			{Actor: "tech", Location: "lab", Timestamp: now},
-		},
+		}},
 	}
 	sampleFacade := facadeSampleFromDomain(sample)
 	if sampleFacade.Status() != "stored" || len(sampleFacade.ChainOfCustody()) != 1 {
@@ -253,15 +251,14 @@ func TestFacadeFacilityPermitSampleSupplyMapping(t *testing.T) {
 		t.Fatal("expected nil slices for empty sample inputs")
 	}
 
-	supply := domain.SupplyItem{
-		Base:           domain.Base{ID: "supply-1"},
+	supply := domain.SupplyItem{SupplyItem: entitymodel.SupplyItem{ID: "supply-1",
 		SKU:            "SKU",
 		Name:           "Supply",
 		QuantityOnHand: 1,
 		Unit:           "unit",
 		FacilityIDs:    []string{testMapperFacilityID},
 		ProjectIDs:     []string{"project-1"},
-		ReorderLevel:   2,
+		ReorderLevel:   2},
 	}
 	supplyFacade := facadeSupplyItemFromDomain(supply)
 	if supplyFacade.SKU() != "SKU" || supplyFacade.Unit() != "unit" {
