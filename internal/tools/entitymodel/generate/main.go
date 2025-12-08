@@ -17,17 +17,27 @@ const dateTimeFormat = "date-time"
 var exitFunc = os.Exit
 
 type enumSpec struct {
-	Values []string `json:"values"`
+	Values      []string `json:"values"`
+	Description string   `json:"description"`
+	Initial     string   `json:"initial"`
+	Terminal    []string `json:"terminal"`
 }
 
 type definitionSpec struct {
 	Type                 string                     `json:"type"`
 	Format               string                     `json:"format"`
 	Ref                  string                     `json:"$ref"`
+	Description          string                     `json:"description"`
 	Items                *definitionSpec            `json:"items"`
 	Properties           map[string]json.RawMessage `json:"properties"`
 	Required             []string                   `json:"required"`
 	AdditionalProperties json.RawMessage            `json:"additionalProperties"`
+}
+
+type stateSpec struct {
+	Enum     string   `json:"enum"`
+	Initial  string   `json:"initial"`
+	Terminal []string `json:"terminal"`
 }
 
 type relationshipSpec struct {
@@ -48,12 +58,19 @@ type entitySpec struct {
 	Required      []string                    `json:"required"`
 	Properties    map[string]json.RawMessage  `json:"properties"`
 	Relationships map[string]relationshipSpec `json:"relationships"`
-	States        json.RawMessage             `json:"states"`
+	States        *stateSpec                  `json:"states"`
 	Invariants    []string                    `json:"invariants"`
 }
 
 type metadataSpec struct {
 	Status string `json:"status"`
+}
+
+type idSemanticsSpec struct {
+	Type        string `json:"type"`
+	Scope       string `json:"scope"`
+	Required    bool   `json:"required"`
+	Description string `json:"description"`
 }
 
 type schemaDoc struct {
@@ -62,6 +79,7 @@ type schemaDoc struct {
 	Enums       map[string]enumSpec       `json:"enums"`
 	Definitions map[string]definitionSpec `json:"definitions"`
 	Entities    map[string]entitySpec     `json:"entities"`
+	IDSemantics *idSemanticsSpec          `json:"id_semantics"`
 }
 
 func main() {
@@ -70,6 +88,7 @@ func main() {
 	openapiPath := flag.String("openapi", "", "output file for generated OpenAPI YAML (optional)")
 	sqlPostgresPath := flag.String("sql-postgres", "", "output file for generated Postgres DDL (optional)")
 	sqlSQLitePath := flag.String("sql-sqlite", "", "output file for generated SQLite DDL (optional)")
+	pluginContractPath := flag.String("plugin-contract", "", "output file for generated plugin contract (optional)")
 	flag.Parse()
 
 	doc, err := loadSchema(*schemaPath)
@@ -114,6 +133,17 @@ func main() {
 			}
 			fmt.Printf("generated %s from %s\n", path, *schemaPath)
 		}
+	}
+
+	if path := strings.TrimSpace(*pluginContractPath); path != "" {
+		pluginContract, err := generatePluginContract(doc)
+		if err != nil {
+			exitErr(err)
+		}
+		if err := writeFile(path, pluginContract); err != nil {
+			exitErr(err)
+		}
+		fmt.Printf("generated %s from %s\n", path, *schemaPath)
 	}
 
 	fmt.Printf("generated %s from %s\n", *outPath, *schemaPath)

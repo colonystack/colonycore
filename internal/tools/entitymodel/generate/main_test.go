@@ -451,6 +451,93 @@ func TestBuildOpenAPIDoc(t *testing.T) {
 	}
 }
 
+func TestGeneratePluginContractRendersSections(t *testing.T) {
+	doc := schemaDoc{
+		Version:  "0.1.0",
+		Metadata: metadataSpec{Status: "seed"},
+		IDSemantics: &idSemanticsSpec{
+			Type:        "uuidv7",
+			Scope:       "global",
+			Required:    true,
+			Description: "Opaque globally unique IDs",
+		},
+		Enums: map[string]enumSpec{
+			"lifecycle": {
+				Values:      []string{"planned", "adult"},
+				Description: "Lifecycle states",
+				Initial:     "planned",
+				Terminal:    []string{"adult"},
+			},
+		},
+		Definitions: map[string]definitionSpec{
+			"id":                   {Type: typeString, Format: "uuid"},
+			"timestamp":            {Type: typeString, Format: dateTimeFormat},
+			"extension_attributes": {Type: typeObject, AdditionalProperties: raw(`true`)},
+		},
+		Entities: map[string]entitySpec{
+			"Organism": {
+				Description: "Individual organism",
+				NaturalKeys: []naturalKeySpec{{Fields: []string{"name"}, Scope: "facility"}},
+				Required:    []string{"id", "created_at", "updated_at", "name", "attributes"},
+				Properties: map[string]json.RawMessage{
+					"id":         raw(`{"$ref":"#/definitions/id"}`),
+					"created_at": raw(`{"$ref":"#/definitions/timestamp"}`),
+					"updated_at": raw(`{"$ref":"#/definitions/timestamp"}`),
+					"name":       raw(`{"type":"string","description":"label"}`),
+					"attributes": raw(`{"$ref":"#/definitions/extension_attributes","description":"hook"}`),
+				},
+				Relationships: map[string]relationshipSpec{
+					"project_id": {Target: "Project", Cardinality: "0..1", Storage: "fk"},
+				},
+				States:     &stateSpec{Enum: "lifecycle", Initial: "planned", Terminal: []string{"adult"}},
+				Invariants: []string{"housing_capacity"},
+			},
+		},
+	}
+
+	content, err := generatePluginContract(doc)
+	if err != nil {
+		t.Fatalf("generatePluginContract: %v", err)
+	}
+	text := string(content)
+	for _, want := range []string{
+		"## ID Semantics",
+		"## Enums",
+		"### Organism",
+		"`attributes`",
+		"CONTRACT-METADATA",
+	} {
+		if !strings.Contains(text, want) {
+			t.Fatalf("expected contract output to contain %q:\n%s", want, text)
+		}
+	}
+}
+
+func TestBuildContractMetadataSortsOutput(t *testing.T) {
+	doc := schemaDoc{
+		Version: "0.2.0",
+		Entities: map[string]entitySpec{
+			"Sample": {
+				Required: []string{"created_at", "id"},
+				Properties: map[string]json.RawMessage{
+					"attributes": raw(`{"$ref":"#/definitions/extension_attributes"}`),
+				},
+			},
+		},
+	}
+	meta := buildContractMetadata(doc)
+	entry, ok := meta.Entities["Sample"]
+	if !ok {
+		t.Fatalf("expected Sample metadata entry")
+	}
+	if got := strings.Join(entry.Required, ","); got != "created_at,id" {
+		t.Fatalf("expected sorted required fields, got %q", got)
+	}
+	if len(entry.ExtensionHooks) != 1 || entry.ExtensionHooks[0] != "attributes" {
+		t.Fatalf("expected attributes hook, got %#v", entry.ExtensionHooks)
+	}
+}
+
 func TestEncodeYAMLDeterministic(t *testing.T) {
 	doc := openAPIDoc{
 		"openapi": "3.1.0",

@@ -22,7 +22,7 @@
     - [x] OpenAPI components.
     - [x] Postgres/SQLite DDL with FK-aware ordering, join tables for array relationships, derived arrays omitted, and FK indexes.
     - [x] ERD export (DOT + SVG) with Graphviz rendering and SVG fallback for headless runs; SchemaSpy target now loads generated DDL with `ON_ERROR_STOP` and emits `docs/annex/entity-model-erd.svg` from a temp Postgres container.
-    - [ ] Generate the plugin contract content from `entity-model.json` (replacing the outline) and update `scripts/validate_plugin_patterns.go` to enforce mandatory fields/extension hooks directly from the contract.
+    - [x] Generate the plugin contract content from `entity-model.json` (replacing the outline) and update `scripts/validate_plugin_patterns.go` to enforce mandatory fields/extension hooks directly from the contract (metadata block now emitted + validated during lint).
     - [ ] Emit canonical fixtures from the schema under `testutil/fixtures/entity-model`, then load them into SQLite/Postgres adapters during CI to hit ≥95% invariant coverage and prove storage parity.
     - [ ] Wire the generated Postgres/SQLite DDL into their adapters/migration flows and add a round-trip smoke test (apply migrations, run `entity-model-diff`, verify ERD) so code can’t diverge from stored schemas.
     - [ ] Map every schema-declared invariant (housing capacity, protocol subject cap, lineage integrity, lifecycle transition, protocol coverage) to a concrete rule handler in `internal/core` and fail validation when a schema entry lacks an implementation.
