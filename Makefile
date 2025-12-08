@@ -168,11 +168,12 @@ entity-model-validate:
 entity-model-generate:
 	@echo "==> entity-model generate"
 	@GOCACHE=$(GOCACHE) go run ./internal/tools/entitymodel/generate -schema docs/schema/entity-model.json -out pkg/domain/entitymodel/model_gen.go -openapi docs/schema/openapi/entity-model.yaml -sql-postgres docs/schema/sql/postgres.sql -sql-sqlite docs/schema/sql/sqlite.sql
+	@$(MAKE) --no-print-directory entity-model-erd
 
 entity-model-verify: entity-model-validate entity-model-generate
 	@echo "==> entity-model verify (validate + generation)"
 
-entity-model-erd: entity-model-generate
+entity-model-erd:
 	@echo "==> entity-model erd (SchemaSpy via generated Postgres DDL)"
 	@rm -rf $(SCHEMASPY_TMP)
 	@mkdir -p $(SCHEMASPY_TMP) $(dir $(SCHEMASPY_SVG_OUT))
@@ -180,8 +181,8 @@ entity-model-erd: entity-model-generate
 	@docker run --rm -d --name $(SCHEMASPY_PG_CONTAINER) -e POSTGRES_PASSWORD=$(SCHEMASPY_PG_PASSWORD) -e POSTGRES_DB=$(SCHEMASPY_PG_DB) $(SCHEMASPY_PG_IMAGE) >/dev/null
 	@printf "waiting for postgres"
 	@until docker exec $(SCHEMASPY_PG_CONTAINER) pg_isready -U $(SCHEMASPY_PG_USER) -d $(SCHEMASPY_PG_DB) >/dev/null 2>&1; do printf "."; sleep 1; done; echo
-	@docker exec -i $(SCHEMASPY_PG_CONTAINER) psql -X -v ON_ERROR_STOP=1 -1 -U $(SCHEMASPY_PG_USER) -d $(SCHEMASPY_PG_DB) < docs/schema/sql/postgres.sql
-	@docker run --rm $(if $(SCHEMASPY_PLATFORM),--platform $(SCHEMASPY_PLATFORM),) -v "$(SCHEMASPY_TMP)":/output --network container:$(SCHEMASPY_PG_CONTAINER) $(SCHEMASPY_IMAGE) -t pgsql11 -db $(SCHEMASPY_PG_DB) -host localhost -port 5432 -s public -u $(SCHEMASPY_PG_USER) -p $(SCHEMASPY_PG_PASSWORD) -hq -imageformat svg
+	@docker exec -i $(SCHEMASPY_PG_CONTAINER) psql -X -v ON_ERROR_STOP=1 -1 -U $(SCHEMASPY_PG_USER) -d $(SCHEMASPY_PG_DB) > /dev/null < docs/schema/sql/postgres.sql
+	@docker run --rm $(if $(SCHEMASPY_PLATFORM),--platform $(SCHEMASPY_PLATFORM),) -v "$(SCHEMASPY_TMP)":/output --network container:$(SCHEMASPY_PG_CONTAINER) $(SCHEMASPY_IMAGE) -t pgsql11 -db $(SCHEMASPY_PG_DB) -host localhost -port 5432 -s public -u $(SCHEMASPY_PG_USER) -p $(SCHEMASPY_PG_PASSWORD) -dbthreads 1 -hq -imageformat svg > /dev/null
 	@cp "$(SCHEMASPY_TMP)/diagrams/summary/relationships.real.large.svg" "$(SCHEMASPY_SVG_OUT)"
 	@cp "$(SCHEMASPY_TMP)/diagrams/summary/relationships.real.large.dot" "$(SCHEMASPY_DOT_OUT)"
 	@docker rm -f $(SCHEMASPY_PG_CONTAINER) >/dev/null 2>&1 || true
