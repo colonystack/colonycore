@@ -6,6 +6,7 @@ Rules:
       - "colonycore/plugins/frog"
       - "colonycore/internal/infra/persistence/memory"
       - "colonycore/internal/infra/persistence/sqlite"
+      - "colonycore/internal/infra/persistence/postgres"
       - "colonycore/pkg/datasetapi"
       - "colonycore/pkg/domain"
       - "colonycore/pkg/pluginapi"

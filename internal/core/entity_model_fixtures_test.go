@@ -2,9 +2,11 @@ package core
 
 import (
 	"colonycore/internal/infra/persistence/memory"
+	"colonycore/internal/infra/persistence/postgres"
 	sqlite "colonycore/internal/infra/persistence/sqlite"
 	"colonycore/pkg/domain"
 	"context"
+	"database/sql"
 	"encoding/json"
 	"os"
 	"path/filepath"
@@ -54,6 +56,27 @@ func TestEntityModelFixturesSatisfyRules(t *testing.T) {
 	sqliteResult := evaluateFixture(t, sqliteStore.RulesEngine(), sqliteView, sqliteChanges)
 	if len(sqliteResult.Violations) != 0 {
 		t.Fatalf("sqlite fixture violations: %+v", sqliteResult.Violations)
+	}
+
+	pgDB := newCoreStubDB(t)
+	pgRestore := postgres.OverrideSQLOpen(func(_, _ string) (*sql.DB, error) { return pgDB, nil })
+	defer pgRestore()
+
+	pgStore, err := NewPostgresStore("postgres://example", NewDefaultRulesEngine())
+	if err != nil {
+		t.Fatalf("new postgres store: %v", err)
+	}
+	pgStore.ImportState(memSnapshot)
+	pgSnapshot := pgStore.ExportState()
+
+	pgChanges := changesFromMemorySnapshot(pgSnapshot)
+	if len(pgChanges) == 0 {
+		t.Fatalf("expected fixture changes for postgres store")
+	}
+	pgView := captureView(t, pgStore)
+	pgResult := evaluateFixture(t, pgStore.RulesEngine(), pgView, pgChanges)
+	if len(pgResult.Violations) != 0 {
+		t.Fatalf("postgres fixture violations: %+v", pgResult.Violations)
 	}
 }
 

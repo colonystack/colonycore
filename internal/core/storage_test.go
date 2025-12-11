@@ -1,11 +1,18 @@
 package core
 
 import (
+	"colonycore/internal/infra/persistence/postgres"
 	"colonycore/internal/infra/persistence/sqlite"
 	"context"
+	"database/sql"
+	"database/sql/driver"
+	"fmt"
+	"io"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
+	"time"
 
 	memory "colonycore/internal/infra/persistence/memory"
 	"colonycore/pkg/domain"
@@ -91,14 +98,19 @@ func TestOpenPersistentStore_CustomSQLitePath(t *testing.T) {
 	})
 }
 
-func TestOpenPersistentStore_PostgresReturnsError(t *testing.T) {
+func TestOpenPersistentStore_Postgres(t *testing.T) {
 	withEnv("COLONYCORE_STORAGE_DRIVER", "postgres", func() {
 		withEnv("COLONYCORE_POSTGRES_DSN", "postgres://ignored", func() {
+			db := newCoreStubDB(t)
+			restore := postgres.OverrideSQLOpen(func(_, _ string) (*sql.DB, error) { return db, nil })
+			defer restore()
 			engine := NewDefaultRulesEngine()
-			_, err := OpenPersistentStore(engine)
-			if err == nil {
-				// The placeholder NewPostgresStore always returns an error currently.
-				t.Fatalf("expected error from postgres placeholder")
+			store, err := OpenPersistentStore(engine)
+			if err != nil {
+				t.Fatalf("expected postgres store, got error %v", err)
+			}
+			if _, ok := store.(*postgres.Store); !ok {
+				t.Fatalf("expected *postgres.Store, got %T", store)
 			}
 		})
 	})
@@ -116,13 +128,97 @@ func TestOpenPersistentStore_UnknownDriver(t *testing.T) {
 
 func TestNewPostgresStore(t *testing.T) {
 	engine := NewDefaultRulesEngine()
+	db := newCoreStubDB(t)
+	restore := postgres.OverrideSQLOpen(func(_, _ string) (*sql.DB, error) { return db, nil })
+	defer restore()
 	store, err := NewPostgresStore("postgres://example", engine)
-	if err == nil {
-		// placeholder should return error until implemented
-		t.Fatalf("expected error from placeholder NewPostgresStore")
+	if err != nil {
+		t.Fatalf("expected postgres store, got error %v", err)
 	}
 	if store == nil || store.Store == nil {
-		// still expect the embedded store to be initialized for forward compatibility
 		t.Fatalf("expected non-nil store with embedded memory store, got %#v", store)
 	}
+}
+
+// --- postgres stub driver for storage tests ---
+
+type coreStubDriver struct {
+	conn *coreStubConn
+}
+
+func (d *coreStubDriver) Open(string) (driver.Conn, error) {
+	return d.conn, nil
+}
+
+type coreStubConn struct {
+	state map[string][]byte
+}
+
+func (c *coreStubConn) Prepare(string) (driver.Stmt, error) {
+	return nil, fmt.Errorf("not implemented")
+}
+func (c *coreStubConn) Close() error { return nil }
+func (c *coreStubConn) Begin() (driver.Tx, error) {
+	return c.BeginTx(context.Background(), driver.TxOptions{})
+}
+func (c *coreStubConn) Ping(context.Context) error { return nil }
+
+func (c *coreStubConn) BeginTx(context.Context, driver.TxOptions) (driver.Tx, error) {
+	return &coreStubTx{}, nil
+}
+
+func (c *coreStubConn) ExecContext(_ context.Context, query string, args []driver.NamedValue) (driver.Result, error) {
+	if strings.HasPrefix(strings.ToUpper(strings.TrimSpace(query)), "INSERT INTO STATE") && len(args) == 2 {
+		if c.state == nil {
+			c.state = make(map[string][]byte)
+		}
+		bucket, _ := args[0].Value.(string)
+		payload, _ := args[1].Value.([]byte)
+		c.state[bucket] = append([]byte(nil), payload...)
+	}
+	return driver.RowsAffected(1), nil
+}
+
+func (c *coreStubConn) QueryContext(_ context.Context, _ string, _ []driver.NamedValue) (driver.Rows, error) {
+	rows := make([][]driver.Value, 0, len(c.state))
+	for bucket, payload := range c.state {
+		rows = append(rows, []driver.Value{bucket, payload})
+	}
+	return &coreStubRows{
+		cols: []string{"bucket", "payload"},
+		rows: rows,
+	}, nil
+}
+
+type coreStubTx struct{}
+
+func (coreStubTx) Commit() error   { return nil }
+func (coreStubTx) Rollback() error { return nil }
+
+type coreStubRows struct {
+	cols []string
+	rows [][]driver.Value
+	idx  int
+}
+
+func (r *coreStubRows) Columns() []string { return r.cols }
+func (r *coreStubRows) Close() error      { return nil }
+func (r *coreStubRows) Next(dest []driver.Value) error {
+	if r.idx >= len(r.rows) {
+		return io.EOF
+	}
+	copy(dest, r.rows[r.idx])
+	r.idx++
+	return nil
+}
+
+func newCoreStubDB(t *testing.T) *sql.DB {
+	t.Helper()
+	name := fmt.Sprintf("corestubpg%d", time.Now().UnixNano())
+	sql.Register(name, &coreStubDriver{conn: &coreStubConn{state: make(map[string][]byte)}})
+	db, err := sql.Open(name, "stub")
+	if err != nil {
+		t.Fatalf("open stub db: %v", err)
+	}
+	return db
 }
