@@ -40,6 +40,33 @@ func TestGenerateMatchesCommitted(t *testing.T) {
 	}
 }
 
+func TestGenerateFixturesMatchesCommitted(t *testing.T) {
+	root := repoRoot(t)
+
+	schemaPath := filepath.Join(root, "docs", "schema", "entity-model.json")
+	fixturePath := filepath.Join(root, "testutil", "fixtures", "entity-model", "snapshot.json")
+
+	doc, err := loadSchema(schemaPath)
+	if err != nil {
+		t.Fatalf("load schema: %v", err)
+	}
+
+	generated, err := generateFixtures(doc)
+	if err != nil {
+		t.Fatalf("generate fixtures: %v", err)
+	}
+
+	//nolint:gosec // paths are repo-local and deterministic.
+	expected, err := os.ReadFile(fixturePath)
+	if err != nil {
+		t.Fatalf("read fixtures: %v", err)
+	}
+
+	if !bytes.Equal(bytes.TrimSpace(generated), bytes.TrimSpace(expected)) {
+		t.Fatalf("generated fixtures out of date; run `make entity-model-generate`")
+	}
+}
+
 func TestGenerateCodeIncludesTimeImport(t *testing.T) {
 	doc := schemaDoc{
 		Enums: map[string]enumSpec{
@@ -374,6 +401,146 @@ func TestUtilityHelpers(t *testing.T) {
 	}
 	if !contains([]string{"A", "b"}, "a") {
 		t.Fatalf("contains should be case-insensitive")
+	}
+}
+
+func TestEnsureMinItemsEnforced(t *testing.T) {
+	props := map[string]json.RawMessage{
+		"items": raw(`{"type":"array","minItems":2}`),
+	}
+	entry := map[string]any{
+		"items": []string{"only"},
+	}
+	if err := ensureMinItems(entry, props, "Thing"); err == nil {
+		t.Fatalf("expected minItems validation error")
+	}
+}
+
+func TestEnsureMinItemsRejectsNonSlice(t *testing.T) {
+	props := map[string]json.RawMessage{
+		"items": raw(`{"type":"array","minItems":1}`),
+	}
+	entry := map[string]any{
+		"items": "not-a-slice",
+	}
+	if err := ensureMinItems(entry, props, "Thing"); err == nil {
+		t.Fatalf("expected error for non-slice minItems field")
+	}
+}
+
+func TestRequireEnumValueErrorsWhenMissing(t *testing.T) {
+	enums := map[string]enumSpec{
+		"status": {Values: []string{"draft"}},
+	}
+	if err := requireEnumValue(enums, "status", "missing"); err == nil {
+		t.Fatalf("expected error for missing enum value")
+	}
+	if err := requireEnumValue(enums, "unknown", "draft"); err == nil {
+		t.Fatalf("expected error for missing enum")
+	}
+}
+
+func TestPropertyTypeStringVariants(t *testing.T) {
+	enums := map[string]enumSpec{
+		"status": {Values: []string{"ok"}},
+	}
+	defs := map[string]definitionSpec{
+		"timestamp": {Type: typeString, Format: dateTimeFormat},
+		"custom":    {Type: typeString, Format: "uuid"},
+	}
+	tests := []struct {
+		name string
+		prop definitionSpec
+		want string
+	}{
+		{name: "timestampRef", prop: definitionSpec{Ref: "#/definitions/timestamp"}, want: "timestamp"},
+		{name: "enumRef", prop: definitionSpec{Ref: "#/enums/status"}, want: "enum Status"},
+		{name: "definitionWithFormat", prop: definitionSpec{Ref: "#/definitions/custom"}, want: "uuid"},
+		{name: "stringWithFormat", prop: definitionSpec{Type: typeString, Format: "uri"}, want: "uri"},
+		{name: "arrayWithoutItems", prop: definitionSpec{Type: typeArray}, want: "array<any>"},
+		{name: "arrayWithItems", prop: definitionSpec{Type: typeArray, Items: &definitionSpec{Type: typeNumber}}, want: "array<number>"},
+		{name: "objectWithAdditionalProperties", prop: definitionSpec{Type: typeObject, AdditionalProperties: raw(`true`)}, want: "map<string, any>"},
+		{name: "defaultWithItemsOnly", prop: definitionSpec{Items: &definitionSpec{Type: typeInteger}}, want: "array<integer>"},
+	}
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			if got := propertyTypeString(tt.prop, enums, defs); got != tt.want {
+				t.Fatalf("propertyTypeString(%s) = %s, want %s", tt.name, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestMainGeneratesFixturesFromSchema(t *testing.T) {
+	tmpDir := t.TempDir()
+	schemaPath := filepath.Join(repoRoot(t), "docs", "schema", "entity-model.json")
+	outPath := filepath.Join(tmpDir, "out.go")
+	fixturesPath := filepath.Join(tmpDir, "fixtures.json")
+
+	runMainWithArgs(t, []string{"-schema", schemaPath, "-out", outPath, "-fixtures", fixturesPath})
+
+	if _, err := os.Stat(outPath); err != nil {
+		t.Fatalf("expected generated code at %s: %v", outPath, err)
+	}
+	if _, err := os.Stat(fixturesPath); err != nil {
+		t.Fatalf("expected generated fixtures at %s: %v", fixturesPath, err)
+	}
+}
+
+func TestGenerateFixturesFailsWithoutEnums(t *testing.T) {
+	doc := schemaDoc{
+		Entities: map[string]entitySpec{},
+	}
+	if _, err := generateFixtures(doc); err == nil {
+		t.Fatalf("expected error when enums are missing")
+	}
+}
+
+func TestValidateFixtureRequiresEntities(t *testing.T) {
+	doc := schemaDoc{
+		Entities: map[string]entitySpec{
+			"Widget": {
+				Required: []string{"id"},
+				Properties: map[string]json.RawMessage{
+					"id": raw(`{"type":"string"}`),
+				},
+			},
+		},
+	}
+	if err := validateFixture(fixtureSnapshot{}, doc); err == nil {
+		t.Fatalf("expected validation error for missing entities")
+	}
+}
+
+func TestGenerateFixturesValidationError(t *testing.T) {
+	doc, err := loadSchema(filepath.Join(repoRoot(t), "docs", "schema", "entity-model.json"))
+	if err != nil {
+		t.Fatalf("load schema: %v", err)
+	}
+	organism := doc.Entities["Organism"]
+	organism.Required = append(organism.Required, "bogus_required")
+	doc.Entities = map[string]entitySpec{"Organism": organism}
+
+	if _, err := generateFixtures(doc); err == nil {
+		t.Fatalf("expected validation error for missing required fields")
+	}
+}
+
+func TestBuildFixtureSnapshotDetectsMissingTailEnum(t *testing.T) {
+	doc := schemaDoc{
+		Enums: map[string]enumSpec{
+			"lifecycle_stage":     {Values: []string{"juvenile"}},
+			"housing_state":       {Values: []string{"active"}},
+			"housing_environment": {Values: []string{"terrestrial"}},
+			"protocol_status":     {Values: []string{"approved"}},
+			"permit_status":       {Values: []string{"approved"}},
+			"procedure_status":    {Values: []string{"in_progress"}},
+			"treatment_status":    {Values: []string{"in_progress"}},
+		},
+	}
+	if _, err := buildFixtureSnapshot(doc); err == nil {
+		t.Fatalf("expected error when sample_status enum is missing")
 	}
 }
 

@@ -1,6 +1,6 @@
 # Schema Index
 
-This directory holds machine-readable contracts. `entity-model.json` is the seed for Entity Model v0 per ADR-0003 and will drive generated Go types, OpenAPI, DDL, and fixtures in later slices.
+This directory holds machine-readable contracts. `entity-model.json` is the seed for Entity Model v0 per ADR-0003 and drives generated Go types, OpenAPI, DDL, fixtures, and ERDs.
 
 Conventions:
 - IDs are opaque UUIDv7 strings for all entities.
@@ -12,4 +12,13 @@ Conventions:
 
 Validation & targets:
 - Run `make entity-model-verify` (also executed by `make lint`) to sanity-check the JSON: semver version, required base fields, relationship cardinalities/targets, non-empty enums, allowlisted invariants, property enum references, and type/$ref presence. This target keeps domain layering intact by only reading `docs/schema/entity-model.json`.
-- `make entity-model-generate` emits Go enums and struct projections into `pkg/domain/entitymodel` via `internal/tools/entitymodel/generate` and OpenAPI components to `docs/schema/openapi/entity-model.yaml`; extend this target with DDL/ERD generation as those pieces land. `make entity-model-verify` runs validation and generation together.
+- `make entity-model-generate` emits:
+  - Go enums and struct projections into `pkg/domain/entitymodel`.
+  - OpenAPI components to `docs/schema/openapi/entity-model.yaml`.
+  - Postgres/SQLite DDL to `docs/schema/sql/{postgres.sql,sqlite.sql}`.
+  - ERD assets to `docs/annex/entity-model-erd.{dot,svg}`.
+  - Canonical fixtures to `testutil/fixtures/entity-model/snapshot.json` used by invariant conformance tests.
+  `make entity-model-verify` runs validation and generation together.
+- Drift guards:
+  - `make lint`/`make entity-model-generate` will rewrite all generated artifacts (including fixtures) from `entity-model.json`.
+  - `internal/tools/entitymodel/generate/main_test.go` fails if committed outputs drift from the generator, forcing contributors to update artifacts alongside schema edits.

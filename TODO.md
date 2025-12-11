@@ -8,7 +8,7 @@
     - [x] Memory store snapshots and export/import paths preserve hook-scoped extension containers for facility, breeding, sample, and supply entities.
     - [x] Memory store normalizes organism and breeding extension containers during import/create/update (SQLite parity and fixtures still pending).
 - [ ] Ensure rule invariants have the data they need
-  - Entity model now encodes housing, protocol, lineage, and lifecycle invariants with validator allowlists; synthetic datasets still need to exercise them end-to-end.
+  - Entity model now encodes housing, protocol, lineage, and lifecycle invariants with validator allowlists; canonical fixtures now exercise them end-to-end for memory/SQLite (Postgres will follow once the adapter exists).
   - [x] Normalize embedded entitymodel literals across domain/plugin tests to avoid drift between manual fixtures and generated structs; revisit if schema introduces new fields.
   - [ ] Complete Entity Model v0 canon
     - [x] Anchor plugin contract outline at `docs/annex/plugin-contract.md` and fixtures path at `testutil/fixtures/entity-model/`.
@@ -24,7 +24,7 @@
     - [x] ERD export (DOT + SVG) with Graphviz rendering and SVG fallback for headless runs; SchemaSpy target now loads generated DDL with `ON_ERROR_STOP` and emits `docs/annex/entity-model-erd.svg` from a temp Postgres container.
     - [x] Generate the plugin contract content from `entity-model.json` (replacing the outline) and update `scripts/validate_plugin_patterns.go` to enforce mandatory fields/extension hooks directly from the contract (metadata block now emitted + validated during lint).
     - [x] Extend `scripts/validate_plugin_patterns.go` (or a sibling tool) to cross-check plugin code against the contract metadata so create/update flows set required fields and only touch sanctioned extension hooks; fail `make lint` when plugins drift.
-    - [ ] Emit canonical fixtures from the schema under `testutil/fixtures/entity-model`, then load them into SQLite/Postgres adapters during CI to hit ≥95% invariant coverage and prove storage parity.
+    - [x] Emit canonical fixtures from the schema under `testutil/fixtures/entity-model`, then load them into SQLite adapters during CI to hit ≥95% invariant coverage and prove storage parity (Postgres to follow with the adapter).
     - [x] Wire the generated Postgres/SQLite DDL into their adapters/migration flows and add a round-trip smoke test (apply migrations, run `entity-model-diff`, verify ERD) so code can’t diverge from stored schemas.
       - [x] SQLite snapshots execute the embedded schema DDL on startup, `entity-model-diff` now enforces the fingerprint during lint, and the generator round-trip test loads the DDL into SQLite and asserts the ERD contains every table.
         - [x] Runtime adapters now import the canonical docs-based DDL bundle (`docs/schema/sql/bundle.go` → `internal/entitymodel/sqlbundle`) instead of copied files, keeping schema consumers on the single generated source of truth.

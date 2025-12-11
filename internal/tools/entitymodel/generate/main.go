@@ -32,6 +32,7 @@ type definitionSpec struct {
 	Properties           map[string]json.RawMessage `json:"properties"`
 	Required             []string                   `json:"required"`
 	AdditionalProperties json.RawMessage            `json:"additionalProperties"`
+	MinItems             int                        `json:"minItems"`
 }
 
 type stateSpec struct {
@@ -89,6 +90,7 @@ func main() {
 	sqlPostgresPath := flag.String("sql-postgres", "", "output file for generated Postgres DDL (optional)")
 	sqlSQLitePath := flag.String("sql-sqlite", "", "output file for generated SQLite DDL (optional)")
 	pluginContractPath := flag.String("plugin-contract", "", "output file for generated plugin contract (optional)")
+	fixturesPath := flag.String("fixtures", "", "output path for generated entity-model fixtures (optional)")
 	flag.Parse()
 
 	doc, err := loadSchema(*schemaPath)
@@ -141,6 +143,17 @@ func main() {
 			exitErr(err)
 		}
 		if err := writeFile(path, pluginContract); err != nil {
+			exitErr(err)
+		}
+		fmt.Printf("generated %s from %s\n", path, *schemaPath)
+	}
+
+	if path := strings.TrimSpace(*fixturesPath); path != "" {
+		fixtures, err := generateFixtures(doc)
+		if err != nil {
+			exitErr(err)
+		}
+		if err := writeFile(path, fixtures); err != nil {
 			exitErr(err)
 		}
 		fmt.Printf("generated %s from %s\n", path, *schemaPath)
