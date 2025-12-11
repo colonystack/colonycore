@@ -2,6 +2,8 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -155,5 +157,50 @@ func TestLoadSchemaReadsFile(t *testing.T) {
 	}
 	if _, err := loadSchema(path); err != nil {
 		t.Fatalf("load schema: %v", err)
+	}
+}
+
+func TestLoadFingerprintParseError(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "fingerprint.json")
+	if err := os.WriteFile(path, []byte("{"), 0o600); err != nil {
+		t.Fatalf("write invalid fingerprint: %v", err)
+	}
+	if _, err := loadFingerprint(path); err == nil {
+		t.Fatalf("expected parse error for fingerprint")
+	}
+}
+
+func TestDiffListDetectsRemovedEntries(t *testing.T) {
+	issues := diffList("entity Facility", "property", []string{"name", "id"}, []string{"id"})
+	if len(issues) != 1 || !strings.Contains(issues[0], "name") {
+		t.Fatalf("expected removal reported for name, got %v", issues)
+	}
+}
+
+func TestExitErrWritesAndExits(t *testing.T) {
+	var capturedCode int
+	exitFunc = func(code int) { capturedCode = code }
+	defer func() { exitFunc = os.Exit }()
+
+	reader, writer, err := os.Pipe()
+	if err != nil {
+		t.Fatalf("pipe stderr: %v", err)
+	}
+	originalStderr := os.Stderr
+	os.Stderr = writer
+	defer func() { os.Stderr = originalStderr }()
+
+	exitErr(errors.New("fingerprint mismatch"))
+
+	_ = writer.Close()
+	out, readErr := io.ReadAll(reader)
+	if readErr != nil {
+		t.Fatalf("read stderr: %v", readErr)
+	}
+	if capturedCode != 1 {
+		t.Fatalf("expected exit code 1, got %d", capturedCode)
+	}
+	if !strings.Contains(string(out), "fingerprint mismatch") {
+		t.Fatalf("expected error output, got %q", string(out))
 	}
 }
