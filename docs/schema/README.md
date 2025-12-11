@@ -7,6 +7,7 @@ Conventions:
 - `id`, `created_at`, and `updated_at` are required on every entity.
 - Enums capture lifecycle/status sets; `states.enum` references the enum name declared under `enums`. Housing lifecycle uses `housing_state` (quarantine → active → cleaning → decommissioned), and protocol/permit compliance states follow RFC-0001 §5.3. Enum values must be non-empty and deduplicated.
 - Natural keys document uniqueness scopes (global, facility, authority, line, etc.) but primary keys remain opaque IDs.
+- Relationship cardinalities use `0..1`, `1..1`, `0..n`, or `1..n` notation only; the validator rejects other forms to keep generators aligned.
 - Properties must declare either a type or `$ref` so downstream generators can map them into code, OpenAPI, and DDL.
 - Extension slots (`attributes`, `environment_baselines`, `pairing_attributes`, etc.) are plugin-safe maps; schema-specific extensions belong in plugins, not core.
 

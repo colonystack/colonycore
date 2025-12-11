@@ -370,6 +370,55 @@ func TestValidateRelationshipCardinality(t *testing.T) {
 	}
 }
 
+func TestValidateRelationshipCardinalityAllowedForms(t *testing.T) {
+	path := writeTemp(t, `{
+  "version": "0.0.5",
+  "id_semantics": { "type": "uuidv7", "scope": "global", "required": true, "description": "opaque" },
+  "metadata": { "status": "seed" },
+  "enums": {
+    "status": { "values": ["ok"] }
+  },
+  "entities": {
+    "Target": {
+      "natural_keys": [],
+      "required": ["id", "created_at", "updated_at"],
+      "properties": {
+        "id": {"type":"string"},
+        "created_at": {"type":"string"},
+        "updated_at": {"type":"string"}
+      },
+      "relationships": {},
+      "invariants": []
+    },
+    "Holder": {
+      "natural_keys": [],
+      "required": ["id", "created_at", "updated_at"],
+      "properties": {
+        "id": {"type":"string"},
+        "created_at": {"type":"string"},
+        "updated_at": {"type":"string"},
+        "ref_optional_one": {"type":"string"},
+        "ref_required_one": {"type":"string"},
+        "ref_optional_many": {"type":"string"},
+        "ref_required_many": {"type":"string"}
+      },
+      "states": {"enum": "status", "initial": "ok", "terminal": ["ok"]},
+      "relationships": {
+        "ref_optional_one": {"target": "Target", "cardinality": "0..1"},
+        "ref_required_one": {"target": "Target", "cardinality": "1..1"},
+        "ref_optional_many": {"target": "Target", "cardinality": "0..n"},
+        "ref_required_many": {"target": "Target", "cardinality": "1..n"}
+      },
+      "invariants": []
+    }
+  }
+}`)
+
+	if err := validate(path); err != nil {
+		t.Fatalf("validate() unexpected error for allowed relationship cardinalities: %v", err)
+	}
+}
+
 func TestValidateIDSemanticsRequired(t *testing.T) {
 	path := writeTemp(t, `{
   "version": "0.1.0",
