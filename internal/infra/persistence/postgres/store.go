@@ -6,12 +6,15 @@ import (
 	"colonycore/internal/entitymodel/sqlbundle"
 	"colonycore/internal/infra/persistence/memory"
 	"colonycore/pkg/domain"
+	entitymodel "colonycore/pkg/domain/entitymodel"
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
-	"strings"
+	"sort"
 	"sync"
+	"time"
 
 	_ "github.com/jackc/pgx/v5/stdlib" // register pgx as a database/sql driver
 )
@@ -57,9 +60,6 @@ func NewStore(dsn string, engine *domain.RulesEngine) (*Store, error) {
 	if err := applyEntityModelDDL(ctx, db); err != nil {
 		return nil, err
 	}
-	if err := ensureStateTable(ctx, db); err != nil {
-		return nil, err
-	}
 	snapshot, err := loadSnapshot(ctx, db)
 	if err != nil {
 		return nil, err
@@ -85,176 +85,18 @@ func (s *Store) RunInTransaction(ctx context.Context, fn func(domain.Transaction
 func (s *Store) DB() *sql.DB { return s.db }
 
 func applyEntityModelDDL(ctx context.Context, db *sql.DB) error {
-	for _, stmt := range sqlbundle.SplitStatements(sqlbundle.Postgres()) {
-		if strings.TrimSpace(stmt) == "" {
-			continue
-		}
-		if _, err := db.ExecContext(ctx, stmt); err != nil {
-			return fmt.Errorf("execute ddl: %w", err)
-		}
-	}
-	return nil
-}
-
-func ensureStateTable(ctx context.Context, db *sql.DB) error {
-	ddl := `CREATE TABLE IF NOT EXISTS state (
-		bucket TEXT PRIMARY KEY,
-		payload JSONB NOT NULL
-	)`
-	if _, err := db.ExecContext(ctx, ddl); err != nil {
-		return fmt.Errorf("ensure state table: %w", err)
-	}
-	return nil
+	return applyDDLStatements(ctx, db, sqlbundle.Postgres())
 }
 
 func loadSnapshot(ctx context.Context, db *sql.DB) (memory.Snapshot, error) {
-	rows, err := db.QueryContext(ctx, `SELECT bucket, payload FROM state`)
-	if err != nil {
-		return memory.Snapshot{}, fmt.Errorf("select state: %w", err)
-	}
-	defer func() { _ = rows.Close() }()
-
-	var snapshot memory.Snapshot
-	targets := map[string]any{}
-	for _, bucket := range postgresBuckets {
-		switch bucket {
-		case "organisms":
-			targets[bucket] = &snapshot.Organisms
-		case "cohorts":
-			targets[bucket] = &snapshot.Cohorts
-		case "housing":
-			targets[bucket] = &snapshot.Housing
-		case "facilities":
-			targets[bucket] = &snapshot.Facilities
-		case "breeding":
-			targets[bucket] = &snapshot.Breeding
-		case "lines":
-			targets[bucket] = &snapshot.Lines
-		case "strains":
-			targets[bucket] = &snapshot.Strains
-		case "markers":
-			targets[bucket] = &snapshot.Markers
-		case "procedures":
-			targets[bucket] = &snapshot.Procedures
-		case "treatments":
-			targets[bucket] = &snapshot.Treatments
-		case "observations":
-			targets[bucket] = &snapshot.Observations
-		case "samples":
-			targets[bucket] = &snapshot.Samples
-		case "protocols":
-			targets[bucket] = &snapshot.Protocols
-		case "permits":
-			targets[bucket] = &snapshot.Permits
-		case "projects":
-			targets[bucket] = &snapshot.Projects
-		case "supplies":
-			targets[bucket] = &snapshot.Supplies
-		}
-	}
-
-	for rows.Next() {
-		var bucket string
-		var payload []byte
-		if err := rows.Scan(&bucket, &payload); err != nil {
-			return memory.Snapshot{}, fmt.Errorf("scan state: %w", err)
-		}
-		if len(payload) == 0 {
-			continue
-		}
-		if target, ok := targets[bucket]; ok {
-			if err := json.Unmarshal(payload, target); err != nil {
-				return memory.Snapshot{}, fmt.Errorf("decode %s: %w", bucket, err)
-			}
-		}
-	}
-	if err := rows.Err(); err != nil {
-		return memory.Snapshot{}, fmt.Errorf("iterate state: %w", err)
-	}
-	return snapshot, nil
-}
-
-var postgresBuckets = []string{
-	"organisms",
-	"cohorts",
-	"housing",
-	"facilities",
-	"breeding",
-	"lines",
-	"strains",
-	"markers",
-	"procedures",
-	"treatments",
-	"observations",
-	"samples",
-	"protocols",
-	"permits",
-	"projects",
-	"supplies",
+	return loadNormalizedSnapshot(ctx, db)
 }
 
 func (s *Store) persist(ctx context.Context) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	snapshot := s.ExportState()
-	tx, err := s.db.BeginTx(ctx, nil)
-	if err != nil {
-		return fmt.Errorf("begin tx: %w", err)
-	}
-	committed := false
-	defer func() {
-		if !committed {
-			_ = tx.Rollback()
-		}
-	}()
-	for _, bucket := range postgresBuckets {
-		var data []byte
-		switch bucket {
-		case "organisms":
-			data, err = json.Marshal(snapshot.Organisms)
-		case "cohorts":
-			data, err = json.Marshal(snapshot.Cohorts)
-		case "housing":
-			data, err = json.Marshal(snapshot.Housing)
-		case "facilities":
-			data, err = json.Marshal(snapshot.Facilities)
-		case "breeding":
-			data, err = json.Marshal(snapshot.Breeding)
-		case "lines":
-			data, err = json.Marshal(snapshot.Lines)
-		case "strains":
-			data, err = json.Marshal(snapshot.Strains)
-		case "markers":
-			data, err = json.Marshal(snapshot.Markers)
-		case "procedures":
-			data, err = json.Marshal(snapshot.Procedures)
-		case "treatments":
-			data, err = json.Marshal(snapshot.Treatments)
-		case "observations":
-			data, err = json.Marshal(snapshot.Observations)
-		case "samples":
-			data, err = json.Marshal(snapshot.Samples)
-		case "protocols":
-			data, err = json.Marshal(snapshot.Protocols)
-		case "permits":
-			data, err = json.Marshal(snapshot.Permits)
-		case "projects":
-			data, err = json.Marshal(snapshot.Projects)
-		case "supplies":
-			data, err = json.Marshal(snapshot.Supplies)
-		}
-		if err != nil {
-			return err
-		}
-		if _, err := tx.ExecContext(ctx, `INSERT INTO state(bucket,payload) VALUES($1,$2) ON CONFLICT(bucket) DO UPDATE SET payload=EXCLUDED.payload`, bucket, data); err != nil {
-			return fmt.Errorf("upsert %s: %w", bucket, err)
-		}
-	}
-	if err := tx.Commit(); err != nil {
-		return fmt.Errorf("commit: %w", err)
-	}
-	committed = true
-	return nil
+	return persistNormalized(ctx, s.db, snapshot)
 }
 
 // OverrideSQLOpen swaps the sqlOpen function for tests and returns a restore function.
@@ -268,4 +110,1887 @@ func OverrideSQLOpen(fn func(driverName, dataSourceName string) (*sql.DB, error)
 		defer openMu.Unlock()
 		sqlOpen = prev
 	}
+}
+
+type execQuerier interface {
+	ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error)
+	QueryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error)
+}
+
+func applyDDLStatements(ctx context.Context, db execQuerier, ddl string) error {
+	for _, stmt := range sqlbundle.SplitStatements(ddl) {
+		if _, err := db.ExecContext(ctx, stmt); err != nil {
+			return fmt.Errorf("execute ddl: %w", err)
+		}
+	}
+	return nil
+}
+
+func persistNormalized(ctx context.Context, db *sql.DB, snapshot memory.Snapshot) error {
+	tx, err := db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("begin tx: %w", err)
+	}
+	committed := false
+	defer func() {
+		if !committed {
+			_ = tx.Rollback()
+		}
+	}()
+
+	if _, err := tx.ExecContext(ctx, truncateAllTablesSQL); err != nil {
+		return fmt.Errorf("truncate tables: %w", err)
+	}
+
+	steps := []struct {
+		name string
+		fn   func(context.Context) error
+	}{
+		{"insert facilities", func(ctx context.Context) error { return insertFacilities(ctx, tx, snapshot.Facilities) }},
+		{"insert genotype markers", func(ctx context.Context) error { return insertGenotypeMarkers(ctx, tx, snapshot.Markers) }},
+		{"insert lines", func(ctx context.Context) error { return insertLines(ctx, tx, snapshot.Lines) }},
+		{"insert strains", func(ctx context.Context) error { return insertStrains(ctx, tx, snapshot.Strains) }},
+		{"insert housing", func(ctx context.Context) error { return insertHousingUnits(ctx, tx, snapshot.Housing) }},
+		{"insert protocols", func(ctx context.Context) error { return insertProtocols(ctx, tx, snapshot.Protocols) }},
+		{"insert projects", func(ctx context.Context) error { return insertProjects(ctx, tx, snapshot.Projects) }},
+		{"insert permits", func(ctx context.Context) error { return insertPermits(ctx, tx, snapshot.Permits) }},
+		{"insert cohorts", func(ctx context.Context) error { return insertCohorts(ctx, tx, snapshot.Cohorts) }},
+		{"insert breeding units", func(ctx context.Context) error { return insertBreedingUnits(ctx, tx, snapshot.Breeding) }},
+		{"insert organisms", func(ctx context.Context) error { return insertOrganisms(ctx, tx, snapshot.Organisms) }},
+		{"insert procedures", func(ctx context.Context) error { return insertProcedures(ctx, tx, snapshot.Procedures) }},
+		{"insert observations", func(ctx context.Context) error { return insertObservations(ctx, tx, snapshot.Observations) }},
+		{"insert samples", func(ctx context.Context) error { return insertSamples(ctx, tx, snapshot.Samples) }},
+		{"insert supply items", func(ctx context.Context) error { return insertSupplyItems(ctx, tx, snapshot.Supplies) }},
+		{"insert treatments", func(ctx context.Context) error { return insertTreatments(ctx, tx, snapshot.Treatments) }},
+	}
+	for _, step := range steps {
+		if err := step.fn(ctx); err != nil {
+			return fmt.Errorf("%s: %w", step.name, err)
+		}
+	}
+
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("commit: %w", err)
+	}
+	committed = true
+	return nil
+}
+
+func loadNormalizedSnapshot(ctx context.Context, db execQuerier) (memory.Snapshot, error) {
+	facilities, err := loadFacilities(ctx, db)
+	if err != nil {
+		return memory.Snapshot{}, err
+	}
+	markers, err := loadGenotypeMarkers(ctx, db)
+	if err != nil {
+		return memory.Snapshot{}, err
+	}
+	lines, err := loadLines(ctx, db)
+	if err != nil {
+		return memory.Snapshot{}, err
+	}
+	if err := loadLineMarkers(ctx, db, lines); err != nil {
+		return memory.Snapshot{}, err
+	}
+	strains, err := loadStrains(ctx, db)
+	if err != nil {
+		return memory.Snapshot{}, err
+	}
+	if err := loadStrainMarkers(ctx, db, strains); err != nil {
+		return memory.Snapshot{}, err
+	}
+	housing, err := loadHousingUnits(ctx, db)
+	if err != nil {
+		return memory.Snapshot{}, err
+	}
+	protocols, err := loadProtocols(ctx, db)
+	if err != nil {
+		return memory.Snapshot{}, err
+	}
+	projects, err := loadProjects(ctx, db)
+	if err != nil {
+		return memory.Snapshot{}, err
+	}
+	if err := loadProjectFacilities(ctx, db, projects, facilities); err != nil {
+		return memory.Snapshot{}, err
+	}
+	if err := loadProjectProtocols(ctx, db, projects); err != nil {
+		return memory.Snapshot{}, err
+	}
+	permits, err := loadPermits(ctx, db)
+	if err != nil {
+		return memory.Snapshot{}, err
+	}
+	if err := loadPermitFacilities(ctx, db, permits); err != nil {
+		return memory.Snapshot{}, err
+	}
+	if err := loadPermitProtocols(ctx, db, permits); err != nil {
+		return memory.Snapshot{}, err
+	}
+	cohorts, err := loadCohorts(ctx, db)
+	if err != nil {
+		return memory.Snapshot{}, err
+	}
+	breeding, err := loadBreedingUnits(ctx, db)
+	if err != nil {
+		return memory.Snapshot{}, err
+	}
+	if err := loadBreedingUnitMembers(ctx, db, breeding); err != nil {
+		return memory.Snapshot{}, err
+	}
+	organisms, err := loadOrganisms(ctx, db)
+	if err != nil {
+		return memory.Snapshot{}, err
+	}
+	if err := loadOrganismParents(ctx, db, organisms); err != nil {
+		return memory.Snapshot{}, err
+	}
+	procedures, err := loadProcedures(ctx, db)
+	if err != nil {
+		return memory.Snapshot{}, err
+	}
+	if err := loadProcedureOrganisms(ctx, db, procedures); err != nil {
+		return memory.Snapshot{}, err
+	}
+	observations, err := loadObservations(ctx, db)
+	if err != nil {
+		return memory.Snapshot{}, err
+	}
+	samples, err := loadSamples(ctx, db)
+	if err != nil {
+		return memory.Snapshot{}, err
+	}
+	supplyItems, err := loadSupplyItems(ctx, db)
+	if err != nil {
+		return memory.Snapshot{}, err
+	}
+	if err := loadSupplyItemFacilities(ctx, db, supplyItems); err != nil {
+		return memory.Snapshot{}, err
+	}
+	if err := loadProjectSupplyItems(ctx, db, projects, supplyItems); err != nil {
+		return memory.Snapshot{}, err
+	}
+	treatments, err := loadTreatments(ctx, db)
+	if err != nil {
+		return memory.Snapshot{}, err
+	}
+	if err := loadTreatmentCohorts(ctx, db, treatments); err != nil {
+		return memory.Snapshot{}, err
+	}
+	if err := loadTreatmentOrganisms(ctx, db, treatments); err != nil {
+		return memory.Snapshot{}, err
+	}
+
+	return memory.Snapshot{
+		Facilities:   facilities,
+		Markers:      markers,
+		Lines:        lines,
+		Strains:      strains,
+		Housing:      housing,
+		Protocols:    protocols,
+		Projects:     projects,
+		Permits:      permits,
+		Cohorts:      cohorts,
+		Breeding:     breeding,
+		Organisms:    organisms,
+		Procedures:   procedures,
+		Observations: observations,
+		Samples:      samples,
+		Supplies:     supplyItems,
+		Treatments:   treatments,
+	}, nil
+}
+
+// --- insert helpers ---
+
+const truncateAllTablesSQL = `
+TRUNCATE TABLE
+    treatments__organism_ids,
+    treatments__cohort_ids,
+    treatments,
+    supply_items__facility_ids,
+    projects__supply_item_ids,
+    supply_items,
+    samples,
+    procedures__organism_ids,
+    organisms__parent_ids,
+    organisms,
+    breeding_units__female_ids,
+    breeding_units__male_ids,
+    breeding_units,
+    observations,
+    procedures,
+    cohorts,
+    permits__protocol_ids,
+    permits__facility_ids,
+    permits,
+    projects__protocol_ids,
+    facilities__project_ids,
+    projects,
+    protocols,
+    housing_units,
+    strains__genotype_marker_ids,
+    strains,
+    lines__genotype_marker_ids,
+    lines,
+    genotype_markers,
+    facilities
+CASCADE`
+
+func insertFacilities(ctx context.Context, exec execQuerier, facilities map[string]domain.Facility) error {
+	keys := sortedKeys(facilities)
+	for _, id := range keys {
+		f := facilities[id]
+		env, err := marshalJSONNullable((&f).EnvironmentBaselines())
+		if err != nil {
+			return fmt.Errorf("marshal facility environment_baselines: %w", err)
+		}
+		if _, err := exec.ExecContext(ctx, insertFacilitySQL,
+			f.ID, f.Code, f.Name, f.Zone, f.AccessPolicy, f.CreatedAt, f.UpdatedAt, env,
+		); err != nil {
+			return fmt.Errorf("insert facility %s: %w", f.ID, err)
+		}
+	}
+	return nil
+}
+
+func insertGenotypeMarkers(ctx context.Context, exec execQuerier, markers map[string]domain.GenotypeMarker) error {
+	keys := sortedKeys(markers)
+	for _, id := range keys {
+		m := markers[id]
+		alleles, err := marshalJSONRequired("genotype_marker.alleles", m.Alleles)
+		if err != nil {
+			return err
+		}
+		if _, err := exec.ExecContext(ctx, insertGenotypeMarkerSQL,
+			m.ID, m.Name, m.Locus, alleles, m.AssayMethod, m.Interpretation, m.Version, m.CreatedAt, m.UpdatedAt,
+		); err != nil {
+			return fmt.Errorf("insert genotype marker %s: %w", m.ID, err)
+		}
+	}
+	return nil
+}
+
+func insertLines(ctx context.Context, exec execQuerier, lines map[string]domain.Line) error {
+	keys := sortedKeys(lines)
+	for _, id := range keys {
+		line := lines[id]
+		if len(line.GenotypeMarkerIDs) == 0 {
+			return fmt.Errorf("line %s missing required genotype_marker_ids", line.ID)
+		}
+		defaultAttrs, err := marshalJSONNullable((&line).DefaultAttributes())
+		if err != nil {
+			return fmt.Errorf("marshal line default_attributes: %w", err)
+		}
+		overrides, err := marshalJSONNullable((&line).ExtensionOverrides())
+		if err != nil {
+			return fmt.Errorf("marshal line extension_overrides: %w", err)
+		}
+		var deprecatedAt any
+		if line.DeprecatedAt != nil {
+			deprecatedAt = *line.DeprecatedAt
+		}
+		if _, err := exec.ExecContext(ctx, insertLineSQL,
+			line.ID, line.Code, line.Name, line.Origin, line.Description, defaultAttrs, overrides, deprecatedAt, line.DeprecationReason, line.CreatedAt, line.UpdatedAt,
+		); err != nil {
+			return fmt.Errorf("insert line %s: %w", line.ID, err)
+		}
+		for _, markerID := range line.GenotypeMarkerIDs {
+			if _, err := exec.ExecContext(ctx, insertLineMarkerSQL, line.ID, markerID); err != nil {
+				return fmt.Errorf("insert line %s genotype_marker_id %s: %w", line.ID, markerID, err)
+			}
+		}
+	}
+	return nil
+}
+
+func insertStrains(ctx context.Context, exec execQuerier, strains map[string]domain.Strain) error {
+	keys := sortedKeys(strains)
+	for _, id := range keys {
+		strain := strains[id]
+		if strain.LineID == "" {
+			return fmt.Errorf("strain %s missing required line_id", strain.ID)
+		}
+		var description any
+		if strain.Description != nil {
+			description = *strain.Description
+		}
+		var generation any
+		if strain.Generation != nil {
+			generation = *strain.Generation
+		}
+		var retiredAt any
+		if strain.RetiredAt != nil {
+			retiredAt = *strain.RetiredAt
+		}
+		if _, err := exec.ExecContext(ctx, insertStrainSQL,
+			strain.ID, strain.Code, strain.Name, strain.LineID, description, generation, retiredAt, strain.RetirementReason, strain.CreatedAt, strain.UpdatedAt,
+		); err != nil {
+			return fmt.Errorf("insert strain %s: %w", strain.ID, err)
+		}
+		for _, markerID := range strain.GenotypeMarkerIDs {
+			if _, err := exec.ExecContext(ctx, insertStrainMarkerSQL, strain.ID, markerID); err != nil {
+				return fmt.Errorf("insert strain %s genotype_marker_id %s: %w", strain.ID, markerID, err)
+			}
+		}
+	}
+	return nil
+}
+
+func insertHousingUnits(ctx context.Context, exec execQuerier, housing map[string]domain.HousingUnit) error {
+	keys := sortedKeys(housing)
+	for _, id := range keys {
+		h := housing[id]
+		if h.FacilityID == "" {
+			return fmt.Errorf("housing %s missing required facility_id", h.ID)
+		}
+		if _, err := exec.ExecContext(ctx, insertHousingSQL,
+			h.ID, h.FacilityID, h.Name, h.Capacity, h.Environment, h.State, h.CreatedAt, h.UpdatedAt,
+		); err != nil {
+			return fmt.Errorf("insert housing %s: %w", h.ID, err)
+		}
+	}
+	return nil
+}
+
+func insertProtocols(ctx context.Context, exec execQuerier, protocols map[string]domain.Protocol) error {
+	keys := sortedKeys(protocols)
+	for _, id := range keys {
+		p := protocols[id]
+		if _, err := exec.ExecContext(ctx, insertProtocolSQL,
+			p.ID, p.Code, p.Title, p.Description, p.MaxSubjects, p.Status, p.CreatedAt, p.UpdatedAt,
+		); err != nil {
+			return fmt.Errorf("insert protocol %s: %w", p.ID, err)
+		}
+	}
+	return nil
+}
+
+func insertProjects(ctx context.Context, exec execQuerier, projects map[string]domain.Project) error {
+	keys := sortedKeys(projects)
+	for _, id := range keys {
+		p := projects[id]
+		if len(p.FacilityIDs) == 0 {
+			return fmt.Errorf("project %s missing required facility_ids", p.ID)
+		}
+		if _, err := exec.ExecContext(ctx, insertProjectSQL,
+			p.ID, p.Code, p.Title, p.Description, p.CreatedAt, p.UpdatedAt,
+		); err != nil {
+			return fmt.Errorf("insert project %s: %w", p.ID, err)
+		}
+		for _, facilityID := range p.FacilityIDs {
+			if _, err := exec.ExecContext(ctx, insertProjectFacilitySQL, facilityID, p.ID); err != nil {
+				return fmt.Errorf("insert project %s facility %s: %w", p.ID, facilityID, err)
+			}
+		}
+		for _, protocolID := range p.ProtocolIDs {
+			if _, err := exec.ExecContext(ctx, insertProjectProtocolSQL, p.ID, protocolID); err != nil {
+				return fmt.Errorf("insert project %s protocol %s: %w", p.ID, protocolID, err)
+			}
+		}
+		for _, supplyID := range p.SupplyItemIDs {
+			if _, err := exec.ExecContext(ctx, insertProjectSupplySQL, p.ID, supplyID); err != nil {
+				return fmt.Errorf("insert project %s supply %s: %w", p.ID, supplyID, err)
+			}
+		}
+	}
+	return nil
+}
+
+func insertPermits(ctx context.Context, exec execQuerier, permits map[string]domain.Permit) error {
+	keys := sortedKeys(permits)
+	for _, id := range keys {
+		p := permits[id]
+		if len(p.FacilityIDs) == 0 {
+			return fmt.Errorf("permit %s missing required facility_ids", p.ID)
+		}
+		if len(p.ProtocolIDs) == 0 {
+			return fmt.Errorf("permit %s missing required protocol_ids", p.ID)
+		}
+		activities, err := marshalJSONRequired("permit.allowed_activities", p.AllowedActivities)
+		if err != nil {
+			return err
+		}
+		if _, err := exec.ExecContext(ctx, insertPermitSQL,
+			p.ID, p.PermitNumber, p.Authority, p.Status, p.ValidFrom, p.ValidUntil, activities, p.Notes, p.CreatedAt, p.UpdatedAt,
+		); err != nil {
+			return fmt.Errorf("insert permit %s: %w", p.ID, err)
+		}
+		for _, facilityID := range p.FacilityIDs {
+			if _, err := exec.ExecContext(ctx, insertPermitFacilitySQL, p.ID, facilityID); err != nil {
+				return fmt.Errorf("insert permit %s facility %s: %w", p.ID, facilityID, err)
+			}
+		}
+		for _, protocolID := range p.ProtocolIDs {
+			if _, err := exec.ExecContext(ctx, insertPermitProtocolSQL, p.ID, protocolID); err != nil {
+				return fmt.Errorf("insert permit %s protocol %s: %w", p.ID, protocolID, err)
+			}
+		}
+	}
+	return nil
+}
+
+func insertCohorts(ctx context.Context, exec execQuerier, cohorts map[string]domain.Cohort) error {
+	keys := sortedKeys(cohorts)
+	for _, id := range keys {
+		c := cohorts[id]
+		if _, err := exec.ExecContext(ctx, insertCohortSQL,
+			c.ID, c.Name, c.Purpose, c.ProjectID, c.HousingID, c.ProtocolID, c.CreatedAt, c.UpdatedAt,
+		); err != nil {
+			return fmt.Errorf("insert cohort %s: %w", c.ID, err)
+		}
+	}
+	return nil
+}
+
+func insertBreedingUnits(ctx context.Context, exec execQuerier, breeding map[string]domain.BreedingUnit) error {
+	keys := sortedKeys(breeding)
+	for _, id := range keys {
+		b := breeding[id]
+		pairingAttrs, err := marshalJSONNullable((&b).PairingAttributes())
+		if err != nil {
+			return fmt.Errorf("marshal breeding pairing_attributes: %w", err)
+		}
+		if _, err := exec.ExecContext(ctx, insertBreedingSQL,
+			b.ID, b.Name, b.Strategy, b.HousingID, b.LineID, b.StrainID, b.TargetLineID, b.TargetStrainID, b.ProtocolID, pairingAttrs, b.PairingIntent, b.PairingNotes, b.CreatedAt, b.UpdatedAt,
+		); err != nil {
+			return fmt.Errorf("insert breeding %s: %w", b.ID, err)
+		}
+		for _, femaleID := range b.FemaleIDs {
+			if _, err := exec.ExecContext(ctx, insertBreedingFemaleSQL, b.ID, femaleID); err != nil {
+				return fmt.Errorf("insert breeding %s female %s: %w", b.ID, femaleID, err)
+			}
+		}
+		for _, maleID := range b.MaleIDs {
+			if _, err := exec.ExecContext(ctx, insertBreedingMaleSQL, b.ID, maleID); err != nil {
+				return fmt.Errorf("insert breeding %s male %s: %w", b.ID, maleID, err)
+			}
+		}
+	}
+	return nil
+}
+
+func insertOrganisms(ctx context.Context, exec execQuerier, organisms map[string]domain.Organism) error {
+	keys := sortedKeys(organisms)
+	for _, id := range keys {
+		o := organisms[id]
+		attrs, err := marshalJSONNullable((&o).CoreAttributes())
+		if err != nil {
+			return fmt.Errorf("marshal organism attributes: %w", err)
+		}
+		if _, err := exec.ExecContext(ctx, insertOrganismSQL,
+			o.ID, o.Name, o.Species, o.Line, o.Stage, o.LineID, o.StrainID, o.CohortID, o.HousingID, o.ProtocolID, o.ProjectID, attrs, o.CreatedAt, o.UpdatedAt,
+		); err != nil {
+			return fmt.Errorf("insert organism %s: %w", o.ID, err)
+		}
+		for _, parentID := range o.ParentIDs {
+			if _, err := exec.ExecContext(ctx, insertOrganismParentSQL, o.ID, parentID); err != nil {
+				return fmt.Errorf("insert organism %s parent %s: %w", o.ID, parentID, err)
+			}
+		}
+	}
+	return nil
+}
+
+func insertProcedures(ctx context.Context, exec execQuerier, procedures map[string]domain.Procedure) error {
+	keys := sortedKeys(procedures)
+	for _, id := range keys {
+		p := procedures[id]
+		if p.ProtocolID == "" {
+			return fmt.Errorf("procedure %s missing required protocol_id", p.ID)
+		}
+		if _, err := exec.ExecContext(ctx, insertProcedureSQL,
+			p.ID, p.Name, p.Status, p.ScheduledAt, p.ProtocolID, p.ProjectID, p.CohortID, p.CreatedAt, p.UpdatedAt,
+		); err != nil {
+			return fmt.Errorf("insert procedure %s: %w", p.ID, err)
+		}
+		for _, organismID := range p.OrganismIDs {
+			if _, err := exec.ExecContext(ctx, insertProcedureOrganismSQL, p.ID, organismID); err != nil {
+				return fmt.Errorf("insert procedure %s organism %s: %w", p.ID, organismID, err)
+			}
+		}
+	}
+	return nil
+}
+
+func insertObservations(ctx context.Context, exec execQuerier, observations map[string]domain.Observation) error {
+	keys := sortedKeys(observations)
+	for _, id := range keys {
+		o := observations[id]
+		data, err := marshalJSONNullable(o.Data)
+		if err != nil {
+			return fmt.Errorf("marshal observation data: %w", err)
+		}
+		if _, err := exec.ExecContext(ctx, insertObservationSQL,
+			o.ID, o.Observer, o.RecordedAt, o.ProcedureID, o.OrganismID, o.CohortID, data, o.Notes, o.CreatedAt, o.UpdatedAt,
+		); err != nil {
+			return fmt.Errorf("insert observation %s: %w", o.ID, err)
+		}
+	}
+	return nil
+}
+
+func insertSamples(ctx context.Context, exec execQuerier, samples map[string]domain.Sample) error {
+	keys := sortedKeys(samples)
+	for _, id := range keys {
+		s := samples[id]
+		if len(s.ChainOfCustody) == 0 {
+			return fmt.Errorf("sample %s missing required chain_of_custody", s.ID)
+		}
+		if s.FacilityID == "" {
+			return fmt.Errorf("sample %s missing required facility_id", s.ID)
+		}
+		chain, err := marshalJSONRequired("sample.chain_of_custody", s.ChainOfCustody)
+		if err != nil {
+			return err
+		}
+		attrs, err := marshalJSONNullable((&s).SampleAttributes())
+		if err != nil {
+			return fmt.Errorf("marshal sample attributes: %w", err)
+		}
+		if _, err := exec.ExecContext(ctx, insertSampleSQL,
+			s.ID, s.Identifier, s.SourceType, s.Status, s.StorageLocation, s.AssayType, s.FacilityID, s.OrganismID, s.CohortID, chain, attrs, s.CollectedAt, s.CreatedAt, s.UpdatedAt,
+		); err != nil {
+			return fmt.Errorf("insert sample %s: %w", s.ID, err)
+		}
+	}
+	return nil
+}
+
+func insertSupplyItems(ctx context.Context, exec execQuerier, supplies map[string]domain.SupplyItem) error {
+	keys := sortedKeys(supplies)
+	for _, id := range keys {
+		s := supplies[id]
+		if len(s.FacilityIDs) == 0 {
+			return fmt.Errorf("supply_item %s missing required facility_ids", s.ID)
+		}
+		if len(s.ProjectIDs) == 0 {
+			return fmt.Errorf("supply_item %s missing required project_ids", s.ID)
+		}
+		attrs, err := marshalJSONNullable((&s).SupplyAttributes())
+		if err != nil {
+			return fmt.Errorf("marshal supply_item attributes: %w", err)
+		}
+		var expiresAt any
+		if s.ExpiresAt != nil {
+			expiresAt = *s.ExpiresAt
+		}
+		if _, err := exec.ExecContext(ctx, insertSupplySQL,
+			s.ID, s.SKU, s.Name, s.QuantityOnHand, s.Unit, s.ReorderLevel, s.Description, s.LotNumber, expiresAt, attrs, s.CreatedAt, s.UpdatedAt,
+		); err != nil {
+			return fmt.Errorf("insert supply_item %s: %w", s.ID, err)
+		}
+		for _, facilityID := range s.FacilityIDs {
+			if _, err := exec.ExecContext(ctx, insertSupplyFacilitySQL, s.ID, facilityID); err != nil {
+				return fmt.Errorf("insert supply_item %s facility %s: %w", s.ID, facilityID, err)
+			}
+		}
+		for _, projectID := range s.ProjectIDs {
+			if _, err := exec.ExecContext(ctx, insertProjectSupplySQL, projectID, s.ID); err != nil {
+				return fmt.Errorf("insert supply_item %s project %s: %w", s.ID, projectID, err)
+			}
+		}
+	}
+	return nil
+}
+
+func insertTreatments(ctx context.Context, exec execQuerier, treatments map[string]domain.Treatment) error {
+	keys := sortedKeys(treatments)
+	for _, id := range keys {
+		treatment := treatments[id]
+		if treatment.ProcedureID == "" {
+			return fmt.Errorf("treatment %s missing required procedure_id", treatment.ID)
+		}
+		adminLog, err := marshalJSONNullable(treatment.AdministrationLog)
+		if err != nil {
+			return fmt.Errorf("marshal treatment administration_log: %w", err)
+		}
+		adverse, err := marshalJSONNullable(treatment.AdverseEvents)
+		if err != nil {
+			return fmt.Errorf("marshal treatment adverse_events: %w", err)
+		}
+		if _, err := exec.ExecContext(ctx, insertTreatmentSQL,
+			treatment.ID, treatment.Name, treatment.Status, treatment.ProcedureID, treatment.DosagePlan, adminLog, adverse, treatment.CreatedAt, treatment.UpdatedAt,
+		); err != nil {
+			return fmt.Errorf("insert treatment %s: %w", treatment.ID, err)
+		}
+		for _, cohortID := range treatment.CohortIDs {
+			if _, err := exec.ExecContext(ctx, insertTreatmentCohortSQL, treatment.ID, cohortID); err != nil {
+				return fmt.Errorf("insert treatment %s cohort %s: %w", treatment.ID, cohortID, err)
+			}
+		}
+		for _, organismID := range treatment.OrganismIDs {
+			if _, err := exec.ExecContext(ctx, insertTreatmentOrganismSQL, treatment.ID, organismID); err != nil {
+				return fmt.Errorf("insert treatment %s organism %s: %w", treatment.ID, organismID, err)
+			}
+		}
+	}
+	return nil
+}
+
+// --- load helpers ---
+
+func loadFacilities(ctx context.Context, db execQuerier) (map[string]domain.Facility, error) {
+	rows, err := db.QueryContext(ctx, selectFacilitiesSQL)
+	if err != nil {
+		return nil, fmt.Errorf("select facilities: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+
+	out := make(map[string]domain.Facility)
+	for rows.Next() {
+		var (
+			id, code, name, zone, policy string
+			createdAt, updatedAt         time.Time
+			envRaw                       []byte
+		)
+		if err := rows.Scan(&id, &code, &name, &zone, &policy, &createdAt, &updatedAt, &envRaw); err != nil {
+			return nil, fmt.Errorf("scan facilities: %w", err)
+		}
+		env, err := decodeMap(envRaw)
+		if err != nil {
+			return nil, fmt.Errorf("decode facility %s environment_baselines: %w", id, err)
+		}
+		out[id] = domain.Facility{Facility: entitymodel.Facility{
+			ID:                   id,
+			Code:                 code,
+			Name:                 name,
+			Zone:                 zone,
+			AccessPolicy:         policy,
+			CreatedAt:            createdAt,
+			UpdatedAt:            updatedAt,
+			EnvironmentBaselines: env,
+		}}
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate facilities: %w", err)
+	}
+	return out, nil
+}
+
+func loadGenotypeMarkers(ctx context.Context, db execQuerier) (map[string]domain.GenotypeMarker, error) {
+	rows, err := db.QueryContext(ctx, selectGenotypeMarkersSQL)
+	if err != nil {
+		return nil, fmt.Errorf("select genotype_markers: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+
+	out := make(map[string]domain.GenotypeMarker)
+	for rows.Next() {
+		var (
+			id, name, locus, assayMethod, interpretation, version string
+			createdAt, updatedAt                                  time.Time
+			allelesRaw                                            []byte
+		)
+		if err := rows.Scan(&id, &name, &locus, &allelesRaw, &assayMethod, &interpretation, &version, &createdAt, &updatedAt); err != nil {
+			return nil, fmt.Errorf("scan genotype_markers: %w", err)
+		}
+		alleles, err := decodeStringSlice(allelesRaw)
+		if err != nil {
+			return nil, fmt.Errorf("decode genotype_marker %s alleles: %w", id, err)
+		}
+		out[id] = domain.GenotypeMarker{GenotypeMarker: entitymodel.GenotypeMarker{
+			ID:             id,
+			Name:           name,
+			Locus:          locus,
+			Alleles:        alleles,
+			AssayMethod:    assayMethod,
+			Interpretation: interpretation,
+			Version:        version,
+			CreatedAt:      createdAt,
+			UpdatedAt:      updatedAt,
+		}}
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate genotype_markers: %w", err)
+	}
+	return out, nil
+}
+
+func loadLines(ctx context.Context, db execQuerier) (map[string]domain.Line, error) {
+	rows, err := db.QueryContext(ctx, selectLinesSQL)
+	if err != nil {
+		return nil, fmt.Errorf("select lines: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+
+	out := make(map[string]domain.Line)
+	for rows.Next() {
+		var (
+			id, code, name, origin        string
+			description                   sql.NullString
+			defaultAttrsRaw, overridesRaw []byte
+			deprecatedAt                  sql.NullTime
+			deprecationReason             sql.NullString
+			createdAt, updatedAt          time.Time
+		)
+		if err := rows.Scan(&id, &code, &name, &origin, &description, &defaultAttrsRaw, &overridesRaw, &deprecatedAt, &deprecationReason, &createdAt, &updatedAt); err != nil {
+			return nil, fmt.Errorf("scan lines: %w", err)
+		}
+		defaultAttrs, err := decodeMap(defaultAttrsRaw)
+		if err != nil {
+			return nil, fmt.Errorf("decode line %s default_attributes: %w", id, err)
+		}
+		overrides, err := decodeMap(overridesRaw)
+		if err != nil {
+			return nil, fmt.Errorf("decode line %s extension_overrides: %w", id, err)
+		}
+		var deprecatedPtr *time.Time
+		if deprecatedAt.Valid {
+			deprecatedPtr = &deprecatedAt.Time
+		}
+		var deprecationReasonPtr *string
+		if deprecationReason.Valid {
+			deprecationReasonPtr = &deprecationReason.String
+		}
+		var descriptionPtr *string
+		if description.Valid {
+			descriptionPtr = &description.String
+		}
+		out[id] = domain.Line{Line: entitymodel.Line{
+			ID:                 id,
+			Code:               code,
+			Name:               name,
+			Origin:             origin,
+			Description:        descriptionPtr,
+			DefaultAttributes:  defaultAttrs,
+			ExtensionOverrides: overrides,
+			DeprecatedAt:       deprecatedPtr,
+			DeprecationReason:  deprecationReasonPtr,
+			CreatedAt:          createdAt,
+			UpdatedAt:          updatedAt,
+		}}
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate lines: %w", err)
+	}
+	return out, nil
+}
+
+func loadLineMarkers(ctx context.Context, db execQuerier, lines map[string]domain.Line) error {
+	rows, err := db.QueryContext(ctx, selectLineMarkersSQL)
+	if err != nil {
+		return fmt.Errorf("select line markers: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+	for rows.Next() {
+		var lineID, markerID string
+		if err := rows.Scan(&lineID, &markerID); err != nil {
+			return fmt.Errorf("scan line markers: %w", err)
+		}
+		line, ok := lines[lineID]
+		if !ok {
+			return fmt.Errorf("line marker row references missing line %s", lineID)
+		}
+		line.GenotypeMarkerIDs = append(line.GenotypeMarkerIDs, markerID)
+		lines[lineID] = line
+	}
+	if err := rows.Err(); err != nil {
+		return fmt.Errorf("iterate line markers: %w", err)
+	}
+	for id, line := range lines {
+		if len(line.GenotypeMarkerIDs) == 0 {
+			return fmt.Errorf("line %s missing genotype_marker_ids", id)
+		}
+		sort.Strings(line.GenotypeMarkerIDs)
+		lines[id] = line
+	}
+	return nil
+}
+
+func loadStrains(ctx context.Context, db execQuerier) (map[string]domain.Strain, error) {
+	rows, err := db.QueryContext(ctx, selectStrainsSQL)
+	if err != nil {
+		return nil, fmt.Errorf("select strains: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+
+	out := make(map[string]domain.Strain)
+	for rows.Next() {
+		var (
+			id, code, name, lineID  string
+			description, generation sql.NullString
+			retiredAt               sql.NullTime
+			retirementReason        sql.NullString
+			createdAt, updatedAt    time.Time
+		)
+		if err := rows.Scan(&id, &code, &name, &lineID, &description, &generation, &retiredAt, &retirementReason, &createdAt, &updatedAt); err != nil {
+			return nil, fmt.Errorf("scan strains: %w", err)
+		}
+		var descriptionPtr *string
+		if description.Valid {
+			descriptionPtr = &description.String
+		}
+		var generationPtr *string
+		if generation.Valid {
+			generationPtr = &generation.String
+		}
+		var retiredAtPtr *time.Time
+		if retiredAt.Valid {
+			retiredAtPtr = &retiredAt.Time
+		}
+		var retirementReasonPtr *string
+		if retirementReason.Valid {
+			retirementReasonPtr = &retirementReason.String
+		}
+		out[id] = domain.Strain{Strain: entitymodel.Strain{
+			ID:               id,
+			Code:             code,
+			Name:             name,
+			LineID:           lineID,
+			Description:      descriptionPtr,
+			Generation:       generationPtr,
+			RetiredAt:        retiredAtPtr,
+			RetirementReason: retirementReasonPtr,
+			CreatedAt:        createdAt,
+			UpdatedAt:        updatedAt,
+		}}
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate strains: %w", err)
+	}
+	return out, nil
+}
+
+func loadStrainMarkers(ctx context.Context, db execQuerier, strains map[string]domain.Strain) error {
+	rows, err := db.QueryContext(ctx, selectStrainMarkersSQL)
+	if err != nil {
+		return fmt.Errorf("select strain markers: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+	for rows.Next() {
+		var strainID, markerID string
+		if err := rows.Scan(&strainID, &markerID); err != nil {
+			return fmt.Errorf("scan strain markers: %w", err)
+		}
+		strain, ok := strains[strainID]
+		if !ok {
+			return fmt.Errorf("strain marker row references missing strain %s", strainID)
+		}
+		strain.GenotypeMarkerIDs = append(strain.GenotypeMarkerIDs, markerID)
+		strains[strainID] = strain
+	}
+	if err := rows.Err(); err != nil {
+		return fmt.Errorf("iterate strain markers: %w", err)
+	}
+	for id, strain := range strains {
+		sort.Strings(strain.GenotypeMarkerIDs)
+		strains[id] = strain
+	}
+	return nil
+}
+
+func loadHousingUnits(ctx context.Context, db execQuerier) (map[string]domain.HousingUnit, error) {
+	rows, err := db.QueryContext(ctx, selectHousingSQL)
+	if err != nil {
+		return nil, fmt.Errorf("select housing_units: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+
+	out := make(map[string]domain.HousingUnit)
+	for rows.Next() {
+		var (
+			id, facilityID, name string
+			capacity             int
+			environment          domain.HousingEnvironment
+			state                domain.HousingState
+			createdAt, updatedAt time.Time
+		)
+		if err := rows.Scan(&id, &facilityID, &name, &capacity, &environment, &state, &createdAt, &updatedAt); err != nil {
+			return nil, fmt.Errorf("scan housing_units: %w", err)
+		}
+		out[id] = domain.HousingUnit{HousingUnit: entitymodel.HousingUnit{
+			ID:          id,
+			FacilityID:  facilityID,
+			Name:        name,
+			Capacity:    capacity,
+			Environment: entitymodel.HousingEnvironment(environment),
+			State:       entitymodel.HousingState(state),
+			CreatedAt:   createdAt,
+			UpdatedAt:   updatedAt,
+		}}
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate housing_units: %w", err)
+	}
+	return out, nil
+}
+
+func loadProtocols(ctx context.Context, db execQuerier) (map[string]domain.Protocol, error) {
+	rows, err := db.QueryContext(ctx, selectProtocolSQL)
+	if err != nil {
+		return nil, fmt.Errorf("select protocols: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+
+	out := make(map[string]domain.Protocol)
+	for rows.Next() {
+		var (
+			id, code, title      string
+			description          sql.NullString
+			maxSubjects          int
+			status               domain.ProtocolStatus
+			createdAt, updatedAt time.Time
+		)
+		if err := rows.Scan(&id, &code, &title, &description, &maxSubjects, &status, &createdAt, &updatedAt); err != nil {
+			return nil, fmt.Errorf("scan protocols: %w", err)
+		}
+		var descriptionPtr *string
+		if description.Valid {
+			descriptionPtr = &description.String
+		}
+		out[id] = domain.Protocol{Protocol: entitymodel.Protocol{
+			ID:          id,
+			Code:        code,
+			Title:       title,
+			Description: descriptionPtr,
+			MaxSubjects: maxSubjects,
+			Status:      entitymodel.ProtocolStatus(status),
+			CreatedAt:   createdAt,
+			UpdatedAt:   updatedAt,
+		}}
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate protocols: %w", err)
+	}
+	return out, nil
+}
+
+func loadProjects(ctx context.Context, db execQuerier) (map[string]domain.Project, error) {
+	rows, err := db.QueryContext(ctx, selectProjectSQL)
+	if err != nil {
+		return nil, fmt.Errorf("select projects: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+
+	out := make(map[string]domain.Project)
+	for rows.Next() {
+		var (
+			id, code, title      string
+			description          sql.NullString
+			createdAt, updatedAt time.Time
+		)
+		if err := rows.Scan(&id, &code, &title, &description, &createdAt, &updatedAt); err != nil {
+			return nil, fmt.Errorf("scan projects: %w", err)
+		}
+		var descriptionPtr *string
+		if description.Valid {
+			descriptionPtr = &description.String
+		}
+		out[id] = domain.Project{Project: entitymodel.Project{
+			ID:          id,
+			Code:        code,
+			Title:       title,
+			Description: descriptionPtr,
+			CreatedAt:   createdAt,
+			UpdatedAt:   updatedAt,
+		}}
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate projects: %w", err)
+	}
+	return out, nil
+}
+
+func loadProjectFacilities(ctx context.Context, db execQuerier, projects map[string]domain.Project, facilities map[string]domain.Facility) error {
+	rows, err := db.QueryContext(ctx, selectProjectFacilitiesSQL)
+	if err != nil {
+		return fmt.Errorf("select project facilities: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+	for rows.Next() {
+		var facilityID, projectID string
+		if err := rows.Scan(&facilityID, &projectID); err != nil {
+			return fmt.Errorf("scan project facilities: %w", err)
+		}
+		project, ok := projects[projectID]
+		if !ok {
+			return fmt.Errorf("project facility row references missing project %s", projectID)
+		}
+		project.FacilityIDs = append(project.FacilityIDs, facilityID)
+		projects[projectID] = project
+		if facility, ok := facilities[facilityID]; ok {
+			facility.ProjectIDs = append(facility.ProjectIDs, projectID)
+			facilities[facilityID] = facility
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return fmt.Errorf("iterate project facilities: %w", err)
+	}
+	for id, project := range projects {
+		if len(project.FacilityIDs) == 0 {
+			return fmt.Errorf("project %s missing required facility_ids", id)
+		}
+		sort.Strings(project.FacilityIDs)
+		projects[id] = project
+	}
+	for id, facility := range facilities {
+		sort.Strings(facility.ProjectIDs)
+		facilities[id] = facility
+	}
+	return nil
+}
+
+func loadProjectProtocols(ctx context.Context, db execQuerier, projects map[string]domain.Project) error {
+	rows, err := db.QueryContext(ctx, selectProjectProtocolsSQL)
+	if err != nil {
+		return fmt.Errorf("select project protocols: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+	for rows.Next() {
+		var projectID, protocolID string
+		if err := rows.Scan(&projectID, &protocolID); err != nil {
+			return fmt.Errorf("scan project protocols: %w", err)
+		}
+		project, ok := projects[projectID]
+		if !ok {
+			return fmt.Errorf("project protocol row references missing project %s", projectID)
+		}
+		project.ProtocolIDs = append(project.ProtocolIDs, protocolID)
+		projects[projectID] = project
+	}
+	if err := rows.Err(); err != nil {
+		return fmt.Errorf("iterate project protocols: %w", err)
+	}
+	for id, project := range projects {
+		sort.Strings(project.ProtocolIDs)
+		projects[id] = project
+	}
+	return nil
+}
+
+func loadPermits(ctx context.Context, db execQuerier) (map[string]domain.Permit, error) {
+	rows, err := db.QueryContext(ctx, selectPermitSQL)
+	if err != nil {
+		return nil, fmt.Errorf("select permits: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+
+	out := make(map[string]domain.Permit)
+	for rows.Next() {
+		var (
+			id, permitNumber, authority string
+			status                      domain.PermitStatus
+			validFrom, validUntil       time.Time
+			activitiesRaw               []byte
+			notes                       sql.NullString
+			createdAt, updatedAt        time.Time
+		)
+		if err := rows.Scan(&id, &permitNumber, &authority, &status, &validFrom, &validUntil, &activitiesRaw, &notes, &createdAt, &updatedAt); err != nil {
+			return nil, fmt.Errorf("scan permits: %w", err)
+		}
+		activities, err := decodeStringSlice(activitiesRaw)
+		if err != nil {
+			return nil, fmt.Errorf("decode permit %s allowed_activities: %w", id, err)
+		}
+		var notesPtr *string
+		if notes.Valid {
+			notesPtr = &notes.String
+		}
+		out[id] = domain.Permit{Permit: entitymodel.Permit{
+			ID:                id,
+			PermitNumber:      permitNumber,
+			Authority:         authority,
+			Status:            entitymodel.PermitStatus(status),
+			ValidFrom:         validFrom,
+			ValidUntil:        validUntil,
+			AllowedActivities: activities,
+			Notes:             notesPtr,
+			CreatedAt:         createdAt,
+			UpdatedAt:         updatedAt,
+		}}
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate permits: %w", err)
+	}
+	return out, nil
+}
+
+func loadPermitFacilities(ctx context.Context, db execQuerier, permits map[string]domain.Permit) error {
+	rows, err := db.QueryContext(ctx, selectPermitFacilitiesSQL)
+	if err != nil {
+		return fmt.Errorf("select permit facilities: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+	for rows.Next() {
+		var permitID, facilityID string
+		if err := rows.Scan(&permitID, &facilityID); err != nil {
+			return fmt.Errorf("scan permit facilities: %w", err)
+		}
+		permit, ok := permits[permitID]
+		if !ok {
+			return fmt.Errorf("permit facility row references missing permit %s", permitID)
+		}
+		permit.FacilityIDs = append(permit.FacilityIDs, facilityID)
+		permits[permitID] = permit
+	}
+	if err := rows.Err(); err != nil {
+		return fmt.Errorf("iterate permit facilities: %w", err)
+	}
+	for id, permit := range permits {
+		if len(permit.FacilityIDs) == 0 {
+			return fmt.Errorf("permit %s missing required facility_ids", id)
+		}
+		sort.Strings(permit.FacilityIDs)
+		permits[id] = permit
+	}
+	return nil
+}
+
+func loadPermitProtocols(ctx context.Context, db execQuerier, permits map[string]domain.Permit) error {
+	rows, err := db.QueryContext(ctx, selectPermitProtocolsSQL)
+	if err != nil {
+		return fmt.Errorf("select permit protocols: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+	for rows.Next() {
+		var permitID, protocolID string
+		if err := rows.Scan(&permitID, &protocolID); err != nil {
+			return fmt.Errorf("scan permit protocols: %w", err)
+		}
+		permit, ok := permits[permitID]
+		if !ok {
+			return fmt.Errorf("permit protocol row references missing permit %s", permitID)
+		}
+		permit.ProtocolIDs = append(permit.ProtocolIDs, protocolID)
+		permits[permitID] = permit
+	}
+	if err := rows.Err(); err != nil {
+		return fmt.Errorf("iterate permit protocols: %w", err)
+	}
+	for id, permit := range permits {
+		if len(permit.ProtocolIDs) == 0 {
+			return fmt.Errorf("permit %s missing required protocol_ids", id)
+		}
+		sort.Strings(permit.ProtocolIDs)
+		permits[id] = permit
+	}
+	return nil
+}
+
+func loadCohorts(ctx context.Context, db execQuerier) (map[string]domain.Cohort, error) {
+	rows, err := db.QueryContext(ctx, selectCohortSQL)
+	if err != nil {
+		return nil, fmt.Errorf("select cohorts: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+
+	out := make(map[string]domain.Cohort)
+	for rows.Next() {
+		var (
+			id, name, purpose                string
+			projectID, housingID, protocolID sql.NullString
+			createdAt, updatedAt             time.Time
+		)
+		if err := rows.Scan(&id, &name, &purpose, &projectID, &housingID, &protocolID, &createdAt, &updatedAt); err != nil {
+			return nil, fmt.Errorf("scan cohorts: %w", err)
+		}
+		out[id] = domain.Cohort{Cohort: entitymodel.Cohort{
+			ID:         id,
+			Name:       name,
+			Purpose:    purpose,
+			ProjectID:  nullableString(projectID),
+			HousingID:  nullableString(housingID),
+			ProtocolID: nullableString(protocolID),
+			CreatedAt:  createdAt,
+			UpdatedAt:  updatedAt,
+		}}
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate cohorts: %w", err)
+	}
+	return out, nil
+}
+
+func loadBreedingUnits(ctx context.Context, db execQuerier) (map[string]domain.BreedingUnit, error) {
+	rows, err := db.QueryContext(ctx, selectBreedingSQL)
+	if err != nil {
+		return nil, fmt.Errorf("select breeding_units: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+
+	out := make(map[string]domain.BreedingUnit)
+	for rows.Next() {
+		var (
+			id, name, strategy                        string
+			housingID, lineID, strainID, targetLineID sql.NullString
+			targetStrainID, protocolID                sql.NullString
+			pairingAttrsRaw                           []byte
+			pairingIntent, pairingNotes               sql.NullString
+			createdAt, updatedAt                      time.Time
+		)
+		if err := rows.Scan(&id, &name, &strategy, &housingID, &lineID, &strainID, &targetLineID, &targetStrainID, &protocolID, &pairingAttrsRaw, &pairingIntent, &pairingNotes, &createdAt, &updatedAt); err != nil {
+			return nil, fmt.Errorf("scan breeding_units: %w", err)
+		}
+		pairingAttrs, err := decodeMap(pairingAttrsRaw)
+		if err != nil {
+			return nil, fmt.Errorf("decode breeding_unit %s pairing_attributes: %w", id, err)
+		}
+		out[id] = domain.BreedingUnit{BreedingUnit: entitymodel.BreedingUnit{
+			ID:                id,
+			Name:              name,
+			Strategy:          strategy,
+			HousingID:         nullableString(housingID),
+			LineID:            nullableString(lineID),
+			StrainID:          nullableString(strainID),
+			TargetLineID:      nullableString(targetLineID),
+			TargetStrainID:    nullableString(targetStrainID),
+			ProtocolID:        nullableString(protocolID),
+			PairingAttributes: pairingAttrs,
+			PairingIntent:     nullableString(pairingIntent),
+			PairingNotes:      nullableString(pairingNotes),
+			CreatedAt:         createdAt,
+			UpdatedAt:         updatedAt,
+		}}
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate breeding_units: %w", err)
+	}
+	return out, nil
+}
+
+func loadBreedingUnitMembers(ctx context.Context, db execQuerier, breeding map[string]domain.BreedingUnit) error {
+	femaleRows, err := db.QueryContext(ctx, selectBreedingFemalesSQL)
+	if err != nil {
+		return fmt.Errorf("select breeding female_ids: %w", err)
+	}
+	defer func() { _ = femaleRows.Close() }()
+	for femaleRows.Next() {
+		var breedingID, organismID string
+		if err := femaleRows.Scan(&breedingID, &organismID); err != nil {
+			return fmt.Errorf("scan breeding female_ids: %w", err)
+		}
+		unit, ok := breeding[breedingID]
+		if !ok {
+			return fmt.Errorf("breeding female row references missing breeding_unit %s", breedingID)
+		}
+		unit.FemaleIDs = append(unit.FemaleIDs, organismID)
+		breeding[breedingID] = unit
+	}
+	if err := femaleRows.Err(); err != nil {
+		return fmt.Errorf("iterate breeding female_ids: %w", err)
+	}
+
+	maleRows, err := db.QueryContext(ctx, selectBreedingMalesSQL)
+	if err != nil {
+		return fmt.Errorf("select breeding male_ids: %w", err)
+	}
+	defer func() { _ = maleRows.Close() }()
+	for maleRows.Next() {
+		var breedingID, organismID string
+		if err := maleRows.Scan(&breedingID, &organismID); err != nil {
+			return fmt.Errorf("scan breeding male_ids: %w", err)
+		}
+		unit, ok := breeding[breedingID]
+		if !ok {
+			return fmt.Errorf("breeding male row references missing breeding_unit %s", breedingID)
+		}
+		unit.MaleIDs = append(unit.MaleIDs, organismID)
+		breeding[breedingID] = unit
+	}
+	if err := maleRows.Err(); err != nil {
+		return fmt.Errorf("iterate breeding male_ids: %w", err)
+	}
+	for id, unit := range breeding {
+		sort.Strings(unit.FemaleIDs)
+		sort.Strings(unit.MaleIDs)
+		breeding[id] = unit
+	}
+	return nil
+}
+
+func loadOrganisms(ctx context.Context, db execQuerier) (map[string]domain.Organism, error) {
+	rows, err := db.QueryContext(ctx, selectOrganismSQL)
+	if err != nil {
+		return nil, fmt.Errorf("select organisms: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+
+	out := make(map[string]domain.Organism)
+	for rows.Next() {
+		var (
+			id, name, species, line string
+			stage                   domain.LifecycleStage
+			lineID, strainID        sql.NullString
+			cohortID, housingID     sql.NullString
+			protocolID, projectID   sql.NullString
+			attributesRaw           []byte
+			createdAt, updatedAt    time.Time
+		)
+		if err := rows.Scan(&id, &name, &species, &line, &stage, &lineID, &strainID, &cohortID, &housingID, &protocolID, &projectID, &attributesRaw, &createdAt, &updatedAt); err != nil {
+			return nil, fmt.Errorf("scan organisms: %w", err)
+		}
+		attrs, err := decodeMap(attributesRaw)
+		if err != nil {
+			return nil, fmt.Errorf("decode organism %s attributes: %w", id, err)
+		}
+		out[id] = domain.Organism{Organism: entitymodel.Organism{
+			ID:         id,
+			Name:       name,
+			Species:    species,
+			Line:       line,
+			Stage:      entitymodel.LifecycleStage(stage),
+			LineID:     nullableString(lineID),
+			StrainID:   nullableString(strainID),
+			CohortID:   nullableString(cohortID),
+			HousingID:  nullableString(housingID),
+			ProtocolID: nullableString(protocolID),
+			ProjectID:  nullableString(projectID),
+			Attributes: attrs,
+			CreatedAt:  createdAt,
+			UpdatedAt:  updatedAt,
+		}}
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate organisms: %w", err)
+	}
+	return out, nil
+}
+
+func loadOrganismParents(ctx context.Context, db execQuerier, organisms map[string]domain.Organism) error {
+	rows, err := db.QueryContext(ctx, selectOrganismParentsSQL)
+	if err != nil {
+		return fmt.Errorf("select organism parents: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+	for rows.Next() {
+		var organismID, parentID string
+		if err := rows.Scan(&organismID, &parentID); err != nil {
+			return fmt.Errorf("scan organism parents: %w", err)
+		}
+		org, ok := organisms[organismID]
+		if !ok {
+			return fmt.Errorf("organism parent row references missing organism %s", organismID)
+		}
+		org.ParentIDs = append(org.ParentIDs, parentID)
+		organisms[organismID] = org
+	}
+	if err := rows.Err(); err != nil {
+		return fmt.Errorf("iterate organism parents: %w", err)
+	}
+	for id, org := range organisms {
+		sort.Strings(org.ParentIDs)
+		organisms[id] = org
+	}
+	return nil
+}
+
+func loadProcedures(ctx context.Context, db execQuerier) (map[string]domain.Procedure, error) {
+	rows, err := db.QueryContext(ctx, selectProcedureSQL)
+	if err != nil {
+		return nil, fmt.Errorf("select procedures: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+
+	out := make(map[string]domain.Procedure)
+	for rows.Next() {
+		var (
+			id, name                          string
+			status                            domain.ProcedureStatus
+			scheduledAt, createdAt, updatedAt time.Time
+			protocolID                        string
+			projectID, cohortID               sql.NullString
+		)
+		if err := rows.Scan(&id, &name, &status, &scheduledAt, &protocolID, &projectID, &cohortID, &createdAt, &updatedAt); err != nil {
+			return nil, fmt.Errorf("scan procedures: %w", err)
+		}
+		out[id] = domain.Procedure{Procedure: entitymodel.Procedure{
+			ID:          id,
+			Name:        name,
+			Status:      entitymodel.ProcedureStatus(status),
+			ScheduledAt: scheduledAt,
+			ProtocolID:  protocolID,
+			ProjectID:   nullableString(projectID),
+			CohortID:    nullableString(cohortID),
+			CreatedAt:   createdAt,
+			UpdatedAt:   updatedAt,
+		}}
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate procedures: %w", err)
+	}
+	return out, nil
+}
+
+func loadProcedureOrganisms(ctx context.Context, db execQuerier, procedures map[string]domain.Procedure) error {
+	rows, err := db.QueryContext(ctx, selectProcedureOrganismsSQL)
+	if err != nil {
+		return fmt.Errorf("select procedure organisms: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+	for rows.Next() {
+		var procedureID, organismID string
+		if err := rows.Scan(&procedureID, &organismID); err != nil {
+			return fmt.Errorf("scan procedure organisms: %w", err)
+		}
+		proc, ok := procedures[procedureID]
+		if !ok {
+			return fmt.Errorf("procedure organism row references missing procedure %s", procedureID)
+		}
+		proc.OrganismIDs = append(proc.OrganismIDs, organismID)
+		procedures[procedureID] = proc
+	}
+	if err := rows.Err(); err != nil {
+		return fmt.Errorf("iterate procedure organisms: %w", err)
+	}
+	for id, proc := range procedures {
+		sort.Strings(proc.OrganismIDs)
+		procedures[id] = proc
+	}
+	return nil
+}
+
+func loadObservations(ctx context.Context, db execQuerier) (map[string]domain.Observation, error) {
+	rows, err := db.QueryContext(ctx, selectObservationSQL)
+	if err != nil {
+		return nil, fmt.Errorf("select observations: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+
+	out := make(map[string]domain.Observation)
+	for rows.Next() {
+		var (
+			id, observer                      string
+			recordedAt, createdAt, updatedAt  time.Time
+			procedureID, organismID, cohortID sql.NullString
+			dataRaw                           []byte
+			notes                             sql.NullString
+		)
+		if err := rows.Scan(&id, &observer, &recordedAt, &procedureID, &organismID, &cohortID, &dataRaw, &notes, &createdAt, &updatedAt); err != nil {
+			return nil, fmt.Errorf("scan observations: %w", err)
+		}
+		data, err := decodeMap(dataRaw)
+		if err != nil {
+			return nil, fmt.Errorf("decode observation %s data: %w", id, err)
+		}
+		out[id] = domain.Observation{Observation: entitymodel.Observation{
+			ID:          id,
+			Observer:    observer,
+			RecordedAt:  recordedAt,
+			ProcedureID: nullableString(procedureID),
+			OrganismID:  nullableString(organismID),
+			CohortID:    nullableString(cohortID),
+			Data:        data,
+			Notes:       nullableString(notes),
+			CreatedAt:   createdAt,
+			UpdatedAt:   updatedAt,
+		}}
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate observations: %w", err)
+	}
+	return out, nil
+}
+
+func loadSamples(ctx context.Context, db execQuerier) (map[string]domain.Sample, error) {
+	rows, err := db.QueryContext(ctx, selectSampleSQL)
+	if err != nil {
+		return nil, fmt.Errorf("select samples: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+
+	out := make(map[string]domain.Sample)
+	for rows.Next() {
+		var (
+			id, identifier, sourceType, status, storageLocation, assayType string
+			facilityID                                                     string
+			organismID, cohortID                                           sql.NullString
+			chainRaw, attrsRaw                                             []byte
+			collectedAt, createdAt, updatedAt                              time.Time
+		)
+		if err := rows.Scan(&id, &identifier, &sourceType, &status, &storageLocation, &assayType, &facilityID, &organismID, &cohortID, &chainRaw, &attrsRaw, &collectedAt, &createdAt, &updatedAt); err != nil {
+			return nil, fmt.Errorf("scan samples: %w", err)
+		}
+		chain, err := decodeCustody(chainRaw)
+		if err != nil {
+			return nil, fmt.Errorf("decode sample %s chain_of_custody: %w", id, err)
+		}
+		attrs, err := decodeMap(attrsRaw)
+		if err != nil {
+			return nil, fmt.Errorf("decode sample %s attributes: %w", id, err)
+		}
+		out[id] = domain.Sample{Sample: entitymodel.Sample{
+			ID:              id,
+			Identifier:      identifier,
+			SourceType:      sourceType,
+			Status:          entitymodel.SampleStatus(status),
+			StorageLocation: storageLocation,
+			AssayType:       assayType,
+			FacilityID:      facilityID,
+			OrganismID:      nullableString(organismID),
+			CohortID:        nullableString(cohortID),
+			ChainOfCustody:  chain,
+			Attributes:      attrs,
+			CollectedAt:     collectedAt,
+			CreatedAt:       createdAt,
+			UpdatedAt:       updatedAt,
+		}}
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate samples: %w", err)
+	}
+	return out, nil
+}
+
+func loadSupplyItems(ctx context.Context, db execQuerier) (map[string]domain.SupplyItem, error) {
+	rows, err := db.QueryContext(ctx, selectSupplySQL)
+	if err != nil {
+		return nil, fmt.Errorf("select supply_items: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+
+	out := make(map[string]domain.SupplyItem)
+	for rows.Next() {
+		var (
+			id, sku, name, unit  string
+			quantity, reorder    int
+			description, lot     sql.NullString
+			expiresAt            sql.NullTime
+			attrsRaw             []byte
+			createdAt, updatedAt time.Time
+		)
+		if err := rows.Scan(&id, &sku, &name, &quantity, &unit, &reorder, &description, &lot, &expiresAt, &attrsRaw, &createdAt, &updatedAt); err != nil {
+			return nil, fmt.Errorf("scan supply_items: %w", err)
+		}
+		attrs, err := decodeMap(attrsRaw)
+		if err != nil {
+			return nil, fmt.Errorf("decode supply_item %s attributes: %w", id, err)
+		}
+		out[id] = domain.SupplyItem{SupplyItem: entitymodel.SupplyItem{
+			ID:             id,
+			SKU:            sku,
+			Name:           name,
+			QuantityOnHand: quantity,
+			Unit:           unit,
+			ReorderLevel:   reorder,
+			Description:    nullableString(description),
+			LotNumber:      nullableString(lot),
+			ExpiresAt:      nullableTime(expiresAt),
+			Attributes:     attrs,
+			CreatedAt:      createdAt,
+			UpdatedAt:      updatedAt,
+		}}
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate supply_items: %w", err)
+	}
+	return out, nil
+}
+
+func loadSupplyItemFacilities(ctx context.Context, db execQuerier, supplies map[string]domain.SupplyItem) error {
+	rows, err := db.QueryContext(ctx, selectSupplyFacilitiesSQL)
+	if err != nil {
+		return fmt.Errorf("select supply facilities: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+	for rows.Next() {
+		var supplyID, facilityID string
+		if err := rows.Scan(&supplyID, &facilityID); err != nil {
+			return fmt.Errorf("scan supply facilities: %w", err)
+		}
+		supply, ok := supplies[supplyID]
+		if !ok {
+			return fmt.Errorf("supply facility row references missing supply_item %s", supplyID)
+		}
+		supply.FacilityIDs = append(supply.FacilityIDs, facilityID)
+		supplies[supplyID] = supply
+	}
+	if err := rows.Err(); err != nil {
+		return fmt.Errorf("iterate supply facilities: %w", err)
+	}
+	for id, supply := range supplies {
+		if len(supply.FacilityIDs) == 0 {
+			return fmt.Errorf("supply_item %s missing required facility_ids", id)
+		}
+		sort.Strings(supply.FacilityIDs)
+		supplies[id] = supply
+	}
+	return nil
+}
+
+func loadProjectSupplyItems(ctx context.Context, db execQuerier, projects map[string]domain.Project, supplies map[string]domain.SupplyItem) error {
+	rows, err := db.QueryContext(ctx, selectProjectSupplySQL)
+	if err != nil {
+		return fmt.Errorf("select project supply items: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+	for rows.Next() {
+		var projectID, supplyID string
+		if err := rows.Scan(&projectID, &supplyID); err != nil {
+			return fmt.Errorf("scan project supply items: %w", err)
+		}
+		project, ok := projects[projectID]
+		if !ok {
+			return fmt.Errorf("project supply row references missing project %s", projectID)
+		}
+		project.SupplyItemIDs = append(project.SupplyItemIDs, supplyID)
+		projects[projectID] = project
+		if supply, ok := supplies[supplyID]; ok {
+			supply.ProjectIDs = append(supply.ProjectIDs, projectID)
+			supplies[supplyID] = supply
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return fmt.Errorf("iterate project supply items: %w", err)
+	}
+	for id, project := range projects {
+		sort.Strings(project.SupplyItemIDs)
+		projects[id] = project
+	}
+	for id, supply := range supplies {
+		if len(supply.ProjectIDs) == 0 {
+			return fmt.Errorf("supply_item %s missing required project_ids", id)
+		}
+		sort.Strings(supply.ProjectIDs)
+		supplies[id] = supply
+	}
+	return nil
+}
+
+func loadTreatments(ctx context.Context, db execQuerier) (map[string]domain.Treatment, error) {
+	rows, err := db.QueryContext(ctx, selectTreatmentSQL)
+	if err != nil {
+		return nil, fmt.Errorf("select treatments: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+
+	out := make(map[string]domain.Treatment)
+	for rows.Next() {
+		var (
+			id, name, procedureID, dosagePlan string
+			status                            domain.TreatmentStatus
+			adminLogRaw, adverseRaw           []byte
+			createdAt, updatedAt              time.Time
+		)
+		if err := rows.Scan(&id, &name, &status, &procedureID, &dosagePlan, &adminLogRaw, &adverseRaw, &createdAt, &updatedAt); err != nil {
+			return nil, fmt.Errorf("scan treatments: %w", err)
+		}
+		adminLog, err := decodeStringSlice(adminLogRaw)
+		if err != nil {
+			return nil, fmt.Errorf("decode treatment %s administration_log: %w", id, err)
+		}
+		adverseEvents, err := decodeStringSlice(adverseRaw)
+		if err != nil {
+			return nil, fmt.Errorf("decode treatment %s adverse_events: %w", id, err)
+		}
+		out[id] = domain.Treatment{Treatment: entitymodel.Treatment{
+			ID:                id,
+			Name:              name,
+			Status:            entitymodel.TreatmentStatus(status),
+			ProcedureID:       procedureID,
+			DosagePlan:        dosagePlan,
+			AdministrationLog: adminLog,
+			AdverseEvents:     adverseEvents,
+			CreatedAt:         createdAt,
+			UpdatedAt:         updatedAt,
+		}}
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate treatments: %w", err)
+	}
+	return out, nil
+}
+
+func loadTreatmentCohorts(ctx context.Context, db execQuerier, treatments map[string]domain.Treatment) error {
+	rows, err := db.QueryContext(ctx, selectTreatmentCohortsSQL)
+	if err != nil {
+		return fmt.Errorf("select treatment cohorts: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+	for rows.Next() {
+		var treatmentID, cohortID string
+		if err := rows.Scan(&treatmentID, &cohortID); err != nil {
+			return fmt.Errorf("scan treatment cohorts: %w", err)
+		}
+		t, ok := treatments[treatmentID]
+		if !ok {
+			return fmt.Errorf("treatment cohort row references missing treatment %s", treatmentID)
+		}
+		t.CohortIDs = append(t.CohortIDs, cohortID)
+		treatments[treatmentID] = t
+	}
+	if err := rows.Err(); err != nil {
+		return fmt.Errorf("iterate treatment cohorts: %w", err)
+	}
+	for id, treatment := range treatments {
+		sort.Strings(treatment.CohortIDs)
+		treatments[id] = treatment
+	}
+	return nil
+}
+
+func loadTreatmentOrganisms(ctx context.Context, db execQuerier, treatments map[string]domain.Treatment) error {
+	rows, err := db.QueryContext(ctx, selectTreatmentOrganismsSQL)
+	if err != nil {
+		return fmt.Errorf("select treatment organisms: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+	for rows.Next() {
+		var treatmentID, organismID string
+		if err := rows.Scan(&treatmentID, &organismID); err != nil {
+			return fmt.Errorf("scan treatment organisms: %w", err)
+		}
+		t, ok := treatments[treatmentID]
+		if !ok {
+			return fmt.Errorf("treatment organism row references missing treatment %s", treatmentID)
+		}
+		t.OrganismIDs = append(t.OrganismIDs, organismID)
+		treatments[treatmentID] = t
+	}
+	if err := rows.Err(); err != nil {
+		return fmt.Errorf("iterate treatment organisms: %w", err)
+	}
+	for id, treatment := range treatments {
+		sort.Strings(treatment.OrganismIDs)
+		treatments[id] = treatment
+	}
+	return nil
+}
+
+// --- SQL constants ---
+
+const (
+	insertFacilitySQL           = `INSERT INTO facilities (id, code, name, zone, access_policy, created_at, updated_at, environment_baselines) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`
+	selectFacilitiesSQL         = `SELECT id, code, name, zone, access_policy, created_at, updated_at, environment_baselines FROM facilities`
+	insertGenotypeMarkerSQL     = `INSERT INTO genotype_markers (id, name, locus, alleles, assay_method, interpretation, version, created_at, updated_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`
+	selectGenotypeMarkersSQL    = `SELECT id, name, locus, alleles, assay_method, interpretation, version, created_at, updated_at FROM genotype_markers`
+	insertLineSQL               = `INSERT INTO lines (id, code, name, origin, description, default_attributes, extension_overrides, deprecated_at, deprecation_reason, created_at, updated_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)`
+	selectLinesSQL              = `SELECT id, code, name, origin, description, default_attributes, extension_overrides, deprecated_at, deprecation_reason, created_at, updated_at FROM lines`
+	insertLineMarkerSQL         = `INSERT INTO lines__genotype_marker_ids (line_id, genotype_marker_id) VALUES ($1,$2)`
+	selectLineMarkersSQL        = `SELECT line_id, genotype_marker_id FROM lines__genotype_marker_ids`
+	insertStrainSQL             = `INSERT INTO strains (id, code, name, line_id, description, generation, retired_at, retirement_reason, created_at, updated_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`
+	selectStrainsSQL            = `SELECT id, code, name, line_id, description, generation, retired_at, retirement_reason, created_at, updated_at FROM strains`
+	insertStrainMarkerSQL       = `INSERT INTO strains__genotype_marker_ids (strain_id, genotype_marker_id) VALUES ($1,$2)`
+	selectStrainMarkersSQL      = `SELECT strain_id, genotype_marker_id FROM strains__genotype_marker_ids`
+	insertHousingSQL            = `INSERT INTO housing_units (id, facility_id, name, capacity, environment, state, created_at, updated_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`
+	selectHousingSQL            = `SELECT id, facility_id, name, capacity, environment, state, created_at, updated_at FROM housing_units`
+	insertProtocolSQL           = `INSERT INTO protocols (id, code, title, description, max_subjects, status, created_at, updated_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`
+	selectProtocolSQL           = `SELECT id, code, title, description, max_subjects, status, created_at, updated_at FROM protocols`
+	insertProjectSQL            = `INSERT INTO projects (id, code, title, description, created_at, updated_at) VALUES ($1,$2,$3,$4,$5,$6)`
+	selectProjectSQL            = `SELECT id, code, title, description, created_at, updated_at FROM projects`
+	insertProjectFacilitySQL    = `INSERT INTO facilities__project_ids (facility_id, project_id) VALUES ($1,$2)`
+	selectProjectFacilitiesSQL  = `SELECT facility_id, project_id FROM facilities__project_ids`
+	insertProjectProtocolSQL    = `INSERT INTO projects__protocol_ids (project_id, protocol_id) VALUES ($1,$2)`
+	selectProjectProtocolsSQL   = `SELECT project_id, protocol_id FROM projects__protocol_ids`
+	insertPermitSQL             = `INSERT INTO permits (id, permit_number, authority, status, valid_from, valid_until, allowed_activities, notes, created_at, updated_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`
+	selectPermitSQL             = `SELECT id, permit_number, authority, status, valid_from, valid_until, allowed_activities, notes, created_at, updated_at FROM permits`
+	insertPermitFacilitySQL     = `INSERT INTO permits__facility_ids (permit_id, facility_id) VALUES ($1,$2)`
+	selectPermitFacilitiesSQL   = `SELECT permit_id, facility_id FROM permits__facility_ids`
+	insertPermitProtocolSQL     = `INSERT INTO permits__protocol_ids (permit_id, protocol_id) VALUES ($1,$2)`
+	selectPermitProtocolsSQL    = `SELECT permit_id, protocol_id FROM permits__protocol_ids`
+	insertCohortSQL             = `INSERT INTO cohorts (id, name, purpose, project_id, housing_id, protocol_id, created_at, updated_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`
+	selectCohortSQL             = `SELECT id, name, purpose, project_id, housing_id, protocol_id, created_at, updated_at FROM cohorts`
+	insertBreedingSQL           = `INSERT INTO breeding_units (id, name, strategy, housing_id, line_id, strain_id, target_line_id, target_strain_id, protocol_id, pairing_attributes, pairing_intent, pairing_notes, created_at, updated_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)`
+	selectBreedingSQL           = `SELECT id, name, strategy, housing_id, line_id, strain_id, target_line_id, target_strain_id, protocol_id, pairing_attributes, pairing_intent, pairing_notes, created_at, updated_at FROM breeding_units`
+	insertBreedingFemaleSQL     = `INSERT INTO breeding_units__female_ids (breeding_unit_id, organism_id) VALUES ($1,$2)`
+	selectBreedingFemalesSQL    = `SELECT breeding_unit_id, organism_id FROM breeding_units__female_ids`
+	insertBreedingMaleSQL       = `INSERT INTO breeding_units__male_ids (breeding_unit_id, organism_id) VALUES ($1,$2)`
+	selectBreedingMalesSQL      = `SELECT breeding_unit_id, organism_id FROM breeding_units__male_ids`
+	insertOrganismSQL           = `INSERT INTO organisms (id, name, species, line, stage, line_id, strain_id, cohort_id, housing_id, protocol_id, project_id, attributes, created_at, updated_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)`
+	selectOrganismSQL           = `SELECT id, name, species, line, stage, line_id, strain_id, cohort_id, housing_id, protocol_id, project_id, attributes, created_at, updated_at FROM organisms`
+	insertOrganismParentSQL     = `INSERT INTO organisms__parent_ids (organism_id, parent_ids_id) VALUES ($1,$2)`
+	selectOrganismParentsSQL    = `SELECT organism_id, parent_ids_id FROM organisms__parent_ids`
+	insertProcedureSQL          = `INSERT INTO procedures (id, name, status, scheduled_at, protocol_id, project_id, cohort_id, created_at, updated_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`
+	selectProcedureSQL          = `SELECT id, name, status, scheduled_at, protocol_id, project_id, cohort_id, created_at, updated_at FROM procedures`
+	insertProcedureOrganismSQL  = `INSERT INTO procedures__organism_ids (procedure_id, organism_id) VALUES ($1,$2)`
+	selectProcedureOrganismsSQL = `SELECT procedure_id, organism_id FROM procedures__organism_ids`
+	insertObservationSQL        = `INSERT INTO observations (id, observer, recorded_at, procedure_id, organism_id, cohort_id, data, notes, created_at, updated_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`
+	selectObservationSQL        = `SELECT id, observer, recorded_at, procedure_id, organism_id, cohort_id, data, notes, created_at, updated_at FROM observations`
+	insertSampleSQL             = `INSERT INTO samples (id, identifier, source_type, status, storage_location, assay_type, facility_id, organism_id, cohort_id, chain_of_custody, attributes, collected_at, created_at, updated_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)`
+	selectSampleSQL             = `SELECT id, identifier, source_type, status, storage_location, assay_type, facility_id, organism_id, cohort_id, chain_of_custody, attributes, collected_at, created_at, updated_at FROM samples`
+	insertSupplySQL             = `INSERT INTO supply_items (id, sku, name, quantity_on_hand, unit, reorder_level, description, lot_number, expires_at, attributes, created_at, updated_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)`
+	selectSupplySQL             = `SELECT id, sku, name, quantity_on_hand, unit, reorder_level, description, lot_number, expires_at, attributes, created_at, updated_at FROM supply_items`
+	insertSupplyFacilitySQL     = `INSERT INTO supply_items__facility_ids (supply_item_id, facility_id) VALUES ($1,$2)`
+	selectSupplyFacilitiesSQL   = `SELECT supply_item_id, facility_id FROM supply_items__facility_ids`
+	insertProjectSupplySQL      = `INSERT INTO projects__supply_item_ids (project_id, supply_item_id) VALUES ($1,$2)`
+	selectProjectSupplySQL      = `SELECT project_id, supply_item_id FROM projects__supply_item_ids`
+	insertTreatmentSQL          = `INSERT INTO treatments (id, name, status, procedure_id, dosage_plan, administration_log, adverse_events, created_at, updated_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`
+	selectTreatmentSQL          = `SELECT id, name, status, procedure_id, dosage_plan, administration_log, adverse_events, created_at, updated_at FROM treatments`
+	insertTreatmentCohortSQL    = `INSERT INTO treatments__cohort_ids (treatment_id, cohort_id) VALUES ($1,$2)`
+	selectTreatmentCohortsSQL   = `SELECT treatment_id, cohort_id FROM treatments__cohort_ids`
+	insertTreatmentOrganismSQL  = `INSERT INTO treatments__organism_ids (treatment_id, organism_id) VALUES ($1,$2)`
+	selectTreatmentOrganismsSQL = `SELECT treatment_id, organism_id FROM treatments__organism_ids`
+)
+
+// --- helpers ---
+
+func marshalJSONNullable(value any) ([]byte, error) {
+	if value == nil {
+		return nil, nil
+	}
+	return json.Marshal(value)
+}
+
+func marshalJSONRequired(label string, value any) ([]byte, error) {
+	if sliceEmpty(value) {
+		return nil, fmt.Errorf("%s is required", label)
+	}
+	return json.Marshal(value)
+}
+
+func sliceEmpty(v any) bool {
+	switch t := v.(type) {
+	case []string:
+		return len(t) == 0
+	case []domain.SampleCustodyEvent:
+		return len(t) == 0
+	default:
+		return false
+	}
+}
+
+func decodeStringSlice(raw []byte) ([]string, error) {
+	if len(raw) == 0 {
+		return nil, nil
+	}
+	var out []string
+	if err := json.Unmarshal(raw, &out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func decodeMap(raw []byte) (map[string]any, error) {
+	if len(raw) == 0 {
+		return nil, nil
+	}
+	var out map[string]any
+	if err := json.Unmarshal(raw, &out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func decodeCustody(raw []byte) ([]domain.SampleCustodyEvent, error) {
+	if len(raw) == 0 {
+		return nil, errors.New("chain_of_custody cannot be empty")
+	}
+	var out []domain.SampleCustodyEvent
+	if err := json.Unmarshal(raw, &out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func sortedKeys[T any](m map[string]T) []string {
+	keys := make([]string, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	return keys
+}
+
+func nullableString(val sql.NullString) *string {
+	if val.Valid {
+		return &val.String
+	}
+	return nil
+}
+
+func nullableTime(val sql.NullTime) *time.Time {
+	if val.Valid {
+		return &val.Time
+	}
+	return nil
 }

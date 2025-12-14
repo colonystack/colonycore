@@ -1,4 +1,4 @@
-# ADR-0007: Storage Baseline (SQLite Snapshot + Postgres Placeholder)
+# ADR-0007: Storage Baseline (SQLite Snapshot + Postgres Normalized)
 
 - Status: Accepted
 - Date: 2025-09-23
@@ -7,7 +7,7 @@
 - Context: Initially ColonyCore only supported an in-memory `MemoryStore`, limiting durability and multi-process usage. A minimal persistent option was required for local development and early adopters without committing prematurely to a full relational schema and migration surface.
 
 ## Decision
-Adopt an embedded SQLite-backed store (internally `sqlite.Store`, exposed through the convenience constructor `core.NewSQLiteStore`) as the default persistent driver for local development. It reuses existing transactional logic in `MemoryStore` and after each successful transaction snapshots the entire in-memory state into a single SQLite table (`state`) containing JSON blobs per entity bucket. Provide an environment-based factory (`OpenPersistentStore`) selecting among `memory`, `sqlite`, or `postgres` drivers. Introduce a placeholder `PostgresStore` that currently delegates to `MemoryStore` and returns a not-implemented error, reserving the configuration contract for future high-concurrency deployments.
+Adopt an embedded SQLite-backed store (internally `sqlite.Store`, exposed through the convenience constructor `core.NewSQLiteStore`) as the default persistent driver for local development. It reuses existing transactional logic in `MemoryStore` and after each successful transaction snapshots the entire in-memory state into a single SQLite table (`state`) containing JSON blobs per entity bucket. Provide an environment-based factory (`OpenPersistentStore`) selecting among `memory`, `sqlite`, or `postgres` drivers. The Postgres driver (`internal/infra/persistence/postgres`) now applies the generated entity-model DDL on startup and persists the normalized tables after each transaction while continuing to reuse the in-memory transactional semantics.
 
 ## Rationale
 1. **Speed of implementation**: Snapshotting leverages existing concurrency control and rule evaluation paths with minimal code.
@@ -23,9 +23,9 @@ Adopt an embedded SQLite-backed store (internally `sqlite.Store`, exposed throug
 - Easy rollback: delete the SQLite file to reset state; tests remain fast using memory.
 
 ### Negative / Trade-offs
-- Snapshot approach writes the entire state for each transaction; inefficient for large datasets.
+- Snapshot approach writes the entire state for each transaction in the SQLite path; inefficient for large datasets.
 - No fine-grained concurrency improvements yet; write throughput remains serialized.
-- Lacks schema-level constraints/enforcement that a normalized relational design would provide.
+- SQLite path lacks schema-level constraints/enforcement that a normalized relational design would provide (the Postgres path now enforces FK/enum/required-join constraints generated from the entity model).
 
 ### Mitigations / Future Work
 | Concern | Planned Mitigation |
@@ -42,8 +42,9 @@ Adopt an embedded SQLite-backed store (internally `sqlite.Store`, exposed throug
 
 ## Implementation Notes
 - The concrete implementation type is `sqlite.Store` in `internal/infra/persistence/sqlite` (migrated from the deprecated `internal/persistence/sqlite` path); the public helper `core.NewSQLiteStore` returns that type while preserving the historical constructor name for backwards compatibility and readability in calling code.
+- The Postgres implementation (`internal/infra/persistence/postgres`) applies the generated entity-model DDL (`docs/schema/sql/postgres.sql` via `internal/entitymodel/sqlbundle`), loads normalized tables into an in-memory transaction engine, and persists back to the normalized tables after each committed transaction.
 - Env vars: `COLONYCORE_STORAGE_DRIVER`, `COLONYCORE_SQLITE_PATH`, `COLONYCORE_POSTGRES_DSN`.
-- Test coverage via `internal/core/sqlite_store_test.go` and `internal/infra/persistence/sqlite/store_test.go` ensures snapshot reload semantics.
+- Test coverage via `internal/core/sqlite_store_test.go`, `internal/infra/persistence/sqlite/store_test.go`, and `internal/infra/persistence/postgres/store_test.go` ensures reload semantics and normalized table parity.
 
 ## Driver Selection & Configuration
 Persistent storage drivers are selected exclusively via environment variables—deployments can move between in-memory, SQLite, or Postgres (reserved) without recompilation.
@@ -52,7 +53,7 @@ Persistent storage drivers are selected exclusively via environment variables—
 - Unset `COLONYCORE_STORAGE_DRIVER` → `sqlite` (creates `./colonycore.db`; override path with `COLONYCORE_SQLITE_PATH`).
 - `COLONYCORE_STORAGE_DRIVER=memory` → in-memory / ephemeral store.
 - `COLONYCORE_STORAGE_DRIVER=sqlite` → explicit SQLite selection (same defaults as unset).
-- `COLONYCORE_STORAGE_DRIVER=postgres` → reserved placeholder; requires `COLONYCORE_POSTGRES_DSN`.
+- `COLONYCORE_STORAGE_DRIVER=postgres` → normalized Postgres store; requires `COLONYCORE_POSTGRES_DSN`.
 
 ### Environment Variables
 - `COLONYCORE_STORAGE_DRIVER`: `memory` | `sqlite` | `postgres`. Defaults to `sqlite` outside of tests.
@@ -62,7 +63,7 @@ Persistent storage drivers are selected exclusively via environment variables—
 Local development and CI can rely on defaults (SQLite file under the current working directory). Tests still target the in-memory driver directly for performance.
 
 ## Status & Follow-Up
-Accepted for v0.1.0 baseline. Postgres driver implementation tracked as a follow-up (will supersede placeholder). Metrics & delta persistence targeted post initial adopter feedback.
+Accepted for v0.1.0 baseline. Postgres driver now persists to the normalized schema; metrics & delta persistence targeted post initial adopter feedback.
 
 ## SQLite Operational Notes
 The snapshot strategy writes the full logical state into a single `state` table as JSON blobs after each successful transaction. This keeps the implementation compact, allows readers to inspect state with standard SQL tooling, and makes rollback/reset trivial (delete the DB file). The trade-offs are:
@@ -72,10 +73,7 @@ The snapshot strategy writes the full logical state into a single `state` table 
 Read concurrency is comparable to the in-memory driver (multiple readers, single writer). For larger deployments, Postgres will deliver row-level locking and normalized schemas.
 
 ## Postgres Roadmap
-The placeholder driver checks configuration wiring today so deployments can standardize on `COLONYCORE_POSTGRES_DSN` early. Planned work includes:
-1. Normalized schema with per-entity persistence.
-2. Row-level locking and transactional alignment with the rules engine.
-3. Versioned migrations and schema introspection.
-4. Metrics covering snapshot lag, row counts, and write latency.
-
-Once complete, the Postgres driver will replace the placeholder implementation without changing the configuration contract.
+The Postgres driver already applies the generated normalized schema and enforces FK/enum/required-join constraints. Planned work includes:
+1. Row-level locking and transactional alignment with the rules engine to improve write concurrency beyond the in-memory transaction mirror.
+2. Versioned migrations and schema introspection.
+3. Metrics covering snapshot lag, row counts, and write latency.
