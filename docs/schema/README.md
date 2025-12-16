@@ -20,6 +20,7 @@ Validation & targets:
   - ERD assets to `docs/annex/entity-model-erd.{dot,svg}`.
   - Canonical fixtures to `testutil/fixtures/entity-model/snapshot.json` used by invariant conformance tests.
   `make entity-model-verify` runs validation and generation together.
+- The generated OpenAPI components are embedded for runtime use via `internal/entitymodel.OpenAPISpec`/`NewOpenAPIHandler` so handlers and clients can serve the canonical contract without shelling out to the generator.
 - Drift guards:
   - `make lint`/`make entity-model-generate` will rewrite all generated artifacts (including fixtures) from `entity-model.json`.
-  - `internal/tools/entitymodel/generate/main_test.go` fails if committed outputs drift from the generator, forcing contributors to update artifacts alongside schema edits.
+  - `internal/tools/entitymodel/generate/main_test.go` fails if committed outputs drift from the generator (Go code and OpenAPI), forcing contributors to update artifacts alongside schema edits.

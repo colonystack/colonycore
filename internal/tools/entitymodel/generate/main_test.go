@@ -40,6 +40,33 @@ func TestGenerateMatchesCommitted(t *testing.T) {
 	}
 }
 
+func TestOpenAPIMatchesCommitted(t *testing.T) {
+	root := repoRoot(t)
+
+	schemaPath := filepath.Join(root, "docs", "schema", "entity-model.json")
+	openapiPath := filepath.Join(root, "docs", "schema", "openapi", "entity-model.yaml")
+
+	doc, err := loadSchema(schemaPath)
+	if err != nil {
+		t.Fatalf("load schema: %v", err)
+	}
+
+	generated, err := generateOpenAPI(doc)
+	if err != nil {
+		t.Fatalf("generate openapi: %v", err)
+	}
+
+	//nolint:gosec // paths are repo-local and deterministic.
+	expected, err := os.ReadFile(openapiPath)
+	if err != nil {
+		t.Fatalf("read openapi file: %v", err)
+	}
+
+	if !bytes.Equal(bytes.TrimSpace(generated), bytes.TrimSpace(expected)) {
+		t.Fatalf("generated OpenAPI out of date; run `make entity-model-generate`")
+	}
+}
+
 func TestGenerateFixturesMatchesCommitted(t *testing.T) {
 	root := repoRoot(t)
 

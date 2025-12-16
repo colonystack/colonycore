@@ -31,7 +31,8 @@
       - [x] Introduce a Postgres persistence adapter that applies the generated DDL at runtime and runs the same store conformance tests as SQLite so both backends satisfy the acceptance criteria.
     - [x] Map every schema-declared invariant (housing capacity, protocol subject cap, lineage integrity, lifecycle transition, protocol coverage) to a concrete rule handler in `internal/core` and fail validation when a schema entry lacks an implementation.
       - `internal/core/rule_lineage_integrity.go`, `rule_lifecycle_transition.go`, and `rule_protocol_coverage.go` now cover the remaining invariants and are registered via `NewDefaultRulesEngine`.
-    - [ ] Ensure OpenAPI handlers/clients consume `docs/schema/openapi/entity-model.yaml`; add a CI guard that regenerates and diffs the components so stale DTOs fail `make lint`.
+    - [x] Ensure OpenAPI handlers/clients consume `docs/schema/openapi/entity-model.yaml`; add a CI guard that regenerates and diffs the components so stale DTOs fail `make lint`.
+      - Embedded OpenAPI helper exposes the canonical spec via `internal/entitymodel.OpenAPISpec`/`NewOpenAPIHandler`, and generator tests now diff the committed YAML against the schema output to block drift.
 - [x] Wire entity-model tooling into workflows
   - [x] Make `make entity-model-validate` runnable and execute it from `make lint` so schema drift fails fast.
   - [x] Extend `entity-model-generate`/`entity-model-verify` placeholders into real generators plus a pre-commit hook so CI and contributors run the same checks and outputs (Go/OpenAPI/SQL/ERD now generated; pre-commit hook runs `make lint` → `entity-model-verify`).
