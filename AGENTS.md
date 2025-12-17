@@ -36,6 +36,13 @@ Consult these sources before performing work, and link to them in your interacti
 
 If any of these references conflict with a user request, seek clarification before acting unless an explicit human approval resolves the conflict.
 
+## Scoping prompts for agents
+- Ask which layers or packages are in play (core services, adapters, persistence drivers, public APIs) and whether the work crosses import-restricted boundaries.
+- Surface generated inputs/outputs early: entity-model sources, SQL/OpenAPI/ERD artifacts, and API snapshots in `internal/ci/{pluginapi,datasetapi}.snapshot` often require regeneration.
+- Highlight persistence implications from ADR-0007: changes should align memory/sqlite/postgres drivers and keep env-based driver selection intact.
+- Flag contextual accessor and architecture guards in `pkg/pluginapi`/`pkg/datasetapi` plus import-boss rules that will fail if boundaries drift.
+- Set expectations on commands to run (`make lint`, `make test`, relevant generator or adapter suites) so the user understands the effort and runtime.
+
 ## Allowed Changes by Agents
 - Localized bug fixes in one package or bounded context with tests
 - Missing or improved tests that do not change behaviour

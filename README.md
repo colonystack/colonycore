@@ -26,6 +26,11 @@ ColonyCore is an extensible base module for laboratory colony management. It cou
 
 Local development defaults to an embedded SQLite database file (`colonycore.db`) created in the current working directory, providing durable state across restarts. Unit tests continue to use the in-memory store directly. Set `COLONYCORE_STORAGE_DRIVER` to `memory`, `sqlite`, or `postgres` to select a driver. The blob/object store also works out of the box: if unset, `COLONYCORE_BLOB_DRIVER=fs` with its root at `./blobdata` (created automatically). See ADR-0007 (`docs/adr/0007-storage-baseline.md`) and ADR-0008 (`docs/adr/0008-object-storage-contract.md`) for detailed configuration, rationale, and roadmap (including blob driver options and S3 configuration variables).
 
+When changing persistence, keep driver parity and guardrails in mind:
+* Preserve env-based selection behavior (`COLONYCORE_STORAGE_DRIVER`) and blob driver defaults.
+* Align semantics across memory, SQLite snapshot, and Postgres drivers; their tests live under `internal/infra/persistence/**` and `internal/core/sqlite_store*_test.go`.
+* Entity-model driven changes may require regenerating SQL artifacts (`docs/schema/sql/*.sql`) via `make entity-model-verify`.
+
 **At a glance:** You can switch between all supported persistence and blob drivers purely by setting environment variables—no code changes or recompilation are required, and safe local defaults are used when variables are unset.
 
 Cheat sheet:

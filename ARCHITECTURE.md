@@ -31,6 +31,13 @@ Dependency direction is validated by:
 
 Whenever you introduce a new package, add a `.import-restrictions` file and—if needed—a focused guard test mirroring the existing patterns.
 
+### Planning reminders
+- Map the surface you are touching (core services, dataset adapters, persistence drivers, plugin/dataset APIs) and confirm import direction stays aligned with the table above.
+- If the change involves entity-model inputs or outputs, account for generated SQL/OpenAPI/ERD artifacts and the `make entity-model-verify` target.
+- Keep API stability and contextual accessor guards in view: updates to `pkg/pluginapi` or `pkg/datasetapi` often require snapshot refresh and enforcement test adjustments.
+- Persistence work rarely lives in isolation; parity across memory/sqlite/postgres drivers and `internal/core` adapters is expected per ADR-0007.
+- Plan to run `make lint` and `make test` at minimum; add targeted suites (dataset adapters, plugin API guards) when you touch their layers.
+
 ## Extension Points
 
 ### Plugin Runtime Surface

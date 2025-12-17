@@ -24,6 +24,13 @@ Respectful, inclusive communication is expected. See the `CODE_OF_CONDUCT.md` fo
 4. **Test**: add or update tests where it makes sense. Run Pre-commit hooks locally before pushing.
 5. **PR**: use the short PR template.
 
+## Scoping work
+- Identify which layers you will touch (`internal/core`, adapters, persistence drivers, public APIs) and whether the change crosses package boundaries guarded by `.import-restrictions`.
+- Note any generated artifacts involved (entity-model sources, SQL/OpenAPI/ERD outputs, schema bundles) and plan to run the matching `make entity-model-verify`/generation targets if affected.
+- Look for API snapshots that may need updates (`internal/ci/pluginapi.snapshot`, `internal/ci/datasetapi.snapshot`) and contextual accessor guards in `pkg/pluginapi`/`pkg/datasetapi`.
+- For persistence edits, expect parity across memory/sqlite/postgres drivers and their tests under `internal/infra/persistence/**` plus the core adapters that wrap them.
+- Default commands to budget for: `make lint`, `make test`, and any generator or adapter-specific suites noted in the README/ADRs.
+
 ## Commit and PR Style
 - **Commits**: conventional commits are *encouraged*, e.g. `feat: …`, `fix: …`. (see [conventionalcommits.com](https://www.conventionalcommits.org/en/v1.0.0/)).
 - **PR title**: short and descriptive, mirroring the main change.

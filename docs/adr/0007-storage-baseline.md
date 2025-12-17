@@ -46,6 +46,11 @@ Adopt an embedded SQLite-backed store (internally `sqlite.Store`, exposed throug
 - Env vars: `COLONYCORE_STORAGE_DRIVER`, `COLONYCORE_SQLITE_PATH`, `COLONYCORE_POSTGRES_DSN`.
 - Test coverage via `internal/core/sqlite_store_test.go`, `internal/infra/persistence/sqlite/store_test.go`, and `internal/infra/persistence/postgres/store_test.go` ensures reload semantics and normalized table parity.
 - Memory and SQLite stores default and validate lifecycle/compliance enums (housing, protocol, permit, procedure, treatment, sample) to the entity-model values so snapshots cannot drift before hitting Postgres constraints.
+- Work planning notes:
+  - Changes to persistence contracts should account for memory, SQLite snapshot, and Postgres drivers; align behavior across all three before landing edits.
+  - Entity-model driven updates often require regenerating SQL artifacts (`docs/schema/sql/*.sql`) via `make entity-model-verify`.
+  - Keep env-based selection stable; adding logic must not break `COLONYCORE_STORAGE_DRIVER` defaults or backward-compatible paths.
+  - Run the driver-level tests listed above plus `make lint`/`make test` to catch import guards and architecture checks in `internal/core`.
 
 ## Driver Selection & Configuration
 Persistent storage drivers are selected exclusively via environment variables—deployments can move between in-memory, SQLite, or Postgres (reserved) without recompilation.
