@@ -45,6 +45,7 @@ Adopt an embedded SQLite-backed store (internally `sqlite.Store`, exposed throug
 - The Postgres implementation (`internal/infra/persistence/postgres`) applies the generated entity-model DDL (`docs/schema/sql/postgres.sql` via `internal/entitymodel/sqlbundle`), loads normalized tables into an in-memory transaction engine, and persists back to the normalized tables after each committed transaction.
 - Env vars: `COLONYCORE_STORAGE_DRIVER`, `COLONYCORE_SQLITE_PATH`, `COLONYCORE_POSTGRES_DSN`.
 - Test coverage via `internal/core/sqlite_store_test.go`, `internal/infra/persistence/sqlite/store_test.go`, and `internal/infra/persistence/postgres/store_test.go` ensures reload semantics and normalized table parity.
+- Memory and SQLite stores default and validate lifecycle/compliance enums (housing, protocol, permit, procedure, treatment, sample) to the entity-model values so snapshots cannot drift before hitting Postgres constraints.
 
 ## Driver Selection & Configuration
 Persistent storage drivers are selected exclusively via environment variables—deployments can move between in-memory, SQLite, or Postgres (reserved) without recompilation.

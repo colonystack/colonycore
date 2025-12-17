@@ -104,6 +104,28 @@ var (
 		domain.PermitStatusExpired:   {},
 		domain.PermitStatusArchived:  {},
 	}
+	defaultProcedureStatus = domain.ProcedureStatusScheduled
+	validProcedureStatuses = map[domain.ProcedureStatus]struct{}{
+		domain.ProcedureStatusScheduled:  {},
+		domain.ProcedureStatusInProgress: {},
+		domain.ProcedureStatusCompleted:  {},
+		domain.ProcedureStatusCancelled:  {},
+		domain.ProcedureStatusFailed:     {},
+	}
+	defaultTreatmentStatus = domain.TreatmentStatusPlanned
+	validTreatmentStatuses = map[domain.TreatmentStatus]struct{}{
+		domain.TreatmentStatusPlanned:    {},
+		domain.TreatmentStatusInProgress: {},
+		domain.TreatmentStatusCompleted:  {},
+		domain.TreatmentStatusFlagged:    {},
+	}
+	defaultSampleStatus = domain.SampleStatusStored
+	validSampleStatuses = map[domain.SampleStatus]struct{}{
+		domain.SampleStatusStored:    {},
+		domain.SampleStatusInTransit: {},
+		domain.SampleStatusConsumed:  {},
+		domain.SampleStatusDisposed:  {},
+	}
 )
 
 func normalizeHousingUnit(h *HousingUnit) error {
@@ -138,6 +160,36 @@ func normalizePermit(p *Permit) error {
 	}
 	if _, ok := validPermitStatuses[p.Status]; !ok {
 		return fmt.Errorf("unsupported permit status %q", p.Status)
+	}
+	return nil
+}
+
+func normalizeProcedure(p *Procedure) error {
+	if p.Status == "" {
+		p.Status = defaultProcedureStatus
+	}
+	if _, ok := validProcedureStatuses[p.Status]; !ok {
+		return fmt.Errorf("unsupported procedure status %q", p.Status)
+	}
+	return nil
+}
+
+func normalizeTreatment(t *Treatment) error {
+	if t.Status == "" {
+		t.Status = defaultTreatmentStatus
+	}
+	if _, ok := validTreatmentStatuses[t.Status]; !ok {
+		return fmt.Errorf("unsupported treatment status %q", t.Status)
+	}
+	return nil
+}
+
+func normalizeSample(s *Sample) error {
+	if s.Status == "" {
+		s.Status = defaultSampleStatus
+	}
+	if _, ok := validSampleStatuses[s.Status]; !ok {
+		return fmt.Errorf("unsupported sample status %q", s.Status)
 	}
 	return nil
 }
@@ -535,6 +587,10 @@ func migrateSnapshot(snapshot Snapshot) Snapshot {
 			delete(snapshot.Treatments, id)
 			continue
 		}
+		if err := normalizeTreatment(&treatment); err != nil {
+			delete(snapshot.Treatments, id)
+			continue
+		}
 		if filtered, changed := filterIDs(treatment.OrganismIDs, organismExists); changed {
 			treatment.OrganismIDs = filtered
 		}
@@ -586,6 +642,10 @@ func migrateSnapshot(snapshot Snapshot) Snapshot {
 			delete(snapshot.Samples, id)
 			continue
 		}
+		if err := normalizeSample(&sample); err != nil {
+			delete(snapshot.Samples, id)
+			continue
+		}
 		snapshot.Samples[id] = sample
 	}
 
@@ -611,6 +671,10 @@ func migrateSnapshot(snapshot Snapshot) Snapshot {
 	}
 
 	for id, procedure := range snapshot.Procedures {
+		if err := normalizeProcedure(&procedure); err != nil {
+			delete(snapshot.Procedures, id)
+			continue
+		}
 		var treatmentIDs []string
 		for _, treatment := range snapshot.Treatments {
 			if treatment.ProcedureID == id {
@@ -1913,6 +1977,9 @@ func (tx *transaction) CreateProcedure(p Procedure) (Procedure, error) {
 	if _, exists := tx.state.procedures[p.ID]; exists {
 		return Procedure{Procedure: entitymodel.Procedure{}}, fmt.Errorf("procedure %q already exists", p.ID)
 	}
+	if err := normalizeProcedure(&p); err != nil {
+		return Procedure{Procedure: entitymodel.Procedure{}}, err
+	}
 	p.TreatmentIDs = nil
 	p.ObservationIDs = nil
 	p.CreatedAt = tx.now
@@ -1930,6 +1997,9 @@ func (tx *transaction) UpdateProcedure(id string, mutator func(*Procedure) error
 	beforeDecorated := decorateProcedure(&tx.state, current)
 	before := cloneProcedure(beforeDecorated)
 	if err := mutator(&current); err != nil {
+		return Procedure{Procedure: entitymodel.Procedure{}}, err
+	}
+	if err := normalizeProcedure(&current); err != nil {
 		return Procedure{Procedure: entitymodel.Procedure{}}, err
 	}
 	current.TreatmentIDs = nil
@@ -1973,6 +2043,9 @@ func (tx *transaction) CreateTreatment(t Treatment) (Treatment, error) {
 	}
 	if _, ok := tx.state.procedures[t.ProcedureID]; !ok {
 		return Treatment{Treatment: entitymodel.Treatment{}}, fmt.Errorf("procedure %q not found", t.ProcedureID)
+	}
+	if err := normalizeTreatment(&t); err != nil {
+		return Treatment{Treatment: entitymodel.Treatment{}}, err
 	}
 	t.OrganismIDs = dedupeStrings(t.OrganismIDs)
 	for _, organismID := range t.OrganismIDs {
@@ -2018,6 +2091,9 @@ func (tx *transaction) UpdateTreatment(id string, mutator func(*Treatment) error
 		if _, ok := tx.state.cohorts[cohortID]; !ok {
 			return Treatment{Treatment: entitymodel.Treatment{}}, fmt.Errorf("cohort %q not found for treatment", cohortID)
 		}
+	}
+	if err := normalizeTreatment(&current); err != nil {
+		return Treatment{Treatment: entitymodel.Treatment{}}, err
 	}
 	current.ID = id
 	current.UpdatedAt = tx.now
@@ -2146,6 +2222,9 @@ func (tx *transaction) CreateSample(s Sample) (Sample, error) {
 	if len(s.ChainOfCustody) == 0 {
 		return Sample{Sample: entitymodel.Sample{}}, errors.New("sample requires chain of custody")
 	}
+	if err := normalizeSample(&s); err != nil {
+		return Sample{Sample: entitymodel.Sample{}}, err
+	}
 	s.CreatedAt = tx.now
 	s.UpdatedAt = tx.now
 	if attrs := s.SampleAttributes(); attrs == nil {
@@ -2187,6 +2266,9 @@ func (tx *transaction) UpdateSample(id string, mutator func(*Sample) error) (Sam
 	}
 	if len(current.ChainOfCustody) == 0 {
 		return Sample{Sample: entitymodel.Sample{}}, errors.New("sample requires chain of custody")
+	}
+	if err := normalizeSample(&current); err != nil {
+		return Sample{Sample: entitymodel.Sample{}}, err
 	}
 	if attrs := current.SampleAttributes(); attrs == nil {
 		mustApply("apply sample attributes", current.ApplySampleAttributes(map[string]any{}))

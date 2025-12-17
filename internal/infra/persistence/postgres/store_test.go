@@ -89,6 +89,176 @@ func TestRunInTransactionPersistsState(t *testing.T) {
 	}
 }
 
+func TestLifecycleStatusesRoundTripNormalizedSnapshot(t *testing.T) {
+	ctx := context.Background()
+	db, _ := newStubDB()
+
+	orig := loadFixtureSnapshot(t)
+	if err := persistNormalized(ctx, db, orig); err != nil {
+		t.Fatalf("persistNormalized: %v", err)
+	}
+	loaded, err := loadNormalizedSnapshot(ctx, db)
+	if err != nil {
+		t.Fatalf("loadNormalizedSnapshot: %v", err)
+	}
+
+	validProcedures := map[domain.ProcedureStatus]struct{}{
+		domain.ProcedureStatusScheduled:  {},
+		domain.ProcedureStatusInProgress: {},
+		domain.ProcedureStatusCompleted:  {},
+		domain.ProcedureStatusCancelled:  {},
+		domain.ProcedureStatusFailed:     {},
+	}
+	validTreatments := map[domain.TreatmentStatus]struct{}{
+		domain.TreatmentStatusPlanned:    {},
+		domain.TreatmentStatusInProgress: {},
+		domain.TreatmentStatusCompleted:  {},
+		domain.TreatmentStatusFlagged:    {},
+	}
+	validSamples := map[domain.SampleStatus]struct{}{
+		domain.SampleStatusStored:    {},
+		domain.SampleStatusInTransit: {},
+		domain.SampleStatusConsumed:  {},
+		domain.SampleStatusDisposed:  {},
+	}
+	validHousingStates := map[domain.HousingState]struct{}{
+		domain.HousingStateQuarantine:     {},
+		domain.HousingStateActive:         {},
+		domain.HousingStateCleaning:       {},
+		domain.HousingStateDecommissioned: {},
+	}
+	validProtocols := map[domain.ProtocolStatus]struct{}{
+		domain.ProtocolStatusDraft:     {},
+		domain.ProtocolStatusSubmitted: {},
+		domain.ProtocolStatusApproved:  {},
+		domain.ProtocolStatusOnHold:    {},
+		domain.ProtocolStatusExpired:   {},
+		domain.ProtocolStatusArchived:  {},
+	}
+	validPermits := map[domain.PermitStatus]struct{}{
+		domain.PermitStatusDraft:     {},
+		domain.PermitStatusSubmitted: {},
+		domain.PermitStatusApproved:  {},
+		domain.PermitStatusOnHold:    {},
+		domain.PermitStatusExpired:   {},
+		domain.PermitStatusArchived:  {},
+	}
+
+	checkProcedure := false
+	for id, proc := range orig.Procedures {
+		loadedProc, ok := loaded.Procedures[id]
+		if !ok {
+			t.Fatalf("missing procedure %s after round-trip", id)
+		}
+		if _, ok := validProcedures[loadedProc.Status]; !ok {
+			t.Fatalf("procedure %s has non-canonical status %s", id, loadedProc.Status)
+		}
+		if loadedProc.Status != proc.Status {
+			t.Fatalf("procedure %s status mismatch: want %s got %s", id, proc.Status, loadedProc.Status)
+		}
+		checkProcedure = true
+		break
+	}
+	if !checkProcedure {
+		t.Fatalf("fixture missing procedures to validate")
+	}
+
+	checkTreatment := false
+	for id, treatment := range orig.Treatments {
+		loadedTreatment, ok := loaded.Treatments[id]
+		if !ok {
+			t.Fatalf("missing treatment %s after round-trip", id)
+		}
+		if _, ok := validTreatments[loadedTreatment.Status]; !ok {
+			t.Fatalf("treatment %s has non-canonical status %s", id, loadedTreatment.Status)
+		}
+		if loadedTreatment.Status != treatment.Status {
+			t.Fatalf("treatment %s status mismatch: want %s got %s", id, treatment.Status, loadedTreatment.Status)
+		}
+		checkTreatment = true
+		break
+	}
+	if !checkTreatment {
+		t.Fatalf("fixture missing treatments to validate")
+	}
+
+	checkSample := false
+	for id, sample := range orig.Samples {
+		loadedSample, ok := loaded.Samples[id]
+		if !ok {
+			t.Fatalf("missing sample %s after round-trip", id)
+		}
+		if _, ok := validSamples[loadedSample.Status]; !ok {
+			t.Fatalf("sample %s has non-canonical status %s", id, loadedSample.Status)
+		}
+		if loadedSample.Status != sample.Status {
+			t.Fatalf("sample %s status mismatch: want %s got %s", id, sample.Status, loadedSample.Status)
+		}
+		checkSample = true
+		break
+	}
+	if !checkSample {
+		t.Fatalf("fixture missing samples to validate")
+	}
+
+	checkHousing := false
+	for id, housing := range orig.Housing {
+		loadedHousing, ok := loaded.Housing[id]
+		if !ok {
+			t.Fatalf("missing housing %s after round-trip", id)
+		}
+		if _, ok := validHousingStates[loadedHousing.State]; !ok {
+			t.Fatalf("housing %s has non-canonical state %s", id, loadedHousing.State)
+		}
+		if loadedHousing.State != housing.State {
+			t.Fatalf("housing %s state mismatch: want %s got %s", id, housing.State, loadedHousing.State)
+		}
+		checkHousing = true
+		break
+	}
+	if !checkHousing {
+		t.Fatalf("fixture missing housing to validate")
+	}
+
+	checkProtocol := false
+	for id, protocol := range orig.Protocols {
+		loadedProtocol, ok := loaded.Protocols[id]
+		if !ok {
+			t.Fatalf("missing protocol %s after round-trip", id)
+		}
+		if _, ok := validProtocols[loadedProtocol.Status]; !ok {
+			t.Fatalf("protocol %s has non-canonical status %s", id, loadedProtocol.Status)
+		}
+		if loadedProtocol.Status != protocol.Status {
+			t.Fatalf("protocol %s status mismatch: want %s got %s", id, protocol.Status, loadedProtocol.Status)
+		}
+		checkProtocol = true
+		break
+	}
+	if !checkProtocol {
+		t.Fatalf("fixture missing protocols to validate")
+	}
+
+	checkPermit := false
+	for id, permit := range orig.Permits {
+		loadedPermit, ok := loaded.Permits[id]
+		if !ok {
+			t.Fatalf("missing permit %s after round-trip", id)
+		}
+		if _, ok := validPermits[loadedPermit.Status]; !ok {
+			t.Fatalf("permit %s has non-canonical status %s", id, loadedPermit.Status)
+		}
+		if loadedPermit.Status != permit.Status {
+			t.Fatalf("permit %s status mismatch: want %s got %s", id, permit.Status, loadedPermit.Status)
+		}
+		checkPermit = true
+		break
+	}
+	if !checkPermit {
+		t.Fatalf("fixture missing permits to validate")
+	}
+}
+
 func TestPersistMissingRequiredRelationshipsError(t *testing.T) {
 	db, _ := newStubDB()
 	now := time.Now().UTC()
