@@ -199,6 +199,33 @@ func TestInvalidStorageCombination(t *testing.T) {
 	}
 }
 
+func TestIsArrayPropertyCoversRefResolutionErrors(t *testing.T) {
+	enums := map[string]enumSpec{
+		"status": {Values: []string{"ok"}},
+	}
+	defs := map[string]definitionSpec{
+		"id": {Type: typeString},
+	}
+	if !isArrayProperty(definitionSpec{Type: typeArray, Items: &definitionSpec{Type: typeString}}, enums, defs) {
+		t.Fatalf("expected direct array type to be detected")
+	}
+	if isArrayProperty(definitionSpec{Ref: "#/definitions/missing"}, enums, defs) {
+		t.Fatalf("expected unresolved ref to return false")
+	}
+}
+
+func TestASCIILowerHelpers(t *testing.T) {
+	if toLowerASCII('A') != 'a' || toLowerASCII('z') != 'z' {
+		t.Fatalf("toLowerASCII did not lower case as expected")
+	}
+	if !isUpperASCII('Z') || isUpperASCII('a') {
+		t.Fatalf("isUpperASCII returned incorrect result")
+	}
+	if !isLowerASCII('z') || isLowerASCII('A') {
+		t.Fatalf("isLowerASCII returned incorrect result")
+	}
+}
+
 func TestJoinTablesDeduplicated(t *testing.T) {
 	doc := schemaDoc{
 		Definitions: map[string]definitionSpec{

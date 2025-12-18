@@ -3,13 +3,6 @@ package pluginapi
 // HousingState represents lifecycle states for housing units.
 type HousingState string
 
-const (
-	housingStateQuarantine     HousingState = "quarantine"
-	housingStateActive         HousingState = "active"
-	housingStateCleaning       HousingState = "cleaning"
-	housingStateDecommissioned HousingState = "decommissioned"
-)
-
 // HousingStateContext provides contextual access to housing lifecycle states without exposing raw constants.
 type HousingStateContext interface {
 	Quarantine() HousingStateRef

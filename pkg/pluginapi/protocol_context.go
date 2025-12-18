@@ -1,14 +1,5 @@
 package pluginapi
 
-const (
-	protocolStatusDraft     = "draft"
-	protocolStatusSubmitted = "submitted"
-	protocolStatusApproved  = "approved"
-	protocolStatusOnHold    = "on_hold"
-	protocolStatusExpired   = "expired"
-	protocolStatusArchived  = "archived"
-)
-
 // ProtocolContext provides contextual access to protocol-related constants
 // without exposing raw constants. This promotes hexagonal architecture
 // by decoupling plugins from internal constant definitions.

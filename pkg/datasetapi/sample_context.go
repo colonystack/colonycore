@@ -7,11 +7,6 @@ const (
 	datasetSampleSourceCohort        = "cohort"
 	datasetSampleSourceEnvironmental = "environmental"
 	datasetSampleSourceUnknown       = "unknown"
-
-	datasetSampleStatusStored    = "stored"
-	datasetSampleStatusInTransit = "in_transit"
-	datasetSampleStatusConsumed  = "consumed"
-	datasetSampleStatusDisposed  = "disposed"
 )
 
 // SampleContext provides contextual access to sample source and status references.

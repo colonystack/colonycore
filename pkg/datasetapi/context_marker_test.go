@@ -86,7 +86,7 @@ func TestDatasetContextMarkerMethodsAreCallable(t *testing.T) {
 	t.Run("HousingEnvironmentTypeRef", func(t *testing.T) {
 		ref := NewHousingContext().Aquatic()
 		ref.isEnvironmentTypeRef()
-		if ref.Equals(&environmentTypeRef{value: envAquatic}) {
+		if ref.Equals(&environmentTypeRef{value: environmentTypeAquatic}) {
 			t.Fatal("environment type equality should reject pointer types")
 		}
 	})

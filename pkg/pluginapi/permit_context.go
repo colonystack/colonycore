@@ -1,14 +1,5 @@
 package pluginapi
 
-const (
-	permitStatusDraft     = "draft"
-	permitStatusSubmitted = "submitted"
-	permitStatusApproved  = "approved"
-	permitStatusOnHold    = "on_hold"
-	permitStatusExpired   = "expired"
-	permitStatusArchived  = "archived"
-)
-
 // PermitContext provides contextual access to permit status references.
 type PermitContext interface {
 	Statuses() PermitStatusProvider

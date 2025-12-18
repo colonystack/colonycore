@@ -417,7 +417,7 @@ func TestProtocolProjectCohortFacades(t *testing.T) {
 		Environment: "humid",
 		State:       "active",
 	})
-	if housing.Environment() != envHumid || housing.Capacity() != 3 {
+	if housing.Environment() != environmentTypeHumid || housing.Capacity() != 3 {
 		t.Fatalf("unexpected housing values")
 	}
 
@@ -485,7 +485,7 @@ func TestProtocolProjectCohortFacades(t *testing.T) {
 		if err := json.Unmarshal(payload, &serialized); err != nil {
 			t.Fatalf("unmarshal housing: %v", err)
 		}
-		if serialized["id"] != "housing" || serialized["environment"] != envHumid || serialized["state"] != "active" {
+		if serialized["id"] != "housing" || serialized["environment"] != environmentTypeHumid || serialized["state"] != "active" {
 			t.Fatalf("unexpected housing json: %+v", serialized)
 		}
 	}

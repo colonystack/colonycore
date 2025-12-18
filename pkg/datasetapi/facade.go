@@ -12,13 +12,6 @@ import (
 
 var extensionHooks = NewExtensionHookContext()
 
-const (
-	// Procedure status constants
-	statusInProgress = "in_progress"
-	statusCompleted  = "completed"
-	statusCancelled  = "cancelled"
-)
-
 // TransactionView offers read-only access to a snapshot of core entities for
 // dataset and rule execution within an ambient transaction.
 type TransactionView interface {
@@ -74,16 +67,6 @@ type BaseData struct {
 
 // LifecycleStage represents canonical organism lifecycle identifiers.
 type LifecycleStage string
-
-// Canonical lifecycle stage constants - now internal, accessed via contextual interfaces.
-const (
-	stagePlanned  LifecycleStage = "planned"
-	stageLarva    LifecycleStage = "embryo_larva"
-	stageJuvenile LifecycleStage = "juvenile"
-	stageAdult    LifecycleStage = "adult"
-	stageRetired  LifecycleStage = "retired"
-	stageDeceased LifecycleStage = "deceased"
-)
 
 // OrganismData describes the fields required to construct an Organism facade.
 type OrganismData struct {
@@ -1270,11 +1253,11 @@ func (p procedure) GetCurrentStatus() ProcedureStatusRef {
 	switch strings.ToLower(p.status) {
 	case "scheduled":
 		return ctx.Scheduled()
-	case statusInProgress, "inprogress", "running":
+	case procedureStatusInProgress, "inprogress", "running":
 		return ctx.InProgress()
-	case statusCompleted, "done":
+	case procedureStatusCompleted, "done":
 		return ctx.Completed()
-	case statusCancelled:
+	case procedureStatusCancelled:
 		return ctx.Cancelled()
 	case "failed", "error":
 		return ctx.Failed()

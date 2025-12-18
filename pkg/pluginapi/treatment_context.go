@@ -1,12 +1,5 @@
 package pluginapi
 
-const (
-	treatmentStatusPlanned    = "planned"
-	treatmentStatusInProgress = "in_progress"
-	treatmentStatusCompleted  = "completed"
-	treatmentStatusFlagged    = "flagged"
-)
-
 // TreatmentContext provides contextual access to treatment workflow statuses.
 type TreatmentContext interface {
 	Statuses() TreatmentStatusProvider

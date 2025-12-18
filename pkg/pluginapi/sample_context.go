@@ -7,11 +7,6 @@ const (
 	sampleSourceCohort        = "cohort"
 	sampleSourceEnvironmental = "environmental"
 	sampleSourceUnknown       = "unknown"
-
-	sampleStatusStored    = "stored"
-	sampleStatusInTransit = "in_transit"
-	sampleStatusConsumed  = "consumed"
-	sampleStatusDisposed  = "disposed"
 )
 
 // SampleContext provides contextual access to sample source and status values.

@@ -1,14 +1,5 @@
 package datasetapi
 
-const (
-	datasetProtocolStatusDraft     = "draft"
-	datasetProtocolStatusSubmitted = "submitted"
-	datasetProtocolStatusApproved  = "approved"
-	datasetProtocolStatusOnHold    = "on_hold"
-	datasetProtocolStatusExpired   = "expired"
-	datasetProtocolStatusArchived  = "archived"
-)
-
 // ProtocolContext provides contextual access to protocol-related constants
 // without exposing raw constants. This promotes hexagonal architecture
 // by decoupling plugins from internal constant definitions.

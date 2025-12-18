@@ -94,6 +94,80 @@ func TestGenerateFixturesMatchesCommitted(t *testing.T) {
 	}
 }
 
+func TestExtensionConstantsMatchCommitted(t *testing.T) {
+	root := repoRoot(t)
+
+	schemaPath := filepath.Join(root, "docs", "schema", "entity-model.json")
+	pluginPath := filepath.Join(root, "pkg", "pluginapi", "entity_states_gen.go")
+	datasetPath := filepath.Join(root, "pkg", "datasetapi", "entity_states_gen.go")
+
+	doc, err := loadSchema(schemaPath)
+	if err != nil {
+		t.Fatalf("load schema: %v", err)
+	}
+
+	generatedPlugin, err := generateExtensionConstants(doc, "pluginapi")
+	if err != nil {
+		t.Fatalf("generate plugin constants: %v", err)
+	}
+	pluginCommitted, err := os.ReadFile(pluginPath) //nolint:gosec // repo-local snapshot path
+	if err != nil {
+		t.Fatalf("read plugin constants: %v", err)
+	}
+	if !bytes.Equal(bytes.TrimSpace(generatedPlugin), bytes.TrimSpace(pluginCommitted)) {
+		t.Fatalf("generated pluginapi constants out of date; run `make entity-model-generate`")
+	}
+
+	generatedDataset, err := generateExtensionConstants(doc, "datasetapi")
+	if err != nil {
+		t.Fatalf("generate dataset constants: %v", err)
+	}
+	datasetCommitted, err := os.ReadFile(datasetPath) //nolint:gosec // repo-local snapshot path
+	if err != nil {
+		t.Fatalf("read dataset constants: %v", err)
+	}
+	if !bytes.Equal(bytes.TrimSpace(generatedDataset), bytes.TrimSpace(datasetCommitted)) {
+		t.Fatalf("generated datasetapi constants out of date; run `make entity-model-generate`")
+	}
+}
+
+func TestExtensionConstantsUseCustomNamesAndPackageOverrides(t *testing.T) {
+	doc := schemaDoc{
+		Enums: map[string]enumSpec{
+			"lifecycle_stage":     {Values: []string{"embryo_larva"}},
+			"housing_state":       {Values: []string{"active"}},
+			"housing_environment": {Values: []string{"aquatic"}},
+			"protocol_status":     {Values: []string{"draft"}},
+			"permit_status":       {Values: []string{"draft"}},
+			"sample_status":       {Values: []string{"stored"}},
+			"treatment_status":    {Values: []string{"planned"}},
+			"procedure_status":    {Values: []string{"scheduled"}},
+		},
+	}
+
+	plugin, err := generateExtensionConstants(doc, "pluginapi")
+	if err != nil {
+		t.Fatalf("generate plugin constants: %v", err)
+	}
+	if !strings.Contains(string(plugin), "stageLarva LifecycleStage = \"embryo_larva\"") {
+		t.Fatalf("expected lifecycle custom name to be applied in plugin constants:\n%s", plugin)
+	}
+	if !strings.Contains(string(plugin), "protocolStatusDraft = \"draft\"") {
+		t.Fatalf("expected plugin protocol status prefix:\n%s", plugin)
+	}
+
+	dataset, err := generateExtensionConstants(doc, "datasetapi")
+	if err != nil {
+		t.Fatalf("generate dataset constants: %v", err)
+	}
+	if !strings.Contains(string(dataset), "datasetProtocolStatusDraft = \"draft\"") {
+		t.Fatalf("expected dataset protocol status prefix override:\n%s", dataset)
+	}
+	if !strings.Contains(string(dataset), "procedureStatusScheduled = \"scheduled\"") {
+		t.Fatalf("expected procedure status constants to be generated:\n%s", dataset)
+	}
+}
+
 func TestGenerateCodeIncludesTimeImport(t *testing.T) {
 	doc := schemaDoc{
 		Enums: map[string]enumSpec{
@@ -346,6 +420,18 @@ func TestLoadSchemaError(t *testing.T) {
 	}
 }
 
+func TestGenerateExtensionConstantsErrorsWhenEnumMissing(t *testing.T) {
+	doc := schemaDoc{
+		Enums: map[string]enumSpec{
+			"lifecycle_stage": {Values: []string{"planned"}},
+		},
+	}
+
+	if _, err := generateExtensionConstants(doc, "pluginapi"); err == nil {
+		t.Fatalf("expected error when required enum is missing")
+	}
+}
+
 func TestMainRunsWithTempPaths(t *testing.T) {
 	tmpDir := t.TempDir()
 	schemaPath := filepath.Join(tmpDir, "schema.json")
@@ -353,13 +439,22 @@ func TestMainRunsWithTempPaths(t *testing.T) {
 	openapiPath := filepath.Join(tmpDir, "entity-model.yaml")
 	pgSQLPath := filepath.Join(tmpDir, "postgres.sql")
 	sqlitePath := filepath.Join(tmpDir, "sqlite.sql")
+	pluginConstantsPath := filepath.Join(tmpDir, "pluginapi", "plugin_constants.go")
+	datasetConstantsPath := filepath.Join(tmpDir, "datasetapi", "dataset_constants.go")
 
-	content := `{"version":"0.0.1","metadata":{"status":"seed"},"enums":{"kind":{"values":["one"]}},"definitions":{"id":{"type":"string"},"timestamp":{"type":"string","format":"date-time"}},"entities":{"Entity":{"required":["id","created_at","updated_at","kind"],"properties":{"id":{"$ref":"#/definitions/id"},"created_at":{"$ref":"#/definitions/timestamp"},"updated_at":{"$ref":"#/definitions/timestamp"},"kind":{"$ref":"#/enums/kind"},"at":{"type":"string","format":"date-time"}}}}}`
+	if err := os.MkdirAll(filepath.Dir(pluginConstantsPath), 0o750); err != nil {
+		t.Fatalf("mkdir plugin constants dir: %v", err)
+	}
+	if err := os.MkdirAll(filepath.Dir(datasetConstantsPath), 0o750); err != nil {
+		t.Fatalf("mkdir dataset constants dir: %v", err)
+	}
+
+	content := `{"version":"0.0.1","metadata":{"status":"seed"},"enums":{"kind":{"values":["one"]},"lifecycle_stage":{"values":["planned"]},"housing_state":{"values":["active"]},"housing_environment":{"values":["terrestrial"]},"protocol_status":{"values":["draft"]},"permit_status":{"values":["draft"]},"sample_status":{"values":["stored"]},"treatment_status":{"values":["planned"]},"procedure_status":{"values":["scheduled"]}},"definitions":{"id":{"type":"string"},"timestamp":{"type":"string","format":"date-time"}},"entities":{"Entity":{"required":["id","created_at","updated_at","kind"],"properties":{"id":{"$ref":"#/definitions/id"},"created_at":{"$ref":"#/definitions/timestamp"},"updated_at":{"$ref":"#/definitions/timestamp"},"kind":{"$ref":"#/enums/kind"},"at":{"type":"string","format":"date-time"}}}}}`
 	if err := os.WriteFile(schemaPath, []byte(content), 0o600); err != nil {
 		t.Fatalf("write schema: %v", err)
 	}
 
-	runMainWithArgs(t, []string{"-schema", schemaPath, "-out", outPath, "-openapi", openapiPath, "-sql-postgres", pgSQLPath, "-sql-sqlite", sqlitePath})
+	runMainWithArgs(t, []string{"-schema", schemaPath, "-out", outPath, "-openapi", openapiPath, "-sql-postgres", pgSQLPath, "-sql-sqlite", sqlitePath, "-pluginapi-constants", pluginConstantsPath, "-datasetapi-constants", datasetConstantsPath})
 
 	if _, err := os.Stat(outPath); err != nil {
 		t.Fatalf("expected output file: %v", err)
@@ -370,6 +465,11 @@ func TestMainRunsWithTempPaths(t *testing.T) {
 	for _, path := range []string{pgSQLPath, sqlitePath} {
 		if _, err := os.Stat(path); err != nil {
 			t.Fatalf("expected sql output file %s: %v", path, err)
+		}
+	}
+	for _, path := range []string{pluginConstantsPath, datasetConstantsPath} {
+		if _, err := os.Stat(path); err != nil {
+			t.Fatalf("expected extension constants output file %s: %v", path, err)
 		}
 	}
 }
@@ -551,6 +651,18 @@ func TestGenerateFixturesValidationError(t *testing.T) {
 
 	if _, err := generateFixtures(doc); err == nil {
 		t.Fatalf("expected validation error for missing required fields")
+	}
+}
+
+func TestWriteFileFailsWhenDirCreationFails(t *testing.T) {
+	tmp := t.TempDir()
+	noPermDir := filepath.Join(tmp, "noperm")
+	if err := os.Mkdir(noPermDir, 0o500); err != nil {
+		t.Fatalf("create protected dir: %v", err)
+	}
+	path := filepath.Join(noPermDir, "nested", "out.go")
+	if err := writeFile(path, []byte("data")); err == nil {
+		t.Fatalf("expected writeFile to fail when parent directory cannot be created")
 	}
 }
 

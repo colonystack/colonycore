@@ -1,14 +1,5 @@
 package datasetapi
 
-const (
-	datasetPermitStatusDraft     = "draft"
-	datasetPermitStatusSubmitted = "submitted"
-	datasetPermitStatusApproved  = "approved"
-	datasetPermitStatusOnHold    = "on_hold"
-	datasetPermitStatusExpired   = "expired"
-	datasetPermitStatusArchived  = "archived"
-)
-
 // PermitContext provides contextual access to permit validity statuses.
 type PermitContext interface {
 	Statuses() PermitStatusProvider

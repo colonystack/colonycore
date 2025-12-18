@@ -91,6 +91,8 @@ func main() {
 	sqlSQLitePath := flag.String("sql-sqlite", "", "output file for generated SQLite DDL (optional)")
 	pluginContractPath := flag.String("plugin-contract", "", "output file for generated plugin contract (optional)")
 	fixturesPath := flag.String("fixtures", "", "output path for generated entity-model fixtures (optional)")
+	pluginapiConstantsPath := flag.String("pluginapi-constants", "", "output file for generated pluginapi enum constants (optional)")
+	datasetapiConstantsPath := flag.String("datasetapi-constants", "", "output file for generated datasetapi enum constants (optional)")
 	flag.Parse()
 
 	doc, err := loadSchema(*schemaPath)
@@ -154,6 +156,28 @@ func main() {
 			exitErr(err)
 		}
 		if err := writeFile(path, fixtures); err != nil {
+			exitErr(err)
+		}
+		fmt.Printf("generated %s from %s\n", path, *schemaPath)
+	}
+
+	if path := strings.TrimSpace(*pluginapiConstantsPath); path != "" {
+		constants, err := generateExtensionConstants(doc, filepath.Base(filepath.Dir(path)))
+		if err != nil {
+			exitErr(err)
+		}
+		if err := writeFile(path, constants); err != nil {
+			exitErr(err)
+		}
+		fmt.Printf("generated %s from %s\n", path, *schemaPath)
+	}
+
+	if path := strings.TrimSpace(*datasetapiConstantsPath); path != "" {
+		constants, err := generateExtensionConstants(doc, filepath.Base(filepath.Dir(path)))
+		if err != nil {
+			exitErr(err)
+		}
+		if err := writeFile(path, constants); err != nil {
 			exitErr(err)
 		}
 		fmt.Printf("generated %s from %s\n", path, *schemaPath)

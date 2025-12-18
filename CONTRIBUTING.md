@@ -45,6 +45,7 @@ Use the issue forms:
 ## Tests
 - Add unit/integration tests when adding logic or fixing a bug.
 - Manual “operator-like” checks are fine for PoC work; describe steps in the PR.
+- `make lint` regenerates entity-model artifacts and refreshes the plugin/dataset API snapshots (`internal/ci/{pluginapi,datasetapi}.snapshot`) automatically; commit the snapshot updates when the public surface intentionally changes.
 
 ## Test Utilities
 - Shared guard helpers that multiple packages use live in `colonycore/testutil`; keep that package free of plugin or adapter imports so existing import rules stay valid.

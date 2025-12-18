@@ -21,7 +21,7 @@ SCHEMASPY_PG_DB ?= entitymodel
 SCHEMASPY_PG_USER ?= postgres
 SCHEMASPY_PG_PASSWORD ?= postgres
 
-.PHONY: all build lint go-test test registry-check fmt-check vet registry-lint golangci golangci-install python-lint r-lint go-lint import-boss import-boss-install entity-model-validate entity-model-generate entity-model-verify entity-model-erd entity-model-diff entity-model-diff-update
+.PHONY: all build lint go-test test registry-check fmt-check vet registry-lint golangci golangci-install python-lint r-lint go-lint import-boss import-boss-install entity-model-validate entity-model-generate entity-model-verify entity-model-erd entity-model-diff entity-model-diff-update api-snapshots
 
 all: build
 
@@ -34,6 +34,7 @@ registry-check:
 lint:
 	@$(MAKE) --no-print-directory entity-model-verify
 	@$(MAKE) --no-print-directory entity-model-diff
+	@$(MAKE) --no-print-directory api-snapshots
 	@$(MAKE) --no-print-directory go-lint
 	@$(MAKE) --no-print-directory validate-plugin-patterns
 	@$(MAKE) --no-print-directory python-lint
@@ -49,6 +50,12 @@ validate-plugin-patterns:
 		fi; \
 	done
 	@echo "validate-plugin-patterns: OK"
+
+api-snapshots:
+	@echo "==> api snapshots"
+	@GOCACHE=$(GOCACHE) go test ./pkg/pluginapi -run TestGeneratePluginAPISnapshot -update
+	@GOCACHE=$(GOCACHE) go test ./pkg/datasetapi -run TestGenerateDatasetAPISnapshot -update
+	@echo "api-snapshots: OK"
 
 go-lint:
 	@echo "==> Go lint"
@@ -168,7 +175,7 @@ entity-model-validate:
 
 entity-model-generate:
 	@echo "==> entity-model generate"
-	@GOCACHE=$(GOCACHE) go run ./internal/tools/entitymodel/generate -schema docs/schema/entity-model.json -out pkg/domain/entitymodel/model_gen.go -openapi docs/schema/openapi/entity-model.yaml -sql-postgres docs/schema/sql/postgres.sql -sql-sqlite docs/schema/sql/sqlite.sql -plugin-contract docs/annex/plugin-contract.md -fixtures testutil/fixtures/entity-model/snapshot.json
+	@GOCACHE=$(GOCACHE) go run ./internal/tools/entitymodel/generate -schema docs/schema/entity-model.json -out pkg/domain/entitymodel/model_gen.go -openapi docs/schema/openapi/entity-model.yaml -sql-postgres docs/schema/sql/postgres.sql -sql-sqlite docs/schema/sql/sqlite.sql -plugin-contract docs/annex/plugin-contract.md -fixtures testutil/fixtures/entity-model/snapshot.json -pluginapi-constants pkg/pluginapi/entity_states_gen.go -datasetapi-constants pkg/datasetapi/entity_states_gen.go
 	@$(MAKE) --no-print-directory entity-model-erd
 
 entity-model-verify: entity-model-validate entity-model-generate
@@ -190,7 +197,7 @@ entity-model-erd:
 	@docker run --rm -d --name $(SCHEMASPY_PG_CONTAINER) -e POSTGRES_PASSWORD=$(SCHEMASPY_PG_PASSWORD) -e POSTGRES_DB=$(SCHEMASPY_PG_DB) $(SCHEMASPY_PG_IMAGE) >/dev/null
 	@printf "waiting for postgres"
 	@until docker exec $(SCHEMASPY_PG_CONTAINER) pg_isready -U $(SCHEMASPY_PG_USER) -d $(SCHEMASPY_PG_DB) >/dev/null 2>&1; do printf "."; sleep 1; done
-	@until docker exec $(SCHEMASPY_PG_CONTAINER) sh -c "psql -X -U $(SCHEMASPY_PG_USER) -d postgres -tc \"SELECT 1 FROM pg_database WHERE datname='$(SCHEMASPY_PG_DB)';\" | grep -q 1 || createdb -U $(SCHEMASPY_PG_USER) $(SCHEMASPY_PG_DB)" >/dev/null 2>&1; do printf "."; sleep 1; done; echo "OK"
+	@until docker exec $(SCHEMASPY_PG_CONTAINER) sh -c "psql -X -U $(SCHEMASPY_PG_USER) -d postgres -tc \"SELECT 1 FROM pg_database WHERE datname='$(SCHEMASPY_PG_DB)';\" | grep -q 1 || createdb -U $(SCHEMASPY_PG_USER) $(SCHEMASPY_PG_DB)" >/dev/null 2>&1; do printf "."; sleep 3; done; echo "OK"
 	@docker exec -i $(SCHEMASPY_PG_CONTAINER) psql -X -v ON_ERROR_STOP=1 -1 -U $(SCHEMASPY_PG_USER) -d $(SCHEMASPY_PG_DB) > /dev/null < docs/schema/sql/postgres.sql
 	@docker run --rm $(if $(SCHEMASPY_PLATFORM),--platform $(SCHEMASPY_PLATFORM),) -v "$(SCHEMASPY_TMP)":/output --network container:$(SCHEMASPY_PG_CONTAINER) $(SCHEMASPY_IMAGE) -t pgsql11 -db $(SCHEMASPY_PG_DB) -host localhost -port 5432 -s public -u $(SCHEMASPY_PG_USER) -p $(SCHEMASPY_PG_PASSWORD) -dbthreads 1 -hq -imageformat svg > /dev/null
 	@cp "$(SCHEMASPY_TMP)/diagrams/summary/relationships.real.large.svg" "$(SCHEMASPY_SVG_OUT)"

@@ -13,7 +13,7 @@
   - [ ] Complete Entity Model v0 canon
     - [x] Anchor plugin contract outline at `docs/annex/plugin-contract.md` and fixtures path at `testutil/fixtures/entity-model/`.
     - [x] Align schema enums/states with RFC-0001 compliance + housing lifecycles (code/plugins to follow).
-    - [ ] Bring domain/constants and contexts up to the RFC-aligned schema (protocol/permit/housing states): domain enums now alias the generated entity model and housing lifecycle contexts are exposed in pluginapi/datasetapi with updated API snapshots; persistence adapters/memory+sqlite snapshots, fixtures, and dataset facades still need to consume the new state accessors.
+    - [x] Bring domain/constants and contexts up to the RFC-aligned schema (protocol/permit/housing states): pluginapi/datasetapi contexts now source state/status constants from the generated entity model, dataset facades consume them, and lint regenerates API snapshots alongside entity-model artifacts.
       - [x] Persistence adapters normalise housing/protocol/permit states and environments to generated enums (memory + sqlite).
       - [x] Persistence adapters normalise procedure/treatment/sample statuses to generated enums; dataset facades still need to adopt the state accessors.
     - [x] Replace handwritten structs in `pkg/domain/entities.go` with wrappers or embeddings of `pkg/domain/entitymodel` outputs so schema-driven fields can’t drift; confirm extension containers and persistence adapters continue to operate with the generated shapes (guarded by embedding tests).

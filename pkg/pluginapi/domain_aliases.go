@@ -22,17 +22,6 @@ const (
 // LifecycleStage represents canonical organism lifecycle identifiers available to plugins.
 type LifecycleStage string
 
-// Canonical organism lifecycle stages mirrored from the domain package.
-// These are now internal - use views with contextual methods for plugin access.
-const (
-	stagePlanned  LifecycleStage = "planned"
-	stageLarva    LifecycleStage = "embryo_larva"
-	stageJuvenile LifecycleStage = "juvenile"
-	stageAdult    LifecycleStage = "adult"
-	stageRetired  LifecycleStage = "retired"
-	stageDeceased LifecycleStage = "deceased"
-)
-
 // EntityType identifies the type of record referenced by rule changes.
 type EntityType string
 
