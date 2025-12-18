@@ -964,7 +964,7 @@ func TestOrganismGetCurrentStageEdgeCases(t *testing.T) {
 
 	currentStage := organism.GetCurrentStage()
 	stages := NewLifecycleStageContext()
-	if !currentStage.Equals(stages.Adult()) {
-		t.Error("expected unknown stage to fallback to Adult")
+	if !currentStage.Equals(stages.Planned()) {
+		t.Error("expected unknown stage to fallback to Planned")
 	}
 }

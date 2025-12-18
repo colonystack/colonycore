@@ -65,6 +65,125 @@ type BaseData struct {
 	UpdatedAt time.Time
 }
 
+func normalizeLifecycleStage(stage LifecycleStage) LifecycleStage {
+	switch strings.ToLower(string(stage)) {
+	case string(stagePlanned):
+		return stagePlanned
+	case string(stageLarva), "larva", "embryo":
+		return stageLarva
+	case string(stageJuvenile):
+		return stageJuvenile
+	case string(stageAdult):
+		return stageAdult
+	case string(stageRetired):
+		return stageRetired
+	case string(stageDeceased):
+		return stageDeceased
+	default:
+		return stagePlanned
+	}
+}
+
+func normalizeEnvironment(env string) string {
+	switch strings.ToLower(strings.TrimSpace(env)) {
+	case environmentTypeAquatic:
+		return environmentTypeAquatic
+	case environmentTypeTerrestrial:
+		return environmentTypeTerrestrial
+	case environmentTypeArboreal:
+		return environmentTypeArboreal
+	case environmentTypeHumid:
+		return environmentTypeHumid
+	default:
+		return environmentTypeTerrestrial
+	}
+}
+
+func normalizeHousingState(state string) HousingState {
+	switch strings.ToLower(strings.TrimSpace(state)) {
+	case string(housingStateQuarantine):
+		return housingStateQuarantine
+	case string(housingStateActive):
+		return housingStateActive
+	case string(housingStateCleaning):
+		return housingStateCleaning
+	case string(housingStateDecommissioned):
+		return housingStateDecommissioned
+	default:
+		return housingStateActive
+	}
+}
+
+func normalizeProcedureStatus(status string) string {
+	switch strings.ToLower(strings.TrimSpace(status)) {
+	case procedureStatusScheduled:
+		return procedureStatusScheduled
+	case procedureStatusInProgress, "inprogress", "running":
+		return procedureStatusInProgress
+	case procedureStatusCompleted, "done":
+		return procedureStatusCompleted
+	case procedureStatusCancelled:
+		return procedureStatusCancelled
+	case procedureStatusFailed, "error":
+		return procedureStatusFailed
+	default:
+		return procedureStatusScheduled
+	}
+}
+
+func normalizeSampleStatus(status string) string {
+	switch strings.ToLower(strings.TrimSpace(status)) {
+	case datasetSampleStatusStored:
+		return datasetSampleStatusStored
+	case datasetSampleStatusInTransit, "in-transit", "transit":
+		return datasetSampleStatusInTransit
+	case datasetSampleStatusConsumed:
+		return datasetSampleStatusConsumed
+	case datasetSampleStatusDisposed:
+		return datasetSampleStatusDisposed
+	default:
+		return datasetSampleStatusStored
+	}
+}
+
+func normalizeProtocolStatus(status string) string {
+	switch strings.ToLower(strings.TrimSpace(status)) {
+	case datasetProtocolStatusDraft:
+		return datasetProtocolStatusDraft
+	case datasetProtocolStatusSubmitted:
+		return datasetProtocolStatusSubmitted
+	case datasetProtocolStatusApproved:
+		return datasetProtocolStatusApproved
+	case datasetProtocolStatusOnHold, "paused":
+		return datasetProtocolStatusOnHold
+	case datasetProtocolStatusExpired:
+		return datasetProtocolStatusExpired
+	case datasetProtocolStatusArchived:
+		return datasetProtocolStatusArchived
+	default:
+		return datasetProtocolStatusDraft
+	}
+}
+
+func normalizePermitStatus(status string) string {
+	switch strings.ToLower(strings.TrimSpace(status)) {
+	case datasetPermitStatusDraft:
+		return datasetPermitStatusDraft
+	case datasetPermitStatusSubmitted:
+		return datasetPermitStatusSubmitted
+	case datasetPermitStatusApproved:
+		return datasetPermitStatusApproved
+	case datasetPermitStatusOnHold:
+		return datasetPermitStatusOnHold
+	case datasetPermitStatusExpired:
+		return datasetPermitStatusExpired
+	case datasetPermitStatusArchived:
+		return datasetPermitStatusArchived
+	default:
+		return datasetPermitStatusDraft
+	}
+}
+
 // LifecycleStage represents canonical organism lifecycle identifiers.
 type LifecycleStage string
 
@@ -590,7 +709,7 @@ func NewOrganism(data OrganismData) Organism {
 		lineID:         cloneOptionalString(data.LineID),
 		strainID:       cloneOptionalString(data.StrainID),
 		parentIDs:      append([]string(nil), data.ParentIDs...),
-		stage:          data.Stage,
+		stage:          normalizeLifecycleStage(data.Stage),
 		cohortID:       cloneOptionalString(data.CohortID),
 		housingID:      cloneOptionalString(data.HousingID),
 		protocolID:     cloneOptionalString(data.ProtocolID),
@@ -663,8 +782,7 @@ func (o organism) GetCurrentStage() LifecycleStageRef {
 	case stageDeceased:
 		return stages.Deceased()
 	default:
-		// Fallback for unknown stages - should not happen in normal operation
-		return stages.Adult()
+		return stages.Planned()
 	}
 }
 
@@ -807,7 +925,7 @@ type housingUnit struct {
 	facilityID  string
 	capacity    int
 	environment string
-	state       string
+	state       HousingState
 }
 
 // NewHousingUnit constructs a read-only HousingUnit facade.
@@ -817,8 +935,8 @@ func NewHousingUnit(data HousingUnitData) HousingUnit {
 		name:        data.Name,
 		facilityID:  data.FacilityID,
 		capacity:    data.Capacity,
-		environment: data.Environment,
-		state:       data.State,
+		environment: normalizeEnvironment(data.Environment),
+		state:       normalizeHousingState(data.State),
 	}
 }
 
@@ -826,22 +944,21 @@ func (h housingUnit) Name() string        { return h.name }
 func (h housingUnit) FacilityID() string  { return h.facilityID }
 func (h housingUnit) Capacity() int       { return h.capacity }
 func (h housingUnit) Environment() string { return h.environment }
-func (h housingUnit) State() string       { return h.state }
+func (h housingUnit) State() string       { return string(h.state) }
 
 // Contextual environment accessors
 func (h housingUnit) GetEnvironmentType() EnvironmentTypeRef {
 	ctx := NewHousingContext()
-	switch strings.ToLower(h.environment) {
-	case "aquatic":
+	switch normalizeEnvironment(h.environment) {
+	case environmentTypeAquatic:
 		return ctx.Aquatic()
-	case "terrestrial":
+	case environmentTypeTerrestrial:
 		return ctx.Terrestrial()
-	case "arboreal":
+	case environmentTypeArboreal:
 		return ctx.Arboreal()
-	case "humid":
+	case environmentTypeHumid:
 		return ctx.Humid()
 	default:
-		// Default to terrestrial for unknown environments
 		return ctx.Terrestrial()
 	}
 }
@@ -856,12 +973,12 @@ func (h housingUnit) IsHumidEnvironment() bool {
 
 func (h housingUnit) GetState() HousingStateRef {
 	ctx := NewHousingStateContext()
-	switch strings.ToLower(h.state) {
-	case ctx.Quarantine().String():
+	switch h.state {
+	case housingStateQuarantine:
 		return ctx.Quarantine()
-	case ctx.Cleaning().String():
+	case housingStateCleaning:
 		return ctx.Cleaning()
-	case ctx.Decommissioned().String():
+	case housingStateDecommissioned:
 		return ctx.Decommissioned()
 	default:
 		return ctx.Active()
@@ -912,7 +1029,7 @@ func (h housingUnit) MarshalJSON() ([]byte, error) {
 		FacilityID:  h.facilityID,
 		Capacity:    h.capacity,
 		Environment: h.environment,
-		State:       h.state,
+		State:       string(h.state),
 	})
 }
 
@@ -1216,7 +1333,7 @@ func NewProcedure(data ProcedureData) Procedure {
 	return procedure{
 		base:           newBase(data.Base),
 		name:           data.Name,
-		status:         data.Status,
+		status:         normalizeProcedureStatus(data.Status),
 		scheduledAt:    data.ScheduledAt,
 		protocolID:     data.ProtocolID,
 		projectID:      cloneOptionalString(data.ProjectID),
@@ -1250,19 +1367,18 @@ func (p procedure) ObservationIDs() []string {
 // Contextual status accessors
 func (p procedure) GetCurrentStatus() ProcedureStatusRef {
 	ctx := NewProcedureContext()
-	switch strings.ToLower(p.status) {
-	case "scheduled":
+	switch p.status {
+	case procedureStatusScheduled:
 		return ctx.Scheduled()
-	case procedureStatusInProgress, "inprogress", "running":
+	case procedureStatusInProgress:
 		return ctx.InProgress()
-	case procedureStatusCompleted, "done":
+	case procedureStatusCompleted:
 		return ctx.Completed()
 	case procedureStatusCancelled:
 		return ctx.Cancelled()
-	case "failed", "error":
+	case procedureStatusFailed:
 		return ctx.Failed()
 	default:
-		// Default to scheduled for unknown statuses
 		return ctx.Scheduled()
 	}
 }
@@ -1527,7 +1643,7 @@ func NewSample(data SampleData) Sample {
 		cohortID:        cloneOptionalString(data.CohortID),
 		facilityID:      data.FacilityID,
 		collectedAt:     data.CollectedAt,
-		status:          data.Status,
+		status:          normalizeSampleStatus(data.Status),
 		storageLocation: data.StorageLocation,
 		assayType:       data.AssayType,
 		chainOfCustody:  buildCustodyEvents(data.ChainOfCustody),
@@ -1592,15 +1708,14 @@ func (s sample) GetSource() SampleSourceRef {
 
 func (s sample) GetStatus() SampleStatusRef {
 	ctx := NewSampleContext().Statuses()
-	status := strings.ToLower(strings.TrimSpace(s.status))
-	switch status {
-	case "stored":
+	switch s.status {
+	case datasetSampleStatusStored:
 		return ctx.Stored()
-	case "in_transit", "in-transit", "transit":
+	case datasetSampleStatusInTransit:
 		return ctx.InTransit()
-	case "consumed":
+	case datasetSampleStatusConsumed:
 		return ctx.Consumed()
-	case "disposed":
+	case datasetSampleStatusDisposed:
 		return ctx.Disposed()
 	default:
 		return ctx.Stored()
@@ -1680,7 +1795,7 @@ func NewProtocol(data ProtocolData) Protocol {
 		title:       data.Title,
 		description: cloneOptionalString(data.Description),
 		maxSubjects: data.MaxSubjects,
-		status:      data.Status,
+		status:      normalizeProtocolStatus(data.Status),
 	}
 }
 
@@ -1697,21 +1812,20 @@ func (p protocol) MaxSubjects() int { return p.maxSubjects }
 // Contextual status accessors
 func (p protocol) GetCurrentStatus() ProtocolStatusRef {
 	ctx := NewProtocolContext()
-	switch strings.ToLower(p.status) {
+	switch p.status {
 	case datasetProtocolStatusDraft:
 		return ctx.Draft()
 	case datasetProtocolStatusSubmitted:
 		return ctx.Submitted()
 	case datasetProtocolStatusApproved:
 		return ctx.Approved()
-	case datasetProtocolStatusOnHold, "paused":
+	case datasetProtocolStatusOnHold:
 		return ctx.OnHold()
 	case datasetProtocolStatusExpired:
 		return ctx.Expired()
 	case datasetProtocolStatusArchived:
 		return ctx.Archived()
 	default:
-		// Default to draft for unknown statuses
 		return ctx.Draft()
 	}
 }
@@ -1770,7 +1884,7 @@ func NewPermit(data PermitData) Permit {
 		base:              newBase(data.Base),
 		permitNumber:      data.PermitNumber,
 		authority:         data.Authority,
-		status:            data.Status,
+		status:            normalizePermitStatus(data.Status),
 		validFrom:         data.ValidFrom,
 		validUntil:        data.ValidUntil,
 		allowedActivities: cloneStringSlice(data.AllowedActivities),
@@ -1799,7 +1913,7 @@ func (p permit) Notes() string {
 // Contextual validity accessors
 func (p permit) GetStatus(reference time.Time) PermitStatusRef {
 	statuses := NewPermitContext().Statuses()
-	switch strings.ToLower(p.status) {
+	switch p.status {
 	case datasetPermitStatusDraft:
 		return statuses.Draft()
 	case datasetPermitStatusSubmitted:

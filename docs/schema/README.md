@@ -10,6 +10,7 @@ Conventions:
 - Relationship cardinalities use `0..1`, `1..1`, `0..n`, or `1..n` notation only; the validator rejects other forms to keep generators aligned.
 - Properties must declare either a type or `$ref` so downstream generators can map them into code, OpenAPI, and DDL.
 - Extension slots (`attributes`, `environment_baselines`, `pairing_attributes`, etc.) are plugin-safe maps; schema-specific extensions belong in plugins, not core.
+- Dataset and plugin facades normalize lifecycle/status/environment values to the generated enums before exposing them to plugins; unknown inputs fall back to canonical defaults (planned/scheduled/stored/active/terrestrial) to avoid drifting from `entity-model.json`.
 
 Validation & targets:
 - Run `make entity-model-verify` (also executed by `make lint`) to sanity-check the JSON: semver version, required base fields, relationship cardinalities/targets, non-empty enums, allowlisted invariants, property enum references, and type/$ref presence. This target keeps domain layering intact by only reading `docs/schema/entity-model.json`.

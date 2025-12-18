@@ -15,7 +15,7 @@
     - [x] Align schema enums/states with RFC-0001 compliance + housing lifecycles (code/plugins to follow).
     - [x] Bring domain/constants and contexts up to the RFC-aligned schema (protocol/permit/housing states): pluginapi/datasetapi contexts now source state/status constants from the generated entity model, dataset facades consume them, and lint regenerates API snapshots alongside entity-model artifacts.
       - [x] Persistence adapters normalise housing/protocol/permit states and environments to generated enums (memory + sqlite).
-      - [x] Persistence adapters normalise procedure/treatment/sample statuses to generated enums; dataset facades still need to adopt the state accessors.
+      - [x] Persistence adapters normalise procedure/treatment/sample statuses to generated enums; dataset facades now normalize lifecycle/status/environment fields to the generated constants with coverage.
     - [x] Replace handwritten structs in `pkg/domain/entities.go` with wrappers or embeddings of `pkg/domain/entitymodel` outputs so schema-driven fields can’t drift; confirm extension containers and persistence adapters continue to operate with the generated shapes (guarded by embedding tests).
     - [x] Fill `entity-model.json` gaps: natural keys, invariants, relationships, and enums for every RFC-0001 entity (Line/Strain/GenotypeMarker included) — relationships/invariants are now explicit (including lineage/protocol/lifecycle constraints), natural keys scoped, and enums/natural-key scopes reviewed against RFC-0001 before freeze.
     - [x] Stand up generators driven solely from the JSON plus `make entity-model-generate` wiring (Go/OpenAPI/SQL/ERD targets hooked into `make entity-model-verify`; SVGs rendered via Graphviz).

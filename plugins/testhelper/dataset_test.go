@@ -39,9 +39,9 @@ func TestOrganismFixtureBuilder(t *testing.T) {
 
 func TestHousingUnitFixtureBuilder(t *testing.T) {
 	now := time.Now().UTC()
-	cfg := HousingUnitFixtureConfig{BaseFixture: BaseFixture{ID: "h1", CreatedAt: now, UpdatedAt: now}, Name: "H", FacilityID: "F", Capacity: 2, Environment: "env"}
+	cfg := HousingUnitFixtureConfig{BaseFixture: BaseFixture{ID: "h1", CreatedAt: now, UpdatedAt: now}, Name: "H", FacilityID: "F", Capacity: 2, Environment: "terrestrial"}
 	hu := HousingUnit(cfg)
-	if hu.Capacity() != 2 || hu.Environment() != "env" {
+	if hu.Capacity() != 2 || hu.Environment() != "terrestrial" {
 		t.Fatalf("unexpected housing unit values")
 	}
 }
