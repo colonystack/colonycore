@@ -26,3 +26,4 @@ Validation & targets:
   - `make lint`/`make entity-model-generate` will rewrite all generated artifacts (including fixtures) from `entity-model.json`.
   - `internal/tools/entitymodel/generate/main_test.go` fails if committed outputs drift from the generator (Go code and OpenAPI), forcing contributors to update artifacts alongside schema edits.
   - `internal/core/rules_invariants_test.go` keeps the schema-declared invariants in lockstep with the default rule set so enforcement cannot lag the contract.
+- For a human-readable entry point that links the canonical assets without duplicating the schema, see `docs/annex/entity-model-overview.md`.
