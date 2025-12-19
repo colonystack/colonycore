@@ -7,10 +7,10 @@
   - [x] Update memory/SQLite stores and fixtures to serialize typed containers end-to-end, then rerun `make lint` and `make test`; document the container-only contract in ADR-0003/annex once stabilized.
     - [x] Memory store snapshots and export/import paths preserve hook-scoped extension containers for facility, breeding, sample, and supply entities.
     - [x] Memory store normalizes organism and breeding extension containers during import/create/update (SQLite parity and fixtures still pending).
-- [ ] Ensure rule invariants have the data they need
+- [x] Ensure rule invariants have the data they need
   - Entity model now encodes housing, protocol, lineage, and lifecycle invariants with validator allowlists; canonical fixtures now exercise them end-to-end for memory/SQLite/Postgres.
   - [x] Normalize embedded entitymodel literals across domain/plugin tests to avoid drift between manual fixtures and generated structs; revisit if schema introduces new fields.
-  - [ ] Complete Entity Model v0 canon
+  - [x] Complete Entity Model v0 canon
     - [x] Anchor plugin contract outline at `docs/annex/plugin-contract.md` and fixtures path at `testutil/fixtures/entity-model/`.
     - [x] Align schema enums/states with RFC-0001 compliance + housing lifecycles (code/plugins to follow).
     - [x] Bring domain/constants and contexts up to the RFC-aligned schema (protocol/permit/housing states): pluginapi/datasetapi contexts now source state/status constants from the generated entity model, dataset facades consume them, and lint regenerates API snapshots alongside entity-model artifacts.
