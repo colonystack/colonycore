@@ -1,6 +1,7 @@
 package postgres
 
 import (
+	"colonycore/internal/entitymodel/sqlbundle"
 	"colonycore/internal/infra/persistence/memory"
 	"colonycore/pkg/domain"
 	entitymodel "colonycore/pkg/domain/entitymodel"
@@ -45,6 +46,26 @@ func TestNewStoreAppliesDDLAndLoadsSnapshot(t *testing.T) {
 	}
 	if !sawDDL {
 		t.Fatalf("expected entity-model DDL to be applied, got execs: %v", conn.execs)
+	}
+}
+
+func TestApplyEntityModelDDLUsesGeneratedPostgresBundle(t *testing.T) {
+	ctx := context.Background()
+	rec := &recordingExec{}
+
+	ddl := sqlbundle.Postgres()
+	if err := applyDDLStatements(ctx, rec, ddl); err != nil {
+		t.Fatalf("applyDDLStatements: %v", err)
+	}
+
+	expected := sqlbundle.SplitStatements(ddl)
+	if len(rec.execs) != len(expected) {
+		t.Fatalf("expected %d DDL statements, got %d", len(expected), len(rec.execs))
+	}
+	for i, stmt := range expected {
+		if strings.TrimSpace(rec.execs[i]) != strings.TrimSpace(stmt) {
+			t.Fatalf("statement %d mismatch:\nwant: %s\ngot:  %s", i, strings.TrimSpace(stmt), strings.TrimSpace(rec.execs[i]))
+		}
 	}
 }
 

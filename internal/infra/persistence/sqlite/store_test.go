@@ -1,10 +1,15 @@
 package sqlite
 
 import (
+	"colonycore/internal/entitymodel/sqlbundle"
 	"colonycore/pkg/domain"
 	entitymodel "colonycore/pkg/domain/entitymodel"
 	"context"
+	"database/sql"
+	"database/sql/driver"
+	"fmt"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -45,4 +50,34 @@ func TestSQLiteStoreAppliesEntityModelDDL(t *testing.T) {
 	if tableName != organismsTable {
 		t.Fatalf("expected organisms table, got %s", tableName)
 	}
+}
+
+func TestApplyEntityModelDDLUsesGeneratedSQLiteBundle(t *testing.T) {
+	exec := &recordingSQLiteExec{}
+	if err := applyEntityModelDDL(exec); err != nil {
+		t.Fatalf("applyEntityModelDDL: %v", err)
+	}
+
+	expected := sqlbundle.SplitStatements(sqlbundle.SQLite())
+	if len(exec.execs) != len(expected) {
+		t.Fatalf("expected %d statements, got %d", len(expected), len(exec.execs))
+	}
+	for i, stmt := range expected {
+		if strings.TrimSpace(exec.execs[i]) != strings.TrimSpace(stmt) {
+			t.Fatalf("statement %d mismatch:\nwant: %s\ngot:  %s", i, strings.TrimSpace(stmt), strings.TrimSpace(exec.execs[i]))
+		}
+	}
+}
+
+type recordingSQLiteExec struct {
+	execs []string
+	fail  bool
+}
+
+func (r *recordingSQLiteExec) Exec(query string, _ ...any) (sql.Result, error) {
+	if r.fail {
+		return nil, fmt.Errorf("exec fail")
+	}
+	r.execs = append(r.execs, query)
+	return driver.RowsAffected(1), nil
 }

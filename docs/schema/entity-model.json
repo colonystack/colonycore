@@ -1,11 +1,11 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "ColonyCore Entity Model v0",
-  "version": "0.1.0",
-  "description": "Canonical, species-agnostic entity contract (seed) derived from RFC-0001 and ADR-0003.",
+  "version": "0.2.0",
+  "description": "Canonical, species-agnostic entity contract derived from RFC-0001 and ADR-0003.",
   "metadata": {
     "source": "docs/adr/0003-core-domain-schema.md",
-    "status": "seed"
+    "status": "accepted"
   },
   "id_semantics": {
     "type": "uuidv7",

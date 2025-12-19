@@ -1,6 +1,6 @@
 # ADR 0003: Core Domain Schema Normalization
 
-- Status: Planned
+- Status: Accepted
 - Deciders: Tobias Harnickell
 - Date: 2025-09-21
 - Related RFCs: 0001-colonycore-base-module

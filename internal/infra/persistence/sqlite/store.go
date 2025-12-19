@@ -250,12 +250,16 @@ func (s *Store) DB() *sql.DB { return s.db }
 // Path returns the configured database path.
 func (s *Store) Path() string { return s.path }
 
-func applyEntityModelDDL(db *sql.DB) error {
+type ddlExec interface {
+	Exec(query string, args ...any) (sql.Result, error)
+}
+
+func applyEntityModelDDL(exec ddlExec) error {
 	for _, stmt := range sqlbundle.SplitStatements(sqlbundle.SQLite()) {
 		if strings.TrimSpace(stmt) == "" {
 			continue
 		}
-		if _, err := db.Exec(stmt); err != nil {
+		if _, err := exec.Exec(stmt); err != nil {
 			return fmt.Errorf("execute ddl: %w", err)
 		}
 	}

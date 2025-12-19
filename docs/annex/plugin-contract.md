@@ -1,6 +1,6 @@
 # Plugin Contract (Entity Model v0)
 
-_Source: `docs/schema/entity-model.json` v0.1.0 (status: seed)._
+_Source: `docs/schema/entity-model.json` v0.2.0 (status: accepted)._
 
 This document enumerates the canonical fields, relationships, extension hooks, and invariants each plugin must respect. Generate it via `make entity-model-generate`.
 
@@ -672,7 +672,7 @@ Therapeutic intervention bound to procedure subjects.
 <!--
 CONTRACT-METADATA
 {
-  "version": "0.1.0",
+  "version": "0.2.0",
   "entities": {
     "BreedingUnit": {
       "required": [
