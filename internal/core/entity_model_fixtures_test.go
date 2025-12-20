@@ -3,6 +3,7 @@ package core
 import (
 	"colonycore/internal/infra/persistence/memory"
 	"colonycore/internal/infra/persistence/postgres"
+	pgtu "colonycore/internal/infra/persistence/postgres/testutil"
 	sqlite "colonycore/internal/infra/persistence/sqlite"
 	"colonycore/pkg/domain"
 	"context"
@@ -58,7 +59,7 @@ func TestEntityModelFixturesSatisfyRules(t *testing.T) {
 		t.Fatalf("sqlite fixture violations: %+v", sqliteResult.Violations)
 	}
 
-	pgDB := newCoreStubDB(t)
+	pgDB, _ := pgtu.NewStubDB()
 	pgRestore := postgres.OverrideSQLOpen(func(_, _ string) (*sql.DB, error) { return pgDB, nil })
 	defer pgRestore()
 

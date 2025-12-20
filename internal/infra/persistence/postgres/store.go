@@ -1,5 +1,5 @@
-// Package postgres provides a Postgres-backed persistent store that mirrors the
-// in-memory semantics while applying the generated entity-model DDL on startup.
+// Package postgres provides a Postgres-backed persistent store that applies the
+// generated entity-model DDL on startup and issues normalized CRUD statements directly.
 package postgres
 
 import (
@@ -12,6 +12,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"reflect"
 	"sort"
 	"sync"
 	"time"
@@ -33,16 +34,18 @@ var (
 	openMu  sync.Mutex
 )
 
-// Store persists state to Postgres while reusing the in-memory implementation for transactions.
+// Store persists state to Postgres while executing CRUD directly against the generated DDL.
+// It still uses the in-memory transaction engine for rule evaluation but commits deltas to
+// the normalized tables instead of snapshot mirroring.
 type Store struct {
-	*memory.Store
-	db *sql.DB
-	mu sync.Mutex
+	db     *sql.DB
+	engine *domain.RulesEngine
+	mu     sync.Mutex
+	cache  memory.Snapshot
 }
 
 // NewStore opens a Postgres-backed store using the provided DSN (falls back to defaultDSN).
-// It applies the generated entity-model DDL, ensures the snapshot table exists, and
-// hydrates the in-memory store from any existing snapshot.
+// It applies the generated entity-model DDL and hydrates an in-memory snapshot cache from Postgres.
 func NewStore(dsn string, engine *domain.RulesEngine) (*Store, error) {
 	if dsn == "" {
 		dsn = defaultDSN
@@ -60,24 +63,56 @@ func NewStore(dsn string, engine *domain.RulesEngine) (*Store, error) {
 	if err := applyEntityModelDDL(ctx, db); err != nil {
 		return nil, err
 	}
-	snapshot, err := loadSnapshot(ctx, db)
+	cache, err := loadNormalizedSnapshot(ctx, db)
 	if err != nil {
 		return nil, err
 	}
-	mem := memory.NewStore(engine)
-	mem.ImportState(snapshot)
-	return &Store{Store: mem, db: db}, nil
+	return &Store{
+		db:     db,
+		engine: engine,
+		cache:  cache,
+	}, nil
 }
 
-// RunInTransaction applies the provided function within a transaction, then snapshots to Postgres if successful.
+// RunInTransaction evaluates the user-supplied function against an in-memory transaction
+// and persists the resulting delta directly to the normalized schema inside a single DB transaction.
 func (s *Store) RunInTransaction(ctx context.Context, fn func(domain.Transaction) error) (domain.Result, error) {
-	res, err := s.Store.RunInTransaction(ctx, fn)
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return domain.Result{}, fmt.Errorf("begin tx: %w", err)
+	}
+	committed := false
+	defer func() {
+		if !committed {
+			_ = tx.Rollback()
+		}
+	}()
+
+	before, err := loadNormalizedSnapshot(ctx, tx)
+	if err != nil {
+		return domain.Result{}, err
+	}
+
+	mem := memory.NewStore(s.engine)
+	mem.ImportState(before)
+
+	res, err := mem.RunInTransaction(ctx, fn)
 	if err != nil {
 		return res, err
 	}
-	if err := s.persist(ctx); err != nil {
+	after := mem.ExportState()
+
+	if err := applySnapshotDelta(ctx, tx, before, after); err != nil {
 		return res, err
 	}
+	if err := tx.Commit(); err != nil {
+		return res, fmt.Errorf("commit: %w", err)
+	}
+	committed = true
+	s.cache = after
 	return res, nil
 }
 
@@ -88,15 +123,415 @@ func applyEntityModelDDL(ctx context.Context, db *sql.DB) error {
 	return applyDDLStatements(ctx, db, sqlbundle.Postgres())
 }
 
-func loadSnapshot(ctx context.Context, db *sql.DB) (memory.Snapshot, error) {
-	return loadNormalizedSnapshot(ctx, db)
-}
-
-func (s *Store) persist(ctx context.Context) error {
+// snapshotOrCache returns the latest database snapshot or falls back to the last good cache.
+func (s *Store) snapshotOrCache(ctx context.Context) memory.Snapshot {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	snapshot := s.ExportState()
-	return persistNormalized(ctx, s.db, snapshot)
+	snap, err := loadNormalizedSnapshot(ctx, s.db)
+	if err == nil {
+		s.cache = snap
+		return snap
+	}
+	return cloneSnapshot(s.cache)
+}
+
+// View executes fn against a read-only snapshot of the Postgres-backed state.
+func (s *Store) View(ctx context.Context, fn func(domain.TransactionView) error) error {
+	snapshot := s.snapshotOrCache(ctx)
+	mem := memory.NewStore(s.engine)
+	mem.ImportState(snapshot)
+	return mem.View(ctx, fn)
+}
+
+// GetOrganism returns an organism by ID.
+func (s *Store) GetOrganism(id string) (domain.Organism, bool) {
+	snap := s.snapshotOrCache(context.Background())
+	o, ok := snap.Organisms[id]
+	return o, ok
+}
+
+// ListOrganisms returns all organisms.
+func (s *Store) ListOrganisms() []domain.Organism {
+	return mapValues(s.snapshotOrCache(context.Background()).Organisms)
+}
+
+// GetHousingUnit returns a housing unit by ID.
+func (s *Store) GetHousingUnit(id string) (domain.HousingUnit, bool) {
+	snap := s.snapshotOrCache(context.Background())
+	h, ok := snap.Housing[id]
+	return h, ok
+}
+
+// ListHousingUnits returns all housing units.
+func (s *Store) ListHousingUnits() []domain.HousingUnit {
+	return mapValues(s.snapshotOrCache(context.Background()).Housing)
+}
+
+// GetFacility returns a facility by ID.
+func (s *Store) GetFacility(id string) (domain.Facility, bool) {
+	snap := s.snapshotOrCache(context.Background())
+	f, ok := snap.Facilities[id]
+	return f, ok
+}
+
+// ListFacilities returns all facilities.
+func (s *Store) ListFacilities() []domain.Facility {
+	return mapValues(s.snapshotOrCache(context.Background()).Facilities)
+}
+
+// GetLine returns a line by ID.
+func (s *Store) GetLine(id string) (domain.Line, bool) {
+	snap := s.snapshotOrCache(context.Background())
+	l, ok := snap.Lines[id]
+	return l, ok
+}
+
+// ListLines returns all lines.
+func (s *Store) ListLines() []domain.Line {
+	return mapValues(s.snapshotOrCache(context.Background()).Lines)
+}
+
+// GetStrain returns a strain by ID.
+func (s *Store) GetStrain(id string) (domain.Strain, bool) {
+	snap := s.snapshotOrCache(context.Background())
+	st, ok := snap.Strains[id]
+	return st, ok
+}
+
+// ListStrains returns all strains.
+func (s *Store) ListStrains() []domain.Strain {
+	return mapValues(s.snapshotOrCache(context.Background()).Strains)
+}
+
+// GetGenotypeMarker returns a genotype marker by ID.
+func (s *Store) GetGenotypeMarker(id string) (domain.GenotypeMarker, bool) {
+	snap := s.snapshotOrCache(context.Background())
+	gm, ok := snap.Markers[id]
+	return gm, ok
+}
+
+// ListGenotypeMarkers returns all genotype markers.
+func (s *Store) ListGenotypeMarkers() []domain.GenotypeMarker {
+	return mapValues(s.snapshotOrCache(context.Background()).Markers)
+}
+
+// ListCohorts returns all cohorts.
+func (s *Store) ListCohorts() []domain.Cohort {
+	return mapValues(s.snapshotOrCache(context.Background()).Cohorts)
+}
+
+// ListTreatments returns all treatments.
+func (s *Store) ListTreatments() []domain.Treatment {
+	return mapValues(s.snapshotOrCache(context.Background()).Treatments)
+}
+
+// ListObservations returns all observations.
+func (s *Store) ListObservations() []domain.Observation {
+	return mapValues(s.snapshotOrCache(context.Background()).Observations)
+}
+
+// ListSamples returns all samples.
+func (s *Store) ListSamples() []domain.Sample {
+	return mapValues(s.snapshotOrCache(context.Background()).Samples)
+}
+
+// ListProtocols returns all protocols.
+func (s *Store) ListProtocols() []domain.Protocol {
+	return mapValues(s.snapshotOrCache(context.Background()).Protocols)
+}
+
+// GetPermit returns a permit by ID.
+func (s *Store) GetPermit(id string) (domain.Permit, bool) {
+	snap := s.snapshotOrCache(context.Background())
+	p, ok := snap.Permits[id]
+	return p, ok
+}
+
+// ListPermits returns all permits.
+func (s *Store) ListPermits() []domain.Permit {
+	return mapValues(s.snapshotOrCache(context.Background()).Permits)
+}
+
+// ListProjects returns all projects.
+func (s *Store) ListProjects() []domain.Project {
+	return mapValues(s.snapshotOrCache(context.Background()).Projects)
+}
+
+// ListBreedingUnits returns all breeding units.
+func (s *Store) ListBreedingUnits() []domain.BreedingUnit {
+	return mapValues(s.snapshotOrCache(context.Background()).Breeding)
+}
+
+// ListProcedures returns all procedures.
+func (s *Store) ListProcedures() []domain.Procedure {
+	return mapValues(s.snapshotOrCache(context.Background()).Procedures)
+}
+
+// ListSupplyItems returns all supply items.
+func (s *Store) ListSupplyItems() []domain.SupplyItem {
+	return mapValues(s.snapshotOrCache(context.Background()).Supplies)
+}
+
+func mapValues[T any](m map[string]T) []T {
+	out := make([]T, 0, len(m))
+	for _, v := range m {
+		out = append(out, v)
+	}
+	return out
+}
+
+func cloneSnapshot(s memory.Snapshot) memory.Snapshot {
+	out := memory.Snapshot{
+		Organisms:    make(map[string]memory.Organism, len(s.Organisms)),
+		Cohorts:      make(map[string]memory.Cohort, len(s.Cohorts)),
+		Housing:      make(map[string]memory.HousingUnit, len(s.Housing)),
+		Facilities:   make(map[string]memory.Facility, len(s.Facilities)),
+		Breeding:     make(map[string]memory.BreedingUnit, len(s.Breeding)),
+		Lines:        make(map[string]memory.Line, len(s.Lines)),
+		Strains:      make(map[string]memory.Strain, len(s.Strains)),
+		Markers:      make(map[string]memory.GenotypeMarker, len(s.Markers)),
+		Procedures:   make(map[string]memory.Procedure, len(s.Procedures)),
+		Treatments:   make(map[string]memory.Treatment, len(s.Treatments)),
+		Observations: make(map[string]memory.Observation, len(s.Observations)),
+		Samples:      make(map[string]memory.Sample, len(s.Samples)),
+		Protocols:    make(map[string]memory.Protocol, len(s.Protocols)),
+		Permits:      make(map[string]memory.Permit, len(s.Permits)),
+		Projects:     make(map[string]memory.Project, len(s.Projects)),
+		Supplies:     make(map[string]memory.SupplyItem, len(s.Supplies)),
+	}
+	for k, v := range s.Organisms {
+		out.Organisms[k] = v
+	}
+	for k, v := range s.Cohorts {
+		out.Cohorts[k] = v
+	}
+	for k, v := range s.Housing {
+		out.Housing[k] = v
+	}
+	for k, v := range s.Facilities {
+		out.Facilities[k] = v
+	}
+	for k, v := range s.Breeding {
+		out.Breeding[k] = v
+	}
+	for k, v := range s.Lines {
+		out.Lines[k] = v
+	}
+	for k, v := range s.Strains {
+		out.Strains[k] = v
+	}
+	for k, v := range s.Markers {
+		out.Markers[k] = v
+	}
+	for k, v := range s.Procedures {
+		out.Procedures[k] = v
+	}
+	for k, v := range s.Treatments {
+		out.Treatments[k] = v
+	}
+	for k, v := range s.Observations {
+		out.Observations[k] = v
+	}
+	for k, v := range s.Samples {
+		out.Samples[k] = v
+	}
+	for k, v := range s.Protocols {
+		out.Protocols[k] = v
+	}
+	for k, v := range s.Permits {
+		out.Permits[k] = v
+	}
+	for k, v := range s.Projects {
+		out.Projects[k] = v
+	}
+	for k, v := range s.Supplies {
+		out.Supplies[k] = v
+	}
+	return out
+}
+
+// ImportState replaces the normalized data with the provided snapshot (primarily for tests).
+func (s *Store) ImportState(snapshot memory.Snapshot) {
+	if err := persistNormalized(context.Background(), s.db, snapshot); err != nil {
+		panic(fmt.Errorf("postgres import state: %w", err))
+	}
+	s.cache = cloneSnapshot(snapshot)
+}
+
+// ExportState returns the current normalized snapshot (primarily for tests).
+func (s *Store) ExportState() memory.Snapshot {
+	snap, err := loadNormalizedSnapshot(context.Background(), s.db)
+	if err != nil {
+		panic(fmt.Errorf("postgres export state: %w", err))
+	}
+	s.cache = snap
+	return snap
+}
+
+// RulesEngine exposes the configured rules engine (test helper for parity with other stores).
+func (s *Store) RulesEngine() *domain.RulesEngine {
+	return s.engine
+}
+
+type delta[T any] struct {
+	created map[string]T
+	updated map[string]T
+	deleted []string
+}
+
+func diffMaps[T any](before, after map[string]T) delta[T] {
+	d := delta[T]{
+		created: make(map[string]T),
+		updated: make(map[string]T),
+	}
+	for id, afterVal := range after {
+		if prev, ok := before[id]; !ok {
+			d.created[id] = afterVal
+		} else if !reflect.DeepEqual(prev, afterVal) {
+			d.updated[id] = afterVal
+		}
+	}
+	for id := range before {
+		if _, ok := after[id]; !ok {
+			d.deleted = append(d.deleted, id)
+		}
+	}
+	return d
+}
+
+func mergeMaps[T any](first, second map[string]T) map[string]T {
+	if len(first) == 0 && len(second) == 0 {
+		return nil
+	}
+	out := make(map[string]T, len(first)+len(second))
+	for k, v := range first {
+		out[k] = v
+	}
+	for k, v := range second {
+		out[k] = v
+	}
+	return out
+}
+
+// applySnapshotDelta persists the difference between two snapshots inside an active SQL transaction.
+func applySnapshotDelta(ctx context.Context, exec execQuerier, before, after memory.Snapshot) error {
+	facilities := diffMaps(before.Facilities, after.Facilities)
+	markers := diffMaps(before.Markers, after.Markers)
+	lines := diffMaps(before.Lines, after.Lines)
+	strains := diffMaps(before.Strains, after.Strains)
+	housing := diffMaps(before.Housing, after.Housing)
+	protocols := diffMaps(before.Protocols, after.Protocols)
+	projects := diffMaps(before.Projects, after.Projects)
+	permits := diffMaps(before.Permits, after.Permits)
+	cohorts := diffMaps(before.Cohorts, after.Cohorts)
+	breeding := diffMaps(before.Breeding, after.Breeding)
+	organisms := diffMaps(before.Organisms, after.Organisms)
+	procedures := diffMaps(before.Procedures, after.Procedures)
+	observations := diffMaps(before.Observations, after.Observations)
+	samples := diffMaps(before.Samples, after.Samples)
+	supplies := diffMaps(before.Supplies, after.Supplies)
+	treatments := diffMaps(before.Treatments, after.Treatments)
+
+	// Deletes from leaf to root to satisfy FK constraints.
+	if err := deleteTreatments(ctx, exec, treatments.deleted); err != nil {
+		return err
+	}
+	if err := deleteSupplyItems(ctx, exec, supplies.deleted); err != nil {
+		return err
+	}
+	if err := deleteSamples(ctx, exec, samples.deleted); err != nil {
+		return err
+	}
+	if err := deleteObservations(ctx, exec, observations.deleted); err != nil {
+		return err
+	}
+	if err := deleteProcedures(ctx, exec, procedures.deleted); err != nil {
+		return err
+	}
+	if err := deleteBreedingUnits(ctx, exec, breeding.deleted); err != nil {
+		return err
+	}
+	if err := deleteOrganisms(ctx, exec, organisms.deleted); err != nil {
+		return err
+	}
+	if err := deleteCohorts(ctx, exec, cohorts.deleted); err != nil {
+		return err
+	}
+	if err := deletePermits(ctx, exec, permits.deleted); err != nil {
+		return err
+	}
+	if err := deleteProjects(ctx, exec, projects.deleted); err != nil {
+		return err
+	}
+	if err := deleteProtocols(ctx, exec, protocols.deleted); err != nil {
+		return err
+	}
+	if err := deleteHousingUnits(ctx, exec, housing.deleted); err != nil {
+		return err
+	}
+	if err := deleteStrains(ctx, exec, strains.deleted); err != nil {
+		return err
+	}
+	if err := deleteLines(ctx, exec, lines.deleted); err != nil {
+		return err
+	}
+	if err := deleteGenotypeMarkers(ctx, exec, markers.deleted); err != nil {
+		return err
+	}
+	if err := deleteFacilities(ctx, exec, facilities.deleted); err != nil {
+		return err
+	}
+
+	// Upserts from root to leaf to satisfy FK constraints.
+	if err := insertFacilities(ctx, exec, mergeMaps(facilities.created, facilities.updated)); err != nil {
+		return err
+	}
+	if err := insertGenotypeMarkers(ctx, exec, mergeMaps(markers.created, markers.updated)); err != nil {
+		return err
+	}
+	if err := insertLines(ctx, exec, mergeMaps(lines.created, lines.updated)); err != nil {
+		return err
+	}
+	if err := insertStrains(ctx, exec, mergeMaps(strains.created, strains.updated)); err != nil {
+		return err
+	}
+	if err := insertHousingUnits(ctx, exec, mergeMaps(housing.created, housing.updated)); err != nil {
+		return err
+	}
+	if err := insertProtocols(ctx, exec, mergeMaps(protocols.created, protocols.updated)); err != nil {
+		return err
+	}
+	if err := insertProjects(ctx, exec, mergeMaps(projects.created, projects.updated)); err != nil {
+		return err
+	}
+	if err := insertPermits(ctx, exec, mergeMaps(permits.created, permits.updated)); err != nil {
+		return err
+	}
+	if err := insertCohorts(ctx, exec, mergeMaps(cohorts.created, cohorts.updated)); err != nil {
+		return err
+	}
+	if err := insertBreedingUnits(ctx, exec, mergeMaps(breeding.created, breeding.updated)); err != nil {
+		return err
+	}
+	if err := insertOrganisms(ctx, exec, mergeMaps(organisms.created, organisms.updated)); err != nil {
+		return err
+	}
+	if err := insertProcedures(ctx, exec, mergeMaps(procedures.created, procedures.updated)); err != nil {
+		return err
+	}
+	if err := insertObservations(ctx, exec, mergeMaps(observations.created, observations.updated)); err != nil {
+		return err
+	}
+	if err := insertSamples(ctx, exec, mergeMaps(samples.created, samples.updated)); err != nil {
+		return err
+	}
+	if err := insertSupplyItems(ctx, exec, mergeMaps(supplies.created, supplies.updated)); err != nil {
+		return err
+	}
+	if err := insertTreatments(ctx, exec, mergeMaps(treatments.created, treatments.updated)); err != nil {
+		return err
+	}
+	return nil
 }
 
 // OverrideSQLOpen swaps the sqlOpen function for tests and returns a restore function.
@@ -173,6 +608,200 @@ func persistNormalized(ctx context.Context, db *sql.DB, snapshot memory.Snapshot
 		return fmt.Errorf("commit: %w", err)
 	}
 	committed = true
+	return nil
+}
+
+// --- delete helpers ---
+
+func deleteFacilities(ctx context.Context, exec execQuerier, ids []string) error {
+	for _, id := range ids {
+		if _, err := exec.ExecContext(ctx, deleteFacilitiesProjectsSQL, id); err != nil {
+			return fmt.Errorf("delete facility %s project links: %w", id, err)
+		}
+		if _, err := exec.ExecContext(ctx, deleteFacilitySQL, id); err != nil {
+			return fmt.Errorf("delete facility %s: %w", id, err)
+		}
+	}
+	return nil
+}
+
+func deleteGenotypeMarkers(ctx context.Context, exec execQuerier, ids []string) error {
+	for _, id := range ids {
+		if _, err := exec.ExecContext(ctx, deleteGenotypeMarkerSQL, id); err != nil {
+			return fmt.Errorf("delete genotype marker %s: %w", id, err)
+		}
+	}
+	return nil
+}
+
+func deleteLines(ctx context.Context, exec execQuerier, ids []string) error {
+	for _, id := range ids {
+		if _, err := exec.ExecContext(ctx, deleteLineMarkersSQL, id); err != nil {
+			return fmt.Errorf("delete line %s markers: %w", id, err)
+		}
+		if _, err := exec.ExecContext(ctx, deleteLineSQL, id); err != nil {
+			return fmt.Errorf("delete line %s: %w", id, err)
+		}
+	}
+	return nil
+}
+
+func deleteStrains(ctx context.Context, exec execQuerier, ids []string) error {
+	for _, id := range ids {
+		if _, err := exec.ExecContext(ctx, deleteStrainMarkersSQL, id); err != nil {
+			return fmt.Errorf("delete strain %s markers: %w", id, err)
+		}
+		if _, err := exec.ExecContext(ctx, deleteStrainSQL, id); err != nil {
+			return fmt.Errorf("delete strain %s: %w", id, err)
+		}
+	}
+	return nil
+}
+
+func deleteHousingUnits(ctx context.Context, exec execQuerier, ids []string) error {
+	for _, id := range ids {
+		if _, err := exec.ExecContext(ctx, deleteHousingSQL, id); err != nil {
+			return fmt.Errorf("delete housing %s: %w", id, err)
+		}
+	}
+	return nil
+}
+
+func deleteProtocols(ctx context.Context, exec execQuerier, ids []string) error {
+	for _, id := range ids {
+		if _, err := exec.ExecContext(ctx, deleteProtocolSQL, id); err != nil {
+			return fmt.Errorf("delete protocol %s: %w", id, err)
+		}
+	}
+	return nil
+}
+
+func deleteProjects(ctx context.Context, exec execQuerier, ids []string) error {
+	for _, id := range ids {
+		if _, err := exec.ExecContext(ctx, deleteProjectFacilitiesSQL, id); err != nil {
+			return fmt.Errorf("delete project %s facilities: %w", id, err)
+		}
+		if _, err := exec.ExecContext(ctx, deleteProjectProtocolsSQL, id); err != nil {
+			return fmt.Errorf("delete project %s protocols: %w", id, err)
+		}
+		if _, err := exec.ExecContext(ctx, deleteProjectSuppliesSQL, id); err != nil {
+			return fmt.Errorf("delete project %s supplies: %w", id, err)
+		}
+		if _, err := exec.ExecContext(ctx, deleteProjectSQL, id); err != nil {
+			return fmt.Errorf("delete project %s: %w", id, err)
+		}
+	}
+	return nil
+}
+
+func deletePermits(ctx context.Context, exec execQuerier, ids []string) error {
+	for _, id := range ids {
+		if _, err := exec.ExecContext(ctx, deletePermitFacilitiesSQL, id); err != nil {
+			return fmt.Errorf("delete permit %s facilities: %w", id, err)
+		}
+		if _, err := exec.ExecContext(ctx, deletePermitProtocolsSQL, id); err != nil {
+			return fmt.Errorf("delete permit %s protocols: %w", id, err)
+		}
+		if _, err := exec.ExecContext(ctx, deletePermitSQL, id); err != nil {
+			return fmt.Errorf("delete permit %s: %w", id, err)
+		}
+	}
+	return nil
+}
+
+func deleteCohorts(ctx context.Context, exec execQuerier, ids []string) error {
+	for _, id := range ids {
+		if _, err := exec.ExecContext(ctx, deleteCohortSQL, id); err != nil {
+			return fmt.Errorf("delete cohort %s: %w", id, err)
+		}
+	}
+	return nil
+}
+
+func deleteBreedingUnits(ctx context.Context, exec execQuerier, ids []string) error {
+	for _, id := range ids {
+		if _, err := exec.ExecContext(ctx, deleteBreedingFemalesSQL, id); err != nil {
+			return fmt.Errorf("delete breeding unit %s females: %w", id, err)
+		}
+		if _, err := exec.ExecContext(ctx, deleteBreedingMalesSQL, id); err != nil {
+			return fmt.Errorf("delete breeding unit %s males: %w", id, err)
+		}
+		if _, err := exec.ExecContext(ctx, deleteBreedingSQL, id); err != nil {
+			return fmt.Errorf("delete breeding unit %s: %w", id, err)
+		}
+	}
+	return nil
+}
+
+func deleteOrganisms(ctx context.Context, exec execQuerier, ids []string) error {
+	for _, id := range ids {
+		if _, err := exec.ExecContext(ctx, deleteOrganismParentsSQL, id); err != nil {
+			return fmt.Errorf("delete organism %s parents: %w", id, err)
+		}
+		if _, err := exec.ExecContext(ctx, deleteOrganismSQL, id); err != nil {
+			return fmt.Errorf("delete organism %s: %w", id, err)
+		}
+	}
+	return nil
+}
+
+func deleteProcedures(ctx context.Context, exec execQuerier, ids []string) error {
+	for _, id := range ids {
+		if _, err := exec.ExecContext(ctx, deleteProcedureOrganismsSQL, id); err != nil {
+			return fmt.Errorf("delete procedure %s organisms: %w", id, err)
+		}
+		if _, err := exec.ExecContext(ctx, deleteProcedureSQL, id); err != nil {
+			return fmt.Errorf("delete procedure %s: %w", id, err)
+		}
+	}
+	return nil
+}
+
+func deleteObservations(ctx context.Context, exec execQuerier, ids []string) error {
+	for _, id := range ids {
+		if _, err := exec.ExecContext(ctx, deleteObservationSQL, id); err != nil {
+			return fmt.Errorf("delete observation %s: %w", id, err)
+		}
+	}
+	return nil
+}
+
+func deleteSamples(ctx context.Context, exec execQuerier, ids []string) error {
+	for _, id := range ids {
+		if _, err := exec.ExecContext(ctx, deleteSampleSQL, id); err != nil {
+			return fmt.Errorf("delete sample %s: %w", id, err)
+		}
+	}
+	return nil
+}
+
+func deleteSupplyItems(ctx context.Context, exec execQuerier, ids []string) error {
+	for _, id := range ids {
+		if _, err := exec.ExecContext(ctx, deleteSupplyFacilitiesSQL, id); err != nil {
+			return fmt.Errorf("delete supply item %s facilities: %w", id, err)
+		}
+		if _, err := exec.ExecContext(ctx, deleteProjectSuppliesBySupplySQL, id); err != nil {
+			return fmt.Errorf("delete supply item %s projects: %w", id, err)
+		}
+		if _, err := exec.ExecContext(ctx, deleteSupplySQL, id); err != nil {
+			return fmt.Errorf("delete supply item %s: %w", id, err)
+		}
+	}
+	return nil
+}
+
+func deleteTreatments(ctx context.Context, exec execQuerier, ids []string) error {
+	for _, id := range ids {
+		if _, err := exec.ExecContext(ctx, deleteTreatmentCohortsSQL, id); err != nil {
+			return fmt.Errorf("delete treatment %s cohorts: %w", id, err)
+		}
+		if _, err := exec.ExecContext(ctx, deleteTreatmentOrganismsSQL, id); err != nil {
+			return fmt.Errorf("delete treatment %s organisms: %w", id, err)
+		}
+		if _, err := exec.ExecContext(ctx, deleteTreatmentSQL, id); err != nil {
+			return fmt.Errorf("delete treatment %s: %w", id, err)
+		}
+	}
 	return nil
 }
 
@@ -378,6 +1007,9 @@ func insertLines(ctx context.Context, exec execQuerier, lines map[string]domain.
 		if len(line.GenotypeMarkerIDs) == 0 {
 			return fmt.Errorf("line %s missing required genotype_marker_ids", line.ID)
 		}
+		if _, err := exec.ExecContext(ctx, deleteLineMarkersSQL, line.ID); err != nil {
+			return fmt.Errorf("clear line %s markers: %w", line.ID, err)
+		}
 		defaultAttrs, err := marshalJSONNullable((&line).DefaultAttributes())
 		if err != nil {
 			return fmt.Errorf("marshal line default_attributes: %w", err)
@@ -410,6 +1042,9 @@ func insertStrains(ctx context.Context, exec execQuerier, strains map[string]dom
 		strain := strains[id]
 		if strain.LineID == "" {
 			return fmt.Errorf("strain %s missing required line_id", strain.ID)
+		}
+		if _, err := exec.ExecContext(ctx, deleteStrainMarkersSQL, strain.ID); err != nil {
+			return fmt.Errorf("clear strain %s markers: %w", strain.ID, err)
 		}
 		var description any
 		if strain.Description != nil {
@@ -473,6 +1108,15 @@ func insertProjects(ctx context.Context, exec execQuerier, projects map[string]d
 		if len(p.FacilityIDs) == 0 {
 			return fmt.Errorf("project %s missing required facility_ids", p.ID)
 		}
+		if _, err := exec.ExecContext(ctx, deleteProjectFacilitiesSQL, p.ID); err != nil {
+			return fmt.Errorf("clear project %s facilities: %w", p.ID, err)
+		}
+		if _, err := exec.ExecContext(ctx, deleteProjectProtocolsSQL, p.ID); err != nil {
+			return fmt.Errorf("clear project %s protocols: %w", p.ID, err)
+		}
+		if _, err := exec.ExecContext(ctx, deleteProjectSuppliesSQL, p.ID); err != nil {
+			return fmt.Errorf("clear project %s supplies: %w", p.ID, err)
+		}
 		if _, err := exec.ExecContext(ctx, insertProjectSQL,
 			p.ID, p.Code, p.Title, p.Description, p.CreatedAt, p.UpdatedAt,
 		); err != nil {
@@ -506,6 +1150,12 @@ func insertPermits(ctx context.Context, exec execQuerier, permits map[string]dom
 		}
 		if len(p.ProtocolIDs) == 0 {
 			return fmt.Errorf("permit %s missing required protocol_ids", p.ID)
+		}
+		if _, err := exec.ExecContext(ctx, deletePermitFacilitiesSQL, p.ID); err != nil {
+			return fmt.Errorf("clear permit %s facilities: %w", p.ID, err)
+		}
+		if _, err := exec.ExecContext(ctx, deletePermitProtocolsSQL, p.ID); err != nil {
+			return fmt.Errorf("clear permit %s protocols: %w", p.ID, err)
 		}
 		activities, err := marshalJSONRequired("permit.allowed_activities", p.AllowedActivities)
 		if err != nil {
@@ -547,6 +1197,12 @@ func insertBreedingUnits(ctx context.Context, exec execQuerier, breeding map[str
 	keys := sortedKeys(breeding)
 	for _, id := range keys {
 		b := breeding[id]
+		if _, err := exec.ExecContext(ctx, deleteBreedingFemalesSQL, b.ID); err != nil {
+			return fmt.Errorf("clear breeding %s females: %w", b.ID, err)
+		}
+		if _, err := exec.ExecContext(ctx, deleteBreedingMalesSQL, b.ID); err != nil {
+			return fmt.Errorf("clear breeding %s males: %w", b.ID, err)
+		}
 		pairingAttrs, err := marshalJSONNullable((&b).PairingAttributes())
 		if err != nil {
 			return fmt.Errorf("marshal breeding pairing_attributes: %w", err)
@@ -574,6 +1230,9 @@ func insertOrganisms(ctx context.Context, exec execQuerier, organisms map[string
 	keys := sortedKeys(organisms)
 	for _, id := range keys {
 		o := organisms[id]
+		if _, err := exec.ExecContext(ctx, deleteOrganismParentsSQL, o.ID); err != nil {
+			return fmt.Errorf("clear organism %s parents: %w", o.ID, err)
+		}
 		attrs, err := marshalJSONNullable((&o).CoreAttributes())
 		if err != nil {
 			return fmt.Errorf("marshal organism attributes: %w", err)
@@ -596,6 +1255,9 @@ func insertProcedures(ctx context.Context, exec execQuerier, procedures map[stri
 	keys := sortedKeys(procedures)
 	for _, id := range keys {
 		p := procedures[id]
+		if _, err := exec.ExecContext(ctx, deleteProcedureOrganismsSQL, p.ID); err != nil {
+			return fmt.Errorf("clear procedure %s organisms: %w", p.ID, err)
+		}
 		if p.ProtocolID == "" {
 			return fmt.Errorf("procedure %s missing required protocol_id", p.ID)
 		}
@@ -667,6 +1329,12 @@ func insertSupplyItems(ctx context.Context, exec execQuerier, supplies map[strin
 		if len(s.ProjectIDs) == 0 {
 			return fmt.Errorf("supply_item %s missing required project_ids", s.ID)
 		}
+		if _, err := exec.ExecContext(ctx, deleteSupplyFacilitiesSQL, s.ID); err != nil {
+			return fmt.Errorf("clear supply_item %s facilities: %w", s.ID, err)
+		}
+		if _, err := exec.ExecContext(ctx, deleteProjectSuppliesBySupplySQL, s.ID); err != nil {
+			return fmt.Errorf("clear supply_item %s projects: %w", s.ID, err)
+		}
 		attrs, err := marshalJSONNullable((&s).SupplyAttributes())
 		if err != nil {
 			return fmt.Errorf("marshal supply_item attributes: %w", err)
@@ -700,6 +1368,12 @@ func insertTreatments(ctx context.Context, exec execQuerier, treatments map[stri
 		treatment := treatments[id]
 		if treatment.ProcedureID == "" {
 			return fmt.Errorf("treatment %s missing required procedure_id", treatment.ID)
+		}
+		if _, err := exec.ExecContext(ctx, deleteTreatmentCohortsSQL, treatment.ID); err != nil {
+			return fmt.Errorf("clear treatment %s cohorts: %w", treatment.ID, err)
+		}
+		if _, err := exec.ExecContext(ctx, deleteTreatmentOrganismsSQL, treatment.ID); err != nil {
+			return fmt.Errorf("clear treatment %s organisms: %w", treatment.ID, err)
 		}
 		adminLog, err := marshalJSONNullable(treatment.AdministrationLog)
 		if err != nil {
@@ -1850,65 +2524,112 @@ func loadTreatmentOrganisms(ctx context.Context, db execQuerier, treatments map[
 // --- SQL constants ---
 
 const (
-	insertFacilitySQL           = `INSERT INTO facilities (id, code, name, zone, access_policy, created_at, updated_at, environment_baselines) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`
+	insertFacilitySQL           = `INSERT INTO facilities (id, code, name, zone, access_policy, created_at, updated_at, environment_baselines) VALUES ($1,$2,$3,$4,$5,$6,$7,$8) ON CONFLICT (id) DO UPDATE SET code=EXCLUDED.code, name=EXCLUDED.name, zone=EXCLUDED.zone, access_policy=EXCLUDED.access_policy, created_at=EXCLUDED.created_at, updated_at=EXCLUDED.updated_at, environment_baselines=EXCLUDED.environment_baselines`
+	deleteFacilitySQL           = `DELETE FROM facilities WHERE id=$1`
+	deleteFacilitiesProjectsSQL = `DELETE FROM facilities__project_ids WHERE facility_id=$1`
 	selectFacilitiesSQL         = `SELECT id, code, name, zone, access_policy, created_at, updated_at, environment_baselines FROM facilities`
-	insertGenotypeMarkerSQL     = `INSERT INTO genotype_markers (id, name, locus, alleles, assay_method, interpretation, version, created_at, updated_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`
-	selectGenotypeMarkersSQL    = `SELECT id, name, locus, alleles, assay_method, interpretation, version, created_at, updated_at FROM genotype_markers`
-	insertLineSQL               = `INSERT INTO lines (id, code, name, origin, description, default_attributes, extension_overrides, deprecated_at, deprecation_reason, created_at, updated_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)`
-	selectLinesSQL              = `SELECT id, code, name, origin, description, default_attributes, extension_overrides, deprecated_at, deprecation_reason, created_at, updated_at FROM lines`
-	insertLineMarkerSQL         = `INSERT INTO lines__genotype_marker_ids (line_id, genotype_marker_id) VALUES ($1,$2)`
-	selectLineMarkersSQL        = `SELECT line_id, genotype_marker_id FROM lines__genotype_marker_ids`
-	insertStrainSQL             = `INSERT INTO strains (id, code, name, line_id, description, generation, retired_at, retirement_reason, created_at, updated_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`
-	selectStrainsSQL            = `SELECT id, code, name, line_id, description, generation, retired_at, retirement_reason, created_at, updated_at FROM strains`
-	insertStrainMarkerSQL       = `INSERT INTO strains__genotype_marker_ids (strain_id, genotype_marker_id) VALUES ($1,$2)`
-	selectStrainMarkersSQL      = `SELECT strain_id, genotype_marker_id FROM strains__genotype_marker_ids`
-	insertHousingSQL            = `INSERT INTO housing_units (id, facility_id, name, capacity, environment, state, created_at, updated_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`
-	selectHousingSQL            = `SELECT id, facility_id, name, capacity, environment, state, created_at, updated_at FROM housing_units`
-	insertProtocolSQL           = `INSERT INTO protocols (id, code, title, description, max_subjects, status, created_at, updated_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`
-	selectProtocolSQL           = `SELECT id, code, title, description, max_subjects, status, created_at, updated_at FROM protocols`
-	insertProjectSQL            = `INSERT INTO projects (id, code, title, description, created_at, updated_at) VALUES ($1,$2,$3,$4,$5,$6)`
-	selectProjectSQL            = `SELECT id, code, title, description, created_at, updated_at FROM projects`
-	insertProjectFacilitySQL    = `INSERT INTO facilities__project_ids (facility_id, project_id) VALUES ($1,$2)`
-	selectProjectFacilitiesSQL  = `SELECT facility_id, project_id FROM facilities__project_ids`
-	insertProjectProtocolSQL    = `INSERT INTO projects__protocol_ids (project_id, protocol_id) VALUES ($1,$2)`
-	selectProjectProtocolsSQL   = `SELECT project_id, protocol_id FROM projects__protocol_ids`
-	insertPermitSQL             = `INSERT INTO permits (id, permit_number, authority, status, valid_from, valid_until, allowed_activities, notes, created_at, updated_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`
-	selectPermitSQL             = `SELECT id, permit_number, authority, status, valid_from, valid_until, allowed_activities, notes, created_at, updated_at FROM permits`
-	insertPermitFacilitySQL     = `INSERT INTO permits__facility_ids (permit_id, facility_id) VALUES ($1,$2)`
-	selectPermitFacilitiesSQL   = `SELECT permit_id, facility_id FROM permits__facility_ids`
-	insertPermitProtocolSQL     = `INSERT INTO permits__protocol_ids (permit_id, protocol_id) VALUES ($1,$2)`
-	selectPermitProtocolsSQL    = `SELECT permit_id, protocol_id FROM permits__protocol_ids`
-	insertCohortSQL             = `INSERT INTO cohorts (id, name, purpose, project_id, housing_id, protocol_id, created_at, updated_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`
-	selectCohortSQL             = `SELECT id, name, purpose, project_id, housing_id, protocol_id, created_at, updated_at FROM cohorts`
-	insertBreedingSQL           = `INSERT INTO breeding_units (id, name, strategy, housing_id, line_id, strain_id, target_line_id, target_strain_id, protocol_id, pairing_attributes, pairing_intent, pairing_notes, created_at, updated_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)`
-	selectBreedingSQL           = `SELECT id, name, strategy, housing_id, line_id, strain_id, target_line_id, target_strain_id, protocol_id, pairing_attributes, pairing_intent, pairing_notes, created_at, updated_at FROM breeding_units`
-	insertBreedingFemaleSQL     = `INSERT INTO breeding_units__female_ids (breeding_unit_id, organism_id) VALUES ($1,$2)`
-	selectBreedingFemalesSQL    = `SELECT breeding_unit_id, organism_id FROM breeding_units__female_ids`
-	insertBreedingMaleSQL       = `INSERT INTO breeding_units__male_ids (breeding_unit_id, organism_id) VALUES ($1,$2)`
-	selectBreedingMalesSQL      = `SELECT breeding_unit_id, organism_id FROM breeding_units__male_ids`
-	insertOrganismSQL           = `INSERT INTO organisms (id, name, species, line, stage, line_id, strain_id, cohort_id, housing_id, protocol_id, project_id, attributes, created_at, updated_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)`
-	selectOrganismSQL           = `SELECT id, name, species, line, stage, line_id, strain_id, cohort_id, housing_id, protocol_id, project_id, attributes, created_at, updated_at FROM organisms`
-	insertOrganismParentSQL     = `INSERT INTO organisms__parent_ids (organism_id, parent_ids_id) VALUES ($1,$2)`
-	selectOrganismParentsSQL    = `SELECT organism_id, parent_ids_id FROM organisms__parent_ids`
-	insertProcedureSQL          = `INSERT INTO procedures (id, name, status, scheduled_at, protocol_id, project_id, cohort_id, created_at, updated_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`
-	selectProcedureSQL          = `SELECT id, name, status, scheduled_at, protocol_id, project_id, cohort_id, created_at, updated_at FROM procedures`
+
+	insertGenotypeMarkerSQL  = `INSERT INTO genotype_markers (id, name, locus, alleles, assay_method, interpretation, version, created_at, updated_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) ON CONFLICT (id) DO UPDATE SET name=EXCLUDED.name, locus=EXCLUDED.locus, alleles=EXCLUDED.alleles, assay_method=EXCLUDED.assay_method, interpretation=EXCLUDED.interpretation, version=EXCLUDED.version, created_at=EXCLUDED.created_at, updated_at=EXCLUDED.updated_at`
+	deleteGenotypeMarkerSQL  = `DELETE FROM genotype_markers WHERE id=$1`
+	selectGenotypeMarkersSQL = `SELECT id, name, locus, alleles, assay_method, interpretation, version, created_at, updated_at FROM genotype_markers`
+
+	insertLineSQL        = `INSERT INTO lines (id, code, name, origin, description, default_attributes, extension_overrides, deprecated_at, deprecation_reason, created_at, updated_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) ON CONFLICT (id) DO UPDATE SET code=EXCLUDED.code, name=EXCLUDED.name, origin=EXCLUDED.origin, description=EXCLUDED.description, default_attributes=EXCLUDED.default_attributes, extension_overrides=EXCLUDED.extension_overrides, deprecated_at=EXCLUDED.deprecated_at, deprecation_reason=EXCLUDED.deprecation_reason, created_at=EXCLUDED.created_at, updated_at=EXCLUDED.updated_at`
+	deleteLineSQL        = `DELETE FROM lines WHERE id=$1`
+	insertLineMarkerSQL  = `INSERT INTO lines__genotype_marker_ids (line_id, genotype_marker_id) VALUES ($1,$2)`
+	deleteLineMarkersSQL = `DELETE FROM lines__genotype_marker_ids WHERE line_id=$1`
+	selectLinesSQL       = `SELECT id, code, name, origin, description, default_attributes, extension_overrides, deprecated_at, deprecation_reason, created_at, updated_at FROM lines`
+	selectLineMarkersSQL = `SELECT line_id, genotype_marker_id FROM lines__genotype_marker_ids`
+
+	insertStrainSQL        = `INSERT INTO strains (id, code, name, line_id, description, generation, retired_at, retirement_reason, created_at, updated_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) ON CONFLICT (id) DO UPDATE SET code=EXCLUDED.code, name=EXCLUDED.name, line_id=EXCLUDED.line_id, description=EXCLUDED.description, generation=EXCLUDED.generation, retired_at=EXCLUDED.retired_at, retirement_reason=EXCLUDED.retirement_reason, created_at=EXCLUDED.created_at, updated_at=EXCLUDED.updated_at`
+	deleteStrainSQL        = `DELETE FROM strains WHERE id=$1`
+	insertStrainMarkerSQL  = `INSERT INTO strains__genotype_marker_ids (strain_id, genotype_marker_id) VALUES ($1,$2)`
+	deleteStrainMarkersSQL = `DELETE FROM strains__genotype_marker_ids WHERE strain_id=$1`
+	selectStrainsSQL       = `SELECT id, code, name, line_id, description, generation, retired_at, retirement_reason, created_at, updated_at FROM strains`
+	selectStrainMarkersSQL = `SELECT strain_id, genotype_marker_id FROM strains__genotype_marker_ids`
+
+	insertHousingSQL = `INSERT INTO housing_units (id, facility_id, name, capacity, environment, state, created_at, updated_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8) ON CONFLICT (id) DO UPDATE SET facility_id=EXCLUDED.facility_id, name=EXCLUDED.name, capacity=EXCLUDED.capacity, environment=EXCLUDED.environment, state=EXCLUDED.state, created_at=EXCLUDED.created_at, updated_at=EXCLUDED.updated_at`
+	deleteHousingSQL = `DELETE FROM housing_units WHERE id=$1`
+	selectHousingSQL = `SELECT id, facility_id, name, capacity, environment, state, created_at, updated_at FROM housing_units`
+
+	insertProtocolSQL = `INSERT INTO protocols (id, code, title, description, max_subjects, status, created_at, updated_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8) ON CONFLICT (id) DO UPDATE SET code=EXCLUDED.code, title=EXCLUDED.title, description=EXCLUDED.description, max_subjects=EXCLUDED.max_subjects, status=EXCLUDED.status, created_at=EXCLUDED.created_at, updated_at=EXCLUDED.updated_at`
+	deleteProtocolSQL = `DELETE FROM protocols WHERE id=$1`
+	selectProtocolSQL = `SELECT id, code, title, description, max_subjects, status, created_at, updated_at FROM protocols`
+
+	insertProjectSQL           = `INSERT INTO projects (id, code, title, description, created_at, updated_at) VALUES ($1,$2,$3,$4,$5,$6) ON CONFLICT (id) DO UPDATE SET code=EXCLUDED.code, title=EXCLUDED.title, description=EXCLUDED.description, created_at=EXCLUDED.created_at, updated_at=EXCLUDED.updated_at`
+	deleteProjectSQL           = `DELETE FROM projects WHERE id=$1`
+	insertProjectFacilitySQL   = `INSERT INTO facilities__project_ids (facility_id, project_id) VALUES ($1,$2)`
+	deleteProjectFacilitiesSQL = `DELETE FROM facilities__project_ids WHERE project_id=$1`
+	insertProjectProtocolSQL   = `INSERT INTO projects__protocol_ids (project_id, protocol_id) VALUES ($1,$2)`
+	deleteProjectProtocolsSQL  = `DELETE FROM projects__protocol_ids WHERE project_id=$1`
+	insertProjectSupplySQL     = `INSERT INTO projects__supply_item_ids (project_id, supply_item_id) VALUES ($1,$2)`
+	deleteProjectSuppliesSQL   = `DELETE FROM projects__supply_item_ids WHERE project_id=$1`
+	selectProjectSQL           = `SELECT id, code, title, description, created_at, updated_at FROM projects`
+	selectProjectFacilitiesSQL = `SELECT facility_id, project_id FROM facilities__project_ids`
+	selectProjectProtocolsSQL  = `SELECT project_id, protocol_id FROM projects__protocol_ids`
+	selectProjectSupplySQL     = `SELECT project_id, supply_item_id FROM projects__supply_item_ids`
+
+	insertPermitSQL           = `INSERT INTO permits (id, permit_number, authority, status, valid_from, valid_until, allowed_activities, notes, created_at, updated_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) ON CONFLICT (id) DO UPDATE SET permit_number=EXCLUDED.permit_number, authority=EXCLUDED.authority, status=EXCLUDED.status, valid_from=EXCLUDED.valid_from, valid_until=EXCLUDED.valid_until, allowed_activities=EXCLUDED.allowed_activities, notes=EXCLUDED.notes, created_at=EXCLUDED.created_at, updated_at=EXCLUDED.updated_at`
+	deletePermitSQL           = `DELETE FROM permits WHERE id=$1`
+	insertPermitFacilitySQL   = `INSERT INTO permits__facility_ids (permit_id, facility_id) VALUES ($1,$2)`
+	deletePermitFacilitiesSQL = `DELETE FROM permits__facility_ids WHERE permit_id=$1`
+	insertPermitProtocolSQL   = `INSERT INTO permits__protocol_ids (permit_id, protocol_id) VALUES ($1,$2)`
+	deletePermitProtocolsSQL  = `DELETE FROM permits__protocol_ids WHERE permit_id=$1`
+	selectPermitSQL           = `SELECT id, permit_number, authority, status, valid_from, valid_until, allowed_activities, notes, created_at, updated_at FROM permits`
+	selectPermitFacilitiesSQL = `SELECT permit_id, facility_id FROM permits__facility_ids`
+	selectPermitProtocolsSQL  = `SELECT permit_id, protocol_id FROM permits__protocol_ids`
+
+	insertCohortSQL   = `INSERT INTO cohorts (id, name, purpose, project_id, housing_id, protocol_id, created_at, updated_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8) ON CONFLICT (id) DO UPDATE SET name=EXCLUDED.name, purpose=EXCLUDED.purpose, project_id=EXCLUDED.project_id, housing_id=EXCLUDED.housing_id, protocol_id=EXCLUDED.protocol_id, created_at=EXCLUDED.created_at, updated_at=EXCLUDED.updated_at`
+	deleteCohortSQL   = `DELETE FROM cohorts WHERE id=$1`
+	selectCohortSQL   = `SELECT id, name, purpose, project_id, housing_id, protocol_id, created_at, updated_at FROM cohorts`
+	selectBreedingSQL = `SELECT id, name, strategy, housing_id, line_id, strain_id, target_line_id, target_strain_id, protocol_id, pairing_attributes, pairing_intent, pairing_notes, created_at, updated_at FROM breeding_units`
+
+	insertBreedingSQL        = `INSERT INTO breeding_units (id, name, strategy, housing_id, line_id, strain_id, target_line_id, target_strain_id, protocol_id, pairing_attributes, pairing_intent, pairing_notes, created_at, updated_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14) ON CONFLICT (id) DO UPDATE SET name=EXCLUDED.name, strategy=EXCLUDED.strategy, housing_id=EXCLUDED.housing_id, line_id=EXCLUDED.line_id, strain_id=EXCLUDED.strain_id, target_line_id=EXCLUDED.target_line_id, target_strain_id=EXCLUDED.target_strain_id, protocol_id=EXCLUDED.protocol_id, pairing_attributes=EXCLUDED.pairing_attributes, pairing_intent=EXCLUDED.pairing_intent, pairing_notes=EXCLUDED.pairing_notes, created_at=EXCLUDED.created_at, updated_at=EXCLUDED.updated_at`
+	deleteBreedingSQL        = `DELETE FROM breeding_units WHERE id=$1`
+	insertBreedingFemaleSQL  = `INSERT INTO breeding_units__female_ids (breeding_unit_id, organism_id) VALUES ($1,$2)`
+	deleteBreedingFemalesSQL = `DELETE FROM breeding_units__female_ids WHERE breeding_unit_id=$1`
+	insertBreedingMaleSQL    = `INSERT INTO breeding_units__male_ids (breeding_unit_id, organism_id) VALUES ($1,$2)`
+	deleteBreedingMalesSQL   = `DELETE FROM breeding_units__male_ids WHERE breeding_unit_id=$1`
+	selectBreedingFemalesSQL = `SELECT breeding_unit_id, organism_id FROM breeding_units__female_ids`
+	selectBreedingMalesSQL   = `SELECT breeding_unit_id, organism_id FROM breeding_units__male_ids`
+
+	insertOrganismSQL        = `INSERT INTO organisms (id, name, species, line, stage, line_id, strain_id, cohort_id, housing_id, protocol_id, project_id, attributes, created_at, updated_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14) ON CONFLICT (id) DO UPDATE SET name=EXCLUDED.name, species=EXCLUDED.species, line=EXCLUDED.line, stage=EXCLUDED.stage, line_id=EXCLUDED.line_id, strain_id=EXCLUDED.strain_id, cohort_id=EXCLUDED.cohort_id, housing_id=EXCLUDED.housing_id, protocol_id=EXCLUDED.protocol_id, project_id=EXCLUDED.project_id, attributes=EXCLUDED.attributes, created_at=EXCLUDED.created_at, updated_at=EXCLUDED.updated_at`
+	deleteOrganismSQL        = `DELETE FROM organisms WHERE id=$1`
+	insertOrganismParentSQL  = `INSERT INTO organisms__parent_ids (organism_id, parent_ids_id) VALUES ($1,$2)`
+	deleteOrganismParentsSQL = `DELETE FROM organisms__parent_ids WHERE organism_id=$1`
+	selectOrganismSQL        = `SELECT id, name, species, line, stage, line_id, strain_id, cohort_id, housing_id, protocol_id, project_id, attributes, created_at, updated_at FROM organisms`
+	selectOrganismParentsSQL = `SELECT organism_id, parent_ids_id FROM organisms__parent_ids`
+
+	insertProcedureSQL          = `INSERT INTO procedures (id, name, status, scheduled_at, protocol_id, project_id, cohort_id, created_at, updated_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) ON CONFLICT (id) DO UPDATE SET name=EXCLUDED.name, status=EXCLUDED.status, scheduled_at=EXCLUDED.scheduled_at, protocol_id=EXCLUDED.protocol_id, project_id=EXCLUDED.project_id, cohort_id=EXCLUDED.cohort_id, created_at=EXCLUDED.created_at, updated_at=EXCLUDED.updated_at`
+	deleteProcedureSQL          = `DELETE FROM procedures WHERE id=$1`
 	insertProcedureOrganismSQL  = `INSERT INTO procedures__organism_ids (procedure_id, organism_id) VALUES ($1,$2)`
+	deleteProcedureOrganismsSQL = `DELETE FROM procedures__organism_ids WHERE procedure_id=$1`
+	selectProcedureSQL          = `SELECT id, name, status, scheduled_at, protocol_id, project_id, cohort_id, created_at, updated_at FROM procedures`
 	selectProcedureOrganismsSQL = `SELECT procedure_id, organism_id FROM procedures__organism_ids`
-	insertObservationSQL        = `INSERT INTO observations (id, observer, recorded_at, procedure_id, organism_id, cohort_id, data, notes, created_at, updated_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`
-	selectObservationSQL        = `SELECT id, observer, recorded_at, procedure_id, organism_id, cohort_id, data, notes, created_at, updated_at FROM observations`
-	insertSampleSQL             = `INSERT INTO samples (id, identifier, source_type, status, storage_location, assay_type, facility_id, organism_id, cohort_id, chain_of_custody, attributes, collected_at, created_at, updated_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)`
-	selectSampleSQL             = `SELECT id, identifier, source_type, status, storage_location, assay_type, facility_id, organism_id, cohort_id, chain_of_custody, attributes, collected_at, created_at, updated_at FROM samples`
-	insertSupplySQL             = `INSERT INTO supply_items (id, sku, name, quantity_on_hand, unit, reorder_level, description, lot_number, expires_at, attributes, created_at, updated_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)`
-	selectSupplySQL             = `SELECT id, sku, name, quantity_on_hand, unit, reorder_level, description, lot_number, expires_at, attributes, created_at, updated_at FROM supply_items`
-	insertSupplyFacilitySQL     = `INSERT INTO supply_items__facility_ids (supply_item_id, facility_id) VALUES ($1,$2)`
-	selectSupplyFacilitiesSQL   = `SELECT supply_item_id, facility_id FROM supply_items__facility_ids`
-	insertProjectSupplySQL      = `INSERT INTO projects__supply_item_ids (project_id, supply_item_id) VALUES ($1,$2)`
-	selectProjectSupplySQL      = `SELECT project_id, supply_item_id FROM projects__supply_item_ids`
-	insertTreatmentSQL          = `INSERT INTO treatments (id, name, status, procedure_id, dosage_plan, administration_log, adverse_events, created_at, updated_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`
-	selectTreatmentSQL          = `SELECT id, name, status, procedure_id, dosage_plan, administration_log, adverse_events, created_at, updated_at FROM treatments`
+
+	insertObservationSQL = `INSERT INTO observations (id, observer, recorded_at, procedure_id, organism_id, cohort_id, data, notes, created_at, updated_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) ON CONFLICT (id) DO UPDATE SET observer=EXCLUDED.observer, recorded_at=EXCLUDED.recorded_at, procedure_id=EXCLUDED.procedure_id, organism_id=EXCLUDED.organism_id, cohort_id=EXCLUDED.cohort_id, data=EXCLUDED.data, notes=EXCLUDED.notes, created_at=EXCLUDED.created_at, updated_at=EXCLUDED.updated_at`
+	deleteObservationSQL = `DELETE FROM observations WHERE id=$1`
+	selectObservationSQL = `SELECT id, observer, recorded_at, procedure_id, organism_id, cohort_id, data, notes, created_at, updated_at FROM observations`
+
+	insertSampleSQL = `INSERT INTO samples (id, identifier, source_type, status, storage_location, assay_type, facility_id, organism_id, cohort_id, chain_of_custody, attributes, collected_at, created_at, updated_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14) ON CONFLICT (id) DO UPDATE SET identifier=EXCLUDED.identifier, source_type=EXCLUDED.source_type, status=EXCLUDED.status, storage_location=EXCLUDED.storage_location, assay_type=EXCLUDED.assay_type, facility_id=EXCLUDED.facility_id, organism_id=EXCLUDED.organism_id, cohort_id=EXCLUDED.cohort_id, chain_of_custody=EXCLUDED.chain_of_custody, attributes=EXCLUDED.attributes, collected_at=EXCLUDED.collected_at, created_at=EXCLUDED.created_at, updated_at=EXCLUDED.updated_at`
+	deleteSampleSQL = `DELETE FROM samples WHERE id=$1`
+	selectSampleSQL = `SELECT id, identifier, source_type, status, storage_location, assay_type, facility_id, organism_id, cohort_id, chain_of_custody, attributes, collected_at, created_at, updated_at FROM samples`
+
+	insertSupplySQL                  = `INSERT INTO supply_items (id, sku, name, quantity_on_hand, unit, reorder_level, description, lot_number, expires_at, attributes, created_at, updated_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) ON CONFLICT (id) DO UPDATE SET sku=EXCLUDED.sku, name=EXCLUDED.name, quantity_on_hand=EXCLUDED.quantity_on_hand, unit=EXCLUDED.unit, reorder_level=EXCLUDED.reorder_level, description=EXCLUDED.description, lot_number=EXCLUDED.lot_number, expires_at=EXCLUDED.expires_at, attributes=EXCLUDED.attributes, created_at=EXCLUDED.created_at, updated_at=EXCLUDED.updated_at`
+	deleteSupplySQL                  = `DELETE FROM supply_items WHERE id=$1`
+	insertSupplyFacilitySQL          = `INSERT INTO supply_items__facility_ids (supply_item_id, facility_id) VALUES ($1,$2)`
+	deleteSupplyFacilitiesSQL        = `DELETE FROM supply_items__facility_ids WHERE supply_item_id=$1`
+	selectSupplyFacilitiesSQL        = `SELECT supply_item_id, facility_id FROM supply_items__facility_ids`
+	deleteProjectSuppliesBySupplySQL = `DELETE FROM projects__supply_item_ids WHERE supply_item_id=$1`
+	selectSupplySQL                  = `SELECT id, sku, name, quantity_on_hand, unit, reorder_level, description, lot_number, expires_at, attributes, created_at, updated_at FROM supply_items`
+
+	insertTreatmentSQL          = `INSERT INTO treatments (id, name, status, procedure_id, dosage_plan, administration_log, adverse_events, created_at, updated_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) ON CONFLICT (id) DO UPDATE SET name=EXCLUDED.name, status=EXCLUDED.status, procedure_id=EXCLUDED.procedure_id, dosage_plan=EXCLUDED.dosage_plan, administration_log=EXCLUDED.administration_log, adverse_events=EXCLUDED.adverse_events, created_at=EXCLUDED.created_at, updated_at=EXCLUDED.updated_at`
+	deleteTreatmentSQL          = `DELETE FROM treatments WHERE id=$1`
 	insertTreatmentCohortSQL    = `INSERT INTO treatments__cohort_ids (treatment_id, cohort_id) VALUES ($1,$2)`
-	selectTreatmentCohortsSQL   = `SELECT treatment_id, cohort_id FROM treatments__cohort_ids`
+	deleteTreatmentCohortsSQL   = `DELETE FROM treatments__cohort_ids WHERE treatment_id=$1`
 	insertTreatmentOrganismSQL  = `INSERT INTO treatments__organism_ids (treatment_id, organism_id) VALUES ($1,$2)`
+	deleteTreatmentOrganismsSQL = `DELETE FROM treatments__organism_ids WHERE treatment_id=$1`
+	selectTreatmentSQL          = `SELECT id, name, status, procedure_id, dosage_plan, administration_log, adverse_events, created_at, updated_at FROM treatments`
+	selectTreatmentCohortsSQL   = `SELECT treatment_id, cohort_id FROM treatments__cohort_ids`
 	selectTreatmentOrganismsSQL = `SELECT treatment_id, organism_id FROM treatments__organism_ids`
 )
 

@@ -62,3 +62,7 @@
   - [x] Gate plugin/dataset registration paths on schema major-version mismatches using `internal/entitymodel` helpers to avoid coupling domain types back to adapters while respecting the hex-layer boundaries from `ARCHITECTURE.md`.
     - Implemented optional compatibility handshake: plugins can implement `pluginapi.EntityModelCompatibilityProvider`, dataset templates may set `metadata.entity_model_major`; `internal/core.Service.InstallPlugin` rejects mismatched majors and conflicting declarations.
   - [x] Add an integration smoke test that hits the new metadata surface plus `/admin/entity-model/openapi` to ensure headers and bodies are sourced from the generated artifacts (no hand-written strings).
+- [x] Move the Postgres store beyond snapshot mirroring by issuing normalized CRUD against the generated DDL directly (instead of rehydrating the in-memory store), and add integration/perf coverage to prove FK/index and invariant enforcement while keeping the domain<->infra boundary intact (`domain.PersistentStore` interface only).
+  - Postgres `RunInTransaction` now diff-applies per-entity upserts/deletes within a single DB transaction (no whole-state truncation), keeping rule evaluation on the in-memory engine only.
+  - Added tests for upsert/update, deletions with join-table cleanup, and snapshot cache fallback; stub driver now simulates upsert + delete semantics to hit >90% coverage.
+  - Extended applySnapshotDelta, insert, and delete helper coverage for validation and late-failure branches so the Postgres adapter stays above the 90% bar.

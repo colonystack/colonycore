@@ -2,6 +2,7 @@ package core
 
 import (
 	"colonycore/internal/infra/persistence/postgres"
+	pgtu "colonycore/internal/infra/persistence/postgres/testutil"
 	"database/sql"
 	"os"
 	"testing"
@@ -37,7 +38,7 @@ func TestPostgresStorePlaceholder(t *testing.T) {
 	if err := os.Setenv("COLONYCORE_STORAGE_DRIVER", "postgres"); err != nil {
 		t.Fatalf("setenv postgres: %v", err)
 	}
-	db := newCoreStubDB(t)
+	db, _ := pgtu.NewStubDB()
 	restore := postgres.OverrideSQLOpen(func(_, _ string) (*sql.DB, error) { return db, nil })
 	defer restore()
 	st, err := OpenPersistentStore(engine)

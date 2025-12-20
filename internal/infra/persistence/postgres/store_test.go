@@ -3,6 +3,7 @@ package postgres
 import (
 	"colonycore/internal/entitymodel/sqlbundle"
 	"colonycore/internal/infra/persistence/memory"
+	pgtu "colonycore/internal/infra/persistence/postgres/testutil"
 	"colonycore/pkg/domain"
 	entitymodel "colonycore/pkg/domain/entitymodel"
 	"context"
@@ -11,7 +12,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -19,9 +19,58 @@ import (
 	"time"
 )
 
+func firstKey[T any](m map[string]T) (string, bool) {
+	for id := range m {
+		return id, true
+	}
+	return "", false
+}
+
+type recordingExec struct {
+	Execs []string
+}
+
+func (r *recordingExec) ExecContext(_ context.Context, query string, _ ...any) (sql.Result, error) {
+	r.Execs = append(r.Execs, query)
+	return driver.RowsAffected(1), nil
+}
+
+func (r *recordingExec) QueryContext(context.Context, string, ...any) (*sql.Rows, error) {
+	return nil, fmt.Errorf("QueryContext not implemented")
+}
+
+type failingExec struct{}
+
+func (f failingExec) ExecContext(context.Context, string, ...any) (sql.Result, error) {
+	return nil, fmt.Errorf("exec fail")
+}
+
+func (f failingExec) QueryContext(context.Context, string, ...any) (*sql.Rows, error) {
+	return nil, fmt.Errorf("query fail")
+}
+
+type failAfterExec struct {
+	failAt int
+	calls  int
+	execs  []string
+}
+
+func (f *failAfterExec) ExecContext(_ context.Context, query string, _ ...any) (sql.Result, error) {
+	f.calls++
+	f.execs = append(f.execs, query)
+	if f.failAt > 0 && f.calls == f.failAt {
+		return nil, fmt.Errorf("exec fail after %d", f.failAt)
+	}
+	return driver.RowsAffected(1), nil
+}
+
+func (f *failAfterExec) QueryContext(context.Context, string, ...any) (*sql.Rows, error) {
+	return nil, fmt.Errorf("QueryContext not implemented")
+}
+
 func TestNewStoreAppliesDDLAndLoadsSnapshot(t *testing.T) {
 	ctx := context.Background()
-	db, conn := newStubDB()
+	db, conn := pgtu.NewStubDB()
 	fixture := loadFixtureSnapshot(t)
 	if err := persistNormalized(ctx, db, fixture); err != nil {
 		t.Fatalf("seed fixture: %v", err)
@@ -38,14 +87,14 @@ func TestNewStoreAppliesDDLAndLoadsSnapshot(t *testing.T) {
 		t.Fatalf("expected organisms loaded from normalized tables")
 	}
 	var sawDDL bool
-	for _, stmt := range conn.execs {
+	for _, stmt := range conn.Execs {
 		if strings.Contains(strings.ToUpper(stmt), "CREATE TABLE") {
 			sawDDL = true
 			break
 		}
 	}
 	if !sawDDL {
-		t.Fatalf("expected entity-model DDL to be applied, got execs: %v", conn.execs)
+		t.Fatalf("expected entity-model DDL to be applied, got execs: %v", conn.Execs)
 	}
 }
 
@@ -59,19 +108,21 @@ func TestApplyEntityModelDDLUsesGeneratedPostgresBundle(t *testing.T) {
 	}
 
 	expected := sqlbundle.SplitStatements(ddl)
-	if len(rec.execs) != len(expected) {
-		t.Fatalf("expected %d DDL statements, got %d", len(expected), len(rec.execs))
+	if len(rec.Execs) != len(expected) {
+		t.Fatalf("expected %d DDL statements, got %d", len(expected), len(rec.Execs))
 	}
 	for i, stmt := range expected {
-		if strings.TrimSpace(rec.execs[i]) != strings.TrimSpace(stmt) {
-			t.Fatalf("statement %d mismatch:\nwant: %s\ngot:  %s", i, strings.TrimSpace(stmt), strings.TrimSpace(rec.execs[i]))
+		if strings.TrimSpace(rec.Execs[i]) != strings.TrimSpace(stmt) {
+			t.Fatalf("statement %d mismatch:\nwant: %s\ngot:  %s", i, strings.TrimSpace(stmt), strings.TrimSpace(rec.Execs[i]))
 		}
 	}
 }
 
 func TestRunInTransactionPersistsState(t *testing.T) {
+	var conn *pgtu.StubConn
 	restore := OverrideSQLOpen(func(_, _ string) (*sql.DB, error) {
-		db, _ := newStubDB()
+		db, c := pgtu.NewStubDB()
+		conn = c
 		return db, nil
 	})
 	defer restore()
@@ -95,12 +146,8 @@ func TestRunInTransactionPersistsState(t *testing.T) {
 		t.Fatalf("RunInTransaction: %v", err)
 	}
 
-	conn := store.dbConn()
-	if conn == nil {
-		t.Fatalf("expected stub connection")
-	}
 	var found bool
-	for table, rows := range conn.tables {
+	for table, rows := range conn.Tables {
 		if table == "facilities" && len(rows) == 1 {
 			found = true
 		}
@@ -110,9 +157,618 @@ func TestRunInTransactionPersistsState(t *testing.T) {
 	}
 }
 
+func TestRunInTransactionUpsertUpdatesExistingRow(t *testing.T) {
+	ctx := context.Background()
+	db, conn := pgtu.NewStubDB()
+	fixture := loadFixtureSnapshot(t)
+	if err := persistNormalized(ctx, db, fixture); err != nil {
+		t.Fatalf("seed fixture: %v", err)
+	}
+
+	restore := OverrideSQLOpen(func(_, _ string) (*sql.DB, error) { return db, nil })
+	defer restore()
+
+	store, err := NewStore("", domain.NewRulesEngine())
+	if err != nil {
+		t.Fatalf("NewStore: %v", err)
+	}
+
+	var facilityID string
+	for id := range fixture.Facilities {
+		facilityID = id
+		break
+	}
+	if facilityID == "" {
+		t.Fatalf("fixture missing facilities")
+	}
+
+	_, err = store.RunInTransaction(ctx, func(tx domain.Transaction) error {
+		_, err := tx.UpdateFacility(facilityID, func(f *domain.Facility) error {
+			f.Name = "Updated Facility"
+			f.Zone = "Z2"
+			return nil
+		})
+		return err
+	})
+	if err != nil {
+		t.Fatalf("RunInTransaction: %v", err)
+	}
+
+	rows := conn.Tables["facilities"]
+	if got, want := len(rows), len(fixture.Facilities); got != want {
+		t.Fatalf("expected %d facilities after upsert, got %d", want, got)
+	}
+	var matched bool
+	for _, row := range rows {
+		if row["id"] == facilityID {
+			matched = true
+			if row["name"] != "Updated Facility" || row["zone"] != "Z2" {
+				t.Fatalf("expected updated facility values, got %+v", row)
+			}
+		}
+	}
+	if !matched {
+		t.Fatalf("updated facility row not found")
+	}
+}
+
+func TestRunInTransactionDeletesSupplyAndJoins(t *testing.T) {
+	ctx := context.Background()
+	db, conn := pgtu.NewStubDB()
+	fixture := loadFixtureSnapshot(t)
+	if err := persistNormalized(ctx, db, fixture); err != nil {
+		t.Fatalf("seed fixture: %v", err)
+	}
+	restore := OverrideSQLOpen(func(_, _ string) (*sql.DB, error) { return db, nil })
+	defer restore()
+
+	store, err := NewStore("", domain.NewRulesEngine())
+	if err != nil {
+		t.Fatalf("NewStore: %v", err)
+	}
+
+	var supplyID string
+	for id := range fixture.Supplies {
+		supplyID = id
+		break
+	}
+	if supplyID == "" {
+		t.Fatalf("fixture missing supplies")
+	}
+
+	if _, err := store.RunInTransaction(ctx, func(tx domain.Transaction) error {
+		return tx.DeleteSupplyItem(supplyID)
+	}); err != nil {
+		t.Fatalf("RunInTransaction: %v", err)
+	}
+
+	for table, rows := range map[string][]map[string]any{
+		"supply_items":               conn.Tables["supply_items"],
+		"supply_items__facility_ids": conn.Tables["supply_items__facility_ids"],
+		"projects__supply_item_ids":  conn.Tables["projects__supply_item_ids"],
+	} {
+		for _, row := range rows {
+			if row["id"] == supplyID || row["supply_item_id"] == supplyID {
+				t.Fatalf("found deleted supply id %s in table %s", supplyID, table)
+			}
+		}
+	}
+}
+
+func TestSnapshotOrCacheFallbackOnLoadError(t *testing.T) {
+	ctx := context.Background()
+	db, conn := pgtu.NewStubDB()
+	fixture := loadFixtureSnapshot(t)
+	if err := persistNormalized(ctx, db, fixture); err != nil {
+		t.Fatalf("seed fixture: %v", err)
+	}
+	restore := OverrideSQLOpen(func(_, _ string) (*sql.DB, error) { return db, nil })
+	defer restore()
+
+	store, err := NewStore("", domain.NewRulesEngine())
+	if err != nil {
+		t.Fatalf("NewStore: %v", err)
+	}
+
+	conn.FailTables = map[string]bool{"facilities": true}
+	facilities := store.ListFacilities()
+	if len(facilities) != len(fixture.Facilities) {
+		t.Fatalf("expected facilities from cache on load failure, got %d (want %d)", len(facilities), len(fixture.Facilities))
+	}
+}
+
+func TestStoreReadHelpers(t *testing.T) {
+	ctx := context.Background()
+	db, _ := pgtu.NewStubDB()
+	fixture := loadFixtureSnapshot(t)
+	if err := persistNormalized(ctx, db, fixture); err != nil {
+		t.Fatalf("seed fixture: %v", err)
+	}
+	restore := OverrideSQLOpen(func(_, _ string) (*sql.DB, error) { return db, nil })
+	defer restore()
+
+	store, err := NewStore("", domain.NewRulesEngine())
+	if err != nil {
+		t.Fatalf("NewStore: %v", err)
+	}
+
+	store.ImportState(fixture)
+	export := store.ExportState()
+	if len(export.Facilities) == 0 {
+		t.Fatalf("expected exported snapshot data")
+	}
+	if store.RulesEngine() == nil {
+		t.Fatalf("expected rules engine")
+	}
+
+	if err := store.View(ctx, func(view domain.TransactionView) error {
+		view.ListFacilities()
+		view.ListOrganisms()
+		view.ListProtocols()
+		return nil
+	}); err != nil {
+		t.Fatalf("View: %v", err)
+	}
+
+	if id, ok := firstKey(fixture.Organisms); ok {
+		if got, found := store.GetOrganism(id); !found || got.ID != id {
+			t.Fatalf("GetOrganism failed for %s", id)
+		}
+	}
+	if id, ok := firstKey(fixture.Housing); ok {
+		if got, found := store.GetHousingUnit(id); !found || got.ID != id {
+			t.Fatalf("GetHousingUnit failed for %s", id)
+		}
+	}
+	if id, ok := firstKey(fixture.Facilities); ok {
+		if got, found := store.GetFacility(id); !found || got.ID != id {
+			t.Fatalf("GetFacility failed for %s", id)
+		}
+	}
+	if id, ok := firstKey(fixture.Lines); ok {
+		if got, found := store.GetLine(id); !found || got.ID != id {
+			t.Fatalf("GetLine failed for %s", id)
+		}
+	}
+	if id, ok := firstKey(fixture.Strains); ok {
+		if got, found := store.GetStrain(id); !found || got.ID != id {
+			t.Fatalf("GetStrain failed for %s", id)
+		}
+	}
+	if id, ok := firstKey(fixture.Markers); ok {
+		if got, found := store.GetGenotypeMarker(id); !found || got.ID != id {
+			t.Fatalf("GetGenotypeMarker failed for %s", id)
+		}
+	}
+	if id, ok := firstKey(fixture.Permits); ok {
+		if got, found := store.GetPermit(id); !found || got.ID != id {
+			t.Fatalf("GetPermit failed for %s", id)
+		}
+	}
+
+	store.ListHousingUnits()
+	store.ListLines()
+	store.ListStrains()
+	store.ListGenotypeMarkers()
+	store.ListCohorts()
+	store.ListTreatments()
+	store.ListObservations()
+	store.ListSamples()
+	store.ListProtocols()
+	store.ListPermits()
+	store.ListProjects()
+	store.ListBreedingUnits()
+	store.ListProcedures()
+	store.ListSupplyItems()
+}
+
+func TestApplySnapshotDeltaDeletesEntities(t *testing.T) {
+	ctx := context.Background()
+	before := memory.Snapshot{
+		Facilities:   map[string]domain.Facility{"fac": {Facility: entitymodel.Facility{ID: "fac"}}},
+		Markers:      map[string]domain.GenotypeMarker{"gm": {GenotypeMarker: entitymodel.GenotypeMarker{ID: "gm"}}},
+		Lines:        map[string]domain.Line{"line": {Line: entitymodel.Line{ID: "line"}}},
+		Strains:      map[string]domain.Strain{"str": {Strain: entitymodel.Strain{ID: "str"}}},
+		Housing:      map[string]domain.HousingUnit{"house": {HousingUnit: entitymodel.HousingUnit{ID: "house"}}},
+		Protocols:    map[string]domain.Protocol{"proto": {Protocol: entitymodel.Protocol{ID: "proto"}}},
+		Projects:     map[string]domain.Project{"proj": {Project: entitymodel.Project{ID: "proj"}}},
+		Permits:      map[string]domain.Permit{"permit": {Permit: entitymodel.Permit{ID: "permit"}}},
+		Cohorts:      map[string]domain.Cohort{"cohort": {Cohort: entitymodel.Cohort{ID: "cohort"}}},
+		Breeding:     map[string]domain.BreedingUnit{"breed": {BreedingUnit: entitymodel.BreedingUnit{ID: "breed"}}},
+		Organisms:    map[string]domain.Organism{"org": {Organism: entitymodel.Organism{ID: "org"}}},
+		Procedures:   map[string]domain.Procedure{"proc": {Procedure: entitymodel.Procedure{ID: "proc"}}},
+		Observations: map[string]domain.Observation{"obs": {Observation: entitymodel.Observation{ID: "obs"}}},
+		Samples:      map[string]domain.Sample{"sample": {Sample: entitymodel.Sample{ID: "sample"}}},
+		Supplies:     map[string]domain.SupplyItem{"sup": {SupplyItem: entitymodel.SupplyItem{ID: "sup"}}},
+		Treatments:   map[string]domain.Treatment{"treat": {Treatment: entitymodel.Treatment{ID: "treat", ProcedureID: "proc"}}},
+	}
+
+	rec := &recordingExec{}
+	if err := applySnapshotDelta(ctx, rec, before, memory.Snapshot{}); err != nil {
+		t.Fatalf("applySnapshotDelta deletes: %v", err)
+	}
+	if len(rec.Execs) == 0 {
+		t.Fatalf("expected delete statements to be issued")
+	}
+}
+
+func TestDeleteHelpersExecute(t *testing.T) {
+	ctx := context.Background()
+	rec := &recordingExec{}
+	check := func(label string, fn func() error) {
+		t.Helper()
+		before := len(rec.Execs)
+		if err := fn(); err != nil {
+			t.Fatalf("%s: %v", label, err)
+		}
+		if len(rec.Execs) == before {
+			t.Fatalf("expected exec for %s", label)
+		}
+	}
+
+	check("facilities", func() error { return deleteFacilities(ctx, rec, []string{"fac"}) })
+	check("markers", func() error { return deleteGenotypeMarkers(ctx, rec, []string{"gm"}) })
+	check("lines", func() error { return deleteLines(ctx, rec, []string{"line"}) })
+	check("strains", func() error { return deleteStrains(ctx, rec, []string{"str"}) })
+	check("housing", func() error { return deleteHousingUnits(ctx, rec, []string{"house"}) })
+	check("protocols", func() error { return deleteProtocols(ctx, rec, []string{"proto"}) })
+	check("projects", func() error { return deleteProjects(ctx, rec, []string{"proj"}) })
+	check("permits", func() error { return deletePermits(ctx, rec, []string{"permit"}) })
+	check("cohorts", func() error { return deleteCohorts(ctx, rec, []string{"cohort"}) })
+	check("breeding", func() error { return deleteBreedingUnits(ctx, rec, []string{"breed"}) })
+	check("organisms", func() error { return deleteOrganisms(ctx, rec, []string{"org"}) })
+	check("procedures", func() error { return deleteProcedures(ctx, rec, []string{"proc"}) })
+	check("observations", func() error { return deleteObservations(ctx, rec, []string{"obs"}) })
+	check("samples", func() error { return deleteSamples(ctx, rec, []string{"sample"}) })
+	check("supplies", func() error { return deleteSupplyItems(ctx, rec, []string{"sup"}) })
+	check("treatments", func() error { return deleteTreatments(ctx, rec, []string{"treat"}) })
+}
+
+func TestDeleteHelpersErrorPath(t *testing.T) {
+	ctx := context.Background()
+	errExec := failingExec{}
+	cases := []struct {
+		name string
+		fn   func() error
+	}{
+		{"facilities", func() error { return deleteFacilities(ctx, errExec, []string{"fac"}) }},
+		{"markers", func() error { return deleteGenotypeMarkers(ctx, errExec, []string{"gm"}) }},
+		{"lines", func() error { return deleteLines(ctx, errExec, []string{"line"}) }},
+		{"strains", func() error { return deleteStrains(ctx, errExec, []string{"str"}) }},
+		{"housing", func() error { return deleteHousingUnits(ctx, errExec, []string{"house"}) }},
+		{"protocols", func() error { return deleteProtocols(ctx, errExec, []string{"proto"}) }},
+		{"projects", func() error { return deleteProjects(ctx, errExec, []string{"proj"}) }},
+		{"permits", func() error { return deletePermits(ctx, errExec, []string{"permit"}) }},
+		{"cohorts", func() error { return deleteCohorts(ctx, errExec, []string{"cohort"}) }},
+		{"breeding", func() error { return deleteBreedingUnits(ctx, errExec, []string{"breed"}) }},
+		{"organisms", func() error { return deleteOrganisms(ctx, errExec, []string{"org"}) }},
+		{"procedures", func() error { return deleteProcedures(ctx, errExec, []string{"proc"}) }},
+		{"observations", func() error { return deleteObservations(ctx, errExec, []string{"obs"}) }},
+		{"samples", func() error { return deleteSamples(ctx, errExec, []string{"sample"}) }},
+		{"supplies", func() error { return deleteSupplyItems(ctx, errExec, []string{"sup"}) }},
+		{"treatments", func() error { return deleteTreatments(ctx, errExec, []string{"treat"}) }},
+	}
+
+	for _, tc := range cases {
+		if err := tc.fn(); err == nil {
+			t.Fatalf("expected error for %s", tc.name)
+		}
+	}
+}
+
+func TestDeleteHelpersIntermediateErrors(t *testing.T) {
+	ctx := context.Background()
+	type deleter func(context.Context, execQuerier, []string) error
+	cases := []struct {
+		name   string
+		fn     deleter
+		failAt []int
+	}{
+		{"facilities", deleteFacilities, []int{2}},
+		{"lines", deleteLines, []int{2}},
+		{"strains", deleteStrains, []int{2}},
+		{"projects", deleteProjects, []int{2, 3, 4}},
+		{"permits", deletePermits, []int{2, 3}},
+		{"breeding", deleteBreedingUnits, []int{2, 3}},
+		{"organisms", deleteOrganisms, []int{2}},
+		{"procedures", deleteProcedures, []int{2}},
+		{"supplies", deleteSupplyItems, []int{2, 3}},
+		{"treatments", deleteTreatments, []int{2, 3}},
+	}
+	for _, tc := range cases {
+		for _, failAt := range tc.failAt {
+			exec := &failAfterExec{failAt: failAt}
+			if err := tc.fn(ctx, exec, []string{"id"}); err == nil {
+				t.Fatalf("%s expected failure at %d", tc.name, failAt)
+			}
+			if exec.calls != failAt {
+				t.Fatalf("%s failed after %d calls (expected %d)", tc.name, exec.calls, failAt)
+			}
+		}
+	}
+}
+
+func TestApplySnapshotDeltaUpsertsEntities(t *testing.T) {
+	ctx := context.Background()
+	fixture := loadFixtureSnapshot(t)
+	rec := &recordingExec{}
+	if err := applySnapshotDelta(ctx, rec, memory.Snapshot{}, fixture); err != nil {
+		t.Fatalf("applySnapshotDelta upserts: %v", err)
+	}
+	if len(rec.Execs) == 0 {
+		t.Fatalf("expected upsert statements to be issued")
+	}
+}
+
+func TestApplySnapshotDeltaError(t *testing.T) {
+	ctx := context.Background()
+	before := memory.Snapshot{
+		Treatments: map[string]domain.Treatment{"t": {Treatment: entitymodel.Treatment{ID: "t"}}},
+	}
+	if err := applySnapshotDelta(ctx, failingExec{}, before, memory.Snapshot{}); err == nil {
+		t.Fatalf("expected error when exec fails")
+	}
+}
+
+func TestApplySnapshotDeltaInsertError(t *testing.T) {
+	ctx := context.Background()
+	now := time.Now()
+	after := memory.Snapshot{
+		Facilities: map[string]domain.Facility{
+			"fac": {Facility: entitymodel.Facility{
+				ID:           "fac",
+				Code:         "FAC",
+				Name:         "Facility",
+				Zone:         "Z",
+				AccessPolicy: "all",
+				CreatedAt:    now,
+				UpdatedAt:    now,
+			}},
+		},
+	}
+	if err := applySnapshotDelta(ctx, failingExec{}, memory.Snapshot{}, after); err == nil {
+		t.Fatalf("expected error when insert exec fails")
+	}
+}
+
+func TestApplySnapshotDeltaErrorBranches(t *testing.T) {
+	ctx := context.Background()
+	now := time.Now()
+	cases := []struct {
+		name   string
+		before memory.Snapshot
+		after  memory.Snapshot
+	}{
+		{
+			name:   "delete projects",
+			before: memory.Snapshot{Projects: map[string]domain.Project{"proj": {Project: entitymodel.Project{ID: "proj"}}}},
+		},
+		{
+			name:   "delete facilities",
+			before: memory.Snapshot{Facilities: map[string]domain.Facility{"fac": {Facility: entitymodel.Facility{ID: "fac"}}}},
+		},
+		{
+			name:  "insert protocols",
+			after: memory.Snapshot{Protocols: map[string]domain.Protocol{"proto": {Protocol: entitymodel.Protocol{ID: "proto", Code: "P", Title: "Protocol", Status: entitymodel.ProtocolStatusDraft, CreatedAt: now, UpdatedAt: now}}}},
+		},
+		{
+			name: "insert treatments",
+			after: memory.Snapshot{Treatments: map[string]domain.Treatment{"treat": {Treatment: entitymodel.Treatment{
+				ID:          "treat",
+				Name:        "Treat",
+				Status:      entitymodel.TreatmentStatusPlanned,
+				ProcedureID: "proc",
+				CreatedAt:   now,
+				UpdatedAt:   now,
+			}}}},
+		},
+	}
+
+	for _, tc := range cases {
+		if err := applySnapshotDelta(ctx, failingExec{}, tc.before, tc.after); err == nil {
+			t.Fatalf("expected error for %s", tc.name)
+		}
+	}
+}
+
+func TestApplySnapshotDeltaNoChanges(t *testing.T) {
+	ctx := context.Background()
+	fixture := loadFixtureSnapshot(t)
+	before := cloneSnapshot(fixture)
+	after := cloneSnapshot(fixture)
+	rec := &recordingExec{}
+	if err := applySnapshotDelta(ctx, rec, before, after); err != nil {
+		t.Fatalf("expected noop applySnapshotDelta, got %v", err)
+	}
+	if len(rec.Execs) != 0 {
+		t.Fatalf("expected no execs for identical snapshots, got %d", len(rec.Execs))
+	}
+}
+
+func TestApplySnapshotDeltaUpdates(t *testing.T) {
+	ctx := context.Background()
+	now := time.Now()
+	before := memory.Snapshot{
+		Facilities: map[string]domain.Facility{
+			"fac": {Facility: entitymodel.Facility{
+				ID:           "fac",
+				Code:         "FAC",
+				Name:         "Old",
+				Zone:         "Z",
+				AccessPolicy: "all",
+				CreatedAt:    now,
+				UpdatedAt:    now,
+			}},
+		},
+	}
+	after := memory.Snapshot{
+		Facilities: map[string]domain.Facility{
+			"fac": {Facility: entitymodel.Facility{
+				ID:           "fac",
+				Code:         "FAC",
+				Name:         "New",
+				Zone:         "Z",
+				AccessPolicy: "all",
+				CreatedAt:    now,
+				UpdatedAt:    now.Add(time.Second),
+			}},
+		},
+	}
+	rec := &recordingExec{}
+	if err := applySnapshotDelta(ctx, rec, before, after); err != nil {
+		t.Fatalf("applySnapshotDelta updates: %v", err)
+	}
+	if len(rec.Execs) != 1 {
+		t.Fatalf("expected one upsert for updated facility, got %d", len(rec.Execs))
+	}
+	if !strings.Contains(strings.ToLower(rec.Execs[0]), "insert into facilities") {
+		t.Fatalf("unexpected statement: %s", rec.Execs[0])
+	}
+}
+
+func TestImportExportStateErrors(t *testing.T) {
+	db, conn := pgtu.NewStubDB()
+	store := &Store{db: db, engine: domain.NewRulesEngine()}
+
+	defer func() {
+		if r := recover(); r == nil {
+			t.Fatalf("expected panic on import failure")
+		}
+	}()
+	conn.FailExec = true
+	store.ImportState(memory.Snapshot{})
+
+	conn.FailExec = false
+	conn.FailTables = map[string]bool{"facilities": true}
+	defer func() {
+		if r := recover(); r == nil {
+			t.Fatalf("expected panic on export failure")
+		}
+	}()
+	store.ExportState()
+}
+
+func TestInsertHelperValidationErrors(t *testing.T) {
+	ctx := context.Background()
+	now := time.Now()
+	exec := &recordingExec{}
+	cases := []struct {
+		name string
+		fn   func() error
+	}{
+		{
+			name: "line missing markers",
+			fn: func() error {
+				return insertLines(ctx, exec, map[string]domain.Line{
+					"line": {Line: entitymodel.Line{ID: "line"}},
+				})
+			},
+		},
+		{
+			name: "strain missing line",
+			fn: func() error {
+				return insertStrains(ctx, exec, map[string]domain.Strain{
+					"str": {Strain: entitymodel.Strain{ID: "str"}},
+				})
+			},
+		},
+		{
+			name: "housing missing facility",
+			fn: func() error {
+				return insertHousingUnits(ctx, exec, map[string]domain.HousingUnit{
+					"house": {HousingUnit: entitymodel.HousingUnit{ID: "house"}},
+				})
+			},
+		},
+		{
+			name: "project missing facilities",
+			fn: func() error {
+				return insertProjects(ctx, exec, map[string]domain.Project{
+					"proj": {Project: entitymodel.Project{ID: "proj"}},
+				})
+			},
+		},
+		{
+			name: "permit missing facilities",
+			fn: func() error {
+				return insertPermits(ctx, exec, map[string]domain.Permit{
+					"perm": {Permit: entitymodel.Permit{ID: "perm"}},
+				})
+			},
+		},
+		{
+			name: "permit missing protocols",
+			fn: func() error {
+				return insertPermits(ctx, exec, map[string]domain.Permit{
+					"perm": {Permit: entitymodel.Permit{ID: "perm", FacilityIDs: []string{"fac"}}},
+				})
+			},
+		},
+		{
+			name: "procedure missing protocol",
+			fn: func() error {
+				return insertProcedures(ctx, exec, map[string]domain.Procedure{
+					"proc": {Procedure: entitymodel.Procedure{ID: "proc"}},
+				})
+			},
+		},
+		{
+			name: "sample missing chain",
+			fn: func() error {
+				return insertSamples(ctx, exec, map[string]domain.Sample{
+					"sample": {Sample: entitymodel.Sample{ID: "sample"}},
+				})
+			},
+		},
+		{
+			name: "sample missing facility",
+			fn: func() error {
+				return insertSamples(ctx, exec, map[string]domain.Sample{
+					"sample": {Sample: entitymodel.Sample{
+						ID:             "sample",
+						ChainOfCustody: []entitymodel.SampleCustodyEvent{{Location: "loc", Timestamp: now}},
+					}},
+				})
+			},
+		},
+		{
+			name: "supply missing facilities",
+			fn: func() error {
+				return insertSupplyItems(ctx, exec, map[string]domain.SupplyItem{
+					"sup": {SupplyItem: entitymodel.SupplyItem{ID: "sup"}},
+				})
+			},
+		},
+		{
+			name: "supply missing projects",
+			fn: func() error {
+				return insertSupplyItems(ctx, exec, map[string]domain.SupplyItem{
+					"sup": {SupplyItem: entitymodel.SupplyItem{
+						ID:          "sup",
+						FacilityIDs: []string{"fac"},
+					}},
+				})
+			},
+		},
+		{
+			name: "treatment missing procedure",
+			fn: func() error {
+				return insertTreatments(ctx, exec, map[string]domain.Treatment{
+					"t": {Treatment: entitymodel.Treatment{ID: "t"}},
+				})
+			},
+		},
+	}
+	for _, tc := range cases {
+		if err := tc.fn(); err == nil {
+			t.Fatalf("expected error for %s", tc.name)
+		}
+	}
+}
+
 func TestLifecycleStatusesRoundTripNormalizedSnapshot(t *testing.T) {
 	ctx := context.Background()
-	db, _ := newStubDB()
+	db, _ := pgtu.NewStubDB()
 
 	orig := loadFixtureSnapshot(t)
 	if err := persistNormalized(ctx, db, orig); err != nil {
@@ -281,7 +937,7 @@ func TestLifecycleStatusesRoundTripNormalizedSnapshot(t *testing.T) {
 }
 
 func TestPersistMissingRequiredRelationshipsError(t *testing.T) {
-	db, _ := newStubDB()
+	db, _ := pgtu.NewStubDB()
 	now := time.Now().UTC()
 	snapshot := memory.Snapshot{
 		Supplies: map[string]domain.SupplyItem{
@@ -306,8 +962,8 @@ func TestPersistMissingRequiredRelationshipsError(t *testing.T) {
 }
 
 func TestApplyEntityModelDDLError(t *testing.T) {
-	db, conn := newStubDB()
-	conn.failExec = true
+	db, conn := pgtu.NewStubDB()
+	conn.FailExec = true
 	restore := OverrideSQLOpen(func(_, _ string) (*sql.DB, error) { return db, nil })
 	defer restore()
 	if _, err := NewStore("ignored", domain.NewRulesEngine()); err == nil {
@@ -316,8 +972,8 @@ func TestApplyEntityModelDDLError(t *testing.T) {
 }
 
 func TestApplyDDLStatementsError(t *testing.T) {
-	db, conn := newStubDB()
-	conn.failExec = true
+	db, conn := pgtu.NewStubDB()
+	conn.FailExec = true
 	if err := applyDDLStatements(context.Background(), db, "CREATE TABLE test(id text);"); err == nil {
 		t.Fatalf("expected ddl exec error")
 	}
@@ -567,7 +1223,7 @@ func TestPersistNormalizedErrorPaths(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			db, _ := newStubDB()
+			db, _ := pgtu.NewStubDB()
 			err := persistNormalized(ctx, db, tc.snapshot)
 			if err == nil || !strings.Contains(err.Error(), tc.wantErr) {
 				t.Fatalf("expected error containing %q, got %v", tc.wantErr, err)
@@ -577,8 +1233,8 @@ func TestPersistNormalizedErrorPaths(t *testing.T) {
 }
 
 func TestPersistNormalizedCommitError(t *testing.T) {
-	db, conn := newStubDB()
-	conn.failCommit = true
+	db, conn := pgtu.NewStubDB()
+	conn.FailCommit = true
 	if err := persistNormalized(context.Background(), db, memory.Snapshot{}); err == nil || !strings.Contains(err.Error(), "commit") {
 		t.Fatalf("expected commit error, got %v", err)
 	}
@@ -586,8 +1242,8 @@ func TestPersistNormalizedCommitError(t *testing.T) {
 
 func TestLoadSnapshotValidatesRequiredJoins(t *testing.T) {
 	now := time.Now().UTC()
-	db, conn := newStubDB()
-	conn.tables = map[string][]map[string]any{
+	db, conn := pgtu.NewStubDB()
+	conn.Tables = map[string][]map[string]any{
 		"facilities": {{
 			"id":                    "fac-1",
 			"code":                  "FAC",
@@ -613,8 +1269,8 @@ func TestLoadSnapshotValidatesRequiredJoins(t *testing.T) {
 }
 
 func TestLoadSnapshotRowsError(t *testing.T) {
-	db, conn := newStubDB()
-	conn.rowsErr = fmt.Errorf("row err")
+	db, conn := pgtu.NewStubDB()
+	conn.RowsErr = fmt.Errorf("row err")
 	restore := OverrideSQLOpen(func(_, _ string) (*sql.DB, error) { return db, nil })
 	defer restore()
 	if _, err := NewStore("ignored", domain.NewRulesEngine()); err == nil {
@@ -623,8 +1279,8 @@ func TestLoadSnapshotRowsError(t *testing.T) {
 }
 
 func TestLoadFacilitiesDecodeError(t *testing.T) {
-	db, conn := newStubDB()
-	conn.tables = map[string][]map[string]any{
+	db, conn := pgtu.NewStubDB()
+	conn.Tables = map[string][]map[string]any{
 		"facilities": {{
 			"id":                    "fac-err",
 			"code":                  "FAC",
@@ -642,8 +1298,8 @@ func TestLoadFacilitiesDecodeError(t *testing.T) {
 }
 
 func TestLoadGenotypeMarkersDecodeError(t *testing.T) {
-	db, conn := newStubDB()
-	conn.tables = map[string][]map[string]any{
+	db, conn := pgtu.NewStubDB()
+	conn.Tables = map[string][]map[string]any{
 		"genotype_markers": {{
 			"id":             "gm-1",
 			"name":           "GM",
@@ -662,8 +1318,8 @@ func TestLoadGenotypeMarkersDecodeError(t *testing.T) {
 }
 
 func TestLoadBreedingUnitsDecodeError(t *testing.T) {
-	db, conn := newStubDB()
-	conn.tables["breeding_units"] = []map[string]any{{
+	db, conn := pgtu.NewStubDB()
+	conn.Tables["breeding_units"] = []map[string]any{{
 		"id":                 "breed-err",
 		"name":               "Breed",
 		"strategy":           "s",
@@ -685,8 +1341,8 @@ func TestLoadBreedingUnitsDecodeError(t *testing.T) {
 }
 
 func TestLoadObservationsDecodeError(t *testing.T) {
-	db, conn := newStubDB()
-	conn.tables["observations"] = []map[string]any{{
+	db, conn := pgtu.NewStubDB()
+	conn.Tables["observations"] = []map[string]any{{
 		"id":           "obs-err",
 		"observer":     "o",
 		"recorded_at":  time.Now(),
@@ -704,8 +1360,8 @@ func TestLoadObservationsDecodeError(t *testing.T) {
 }
 
 func TestLoadOrganismsDecodeError(t *testing.T) {
-	db, conn := newStubDB()
-	conn.tables["organisms"] = []map[string]any{{
+	db, conn := pgtu.NewStubDB()
+	conn.Tables["organisms"] = []map[string]any{{
 		"id":          "org-err",
 		"name":        "Org",
 		"species":     "sp",
@@ -727,8 +1383,8 @@ func TestLoadOrganismsDecodeError(t *testing.T) {
 }
 
 func TestLoadSamplesDecodeError(t *testing.T) {
-	db, conn := newStubDB()
-	conn.tables["samples"] = []map[string]any{{
+	db, conn := pgtu.NewStubDB()
+	conn.Tables["samples"] = []map[string]any{{
 		"id":               "s-err",
 		"identifier":       "ID",
 		"source_type":      "type",
@@ -750,8 +1406,8 @@ func TestLoadSamplesDecodeError(t *testing.T) {
 }
 
 func TestLoadSupplyItemsDecodeError(t *testing.T) {
-	db, conn := newStubDB()
-	conn.tables["supply_items"] = []map[string]any{{
+	db, conn := pgtu.NewStubDB()
+	conn.Tables["supply_items"] = []map[string]any{{
 		"id":               "sup-err",
 		"sku":              "SKU",
 		"name":             "Name",
@@ -771,8 +1427,8 @@ func TestLoadSupplyItemsDecodeError(t *testing.T) {
 }
 
 func TestLoadTreatmentsDecodeError(t *testing.T) {
-	db, conn := newStubDB()
-	conn.tables["treatments"] = []map[string]any{{
+	db, conn := pgtu.NewStubDB()
+	conn.Tables["treatments"] = []map[string]any{{
 		"id":                 "treat-err",
 		"name":               "Treat",
 		"status":             domain.TreatmentStatusPlanned,
@@ -792,14 +1448,14 @@ func TestLoadHelpersReferenceValidation(t *testing.T) {
 	ctx := context.Background()
 	cases := []struct {
 		name  string
-		setup func(*stubConn)
+		setup func(*pgtu.StubConn)
 		fn    func(context.Context, *sql.DB) error
 		want  string
 	}{
 		{
 			name: "line marker references missing line",
-			setup: func(conn *stubConn) {
-				conn.tables["lines__genotype_marker_ids"] = []map[string]any{{
+			setup: func(conn *pgtu.StubConn) {
+				conn.Tables["lines__genotype_marker_ids"] = []map[string]any{{
 					"line_id":            "line-missing",
 					"genotype_marker_id": "gm-1",
 				}}
@@ -811,8 +1467,8 @@ func TestLoadHelpersReferenceValidation(t *testing.T) {
 		},
 		{
 			name: "line missing markers",
-			setup: func(conn *stubConn) {
-				conn.tables["lines__genotype_marker_ids"] = nil
+			setup: func(conn *pgtu.StubConn) {
+				conn.Tables["lines__genotype_marker_ids"] = nil
 			},
 			fn: func(ctx context.Context, db *sql.DB) error {
 				return loadLineMarkers(ctx, db, map[string]domain.Line{"line-1": {Line: entitymodel.Line{ID: "line-1"}}})
@@ -821,8 +1477,8 @@ func TestLoadHelpersReferenceValidation(t *testing.T) {
 		},
 		{
 			name: "strain marker references missing strain",
-			setup: func(conn *stubConn) {
-				conn.tables["strains__genotype_marker_ids"] = []map[string]any{{
+			setup: func(conn *pgtu.StubConn) {
+				conn.Tables["strains__genotype_marker_ids"] = []map[string]any{{
 					"strain_id":          "strain-missing",
 					"genotype_marker_id": "gm-1",
 				}}
@@ -834,8 +1490,8 @@ func TestLoadHelpersReferenceValidation(t *testing.T) {
 		},
 		{
 			name: "project facility references missing project",
-			setup: func(conn *stubConn) {
-				conn.tables["facilities__project_ids"] = []map[string]any{{
+			setup: func(conn *pgtu.StubConn) {
+				conn.Tables["facilities__project_ids"] = []map[string]any{{
 					"facility_id": "fac-1",
 					"project_id":  "proj-missing",
 				}}
@@ -847,8 +1503,8 @@ func TestLoadHelpersReferenceValidation(t *testing.T) {
 		},
 		{
 			name: "permit facility references missing permit",
-			setup: func(conn *stubConn) {
-				conn.tables["permits__facility_ids"] = []map[string]any{{
+			setup: func(conn *pgtu.StubConn) {
+				conn.Tables["permits__facility_ids"] = []map[string]any{{
 					"permit_id":   "permit-missing",
 					"facility_id": "fac-1",
 				}}
@@ -860,8 +1516,8 @@ func TestLoadHelpersReferenceValidation(t *testing.T) {
 		},
 		{
 			name: "permit protocol references missing permit",
-			setup: func(conn *stubConn) {
-				conn.tables["permits__protocol_ids"] = []map[string]any{{
+			setup: func(conn *pgtu.StubConn) {
+				conn.Tables["permits__protocol_ids"] = []map[string]any{{
 					"permit_id":   "permit-missing",
 					"protocol_id": "proto-1",
 				}}
@@ -873,8 +1529,8 @@ func TestLoadHelpersReferenceValidation(t *testing.T) {
 		},
 		{
 			name: "breeding female references missing breeding unit",
-			setup: func(conn *stubConn) {
-				conn.tables["breeding_units__female_ids"] = []map[string]any{{
+			setup: func(conn *pgtu.StubConn) {
+				conn.Tables["breeding_units__female_ids"] = []map[string]any{{
 					"breeding_unit_id": "breed-missing",
 					"organism_id":      "org-1",
 				}}
@@ -886,8 +1542,8 @@ func TestLoadHelpersReferenceValidation(t *testing.T) {
 		},
 		{
 			name: "organism parent references missing organism",
-			setup: func(conn *stubConn) {
-				conn.tables["organisms__parent_ids"] = []map[string]any{{
+			setup: func(conn *pgtu.StubConn) {
+				conn.Tables["organisms__parent_ids"] = []map[string]any{{
 					"organism_id":   "org-missing",
 					"parent_ids_id": "p1",
 				}}
@@ -899,8 +1555,8 @@ func TestLoadHelpersReferenceValidation(t *testing.T) {
 		},
 		{
 			name: "procedure organism references missing procedure",
-			setup: func(conn *stubConn) {
-				conn.tables["procedures__organism_ids"] = []map[string]any{{
+			setup: func(conn *pgtu.StubConn) {
+				conn.Tables["procedures__organism_ids"] = []map[string]any{{
 					"procedure_id": "proc-missing",
 					"organism_id":  "org-1",
 				}}
@@ -912,8 +1568,8 @@ func TestLoadHelpersReferenceValidation(t *testing.T) {
 		},
 		{
 			name: "treatment cohort references missing treatment",
-			setup: func(conn *stubConn) {
-				conn.tables["treatments__cohort_ids"] = []map[string]any{{
+			setup: func(conn *pgtu.StubConn) {
+				conn.Tables["treatments__cohort_ids"] = []map[string]any{{
 					"treatment_id": "treat-missing",
 					"cohort_id":    "c1",
 				}}
@@ -925,8 +1581,8 @@ func TestLoadHelpersReferenceValidation(t *testing.T) {
 		},
 		{
 			name: "treatment organism references missing treatment",
-			setup: func(conn *stubConn) {
-				conn.tables["treatments__organism_ids"] = []map[string]any{{
+			setup: func(conn *pgtu.StubConn) {
+				conn.Tables["treatments__organism_ids"] = []map[string]any{{
 					"treatment_id": "treat-missing",
 					"organism_id":  "org-1",
 				}}
@@ -938,8 +1594,8 @@ func TestLoadHelpersReferenceValidation(t *testing.T) {
 		},
 		{
 			name: "supply facility references missing supply",
-			setup: func(conn *stubConn) {
-				conn.tables["supply_items__facility_ids"] = []map[string]any{{
+			setup: func(conn *pgtu.StubConn) {
+				conn.Tables["supply_items__facility_ids"] = []map[string]any{{
 					"supply_item_id": "sup-missing",
 					"facility_id":    "fac-1",
 				}}
@@ -951,8 +1607,8 @@ func TestLoadHelpersReferenceValidation(t *testing.T) {
 		},
 		{
 			name: "project supply references missing project",
-			setup: func(conn *stubConn) {
-				conn.tables["projects__supply_item_ids"] = []map[string]any{{
+			setup: func(conn *pgtu.StubConn) {
+				conn.Tables["projects__supply_item_ids"] = []map[string]any{{
 					"project_id":     "proj-missing",
 					"supply_item_id": "sup-1",
 				}}
@@ -964,8 +1620,8 @@ func TestLoadHelpersReferenceValidation(t *testing.T) {
 		},
 		{
 			name: "project supply missing project_ids",
-			setup: func(conn *stubConn) {
-				conn.tables["projects__supply_item_ids"] = nil
+			setup: func(conn *pgtu.StubConn) {
+				conn.Tables["projects__supply_item_ids"] = nil
 			},
 			fn: func(ctx context.Context, db *sql.DB) error {
 				supplies := map[string]domain.SupplyItem{
@@ -977,8 +1633,8 @@ func TestLoadHelpersReferenceValidation(t *testing.T) {
 		},
 		{
 			name: "supply facility missing facility_ids",
-			setup: func(conn *stubConn) {
-				conn.tables["supply_items__facility_ids"] = nil
+			setup: func(conn *pgtu.StubConn) {
+				conn.Tables["supply_items__facility_ids"] = nil
 			},
 			fn: func(ctx context.Context, db *sql.DB) error {
 				supplies := map[string]domain.SupplyItem{
@@ -992,7 +1648,7 @@ func TestLoadHelpersReferenceValidation(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			db, conn := newStubDB()
+			db, conn := pgtu.NewStubDB()
 			if tc.setup != nil {
 				tc.setup(conn)
 			}
@@ -1044,11 +1700,11 @@ func TestLoadNormalizedSnapshotQueryFailures(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			db, conn := newStubDB()
+			db, conn := pgtu.NewStubDB()
 			if err := persistNormalized(ctx, db, snapshot); err != nil {
 				t.Fatalf("seed snapshot: %v", err)
 			}
-			conn.failTables = map[string]bool{tc.table: true}
+			conn.FailTables = map[string]bool{tc.table: true}
 			if _, err := loadNormalizedSnapshot(ctx, db); err == nil || !strings.Contains(err.Error(), tc.table) {
 				t.Fatalf("expected query failure mentioning %s, got %v", tc.table, err)
 			}
@@ -1088,7 +1744,7 @@ func TestDecodeCustodyInvalidJSON(t *testing.T) {
 }
 
 func TestStoreDBExposesHandle(t *testing.T) {
-	db, _ := newStubDB()
+	db, _ := pgtu.NewStubDB()
 	restore := OverrideSQLOpen(func(_, _ string) (*sql.DB, error) { return db, nil })
 	defer restore()
 	store, err := NewStore("ignored", domain.NewRulesEngine())
@@ -1101,22 +1757,33 @@ func TestStoreDBExposesHandle(t *testing.T) {
 }
 
 func TestRunInTransactionPersistsErrorWhenExecFails(t *testing.T) {
-	db, conn := newStubDB()
+	db, conn := pgtu.NewStubDB()
 	restore := OverrideSQLOpen(func(_, _ string) (*sql.DB, error) { return db, nil })
 	defer restore()
 	store, err := NewStore("ignored", domain.NewRulesEngine())
 	if err != nil {
 		t.Fatalf("NewStore: %v", err)
 	}
-	conn.failExec = true
-	if _, err := store.RunInTransaction(context.Background(), func(domain.Transaction) error { return nil }); err == nil {
+	conn.FailExec = true
+	if _, err := store.RunInTransaction(context.Background(), func(tx domain.Transaction) error {
+		_, err := tx.CreateFacility(domain.Facility{Facility: entitymodel.Facility{
+			ID:           "fac-fail",
+			Code:         "FF",
+			Name:         "Fail",
+			Zone:         "Z",
+			AccessPolicy: "none",
+		}})
+		return err
+	}); err == nil {
 		t.Fatalf("expected persistence error when exec fails")
 	}
 }
 
 func TestRunInTransactionStopsOnUserError(t *testing.T) {
+	var conn *pgtu.StubConn
 	restore := OverrideSQLOpen(func(_, _ string) (*sql.DB, error) {
-		db, _ := newStubDB()
+		db, c := pgtu.NewStubDB()
+		conn = c
 		return db, nil
 	})
 	defer restore()
@@ -1128,14 +1795,14 @@ func TestRunInTransactionStopsOnUserError(t *testing.T) {
 	if _, err := store.RunInTransaction(context.Background(), func(domain.Transaction) error { return userErr }); !errors.Is(err, userErr) {
 		t.Fatalf("expected user error to propagate, got %v", err)
 	}
-	if conn := store.dbConn(); conn != nil && len(conn.tables) != 0 {
+	if conn != nil && len(conn.Tables) != 0 {
 		t.Fatalf("expected no persistence when user fn errors")
 	}
 }
 
 func TestPersistNormalizedBeginTxError(t *testing.T) {
-	db, conn := newStubDB()
-	conn.failBegin = true
+	db, conn := pgtu.NewStubDB()
+	conn.FailBegin = true
 	err := persistNormalized(context.Background(), db, memory.Snapshot{})
 	if err == nil || !strings.Contains(err.Error(), "begin") {
 		t.Fatalf("expected begin tx error, got %v", err)
@@ -1663,8 +2330,8 @@ func TestInsertHelpersExecFailures(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			db, conn := newStubDB()
-			conn.failTables = map[string]bool{tc.table: true}
+			db, conn := pgtu.NewStubDB()
+			conn.FailTables = map[string]bool{tc.table: true}
 			err := tc.fn(ctx, db)
 			if err == nil || !strings.Contains(err.Error(), tc.want) {
 				t.Fatalf("expected error containing %q for table %s, got %v", tc.want, tc.table, err)
@@ -1681,7 +2348,7 @@ func TestDecodeCustodyErrorsOnEmpty(t *testing.T) {
 
 func TestPersistAndLoadWithOptionalFields(t *testing.T) {
 	ctx := context.Background()
-	db, _ := newStubDB()
+	db, _ := pgtu.NewStubDB()
 	now := time.Now().UTC()
 
 	// Seeds with optional fields populated to exercise nullable branches.
@@ -2011,216 +2678,4 @@ func loadFixtureSnapshot(t *testing.T) memory.Snapshot {
 		t.Fatalf("unmarshal fixture: %v", err)
 	}
 	return snapshot
-}
-
-// --- stub driver helpers ---
-
-type stubDriver struct {
-	conn *stubConn
-}
-
-func (d *stubDriver) Open(string) (driver.Conn, error) {
-	return d.conn, nil
-}
-
-type stubConn struct {
-	execs      []string
-	tables     map[string][]map[string]any
-	failExec   bool
-	failBegin  bool
-	rowsErr    error
-	failTables map[string]bool
-	failCommit bool
-}
-
-func newStubDB() (*sql.DB, *stubConn) {
-	conn := &stubConn{tables: make(map[string][]map[string]any)}
-	name := fmt.Sprintf("stubpg%d", time.Now().UnixNano())
-	sql.Register(name, &stubDriver{conn: conn})
-	db, err := sql.Open(name, "stub")
-	if err != nil {
-		panic(err)
-	}
-	return db, conn
-}
-
-func (c *stubConn) Prepare(string) (driver.Stmt, error) { return nil, fmt.Errorf("not implemented") }
-func (c *stubConn) Close() error                        { return nil }
-func (c *stubConn) Begin() (driver.Tx, error) {
-	return c.BeginTx(context.Background(), driver.TxOptions{})
-}
-
-func (c *stubConn) Ping(_ context.Context) error {
-	if c.failExec {
-		return fmt.Errorf("ping fail")
-	}
-	return nil
-}
-
-func (c *stubConn) BeginTx(_ context.Context, _ driver.TxOptions) (driver.Tx, error) {
-	if c.failBegin {
-		return nil, fmt.Errorf("begin fail")
-	}
-	return &stubTx{conn: c}, nil
-}
-
-func (c *stubConn) ExecContext(_ context.Context, query string, args []driver.NamedValue) (driver.Result, error) {
-	c.execs = append(c.execs, query)
-	if c.failExec {
-		return nil, fmt.Errorf("exec fail")
-	}
-	if strings.HasPrefix(strings.ToUpper(strings.TrimSpace(query)), "TRUNCATE TABLE") {
-		c.tables = make(map[string][]map[string]any)
-		return driver.RowsAffected(0), nil
-	}
-	if strings.HasPrefix(strings.ToUpper(strings.TrimSpace(query)), "INSERT INTO") {
-		table, cols, err := parseInsert(query)
-		if err != nil {
-			return nil, err
-		}
-		if c.failTables != nil && c.failTables[table] {
-			return nil, fmt.Errorf("exec fail for %s", table)
-		}
-		if len(cols) != len(args) {
-			return nil, fmt.Errorf("column/arg mismatch for %s", table)
-		}
-		row := make(map[string]any, len(cols))
-		for i, col := range cols {
-			row[col] = args[i].Value
-		}
-		c.tables[table] = append(c.tables[table], row)
-		return driver.RowsAffected(1), nil
-	}
-	return driver.RowsAffected(1), nil
-}
-
-func (c *stubConn) QueryContext(_ context.Context, query string, _ []driver.NamedValue) (driver.Rows, error) {
-	if c.tables == nil {
-		c.tables = make(map[string][]map[string]any)
-	}
-	table, cols, err := parseSelect(query)
-	if err != nil {
-		return nil, err
-	}
-	if c.failTables != nil && c.failTables[table] {
-		return nil, fmt.Errorf("query fail for %s", table)
-	}
-	tableRows := c.tables[table]
-	values := make([][]driver.Value, 0, len(tableRows))
-	for _, row := range tableRows {
-		vals := make([]driver.Value, len(cols))
-		for i, col := range cols {
-			vals[i] = row[col]
-		}
-		values = append(values, vals)
-	}
-	return &stubRows{
-		cols: cols,
-		rows: values,
-		err:  c.rowsErr,
-	}, nil
-}
-
-type stubTx struct {
-	conn *stubConn
-}
-
-func (t *stubTx) Commit() error {
-	if t.conn.failCommit {
-		return fmt.Errorf("commit fail")
-	}
-	return nil
-}
-func (t *stubTx) Rollback() error { return nil }
-
-type stubRows struct {
-	cols []string
-	rows [][]driver.Value
-	idx  int
-	err  error
-}
-
-func (r *stubRows) Columns() []string { return r.cols }
-func (r *stubRows) Close() error      { return nil }
-
-func (r *stubRows) Next(dest []driver.Value) error {
-	if r.idx >= len(r.rows) {
-		if r.err != nil {
-			return r.err
-		}
-		return io.EOF
-	}
-	copy(dest, r.rows[r.idx])
-	r.idx++
-	return nil
-}
-
-func parseInsert(query string) (string, []string, error) {
-	up := strings.ToUpper(query)
-	intoIdx := strings.Index(up, "INTO ")
-	if intoIdx == -1 {
-		return "", nil, fmt.Errorf("cannot parse insert: %s", query)
-	}
-	rest := strings.TrimSpace(query[intoIdx+len("INTO "):])
-	open := strings.Index(rest, "(")
-	closeIdx := strings.Index(rest, ")")
-	if open == -1 || closeIdx == -1 || closeIdx <= open {
-		return "", nil, fmt.Errorf("cannot parse insert: %s", query)
-	}
-	table := strings.ToLower(strings.TrimSpace(rest[:open]))
-	cols := splitColumns(rest[open+1 : closeIdx])
-	return table, cols, nil
-}
-
-func parseSelect(query string) (string, []string, error) {
-	lower := strings.ToLower(query)
-	selectPrefix := "select "
-	fromToken := " from "
-	if !strings.HasPrefix(lower, selectPrefix) {
-		return "", nil, fmt.Errorf("cannot parse select: %s", query)
-	}
-	fromIdx := strings.Index(lower, fromToken)
-	if fromIdx == -1 {
-		return "", nil, fmt.Errorf("cannot parse select: %s", query)
-	}
-	cols := query[len(selectPrefix):fromIdx]
-	table := strings.TrimSpace(query[fromIdx+len(fromToken):])
-	if table == "" {
-		return "", nil, fmt.Errorf("cannot parse select: %s", query)
-	}
-	table = strings.Fields(table)[0]
-	return strings.ToLower(table), splitColumns(cols), nil
-}
-
-func splitColumns(raw string) []string {
-	parts := strings.Split(raw, ",")
-	out := make([]string, 0, len(parts))
-	for _, part := range parts {
-		out = append(out, strings.ToLower(strings.TrimSpace(part)))
-	}
-	return out
-}
-
-type recordingExec struct {
-	execs []string
-}
-
-func (r *recordingExec) ExecContext(_ context.Context, query string, _ ...any) (sql.Result, error) {
-	r.execs = append(r.execs, query)
-	return driver.RowsAffected(1), nil
-}
-
-func (r *recordingExec) QueryContext(context.Context, string, ...any) (*sql.Rows, error) {
-	return nil, fmt.Errorf("QueryContext not implemented")
-}
-
-// dbConn exposes the stub connection to tests without leaking the driver types elsewhere.
-func (s *Store) dbConn() *stubConn {
-	if s == nil || s.db == nil {
-		return nil
-	}
-	if connector, ok := s.db.Driver().(*stubDriver); ok {
-		return connector.conn
-	}
-	return nil
 }

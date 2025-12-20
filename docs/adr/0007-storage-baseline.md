@@ -7,7 +7,7 @@
 - Context: Initially ColonyCore only supported an in-memory `MemoryStore`, limiting durability and multi-process usage. A minimal persistent option was required for local development and early adopters without committing prematurely to a full relational schema and migration surface.
 
 ## Decision
-Adopt an embedded SQLite-backed store (internally `sqlite.Store`, exposed through the convenience constructor `core.NewSQLiteStore`) as the default persistent driver for local development. It reuses existing transactional logic in `MemoryStore` and after each successful transaction snapshots the entire in-memory state into a single SQLite table (`state`) containing JSON blobs per entity bucket. Provide an environment-based factory (`OpenPersistentStore`) selecting among `memory`, `sqlite`, or `postgres` drivers. The Postgres driver (`internal/infra/persistence/postgres`) now applies the generated entity-model DDL on startup and persists the normalized tables after each transaction while continuing to reuse the in-memory transactional semantics.
+Adopt an embedded SQLite-backed store (internally `sqlite.Store`, exposed through the convenience constructor `core.NewSQLiteStore`) as the default persistent driver for local development. It reuses existing transactional logic in `MemoryStore` and after each successful transaction snapshots the entire in-memory state into a single SQLite table (`state`) containing JSON blobs per entity bucket. Provide an environment-based factory (`OpenPersistentStore`) selecting among `memory`, `sqlite`, or `postgres` drivers. The Postgres driver (`internal/infra/persistence/postgres`) applies the generated entity-model DDL on startup and executes per-entity normalized CRUD inside the database transaction, using the in-memory engine only for rule evaluation (no snapshot mirroring).
 
 ## Rationale
 1. **Speed of implementation**: Snapshotting leverages existing concurrency control and rule evaluation paths with minimal code.
@@ -30,7 +30,7 @@ Adopt an embedded SQLite-backed store (internally `sqlite.Store`, exposed throug
 ### Mitigations / Future Work
 | Concern | Planned Mitigation |
 | ------- | ------------------ |
-| Snapshot performance degradation | Move to per-entity delta persistence + WAL tuning. |
+| Snapshot performance degradation | Postgres path now issues per-entity upserts/deletes directly against the normalized schema; SQLite remains snapshot-based. |
 | Concurrency scaling | Implement real Postgres driver with row-level locking and indexes. |
 | Schema evolution & migrations | Introduce version table + migration framework once normalized tables exist. |
 | Observability of persistence | Add metrics: snapshot duration, bytes written, entity counts. |
@@ -42,7 +42,7 @@ Adopt an embedded SQLite-backed store (internally `sqlite.Store`, exposed throug
 
 ## Implementation Notes
 - The concrete implementation type is `sqlite.Store` in `internal/infra/persistence/sqlite` (migrated from the deprecated `internal/persistence/sqlite` path); the public helper `core.NewSQLiteStore` returns that type while preserving the historical constructor name for backwards compatibility and readability in calling code.
-- The Postgres implementation (`internal/infra/persistence/postgres`) applies the generated entity-model DDL (`docs/schema/sql/postgres.sql` via `internal/entitymodel/sqlbundle`), loads normalized tables into an in-memory transaction engine, and persists back to the normalized tables after each committed transaction.
+- The Postgres implementation (`internal/infra/persistence/postgres`) applies the generated entity-model DDL (`docs/schema/sql/postgres.sql` via `internal/entitymodel/sqlbundle`), loads normalized tables for rule evaluation only, and applies transactional upserts/deletes directly to the normalized schema (no whole-state snapshotting).
 - Env vars: `COLONYCORE_STORAGE_DRIVER`, `COLONYCORE_SQLITE_PATH`, `COLONYCORE_POSTGRES_DSN`.
 - Test coverage via `internal/core/sqlite_store_test.go`, `internal/infra/persistence/sqlite/store_test.go`, and `internal/infra/persistence/postgres/store_test.go` ensures reload semantics and normalized table parity.
 - Memory and SQLite stores default and validate lifecycle/compliance enums (housing, protocol, permit, procedure, treatment, sample) to the entity-model values so snapshots cannot drift before hitting Postgres constraints.
@@ -69,7 +69,7 @@ Persistent storage drivers are selected exclusively via environment variables—
 Local development and CI can rely on defaults (SQLite file under the current working directory). Tests still target the in-memory driver directly for performance.
 
 ## Status & Follow-Up
-Accepted for v0.1.0 baseline. Postgres driver now persists to the normalized schema; metrics & delta persistence targeted post initial adopter feedback.
+Accepted for v0.1.0 baseline. Postgres driver now persists to the normalized schema via per-entity CRUD; metrics and row-level observability remain follow-ups.
 
 ## SQLite Operational Notes
 The snapshot strategy writes the full logical state into a single `state` table as JSON blobs after each successful transaction. This keeps the implementation compact, allows readers to inspect state with standard SQL tooling, and makes rollback/reset trivial (delete the DB file). The trade-offs are:
@@ -79,7 +79,7 @@ The snapshot strategy writes the full logical state into a single `state` table 
 Read concurrency is comparable to the in-memory driver (multiple readers, single writer). For larger deployments, Postgres will deliver row-level locking and normalized schemas.
 
 ## Postgres Roadmap
-The Postgres driver already applies the generated normalized schema and enforces FK/enum/required-join constraints. Planned work includes:
-1. Row-level locking and transactional alignment with the rules engine to improve write concurrency beyond the in-memory transaction mirror.
+The Postgres driver applies the generated normalized schema and enforces FK/enum/required-join constraints via transactional upserts/deletes. Planned work includes:
+1. Row-level locking and tighter rules-engine alignment to improve write concurrency beyond the in-memory evaluation phase.
 2. Versioned migrations and schema introspection.
-3. Metrics covering snapshot lag, row counts, and write latency.
+3. Metrics covering write latency, row counts, and rule evaluation overhead.
