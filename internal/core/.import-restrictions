@@ -8,6 +8,7 @@ Rules:
       - "colonycore/pkg/extension"
       - "colonycore/internal/infra/persistence"
       - "colonycore/internal/infra/blob"
+      - "colonycore/internal/entitymodel"
 InverseRules:
   - SelectorRegexp: "^colonycore/"
     AllowedPrefixes:

@@ -57,7 +57,8 @@
   - [x] Add human-facing entity model overview doc (`docs/annex/entity-model-overview.md`) that links canonical artifacts without duplicating the schema.
   - [x] Promote Entity Model v0 to accepted status (ADR-0003), bump schema version to 0.2.0, regenerate artifacts, and add DDL bundle guard tests for SQLite/Postgres.
 - [x] Expose the canonical entity-model OpenAPI over HTTP (dataset handler route `/admin/entity-model/openapi` with version header) for admin/debug consumers.
-- [ ] Add runtime compatibility signals for the entity model
+- [x] Add runtime compatibility signals for the entity model
   - [x] Serve schema metadata (status/source) alongside the version in admin/debug endpoints by reusing the canonical JSON schema bundle, keeping dataset adapter wiring unchanged.
-  - [ ] Gate plugin/dataset registration paths on schema major-version mismatches using `internal/entitymodel` helpers to avoid coupling domain types back to adapters while respecting the hex-layer boundaries from `ARCHITECTURE.md`.
+  - [x] Gate plugin/dataset registration paths on schema major-version mismatches using `internal/entitymodel` helpers to avoid coupling domain types back to adapters while respecting the hex-layer boundaries from `ARCHITECTURE.md`.
+    - Implemented optional compatibility handshake: plugins can implement `pluginapi.EntityModelCompatibilityProvider`, dataset templates may set `metadata.entity_model_major`; `internal/core.Service.InstallPlugin` rejects mismatched majors and conflicting declarations.
   - [x] Add an integration smoke test that hits the new metadata surface plus `/admin/entity-model/openapi` to ensure headers and bodies are sourced from the generated artifacts (no hand-written strings).

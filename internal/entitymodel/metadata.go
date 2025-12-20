@@ -59,3 +59,21 @@ func IsCompatibleMajor(expected int) bool {
 	}
 	return major == expected
 }
+
+// MajorVersion returns the parsed major version of the embedded Entity Model
+// schema. The boolean result reports whether a valid major component was found.
+func MajorVersion() (int, bool) {
+	v := Version()
+	if v == "" {
+		return 0, false
+	}
+	parts := strings.SplitN(v, ".", 2)
+	if len(parts) == 0 {
+		return 0, false
+	}
+	major, err := strconv.Atoi(parts[0])
+	if err != nil {
+		return 0, false
+	}
+	return major, true
+}

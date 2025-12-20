@@ -179,6 +179,10 @@ func cloneMetadata(metadata datasetapi.Metadata) datasetapi.Metadata {
 	if len(metadata.Tags) > 0 {
 		cloned.Tags = append([]string(nil), metadata.Tags...)
 	}
+	if metadata.EntityModelMajor != nil {
+		major := *metadata.EntityModelMajor
+		cloned.EntityModelMajor = &major
+	}
 	if len(metadata.Annotations) > 0 {
 		cloned.Annotations = make(map[string]string, len(metadata.Annotations))
 		for k, v := range metadata.Annotations {

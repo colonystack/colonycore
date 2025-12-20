@@ -10,6 +10,7 @@ Rules:
       - "colonycore/pkg/datasetapi"
       - "colonycore/pkg/domain"
       - "colonycore/pkg/pluginapi"
+      - "colonycore/internal/entitymodel"
 InverseRules:
   - SelectorRegexp: "^colonycore/"
     AllowedPrefixes:

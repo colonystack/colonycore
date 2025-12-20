@@ -38,6 +38,7 @@ TYPE DefaultHousingContext struct { unexported }
 TYPE DefaultProtocolContext struct { unexported }
 TYPE DefaultVersionProvider struct { unexported }
 TYPE EntityContext interface { Facility() colonycore/pkg/pluginapi.EntityTypeRef Housing() colonycore/pkg/pluginapi.EntityTypeRef Observation() colonycore/pkg/pluginapi.EntityTypeRef Organism() colonycore/pkg/pluginapi.EntityTypeRef Permit() colonycore/pkg/pluginapi.EntityTypeRef Procedure() colonycore/pkg/pluginapi.EntityTypeRef Project() colonycore/pkg/pluginapi.EntityTypeRef Protocol() colonycore/pkg/pluginapi.EntityTypeRef Sample() colonycore/pkg/pluginapi.EntityTypeRef SupplyItem() colonycore/pkg/pluginapi.EntityTypeRef Treatment() colonycore/pkg/pluginapi.EntityTypeRef }
+TYPE EntityModelCompatibilityProvider interface { EntityModelMajor() int }
 TYPE EntityType (string)
 TYPE EntityTypeRef interface { Equals(colonycore/pkg/pluginapi.EntityTypeRef) bool IsCore() bool String() string Value() colonycore/pkg/pluginapi.EntityType }
 TYPE EnvironmentTypeRef interface { Equals(colonycore/pkg/pluginapi.EnvironmentTypeRef) bool IsAquatic() bool IsHumid() bool String() string }

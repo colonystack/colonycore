@@ -50,6 +50,54 @@ func TestIsCompatibleMajorHandlesInvalidVersion(t *testing.T) {
 	}
 }
 
+func TestIsCompatibleMajorHandlesEmptyVersion(t *testing.T) {
+	orig := schemaVersionFn
+	schemaVersionFn = func() (string, error) { return "", nil }
+	t.Cleanup(func() { schemaVersionFn = orig })
+
+	if IsCompatibleMajor(1) {
+		t.Fatalf("expected incompatible result for empty version")
+	}
+}
+
+func TestMajorVersion(t *testing.T) {
+	v := Version()
+	if v == "" {
+		t.Skip("version not set")
+	}
+	major, ok := MajorVersion()
+	if !ok {
+		t.Fatalf("expected to parse major from %q", v)
+	}
+	parsed, err := strconv.Atoi(strings.SplitN(v, ".", 2)[0])
+	if err != nil {
+		t.Fatalf("parse major: %v", err)
+	}
+	if major != parsed {
+		t.Fatalf("expected major %d, got %d", parsed, major)
+	}
+}
+
+func TestMajorVersionHandlesInvalidVersion(t *testing.T) {
+	orig := schemaVersionFn
+	schemaVersionFn = func() (string, error) { return "bad.version", nil }
+	t.Cleanup(func() { schemaVersionFn = orig })
+
+	if major, ok := MajorVersion(); ok || major != 0 {
+		t.Fatalf("expected invalid parse to report false, got %d", major)
+	}
+}
+
+func TestMajorVersionHandlesEmptyVersion(t *testing.T) {
+	orig := schemaVersionFn
+	schemaVersionFn = func() (string, error) { return "", nil }
+	t.Cleanup(func() { schemaVersionFn = orig })
+
+	if major, ok := MajorVersion(); ok || major != 0 {
+		t.Fatalf("expected empty version to report false, got %d", major)
+	}
+}
+
 func TestVersionFallbackOnError(t *testing.T) {
 	orig := schemaVersionFn
 	schemaVersionFn = func() (string, error) { return "", errors.New("boom") }

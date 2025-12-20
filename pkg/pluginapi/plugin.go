@@ -4,6 +4,14 @@ package pluginapi
 
 import "colonycore/pkg/datasetapi"
 
+// EntityModelCompatibilityProvider allows plugins to declare the Entity Model
+// major version they target. Hosts may reject plugins that declare a different
+// major than the embedded canonical model. Returning 0 indicates no explicit
+// declaration.
+type EntityModelCompatibilityProvider interface {
+	EntityModelMajor() int
+}
+
 // Registry is implemented by the host to allow plugins to register resources.
 type Registry interface {
 	RegisterSchema(entity string, schema map[string]any)

@@ -117,11 +117,12 @@ type Column struct {
 
 // Metadata provides descriptive and operational metadata for a template.
 type Metadata struct {
-	Source          string            `json:"source,omitempty"`
-	Documentation   string            `json:"documentation,omitempty"`
-	RefreshInterval string            `json:"refresh_interval,omitempty"`
-	Tags            []string          `json:"tags,omitempty"`
-	Annotations     map[string]string `json:"annotations,omitempty"`
+	Source           string            `json:"source,omitempty"`
+	Documentation    string            `json:"documentation,omitempty"`
+	RefreshInterval  string            `json:"refresh_interval,omitempty"`
+	Tags             []string          `json:"tags,omitempty"`
+	Annotations      map[string]string `json:"annotations,omitempty"`
+	EntityModelMajor *int              `json:"entity_model_major,omitempty"`
 }
 
 // Environment bundles dependencies needed for binding template runners.

@@ -20,6 +20,7 @@ Lifecycle/status enums are defined once in the schema and exported through gener
 - Serve OpenAPI: wire `internal/entitymodel.NewOpenAPIHandler` into admin/debug endpoints (default route provided by the dataset HTTP handler at `/admin/entity-model/openapi`, with headers `X-Entity-Model-Version`, `X-Entity-Model-Status`, and `X-Entity-Model-Source` sourced from the canonical schema bundle).
 - Apply storage schema: use `internal/entitymodel/sqlbundle.{SQLite,Postgres}` with `SplitStatements` in adapters; Postgres/SQLite/memory parity is exercised via fixtures and rules tests.
 - Extensibility: plugins must stick to the mandatory fields and extension hooks listed in `docs/annex/plugin-contract.md`; static checks run from `scripts/validate_plugin_patterns.go`.
+- Compatibility signaling: plugins may declare the Entity Model major they target via `pluginapi.EntityModelCompatibilityProvider`, and dataset templates can set `metadata.entity_model_major`; the core service rejects installations when declared majors differ from the embedded schema.
 
 ## Change control
 - Schema edits must bump `version`, regenerate artifacts (`make entity-model-verify`), and keep diffs in sync with ADR-0003 expectations.
