@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"colonycore/internal/entitymodel"
 	"colonycore/pkg/datasetapi"
 )
 
@@ -20,13 +21,17 @@ type Catalog interface {
 
 // Handler provides HTTP access to dataset templates and exports.
 type Handler struct {
-	Catalog Catalog
-	Exports ExportScheduler
+	Catalog     Catalog
+	Exports     ExportScheduler
+	EntityModel http.Handler
 }
 
 // NewHandler constructs a dataset HTTP handler.
 func NewHandler(c Catalog) *Handler {
-	return &Handler{Catalog: c}
+	return &Handler{
+		Catalog:     c,
+		EntityModel: entitymodel.NewOpenAPIHandler(),
+	}
 }
 
 func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -39,6 +44,9 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	switch {
 	case r.Method == http.MethodGet && path == "/api/v1/datasets/templates":
 		h.handleListTemplates(w, r)
+		return
+	case r.Method == http.MethodGet && path == "/admin/entity-model/openapi":
+		h.handleEntityModelOpenAPI(w, r)
 		return
 	case strings.HasPrefix(path, "/api/v1/datasets/exports"):
 		if h.Exports == nil {
@@ -53,6 +61,17 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	default:
 		http.NotFound(w, r)
 	}
+}
+
+func (h *Handler) handleEntityModelOpenAPI(w http.ResponseWriter, r *http.Request) {
+	handler := h.EntityModel
+	if handler == nil {
+		handler = entitymodel.NewOpenAPIHandler()
+	}
+	if version := entitymodel.Version(); version != "" {
+		w.Header().Set("X-Entity-Model-Version", version)
+	}
+	handler.ServeHTTP(w, r)
 }
 
 func (h *Handler) handleListTemplates(w http.ResponseWriter, _ *http.Request) {

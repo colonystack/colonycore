@@ -54,5 +54,6 @@
   - [x] Tighten cardinality parity by adding `minItems` where relationships are `1..n` (Line genotype markers, Permit facility/protocol links, Project facilities, Supply item facilities/projects, Sample chain-of-custody, Permit allowed_activities) so JSON Schema, DDL triggers, and OpenAPI all enforce non-empty links.
   - [x] Bring SQLite/memory enforcement closer to Postgres: Postgres uses constraint triggers for required relationship arrays, but SQLite/memory only enforce existence. Either document divergence or add parity checks. (Memory + SQLite stores now reject empty required arrays via store-level validation plus guard tests.)
   - [x] Confirm cardinality encoding expectation with reviewer: the model validates `0..1/1..1/0..n/1..n`; no single-dot forms are present, so ensure downstream tooling matches this notation (documented and locked by validator tests).
-- [x] Add human-facing entity model overview doc (`docs/annex/entity-model-overview.md`) that links canonical artifacts without duplicating the schema.
-- [x] Promote Entity Model v0 to accepted status (ADR-0003), bump schema version to 0.2.0, regenerate artifacts, and add DDL bundle guard tests for SQLite/Postgres.
+  - [x] Add human-facing entity model overview doc (`docs/annex/entity-model-overview.md`) that links canonical artifacts without duplicating the schema.
+  - [x] Promote Entity Model v0 to accepted status (ADR-0003), bump schema version to 0.2.0, regenerate artifacts, and add DDL bundle guard tests for SQLite/Postgres.
+- [x] Expose the canonical entity-model OpenAPI over HTTP (dataset handler route `/admin/entity-model/openapi` with version header) for admin/debug consumers.

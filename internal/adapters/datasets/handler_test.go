@@ -1,8 +1,10 @@
 package datasets
 
 import (
+	"bytes"
 	"colonycore/internal/adapters/testutil"
 	"colonycore/internal/core"
+	"colonycore/internal/entitymodel"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -20,5 +22,28 @@ func TestHandlerListTemplates_Smoke(t *testing.T) {
 	h.ServeHTTP(rec, req)
 	if rec.Code != http.StatusOK {
 		t.Fatalf("expected 200 got %d", rec.Code)
+	}
+}
+
+func TestHandlerServesEntityModelOpenAPI(t *testing.T) {
+	h := NewHandler(core.NewInMemoryService(core.NewDefaultRulesEngine()))
+	// Cover the fallback path for nil handler.
+	h.EntityModel = nil
+
+	req := httptest.NewRequest(http.MethodGet, "/admin/entity-model/openapi", nil)
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200 got %d", rec.Code)
+	}
+	if got := rec.Header().Get("Content-Type"); got != "application/yaml" {
+		t.Fatalf("unexpected content type %q", got)
+	}
+	if got := rec.Header().Get("X-Entity-Model-Version"); got != entitymodel.Version() {
+		t.Fatalf("unexpected version header %q", got)
+	}
+	if !bytes.Equal(rec.Body.Bytes(), entitymodel.OpenAPISpec()) {
+		t.Fatalf("openapi body mismatch")
 	}
 }
