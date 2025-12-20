@@ -21,9 +21,13 @@ SCHEMASPY_PG_DB ?= entitymodel
 SCHEMASPY_PG_USER ?= postgres
 SCHEMASPY_PG_PASSWORD ?= postgres
 
-.PHONY: all build lint go-test test registry-check fmt-check vet registry-lint golangci golangci-install python-lint r-lint go-lint import-boss import-boss-install entity-model-validate entity-model-generate entity-model-verify entity-model-erd entity-model-diff entity-model-diff-update api-snapshots
+.PHONY: all build lint go-test test registry-check fmt-check vet registry-lint golangci golangci-install python-lint r-lint go-lint import-boss import-boss-install entity-model-validate entity-model-generate entity-model-verify entity-model-erd entity-model-diff entity-model-diff-update api-snapshots list-docker-images
 
 all: build
+
+list-docker-images:
+	@echo "$(SCHEMASPY_IMAGE)"
+	@echo "$(SCHEMASPY_PG_IMAGE)"
 
 build:
 	GOCACHE=$(GOCACHE) go build ./...
