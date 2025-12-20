@@ -68,8 +68,15 @@ func (h *Handler) handleEntityModelOpenAPI(w http.ResponseWriter, r *http.Reques
 	if handler == nil {
 		handler = entitymodel.NewOpenAPIHandler()
 	}
-	if version := entitymodel.Version(); version != "" {
-		w.Header().Set("X-Entity-Model-Version", version)
+	meta := entitymodel.MetadataInfo()
+	if meta.Version != "" {
+		w.Header().Set("X-Entity-Model-Version", meta.Version)
+	}
+	if meta.Status != "" {
+		w.Header().Set("X-Entity-Model-Status", meta.Status)
+	}
+	if meta.Source != "" {
+		w.Header().Set("X-Entity-Model-Source", meta.Source)
 	}
 	handler.ServeHTTP(w, r)
 }

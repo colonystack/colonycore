@@ -30,6 +30,8 @@ func TestHandlerServesEntityModelOpenAPI(t *testing.T) {
 	// Cover the fallback path for nil handler.
 	h.EntityModel = nil
 
+	meta := entitymodel.MetadataInfo()
+
 	req := httptest.NewRequest(http.MethodGet, "/admin/entity-model/openapi", nil)
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, req)
@@ -40,8 +42,14 @@ func TestHandlerServesEntityModelOpenAPI(t *testing.T) {
 	if got := rec.Header().Get("Content-Type"); got != "application/yaml" {
 		t.Fatalf("unexpected content type %q", got)
 	}
-	if got := rec.Header().Get("X-Entity-Model-Version"); got != entitymodel.Version() {
+	if got := rec.Header().Get("X-Entity-Model-Version"); got != meta.Version {
 		t.Fatalf("unexpected version header %q", got)
+	}
+	if got := rec.Header().Get("X-Entity-Model-Status"); got != meta.Status {
+		t.Fatalf("unexpected status header %q", got)
+	}
+	if got := rec.Header().Get("X-Entity-Model-Source"); got != meta.Source {
+		t.Fatalf("unexpected source header %q", got)
 	}
 	if !bytes.Equal(rec.Body.Bytes(), entitymodel.OpenAPISpec()) {
 		t.Fatalf("openapi body mismatch")

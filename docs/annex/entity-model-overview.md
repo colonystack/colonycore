@@ -17,7 +17,7 @@ Lifecycle/status enums are defined once in the schema and exported through gener
 
 ## How to consume
 - Validate/generate: `make entity-model-verify` (runs from `make lint`), `make entity-model-diff` to check the fingerprint.
-- Serve OpenAPI: wire `internal/entitymodel.NewOpenAPIHandler` into admin/debug endpoints (default route provided by the dataset HTTP handler at `/admin/entity-model/openapi`, with `X-Entity-Model-Version` set from the schema fingerprint).
+- Serve OpenAPI: wire `internal/entitymodel.NewOpenAPIHandler` into admin/debug endpoints (default route provided by the dataset HTTP handler at `/admin/entity-model/openapi`, with headers `X-Entity-Model-Version`, `X-Entity-Model-Status`, and `X-Entity-Model-Source` sourced from the canonical schema bundle).
 - Apply storage schema: use `internal/entitymodel/sqlbundle.{SQLite,Postgres}` with `SplitStatements` in adapters; Postgres/SQLite/memory parity is exercised via fixtures and rules tests.
 - Extensibility: plugins must stick to the mandatory fields and extension hooks listed in `docs/annex/plugin-contract.md`; static checks run from `scripts/validate_plugin_patterns.go`.
 
