@@ -16,10 +16,12 @@ SCHEMASPY_TMP := $(CURDIR)/.cache/schemaspy/entitymodel-erd
 SCHEMASPY_SVG_OUT := $(CURDIR)/docs/annex/entity-model-erd.svg
 SCHEMASPY_DOT_OUT := $(CURDIR)/docs/annex/entity-model-erd.dot
 SCHEMASPY_PG_IMAGE ?= postgres:16-alpine
+SCHEMASPY_PG_PLATFORM ?= linux/amd64
 SCHEMASPY_PG_CONTAINER ?= entitymodel-erd-pg
 SCHEMASPY_PG_DB ?= entitymodel
 SCHEMASPY_PG_USER ?= postgres
 SCHEMASPY_PG_PASSWORD ?= postgres
+SCHEMASPY_PG_TIMEOUT ?= 60
 
 .PHONY: all build lint go-test test registry-check fmt-check vet registry-lint golangci golangci-install python-lint r-lint go-lint import-boss import-boss-install entity-model-validate entity-model-generate entity-model-verify entity-model-erd entity-model-diff entity-model-diff-update api-snapshots list-docker-images
 
@@ -198,10 +200,47 @@ entity-model-erd:
 	@rm -rf $(SCHEMASPY_TMP)
 	@mkdir -p $(SCHEMASPY_TMP) $(dir $(SCHEMASPY_SVG_OUT))
 	@docker rm -f $(SCHEMASPY_PG_CONTAINER) >/dev/null 2>&1 || true
-	@docker run --rm -d --name $(SCHEMASPY_PG_CONTAINER) -e POSTGRES_PASSWORD=$(SCHEMASPY_PG_PASSWORD) -e POSTGRES_DB=$(SCHEMASPY_PG_DB) $(SCHEMASPY_PG_IMAGE) >/dev/null
+	@if ! docker run --rm -d --name $(SCHEMASPY_PG_CONTAINER) --platform $(SCHEMASPY_PG_PLATFORM) -e POSTGRES_PASSWORD=$(SCHEMASPY_PG_PASSWORD) -e POSTGRES_DB=$(SCHEMASPY_PG_DB) $(SCHEMASPY_PG_IMAGE) >/dev/null 2>&1; then \
+		echo "Failed to start postgres container"; \
+		exit 1; \
+	fi
 	@printf "waiting for postgres"
-	@until docker exec $(SCHEMASPY_PG_CONTAINER) pg_isready -U $(SCHEMASPY_PG_USER) -d $(SCHEMASPY_PG_DB) >/dev/null 2>&1; do printf "."; sleep 1; done
-	@until docker exec $(SCHEMASPY_PG_CONTAINER) sh -c "psql -X -U $(SCHEMASPY_PG_USER) -d postgres -tc \"SELECT 1 FROM pg_database WHERE datname='$(SCHEMASPY_PG_DB)';\" | grep -q 1 || createdb -U $(SCHEMASPY_PG_USER) $(SCHEMASPY_PG_DB)" >/dev/null 2>&1; do printf "."; sleep 3; done; echo "OK"
+	@timeout=$(SCHEMASPY_PG_TIMEOUT); elapsed=0; \
+	until docker exec $(SCHEMASPY_PG_CONTAINER) pg_isready -U $(SCHEMASPY_PG_USER) -d $(SCHEMASPY_PG_DB) >/dev/null 2>&1; do \
+		if ! docker ps --filter "name=$(SCHEMASPY_PG_CONTAINER)" --filter "status=running" --format '{{.Names}}' | grep -q "^$(SCHEMASPY_PG_CONTAINER)$$"; then \
+			echo " FAILED (container stopped)"; \
+			echo "Container logs:"; \
+			docker logs $(SCHEMASPY_PG_CONTAINER) 2>&1 || true; \
+			docker rm -f $(SCHEMASPY_PG_CONTAINER) >/dev/null 2>&1 || true; \
+			exit 1; \
+		fi; \
+		if [ $$elapsed -ge $$timeout ]; then \
+			echo " TIMEOUT after $${elapsed}s"; \
+			echo "Container logs:"; \
+			docker logs $(SCHEMASPY_PG_CONTAINER) 2>&1 || true; \
+			docker rm -f $(SCHEMASPY_PG_CONTAINER) >/dev/null 2>&1 || true; \
+			exit 1; \
+		fi; \
+		printf "."; sleep 1; elapsed=$$((elapsed + 1)); \
+	done
+	@timeout=$(SCHEMASPY_PG_TIMEOUT); elapsed=0; \
+	until docker exec $(SCHEMASPY_PG_CONTAINER) sh -c "psql -X -U $(SCHEMASPY_PG_USER) -d postgres -tc \"SELECT 1 FROM pg_database WHERE datname='$(SCHEMASPY_PG_DB)';\" | grep -q 1 || createdb -U $(SCHEMASPY_PG_USER) $(SCHEMASPY_PG_DB)" >/dev/null 2>&1; do \
+		if ! docker ps --filter "name=$(SCHEMASPY_PG_CONTAINER)" --filter "status=running" --format '{{.Names}}' | grep -q "^$(SCHEMASPY_PG_CONTAINER)$$"; then \
+			echo " FAILED (container stopped)"; \
+			echo "Container logs:"; \
+			docker logs $(SCHEMASPY_PG_CONTAINER) 2>&1 || true; \
+			docker rm -f $(SCHEMASPY_PG_CONTAINER) >/dev/null 2>&1 || true; \
+			exit 1; \
+		fi; \
+		if [ $$elapsed -ge $$timeout ]; then \
+			echo " TIMEOUT after $${elapsed}s"; \
+			echo "Container logs:"; \
+			docker logs $(SCHEMASPY_PG_CONTAINER) 2>&1 || true; \
+			docker rm -f $(SCHEMASPY_PG_CONTAINER) >/dev/null 2>&1 || true; \
+			exit 1; \
+		fi; \
+		printf "."; sleep 3; elapsed=$$((elapsed + 3)); \
+	done; echo "OK"
 	@docker exec -i $(SCHEMASPY_PG_CONTAINER) psql -X -v ON_ERROR_STOP=1 -1 -U $(SCHEMASPY_PG_USER) -d $(SCHEMASPY_PG_DB) > /dev/null < docs/schema/sql/postgres.sql
 	@docker run --rm $(if $(SCHEMASPY_PLATFORM),--platform $(SCHEMASPY_PLATFORM),) -v "$(SCHEMASPY_TMP)":/output --network container:$(SCHEMASPY_PG_CONTAINER) $(SCHEMASPY_IMAGE) -t pgsql11 -db $(SCHEMASPY_PG_DB) -host localhost -port 5432 -s public -u $(SCHEMASPY_PG_USER) -p $(SCHEMASPY_PG_PASSWORD) -dbthreads 1 -hq -imageformat svg > /dev/null
 	@cp "$(SCHEMASPY_TMP)/diagrams/summary/relationships.real.large.svg" "$(SCHEMASPY_SVG_OUT)"
