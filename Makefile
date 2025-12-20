@@ -199,6 +199,7 @@ entity-model-erd:
 	@echo "==> entity-model erd (SchemaSpy via generated Postgres DDL)"
 	@rm -rf $(SCHEMASPY_TMP)
 	@mkdir -p $(SCHEMASPY_TMP) $(dir $(SCHEMASPY_SVG_OUT))
+	@chmod 777 $(SCHEMASPY_TMP)
 	@docker rm -f $(SCHEMASPY_PG_CONTAINER) >/dev/null 2>&1 || true
 	@docker run --rm -d --name $(SCHEMASPY_PG_CONTAINER) --platform $(SCHEMASPY_PG_PLATFORM) -e POSTGRES_PASSWORD=$(SCHEMASPY_PG_PASSWORD) -e POSTGRES_DB=$(SCHEMASPY_PG_DB) $(SCHEMASPY_PG_IMAGE) >/dev/null 2>&1 || { echo "Failed to start postgres container"; exit 1; }
 	@printf "waiting for postgres"
@@ -214,8 +215,8 @@ entity-model-erd:
 		[ $$elapsed -lt $$timeout ] || { echo " TIMEOUT"; docker logs $(SCHEMASPY_PG_CONTAINER) 2>&1; docker rm -f $(SCHEMASPY_PG_CONTAINER) >/dev/null 2>&1; exit 1; }; \
 		printf "."; sleep 3; elapsed=$$((elapsed + 3)); \
 	done; echo "OK"
-	@docker exec -i $(SCHEMASPY_PG_CONTAINER) psql -X -v ON_ERROR_STOP=1 -1 -U $(SCHEMASPY_PG_USER) -d $(SCHEMASPY_PG_DB) < docs/schema/sql/postgres.sql 2>&1 || { echo "Schema load failed"; docker rm -f $(SCHEMASPY_PG_CONTAINER) >/dev/null 2>&1; exit 1; }
-	@docker run --rm $(if $(SCHEMASPY_PLATFORM),--platform $(SCHEMASPY_PLATFORM),) -v "$(SCHEMASPY_TMP)":/output --network container:$(SCHEMASPY_PG_CONTAINER) $(SCHEMASPY_IMAGE) -t pgsql11 -db $(SCHEMASPY_PG_DB) -host localhost -port 5432 -s public -u $(SCHEMASPY_PG_USER) -p $(SCHEMASPY_PG_PASSWORD) -dbthreads 1 -hq -imageformat svg 2>&1 || { echo "SchemaSpy failed"; docker rm -f $(SCHEMASPY_PG_CONTAINER) >/dev/null 2>&1; exit 1; }
+	@docker exec -i $(SCHEMASPY_PG_CONTAINER) psql -X -v ON_ERROR_STOP=1 -1 -U $(SCHEMASPY_PG_USER) -d $(SCHEMASPY_PG_DB) < docs/schema/sql/postgres.sql >/dev/null 2>&1 || { echo "Schema load failed"; docker rm -f $(SCHEMASPY_PG_CONTAINER) >/dev/null 2>&1; exit 1; }
+	@docker run --rm $(if $(SCHEMASPY_PLATFORM),--platform $(SCHEMASPY_PLATFORM),) -v "$(SCHEMASPY_TMP)":/output --network container:$(SCHEMASPY_PG_CONTAINER) $(SCHEMASPY_IMAGE) -t pgsql11 -db $(SCHEMASPY_PG_DB) -host localhost -port 5432 -s public -u $(SCHEMASPY_PG_USER) -p $(SCHEMASPY_PG_PASSWORD) -dbthreads 1 -hq -imageformat svg >/dev/null 2>&1 || { echo "SchemaSpy failed"; docker rm -f $(SCHEMASPY_PG_CONTAINER) >/dev/null 2>&1; exit 1; }
 	@cp "$(SCHEMASPY_TMP)/diagrams/summary/relationships.real.large.svg" "$(SCHEMASPY_SVG_OUT)" || { echo "Failed to copy SVG"; docker rm -f $(SCHEMASPY_PG_CONTAINER) >/dev/null 2>&1; exit 1; }
 	@cp "$(SCHEMASPY_TMP)/diagrams/summary/relationships.real.large.dot" "$(SCHEMASPY_DOT_OUT)" || { echo "Failed to copy DOT"; docker rm -f $(SCHEMASPY_PG_CONTAINER) >/dev/null 2>&1; exit 1; }
 	@docker rm -f $(SCHEMASPY_PG_CONTAINER) >/dev/null 2>&1 || true
