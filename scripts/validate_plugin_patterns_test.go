@@ -306,7 +306,11 @@ func TestMainWithExit(t *testing.T) {
 	}
 	cmd := exec.Command(os.Args[0], "-test.run=TestMainWithExit") // #nosec G204 -- safe fixed args
 	cmd.Env = append(os.Environ(), "BE_MAIN_RUNNER=1")
-	cmd.Dir = "/mnt/c/Users/Tobi-Wan/git/me/colonycore/scripts"
+	cwd, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("get working directory: %v", err)
+	}
+	cmd.Dir = cwd
 
 	if err := cmd.Run(); err != nil {
 		if exitError, ok := err.(*exec.ExitError); ok {
