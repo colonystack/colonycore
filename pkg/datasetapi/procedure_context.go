@@ -44,15 +44,15 @@ func (p procedureStatusRef) String() string {
 }
 
 func (p procedureStatusRef) IsActive() bool {
-	return p.value == "in_progress"
+	return p.value == procedureStatusInProgress
 }
 
 func (p procedureStatusRef) IsTerminal() bool {
-	return p.value == statusCompleted || p.value == statusCancelled || p.value == "failed"
+	return p.value == procedureStatusCompleted || p.value == procedureStatusCancelled || p.value == procedureStatusFailed
 }
 
 func (p procedureStatusRef) IsSuccessful() bool {
-	return p.value == statusCompleted
+	return p.value == procedureStatusCompleted
 }
 
 func (p procedureStatusRef) Equals(other ProcedureStatusRef) bool {
@@ -69,27 +69,27 @@ type DefaultProcedureContext struct{}
 
 // Scheduled returns the scheduled procedure status reference.
 func (DefaultProcedureContext) Scheduled() ProcedureStatusRef {
-	return procedureStatusRef{value: "scheduled"}
+	return procedureStatusRef{value: procedureStatusScheduled}
 }
 
 // InProgress returns the in progress procedure status reference.
 func (DefaultProcedureContext) InProgress() ProcedureStatusRef {
-	return procedureStatusRef{value: "in_progress"}
+	return procedureStatusRef{value: procedureStatusInProgress}
 }
 
 // Completed returns the completed procedure status reference.
 func (DefaultProcedureContext) Completed() ProcedureStatusRef {
-	return procedureStatusRef{value: "completed"}
+	return procedureStatusRef{value: procedureStatusCompleted}
 }
 
 // Cancelled returns the cancelled procedure status reference.
 func (DefaultProcedureContext) Cancelled() ProcedureStatusRef {
-	return procedureStatusRef{value: "cancelled"}
+	return procedureStatusRef{value: procedureStatusCancelled}
 }
 
 // Failed returns the failed procedure status reference.
 func (DefaultProcedureContext) Failed() ProcedureStatusRef {
-	return procedureStatusRef{value: "failed"}
+	return procedureStatusRef{value: procedureStatusFailed}
 }
 
 // NewProcedureContext creates a new procedure context instance.

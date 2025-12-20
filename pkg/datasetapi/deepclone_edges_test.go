@@ -10,7 +10,8 @@ func TestDeepCloneEmptyContainers(t *testing.T) {
 		"emptystrs":  []string{},
 		"emptymaps":  []map[string]any{},
 	}
-	org := NewOrganism(OrganismData{Base: BaseData{ID: "edge"}, Attributes: attrs})
+	hook := NewExtensionHookContext().OrganismAttributes()
+	org := NewOrganism(OrganismData{Base: BaseData{ID: "edge"}, Extensions: newCoreExtensionSet(hook, attrs)})
 	got := org.Attributes()
 	for k, expectType := range map[string]string{"emptymap": "map", "emptyslice": "slice", "emptystrs": "slice", "emptymaps": "slice"} {
 		v := got[k]

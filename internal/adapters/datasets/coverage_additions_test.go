@@ -10,10 +10,11 @@ import (
 	"testing"
 	"time"
 
+	"colonycore/internal/adapters/testutil"
 	"colonycore/internal/core"
 	"colonycore/pkg/datasetapi"
 	"colonycore/pkg/domain"
-	"colonycore/plugins/frog"
+	entitymodel "colonycore/pkg/domain/entitymodel"
 )
 
 // (Helper types are defined in exporter_worker_test.go; reuse them here.)
@@ -37,7 +38,7 @@ func TestWorkerEnqueueDuplicateFormatsAndQueueFull(t *testing.T) {
 	formatProvider := datasetapi.GetFormatProvider()
 
 	svc := core.NewInMemoryService(core.NewDefaultRulesEngine())
-	meta, err := svc.InstallPlugin(frog.New())
+	meta, err := testutil.InstallFrogPlugin(svc)
 	if err != nil {
 		t.Fatalf("install plugin: %v", err)
 	}
@@ -94,7 +95,7 @@ func TestHandlerServeHTTPNoCatalog(t *testing.T) {
 
 func TestHandlerRunAcceptHeaderNegotiation(t *testing.T) {
 	svc := core.NewInMemoryService(core.NewDefaultRulesEngine())
-	meta, err := svc.InstallPlugin(frog.New())
+	meta, err := testutil.InstallFrogPlugin(svc)
 	if err != nil {
 		t.Fatalf("install plugin: %v", err)
 	}
@@ -102,12 +103,16 @@ func TestHandlerRunAcceptHeaderNegotiation(t *testing.T) {
 	h := NewHandler(svc)
 
 	ctx := context.Background()
-	project, _, err := svc.CreateProject(ctx, domain.Project{Code: "PRJ-ACPT", Title: "Negotiate"})
+	facility, _, err := svc.CreateFacility(ctx, domain.Facility{Facility: entitymodel.Facility{Name: "Facility", Code: "FAC-ACPT"}})
+	if err != nil {
+		t.Fatalf("create facility: %v", err)
+	}
+	project, _, err := svc.CreateProject(ctx, domain.Project{Project: entitymodel.Project{Code: "PRJ-ACPT", Title: "Negotiate", FacilityIDs: []string{facility.ID}}})
 	if err != nil {
 		t.Fatalf("create project: %v", err)
 	}
 	projectID := project.ID
-	if _, _, err := svc.CreateOrganism(ctx, domain.Organism{Name: "Frog", Species: "Tree Frog", Stage: domain.StageAdult, ProjectID: &projectID}); err != nil {
+	if _, _, err := svc.CreateOrganism(ctx, domain.Organism{Organism: entitymodel.Organism{Name: "Frog", Species: "Tree Frog", Stage: domain.StageAdult, ProjectID: &projectID}}); err != nil {
 		t.Fatalf("create organism: %v", err)
 	}
 
@@ -169,7 +174,7 @@ func TestWorkerStopContextTimeoutBranch(_ *testing.T) {
 func TestHandlerExportCreateTemplateSlugFallback(t *testing.T) {
 	// Provide export create path where slug components are used instead of direct slug.
 	svc := core.NewInMemoryService(core.NewDefaultRulesEngine())
-	meta, err := svc.InstallPlugin(frog.New())
+	meta, err := testutil.InstallFrogPlugin(svc)
 	if err != nil {
 		t.Fatalf("install plugin: %v", err)
 	}

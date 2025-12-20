@@ -7,7 +7,12 @@ import (
 
 	core "colonycore/internal/core"
 	domain "colonycore/pkg/domain"
+	entitymodel "colonycore/pkg/domain/entitymodel"
 )
+
+func strPtr(v string) *string {
+	return &v
+}
 
 func TestIntegrationEntityRelationships(t *testing.T) {
 	ctx := context.Background()
@@ -41,10 +46,9 @@ func TestIntegrationEntityRelationships(t *testing.T) {
 			store := variant.open(t)
 			svc := core.NewService(store)
 
-			facility, res, err := svc.CreateFacility(ctx, domain.Facility{
-				Name:         "Facility A",
+			facility, res, err := svc.CreateFacility(ctx, domain.Facility{Facility: entitymodel.Facility{Name: "Facility A",
 				Zone:         "zone-a",
-				AccessPolicy: "standard",
+				AccessPolicy: "standard"},
 			})
 			if err != nil {
 				t.Fatalf("create facility: %v", err)
@@ -53,19 +57,17 @@ func TestIntegrationEntityRelationships(t *testing.T) {
 				t.Fatalf("unexpected facility violations: %+v", res.Violations)
 			}
 
-			if _, _, err := svc.CreateHousingUnit(ctx, domain.HousingUnit{
-				Name:       "Invalid Housing",
+			if _, _, err := svc.CreateHousingUnit(ctx, domain.HousingUnit{HousingUnit: entitymodel.HousingUnit{Name: "Invalid Housing",
 				FacilityID: "missing-facility",
-				Capacity:   1,
+				Capacity:   1},
 			}); err == nil {
 				t.Fatalf("expected housing creation to fail for missing facility")
 			}
 
-			housing, res, err := svc.CreateHousingUnit(ctx, domain.HousingUnit{
-				Name:        "Housing-1",
+			housing, res, err := svc.CreateHousingUnit(ctx, domain.HousingUnit{HousingUnit: entitymodel.HousingUnit{Name: "Housing-1",
 				FacilityID:  facility.ID,
 				Capacity:    2,
-				Environment: "dry",
+				Environment: domain.HousingEnvironmentTerrestrial},
 			})
 			if err != nil {
 				t.Fatalf("create housing: %v", err)
@@ -78,11 +80,10 @@ func TestIntegrationEntityRelationships(t *testing.T) {
 				t.Fatalf("expected facility delete to fail while housing exists")
 			}
 
-			project, res, err := svc.CreateProject(ctx, domain.Project{
-				Code:        "PROJ-1",
+			project, res, err := svc.CreateProject(ctx, domain.Project{Project: entitymodel.Project{Code: "PROJ-1",
 				Title:       "Project 1",
-				Description: "linked to facility",
-				FacilityIDs: []string{facility.ID},
+				Description: strPtr("linked to facility"),
+				FacilityIDs: []string{facility.ID}},
 			})
 			if err != nil {
 				t.Fatalf("create project: %v", err)
@@ -91,12 +92,11 @@ func TestIntegrationEntityRelationships(t *testing.T) {
 				t.Fatalf("unexpected project violations: %+v", res.Violations)
 			}
 
-			protocol, res, err := svc.CreateProtocol(ctx, domain.Protocol{
-				Code:        "PR-1",
+			protocol, res, err := svc.CreateProtocol(ctx, domain.Protocol{Protocol: entitymodel.Protocol{Code: "PR-1",
 				Title:       "Protocol 1",
-				Description: "baseline protocol",
+				Description: strPtr("baseline protocol"),
 				MaxSubjects: 10,
-				Status:      "active",
+				Status:      domain.ProtocolStatusApproved},
 			})
 			if err != nil {
 				t.Fatalf("create protocol: %v", err)
@@ -105,9 +105,8 @@ func TestIntegrationEntityRelationships(t *testing.T) {
 				t.Fatalf("unexpected protocol violations: %+v", res.Violations)
 			}
 
-			organism, res, err := svc.CreateOrganism(ctx, domain.Organism{
-				Name:    "Specimen-1",
-				Species: "Testus example",
+			organism, res, err := svc.CreateOrganism(ctx, domain.Organism{Organism: entitymodel.Organism{Name: "Specimen-1",
+				Species: "Testus example"},
 			})
 			if err != nil {
 				t.Fatalf("create organism: %v", err)
@@ -115,13 +114,17 @@ func TestIntegrationEntityRelationships(t *testing.T) {
 			if res.HasBlocking() {
 				t.Fatalf("unexpected organism violations: %+v", res.Violations)
 			}
+			if _, res, err := svc.AssignOrganismProtocol(ctx, organism.ID, protocol.ID); err != nil {
+				t.Fatalf("assign organism protocol: %v", err)
+			} else if res.HasBlocking() {
+				t.Fatalf("unexpected protocol assignment violations: %+v", res.Violations)
+			}
 
-			procedure, res, err := svc.CreateProcedure(ctx, domain.Procedure{
-				Name:        "Procedure-1",
-				Status:      "scheduled",
+			procedure, res, err := svc.CreateProcedure(ctx, domain.Procedure{Procedure: entitymodel.Procedure{Name: "Procedure-1",
+				Status:      domain.ProcedureStatusScheduled,
 				ScheduledAt: now,
 				ProtocolID:  protocol.ID,
-				OrganismIDs: []string{organism.ID},
+				OrganismIDs: []string{organism.ID}},
 			})
 			if err != nil {
 				t.Fatalf("create procedure: %v", err)
@@ -130,18 +133,17 @@ func TestIntegrationEntityRelationships(t *testing.T) {
 				t.Fatalf("unexpected procedure violations: %+v", res.Violations)
 			}
 
-			if _, _, err := svc.CreateTreatment(ctx, domain.Treatment{
-				Name:        "InvalidTreatment",
-				ProcedureID: "missing-procedure",
+			if _, _, err := svc.CreateTreatment(ctx, domain.Treatment{Treatment: entitymodel.Treatment{Name: "InvalidTreatment",
+				ProcedureID: "missing-procedure"},
 			}); err == nil {
 				t.Fatalf("expected treatment creation to fail for missing procedure")
 			}
 
-			treatment, res, err := svc.CreateTreatment(ctx, domain.Treatment{
-				Name:        "Treatment-1",
+			treatment, res, err := svc.CreateTreatment(ctx, domain.Treatment{Treatment: entitymodel.Treatment{Name: "Treatment-1",
+				Status:      domain.TreatmentStatusPlanned,
 				ProcedureID: procedure.ID,
 				OrganismIDs: []string{organism.ID, organism.ID},
-				DosagePlan:  "Plan A",
+				DosagePlan:  "Plan A"},
 			})
 			if err != nil {
 				t.Fatalf("create treatment: %v", err)
@@ -150,22 +152,23 @@ func TestIntegrationEntityRelationships(t *testing.T) {
 				t.Fatalf("unexpected treatment violations: %+v", res.Violations)
 			}
 
-			if _, _, err := svc.CreateObservation(ctx, domain.Observation{
-				Observer:   "Tech",
+			if _, _, err := svc.CreateObservation(ctx, domain.Observation{Observation: entitymodel.Observation{Observer: "Tech",
 				RecordedAt: now,
-				Notes:      "missing context",
+				Notes:      strPtr("missing context")},
 			}); err == nil {
 				t.Fatalf("expected observation creation to fail without context")
 			}
 
 			procedureID := procedure.ID
-			observation, res, err := svc.CreateObservation(ctx, domain.Observation{
-				ProcedureID: &procedureID,
-				Observer:    "Tech",
-				RecordedAt:  now,
-				Data:        map[string]any{"weight": 12.5},
-				Notes:       "baseline observation",
-			})
+			observationInput := domain.Observation{Observation: entitymodel.Observation{ProcedureID: &procedureID,
+				Observer:   "Tech",
+				RecordedAt: now,
+				Notes:      strPtr("baseline observation")},
+			}
+			if err := observationInput.ApplyObservationData(map[string]any{"weight": 12.5}); err != nil {
+				t.Fatalf("apply observation data: %v", err)
+			}
+			observation, res, err := svc.CreateObservation(ctx, observationInput)
 			if err != nil {
 				t.Fatalf("create observation: %v", err)
 			}
@@ -178,37 +181,49 @@ func TestIntegrationEntityRelationships(t *testing.T) {
 			}
 
 			organismID := organism.ID
-			if _, _, err := svc.CreateSample(ctx, domain.Sample{
-				Identifier:      "S-Invalid",
+			if _, _, err := svc.CreateSample(ctx, domain.Sample{Sample: entitymodel.Sample{Identifier: "S-Invalid",
 				SourceType:      "blood",
 				FacilityID:      "missing-facility",
 				OrganismID:      &organismID,
 				CollectedAt:     now,
-				Status:          "stored",
+				Status:          domain.SampleStatusStored,
 				StorageLocation: "freezer-a",
+				ChainOfCustody: []domain.SampleCustodyEvent{{
+					Actor:     "tech",
+					Location:  "freezer-a",
+					Timestamp: now,
+				}}},
 			}); err == nil {
 				t.Fatalf("expected sample creation to fail for missing facility")
 			}
 
-			if _, _, err := svc.CreateSample(ctx, domain.Sample{
-				Identifier:      "S-NoLink",
+			if _, _, err := svc.CreateSample(ctx, domain.Sample{Sample: entitymodel.Sample{Identifier: "S-NoLink",
 				SourceType:      "blood",
 				FacilityID:      facility.ID,
 				CollectedAt:     now,
-				Status:          "stored",
+				Status:          domain.SampleStatusStored,
 				StorageLocation: "freezer-a",
+				ChainOfCustody: []domain.SampleCustodyEvent{{
+					Actor:     "tech",
+					Location:  "freezer-a",
+					Timestamp: now,
+				}}},
 			}); err == nil {
 				t.Fatalf("expected sample creation to fail without organism or cohort")
 			}
 
-			validSample, res, err := svc.CreateSample(ctx, domain.Sample{
-				Identifier:      "S-1",
+			validSample, res, err := svc.CreateSample(ctx, domain.Sample{Sample: entitymodel.Sample{Identifier: "S-1",
 				SourceType:      "blood",
 				FacilityID:      facility.ID,
 				OrganismID:      &organismID,
 				CollectedAt:     now,
-				Status:          "stored",
+				Status:          domain.SampleStatusStored,
 				StorageLocation: "freezer-a",
+				ChainOfCustody: []domain.SampleCustodyEvent{{
+					Actor:     "tech",
+					Location:  "freezer-a",
+					Timestamp: now,
+				}}},
 			})
 			if err != nil {
 				t.Fatalf("create sample: %v", err)
@@ -217,25 +232,25 @@ func TestIntegrationEntityRelationships(t *testing.T) {
 				t.Fatalf("unexpected sample violations: %+v", res.Violations)
 			}
 
-			if _, _, err := svc.CreatePermit(ctx, domain.Permit{
-				PermitNumber: "PERM-ERR",
-				Authority:    "Gov",
-				ValidFrom:    now,
-				ValidUntil:   now.AddDate(1, 0, 0),
-				FacilityIDs:  []string{facility.ID},
-				ProtocolIDs:  []string{"missing-protocol"},
+			if _, _, err := svc.CreatePermit(ctx, domain.Permit{Permit: entitymodel.Permit{PermitNumber: "PERM-ERR",
+				Authority:   "Gov",
+				Status:      domain.PermitStatusSubmitted,
+				ValidFrom:   now,
+				ValidUntil:  now.AddDate(1, 0, 0),
+				FacilityIDs: []string{facility.ID},
+				ProtocolIDs: []string{"missing-protocol"}},
 			}); err == nil {
 				t.Fatalf("expected permit creation to fail for missing protocol")
 			}
 
-			permit, res, err := svc.CreatePermit(ctx, domain.Permit{
-				PermitNumber:      "PERM-1",
+			permit, res, err := svc.CreatePermit(ctx, domain.Permit{Permit: entitymodel.Permit{PermitNumber: "PERM-1",
 				Authority:         "Gov",
+				Status:            domain.PermitStatusApproved,
 				ValidFrom:         now,
 				ValidUntil:        now.AddDate(1, 0, 0),
 				AllowedActivities: []string{"activity"},
 				FacilityIDs:       []string{facility.ID, facility.ID},
-				ProtocolIDs:       []string{protocol.ID},
+				ProtocolIDs:       []string{protocol.ID}},
 			})
 			if err != nil {
 				t.Fatalf("create permit: %v", err)
@@ -244,27 +259,25 @@ func TestIntegrationEntityRelationships(t *testing.T) {
 				t.Fatalf("unexpected permit violations: %+v", res.Violations)
 			}
 
-			if _, _, err := svc.CreateSupplyItem(ctx, domain.SupplyItem{
-				SKU:            "SKU-ERR",
+			if _, _, err := svc.CreateSupplyItem(ctx, domain.SupplyItem{SupplyItem: entitymodel.SupplyItem{SKU: "SKU-ERR",
 				Name:           "Gloves",
-				Description:    "invalid project reference",
+				Description:    strPtr("invalid project reference"),
 				QuantityOnHand: 5,
 				Unit:           "box",
 				FacilityIDs:    []string{facility.ID},
-				ProjectIDs:     []string{"missing-project"},
+				ProjectIDs:     []string{"missing-project"}},
 			}); err == nil {
 				t.Fatalf("expected supply item creation to fail for missing project")
 			}
 
-			supply, res, err := svc.CreateSupplyItem(ctx, domain.SupplyItem{
-				SKU:            "SKU-1",
+			supply, res, err := svc.CreateSupplyItem(ctx, domain.SupplyItem{SupplyItem: entitymodel.SupplyItem{SKU: "SKU-1",
 				Name:           "Gloves",
-				Description:    "valid supply",
+				Description:    strPtr("valid supply"),
 				QuantityOnHand: 25,
 				Unit:           "box",
 				FacilityIDs:    []string{facility.ID},
 				ProjectIDs:     []string{project.ID},
-				ReorderLevel:   5,
+				ReorderLevel:   5},
 			})
 			if err != nil {
 				t.Fatalf("create supply: %v", err)

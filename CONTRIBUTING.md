@@ -24,6 +24,13 @@ Respectful, inclusive communication is expected. See the `CODE_OF_CONDUCT.md` fo
 4. **Test**: add or update tests where it makes sense. Run Pre-commit hooks locally before pushing.
 5. **PR**: use the short PR template.
 
+## Scoping work
+- Identify which layers you will touch (`internal/core`, adapters, persistence drivers, public APIs) and whether the change crosses package boundaries guarded by `.import-restrictions`.
+- Note any generated artifacts involved (entity-model sources, SQL/OpenAPI/ERD outputs, schema bundles) and plan to run the matching `make entity-model-verify`/generation targets if affected.
+- Look for API snapshots that may need updates (`internal/ci/pluginapi.snapshot`, `internal/ci/datasetapi.snapshot`) and contextual accessor guards in `pkg/pluginapi`/`pkg/datasetapi`.
+- For persistence edits, expect parity across memory/sqlite/postgres drivers and their tests under `internal/infra/persistence/**` plus the core adapters that wrap them.
+- Default commands to budget for: `make lint`, `make test`, and any generator or adapter-specific suites noted in the README/ADRs.
+
 ## Commit and PR Style
 - **Commits**: conventional commits are *encouraged*, e.g. `feat: …`, `fix: …`. (see [conventionalcommits.com](https://www.conventionalcommits.org/en/v1.0.0/)).
 - **PR title**: short and descriptive, mirroring the main change.
@@ -38,6 +45,13 @@ Use the issue forms:
 ## Tests
 - Add unit/integration tests when adding logic or fixing a bug.
 - Manual “operator-like” checks are fine for PoC work; describe steps in the PR.
+- `make lint` regenerates entity-model artifacts and refreshes the plugin/dataset API snapshots (`internal/ci/{pluginapi,datasetapi}.snapshot`) automatically; commit the snapshot updates when the public surface intentionally changes.
+
+## Test Utilities
+- Shared guard helpers that multiple packages use live in `colonycore/testutil`; keep that package free of plugin or adapter imports so existing import rules stay valid.
+- When you need fixtures that reach across architectural boundaries (for example, adapter tests installing reference plugins), create a package-scoped `testutil` directory next to the code under test, document the dependency in `.import-restrictions`, and gate it from production code via guard tests.
+- Dataset adapter tests reuse `internal/adapters/testutil` to install the reference frog plugin via `core.Service`; that helper is allowed to touch the persistence memory/sqlite stores and the public dataset/plugin/domain APIs. Keep any new dependencies scoped to those surfaces and extend the `.import-restrictions` file before relying on them.
+- Prefer reusing existing helpers before adding new ones, and explain any new cross-package utilities in the PR description so reviewers can confirm boundary expectations.
 
 ## RFCs / ADRs
 - Architecture and rules live under `docs/rfc/` and `docs/adr/`, as well as `docs/annex/`.
@@ -48,6 +62,7 @@ Use the issue forms:
   - Build: `make build` or language-native build
   - Test: `make test`
   - Lint/format: `make lint` (runs gofmt/vet/registry/golangci plus Ruff and the R lintr)
+- Import guardrails rely on `import-boss`; the runbook in `docs/annex/0003-import-boss-runbook.md` covers command syntax and troubleshooting.
 
 ## Client Linting
 - `make lint` (or `pre-commit run --all-files`) exercises the Go, Python, and R linters exactly as CI does; run it before pushing if you touch `clients/python` or `clients/R`.

@@ -34,6 +34,7 @@ linters:
           allow:
             - bufio
             - bytes
+            - embed
             - colonycore
             - context
             - crypto/rand
@@ -48,11 +49,14 @@ linters:
             - fmt
             - go/ast
             - go/parser
+            - go/format
             - go/token
+            - maps
             - github.com/aws/aws-sdk-go-v2/aws
             - github.com/aws/aws-sdk-go-v2/config
             - github.com/aws/aws-sdk-go-v2/credentials
             - github.com/aws/aws-sdk-go-v2/service/s3
+            - github.com/jackc/pgx/v5/stdlib
             - image
             - io
             - modernc.org/sqlite
@@ -62,12 +66,14 @@ linters:
             - os/exec
             - path/filepath
             - regexp
+            - reflect
             - sort
             - strconv
             - strings
             - sync
             - testing
             - time
+            - slices
           deny:
             - pkg: github.com/pkg/errors
               desc: Use standard library errors instead
@@ -93,9 +99,11 @@ linters:
             - "!**/pkg/datasetapi/contextual_accessor_enforcement_test.go"
             - "!**/internal/integration/contextual_pattern_enforcement_test.go"
           allow:
+            - bufio
             - bytes
             - colonycore
             - context
+            - database/sql
             - flag
             - encoding/csv
             - encoding/json
@@ -113,11 +121,13 @@ linters:
             - net/http/httptest
             - os
             - path/filepath
+            - modernc.org/sqlite
             - sort
             - strconv
             - strings
             - testing
             - time
+            - reflect
           deny:
             - pkg: github.com/pkg/errors
               desc: Use standard library errors instead

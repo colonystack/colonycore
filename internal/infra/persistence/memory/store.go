@@ -4,6 +4,7 @@ package memory
 
 import (
 	"colonycore/pkg/domain"
+	entitymodel "colonycore/pkg/domain/entitymodel"
 	"context"
 	"crypto/rand"
 	"encoding/hex"
@@ -28,6 +29,12 @@ type (
 	BreedingUnit = domain.BreedingUnit
 	// Facility aliases domain.Facility.
 	Facility = domain.Facility
+	// Line aliases domain.Line.
+	Line = domain.Line
+	// Strain aliases domain.Strain.
+	Strain = domain.Strain
+	// GenotypeMarker aliases domain.GenotypeMarker.
+	GenotypeMarker = domain.GenotypeMarker
 	// Procedure aliases domain.Procedure.
 	Procedure = domain.Procedure
 	// Treatment aliases domain.Treatment.
@@ -58,6 +65,135 @@ type (
 	PersistentStore = domain.PersistentStore
 )
 
+func mustApply(label string, err error) {
+	if err != nil {
+		panic(fmt.Errorf("memory store %s: %w", label, err))
+	}
+}
+
+var (
+	defaultHousingState       = domain.HousingStateQuarantine
+	defaultHousingEnvironment = domain.HousingEnvironmentTerrestrial
+	validHousingStates        = map[domain.HousingState]struct{}{
+		domain.HousingStateQuarantine:     {},
+		domain.HousingStateActive:         {},
+		domain.HousingStateCleaning:       {},
+		domain.HousingStateDecommissioned: {},
+	}
+	validHousingEnvironments = map[domain.HousingEnvironment]struct{}{
+		domain.HousingEnvironmentAquatic:     {},
+		domain.HousingEnvironmentTerrestrial: {},
+		domain.HousingEnvironmentArboreal:    {},
+		domain.HousingEnvironmentHumid:       {},
+	}
+	defaultProtocolStatus = domain.ProtocolStatusDraft
+	validProtocolStatuses = map[domain.ProtocolStatus]struct{}{
+		domain.ProtocolStatusDraft:     {},
+		domain.ProtocolStatusSubmitted: {},
+		domain.ProtocolStatusApproved:  {},
+		domain.ProtocolStatusOnHold:    {},
+		domain.ProtocolStatusExpired:   {},
+		domain.ProtocolStatusArchived:  {},
+	}
+	defaultPermitStatus = domain.PermitStatusDraft
+	validPermitStatuses = map[domain.PermitStatus]struct{}{
+		domain.PermitStatusDraft:     {},
+		domain.PermitStatusSubmitted: {},
+		domain.PermitStatusApproved:  {},
+		domain.PermitStatusOnHold:    {},
+		domain.PermitStatusExpired:   {},
+		domain.PermitStatusArchived:  {},
+	}
+	defaultProcedureStatus = domain.ProcedureStatusScheduled
+	validProcedureStatuses = map[domain.ProcedureStatus]struct{}{
+		domain.ProcedureStatusScheduled:  {},
+		domain.ProcedureStatusInProgress: {},
+		domain.ProcedureStatusCompleted:  {},
+		domain.ProcedureStatusCancelled:  {},
+		domain.ProcedureStatusFailed:     {},
+	}
+	defaultTreatmentStatus = domain.TreatmentStatusPlanned
+	validTreatmentStatuses = map[domain.TreatmentStatus]struct{}{
+		domain.TreatmentStatusPlanned:    {},
+		domain.TreatmentStatusInProgress: {},
+		domain.TreatmentStatusCompleted:  {},
+		domain.TreatmentStatusFlagged:    {},
+	}
+	defaultSampleStatus = domain.SampleStatusStored
+	validSampleStatuses = map[domain.SampleStatus]struct{}{
+		domain.SampleStatusStored:    {},
+		domain.SampleStatusInTransit: {},
+		domain.SampleStatusConsumed:  {},
+		domain.SampleStatusDisposed:  {},
+	}
+)
+
+func normalizeHousingUnit(h *HousingUnit) error {
+	if h.State == "" {
+		h.State = defaultHousingState
+	}
+	if _, ok := validHousingStates[h.State]; !ok {
+		return fmt.Errorf("unsupported housing state %q", h.State)
+	}
+	if h.Environment == "" {
+		h.Environment = defaultHousingEnvironment
+	}
+	if _, ok := validHousingEnvironments[h.Environment]; !ok {
+		return fmt.Errorf("unsupported housing environment %q", h.Environment)
+	}
+	return nil
+}
+
+func normalizeProtocol(p *Protocol) error {
+	if p.Status == "" {
+		p.Status = defaultProtocolStatus
+	}
+	if _, ok := validProtocolStatuses[p.Status]; !ok {
+		return fmt.Errorf("unsupported protocol status %q", p.Status)
+	}
+	return nil
+}
+
+func normalizePermit(p *Permit) error {
+	if p.Status == "" {
+		p.Status = defaultPermitStatus
+	}
+	if _, ok := validPermitStatuses[p.Status]; !ok {
+		return fmt.Errorf("unsupported permit status %q", p.Status)
+	}
+	return nil
+}
+
+func normalizeProcedure(p *Procedure) error {
+	if p.Status == "" {
+		p.Status = defaultProcedureStatus
+	}
+	if _, ok := validProcedureStatuses[p.Status]; !ok {
+		return fmt.Errorf("unsupported procedure status %q", p.Status)
+	}
+	return nil
+}
+
+func normalizeTreatment(t *Treatment) error {
+	if t.Status == "" {
+		t.Status = defaultTreatmentStatus
+	}
+	if _, ok := validTreatmentStatuses[t.Status]; !ok {
+		return fmt.Errorf("unsupported treatment status %q", t.Status)
+	}
+	return nil
+}
+
+func normalizeSample(s *Sample) error {
+	if s.Status == "" {
+		s.Status = defaultSampleStatus
+	}
+	if _, ok := validSampleStatuses[s.Status]; !ok {
+		return fmt.Errorf("unsupported sample status %q", s.Status)
+	}
+	return nil
+}
+
 // Infra implementations use domain types directly via their interfaces
 // No constant aliases needed - use domain.EntityType, domain.Action values directly
 
@@ -67,6 +203,9 @@ type memoryState struct {
 	housing      map[string]HousingUnit
 	facilities   map[string]Facility
 	breeding     map[string]BreedingUnit
+	lines        map[string]Line
+	strains      map[string]Strain
+	markers      map[string]GenotypeMarker
 	procedures   map[string]Procedure
 	treatments   map[string]Treatment
 	observations map[string]Observation
@@ -79,19 +218,22 @@ type memoryState struct {
 
 // Snapshot captures a point-in-time clone of the store state.
 type Snapshot struct {
-	Organisms    map[string]Organism     `json:"organisms"`
-	Cohorts      map[string]Cohort       `json:"cohorts"`
-	Housing      map[string]HousingUnit  `json:"housing"`
-	Facilities   map[string]Facility     `json:"facilities"`
-	Breeding     map[string]BreedingUnit `json:"breeding"`
-	Procedures   map[string]Procedure    `json:"procedures"`
-	Treatments   map[string]Treatment    `json:"treatments"`
-	Observations map[string]Observation  `json:"observations"`
-	Samples      map[string]Sample       `json:"samples"`
-	Protocols    map[string]Protocol     `json:"protocols"`
-	Permits      map[string]Permit       `json:"permits"`
-	Projects     map[string]Project      `json:"projects"`
-	Supplies     map[string]SupplyItem   `json:"supplies"`
+	Organisms    map[string]Organism       `json:"organisms"`
+	Cohorts      map[string]Cohort         `json:"cohorts"`
+	Housing      map[string]HousingUnit    `json:"housing"`
+	Facilities   map[string]Facility       `json:"facilities"`
+	Breeding     map[string]BreedingUnit   `json:"breeding"`
+	Lines        map[string]Line           `json:"lines"`
+	Strains      map[string]Strain         `json:"strains"`
+	Markers      map[string]GenotypeMarker `json:"markers"`
+	Procedures   map[string]Procedure      `json:"procedures"`
+	Treatments   map[string]Treatment      `json:"treatments"`
+	Observations map[string]Observation    `json:"observations"`
+	Samples      map[string]Sample         `json:"samples"`
+	Protocols    map[string]Protocol       `json:"protocols"`
+	Permits      map[string]Permit         `json:"permits"`
+	Projects     map[string]Project        `json:"projects"`
+	Supplies     map[string]SupplyItem     `json:"supplies"`
 }
 
 func newMemoryState() memoryState {
@@ -101,6 +243,9 @@ func newMemoryState() memoryState {
 		housing:      make(map[string]HousingUnit),
 		facilities:   make(map[string]Facility),
 		breeding:     make(map[string]BreedingUnit),
+		lines:        make(map[string]Line),
+		strains:      make(map[string]Strain),
+		markers:      make(map[string]GenotypeMarker),
 		procedures:   make(map[string]Procedure),
 		treatments:   make(map[string]Treatment),
 		observations: make(map[string]Observation),
@@ -119,6 +264,9 @@ func snapshotFromMemoryState(state memoryState) Snapshot {
 		Housing:      make(map[string]HousingUnit, len(state.housing)),
 		Facilities:   make(map[string]Facility, len(state.facilities)),
 		Breeding:     make(map[string]BreedingUnit, len(state.breeding)),
+		Lines:        make(map[string]Line, len(state.lines)),
+		Strains:      make(map[string]Strain, len(state.strains)),
+		Markers:      make(map[string]GenotypeMarker, len(state.markers)),
 		Procedures:   make(map[string]Procedure, len(state.procedures)),
 		Treatments:   make(map[string]Treatment, len(state.treatments)),
 		Observations: make(map[string]Observation, len(state.observations)),
@@ -142,6 +290,15 @@ func snapshotFromMemoryState(state memoryState) Snapshot {
 	}
 	for k, v := range state.breeding {
 		s.Breeding[k] = cloneBreeding(v)
+	}
+	for k, v := range state.lines {
+		s.Lines[k] = cloneLine(v)
+	}
+	for k, v := range state.strains {
+		s.Strains[k] = cloneStrain(v)
+	}
+	for k, v := range state.markers {
+		s.Markers[k] = cloneGenotypeMarker(v)
 	}
 	for k, v := range state.procedures {
 		s.Procedures[k] = cloneProcedure(v)
@@ -187,6 +344,15 @@ func memoryStateFromSnapshot(s Snapshot) memoryState {
 	for k, v := range s.Breeding {
 		state.breeding[k] = cloneBreeding(v)
 	}
+	for k, v := range s.Lines {
+		state.lines[k] = cloneLine(v)
+	}
+	for k, v := range s.Strains {
+		state.strains[k] = cloneStrain(v)
+	}
+	for k, v := range s.Markers {
+		state.markers[k] = cloneGenotypeMarker(v)
+	}
 	for k, v := range s.Procedures {
 		state.procedures[k] = cloneProcedure(v)
 	}
@@ -231,6 +397,15 @@ func migrateSnapshot(snapshot Snapshot) Snapshot {
 	if snapshot.Breeding == nil {
 		snapshot.Breeding = map[string]BreedingUnit{}
 	}
+	if snapshot.Lines == nil {
+		snapshot.Lines = map[string]Line{}
+	}
+	if snapshot.Strains == nil {
+		snapshot.Strains = map[string]Strain{}
+	}
+	if snapshot.Markers == nil {
+		snapshot.Markers = map[string]GenotypeMarker{}
+	}
 	if snapshot.Procedures == nil {
 		snapshot.Procedures = map[string]Procedure{}
 	}
@@ -272,6 +447,110 @@ func migrateSnapshot(snapshot Snapshot) Snapshot {
 		_, ok := snapshot.Cohorts[id]
 		return ok
 	}
+	markerExists := func(id string) bool {
+		_, ok := snapshot.Markers[id]
+		return ok
+	}
+	lineExists := func(id string) bool {
+		_, ok := snapshot.Lines[id]
+		return ok
+	}
+	strainExists := func(id string) bool {
+		_, ok := snapshot.Strains[id]
+		return ok
+	}
+
+	for id, organism := range snapshot.Organisms {
+		if attrs := organism.CoreAttributes(); attrs == nil {
+			mustApply("apply organism attributes", organism.SetCoreAttributes(map[string]any{}))
+		} else {
+			mustApply("apply organism attributes", organism.SetCoreAttributes(attrs))
+		}
+		if organism.LineID != nil && !lineExists(*organism.LineID) {
+			organism.LineID = nil
+		}
+		if organism.StrainID != nil && !strainExists(*organism.StrainID) {
+			organism.StrainID = nil
+		}
+		snapshot.Organisms[id] = organism
+	}
+
+	for id, breeding := range snapshot.Breeding {
+		if attrs := breeding.PairingAttributes(); attrs == nil {
+			mustApply("apply breeding attributes", breeding.ApplyPairingAttributes(map[string]any{}))
+		} else {
+			mustApply("apply breeding attributes", breeding.ApplyPairingAttributes(attrs))
+		}
+		if breeding.LineID != nil && !lineExists(*breeding.LineID) {
+			breeding.LineID = nil
+		}
+		if breeding.StrainID != nil && !strainExists(*breeding.StrainID) {
+			breeding.StrainID = nil
+		}
+		if breeding.TargetLineID != nil && !lineExists(*breeding.TargetLineID) {
+			breeding.TargetLineID = nil
+		}
+		if breeding.TargetStrainID != nil && !strainExists(*breeding.TargetStrainID) {
+			breeding.TargetStrainID = nil
+		}
+		snapshot.Breeding[id] = breeding
+	}
+
+	for id, marker := range snapshot.Markers {
+		if attrs := marker.GenotypeMarkerAttributesByPlugin(); attrs == nil {
+			mustApply("apply genotype marker attributes", marker.ApplyGenotypeMarkerAttributes(map[string]any{}))
+		} else {
+			mustApply("apply genotype marker attributes", marker.ApplyGenotypeMarkerAttributes(attrs))
+		}
+		if len(marker.Alleles) > 0 {
+			marker.Alleles = dedupeStrings(marker.Alleles)
+		}
+		snapshot.Markers[id] = marker
+	}
+
+	for id, line := range snapshot.Lines {
+		if attrs := line.DefaultAttributes(); attrs == nil {
+			mustApply("apply line default attributes", line.ApplyDefaultAttributes(map[string]any{}))
+		} else {
+			mustApply("apply line default attributes", line.ApplyDefaultAttributes(attrs))
+		}
+		if overrides := line.ExtensionOverrides(); overrides == nil {
+			mustApply("apply line extension overrides", line.ApplyExtensionOverrides(map[string]any{}))
+		} else {
+			mustApply("apply line extension overrides", line.ApplyExtensionOverrides(overrides))
+		}
+		if filtered, changed := filterIDs(line.GenotypeMarkerIDs, markerExists); changed {
+			line.GenotypeMarkerIDs = filtered
+		}
+		snapshot.Lines[id] = line
+	}
+
+	for id, strain := range snapshot.Strains {
+		if !lineExists(strain.LineID) {
+			delete(snapshot.Strains, id)
+			continue
+		}
+		if attrs := strain.StrainAttributesByPlugin(); attrs == nil {
+			mustApply("apply strain attributes", strain.ApplyStrainAttributes(map[string]any{}))
+		} else {
+			mustApply("apply strain attributes", strain.ApplyStrainAttributes(attrs))
+		}
+		if filtered, changed := filterIDs(strain.GenotypeMarkerIDs, markerExists); changed {
+			strain.GenotypeMarkerIDs = filtered
+		}
+		snapshot.Strains[id] = strain
+	}
+
+	for id, organism := range snapshot.Organisms {
+		if organism.LineID != nil && !lineExists(*organism.LineID) {
+			organism.LineID = nil
+		}
+		if organism.StrainID != nil && !strainExists(*organism.StrainID) {
+			organism.StrainID = nil
+		}
+		snapshot.Organisms[id] = organism
+	}
+
 	procedureExists := func(id string) bool {
 		_, ok := snapshot.Procedures[id]
 		return ok
@@ -279,6 +558,14 @@ func migrateSnapshot(snapshot Snapshot) Snapshot {
 	protocolExists := func(id string) bool {
 		_, ok := snapshot.Protocols[id]
 		return ok
+	}
+
+	for id, protocol := range snapshot.Protocols {
+		if err := normalizeProtocol(&protocol); err != nil {
+			delete(snapshot.Protocols, id)
+			continue
+		}
+		snapshot.Protocols[id] = protocol
 	}
 
 	for id, housing := range snapshot.Housing {
@@ -289,11 +576,19 @@ func migrateSnapshot(snapshot Snapshot) Snapshot {
 		if housing.Capacity <= 0 {
 			housing.Capacity = 1
 		}
+		if err := normalizeHousingUnit(&housing); err != nil {
+			delete(snapshot.Housing, id)
+			continue
+		}
 		snapshot.Housing[id] = housing
 	}
 
 	for id, treatment := range snapshot.Treatments {
 		if treatment.ProcedureID == "" || !procedureExists(treatment.ProcedureID) {
+			delete(snapshot.Treatments, id)
+			continue
+		}
+		if err := normalizeTreatment(&treatment); err != nil {
 			delete(snapshot.Treatments, id)
 			continue
 		}
@@ -307,8 +602,10 @@ func migrateSnapshot(snapshot Snapshot) Snapshot {
 	}
 
 	for id, observation := range snapshot.Observations {
-		if observation.Data == nil {
-			observation.Data = map[string]any{}
+		if data := observation.ObservationData(); data == nil {
+			mustApply("apply observation data", observation.ApplyObservationData(map[string]any{}))
+		} else {
+			mustApply("apply observation data", observation.ApplyObservationData(data))
 		}
 		if observation.ProcedureID != nil && !procedureExists(*observation.ProcedureID) {
 			observation.ProcedureID = nil
@@ -327,8 +624,10 @@ func migrateSnapshot(snapshot Snapshot) Snapshot {
 	}
 
 	for id, sample := range snapshot.Samples {
-		if sample.Attributes == nil {
-			sample.Attributes = map[string]any{}
+		if attrs := sample.SampleAttributes(); attrs == nil {
+			mustApply("apply sample attributes", sample.ApplySampleAttributes(map[string]any{}))
+		} else {
+			mustApply("apply sample attributes", sample.ApplySampleAttributes(attrs))
 		}
 		if sample.FacilityID == "" || !facilityExists(sample.FacilityID) {
 			delete(snapshot.Samples, id)
@@ -344,6 +643,10 @@ func migrateSnapshot(snapshot Snapshot) Snapshot {
 			delete(snapshot.Samples, id)
 			continue
 		}
+		if err := normalizeSample(&sample); err != nil {
+			delete(snapshot.Samples, id)
+			continue
+		}
 		snapshot.Samples[id] = sample
 	}
 
@@ -353,6 +656,10 @@ func migrateSnapshot(snapshot Snapshot) Snapshot {
 		}
 		if filtered, changed := filterIDs(permit.ProtocolIDs, protocolExists); changed {
 			permit.ProtocolIDs = filtered
+		}
+		if err := normalizePermit(&permit); err != nil {
+			delete(snapshot.Permits, id)
+			continue
 		}
 		snapshot.Permits[id] = permit
 	}
@@ -365,6 +672,10 @@ func migrateSnapshot(snapshot Snapshot) Snapshot {
 	}
 
 	for id, procedure := range snapshot.Procedures {
+		if err := normalizeProcedure(&procedure); err != nil {
+			delete(snapshot.Procedures, id)
+			continue
+		}
 		var treatmentIDs []string
 		for _, treatment := range snapshot.Treatments {
 			if treatment.ProcedureID == id {
@@ -387,8 +698,10 @@ func migrateSnapshot(snapshot Snapshot) Snapshot {
 	}
 
 	for id, item := range snapshot.Supplies {
-		if item.Attributes == nil {
-			item.Attributes = map[string]any{}
+		if attrs := item.SupplyAttributes(); attrs == nil {
+			mustApply("apply supply attributes", item.ApplySupplyAttributes(map[string]any{}))
+		} else {
+			mustApply("apply supply attributes", item.ApplySupplyAttributes(attrs))
 		}
 		if filtered, changed := filterIDs(item.FacilityIDs, facilityExists); changed {
 			item.FacilityIDs = filtered
@@ -400,8 +713,10 @@ func migrateSnapshot(snapshot Snapshot) Snapshot {
 	}
 
 	for id, facility := range snapshot.Facilities {
-		if facility.EnvironmentBaselines == nil {
-			facility.EnvironmentBaselines = map[string]any{}
+		if baselines := facility.EnvironmentBaselines(); baselines == nil {
+			mustApply("apply facility baselines", facility.ApplyEnvironmentBaselines(map[string]any{}))
+		} else {
+			mustApply("apply facility baselines", facility.ApplyEnvironmentBaselines(baselines))
 		}
 		snapshot.Facilities[id] = facility
 	}
@@ -479,6 +794,15 @@ func (s memoryState) clone() memoryState {
 	for k, v := range s.breeding {
 		cloned.breeding[k] = cloneBreeding(v)
 	}
+	for k, v := range s.lines {
+		cloned.lines[k] = cloneLine(v)
+	}
+	for k, v := range s.strains {
+		cloned.strains[k] = cloneStrain(v)
+	}
+	for k, v := range s.markers {
+		cloned.markers[k] = cloneGenotypeMarker(v)
+	}
 	for k, v := range s.procedures {
 		cloned.procedures[k] = cloneProcedure(v)
 	}
@@ -508,11 +832,12 @@ func (s memoryState) clone() memoryState {
 
 func cloneOrganism(o Organism) Organism {
 	cp := o
-	if o.Attributes != nil {
-		cp.Attributes = make(map[string]any, len(o.Attributes))
-		for k, v := range o.Attributes {
-			cp.Attributes[k] = v
-		}
+	container, err := o.OrganismExtensions()
+	if err != nil {
+		panic(fmt.Errorf("memory: clone organism extensions: %w", err))
+	}
+	if err := cp.SetOrganismExtensions(container); err != nil {
+		panic(fmt.Errorf("memory: set organism extensions: %w", err))
 	}
 	if len(o.ParentIDs) != 0 {
 		cp.ParentIDs = append([]string(nil), o.ParentIDs...)
@@ -526,6 +851,80 @@ func cloneBreeding(b BreedingUnit) BreedingUnit {
 	cp := b
 	cp.FemaleIDs = append([]string(nil), b.FemaleIDs...)
 	cp.MaleIDs = append([]string(nil), b.MaleIDs...)
+	container, err := b.BreedingUnitExtensions()
+	if err != nil {
+		panic(fmt.Errorf("memory: clone breeding attributes: %w", err))
+	}
+	if err := cp.SetBreedingUnitExtensions(container); err != nil {
+		panic(fmt.Errorf("memory: set breeding attributes: %w", err))
+	}
+	return cp
+}
+
+func cloneLine(l Line) Line {
+	cp := l
+	if l.Description != nil {
+		desc := *l.Description
+		cp.Description = &desc
+	}
+	if l.DeprecatedAt != nil {
+		t := *l.DeprecatedAt
+		cp.DeprecatedAt = &t
+	}
+	if l.DeprecationReason != nil {
+		reason := *l.DeprecationReason
+		cp.DeprecationReason = &reason
+	}
+	cp.GenotypeMarkerIDs = append([]string(nil), l.GenotypeMarkerIDs...)
+	container, err := l.LineExtensions()
+	if err != nil {
+		panic(fmt.Errorf("memory: clone line extensions: %w", err))
+	}
+	if err := cp.SetLineExtensions(container); err != nil {
+		panic(fmt.Errorf("memory: set line extensions: %w", err))
+	}
+	return cp
+}
+
+func cloneStrain(s Strain) Strain {
+	cp := s
+	if s.Description != nil {
+		desc := *s.Description
+		cp.Description = &desc
+	}
+	if s.Generation != nil {
+		gen := *s.Generation
+		cp.Generation = &gen
+	}
+	if s.RetiredAt != nil {
+		t := *s.RetiredAt
+		cp.RetiredAt = &t
+	}
+	if s.RetirementReason != nil {
+		reason := *s.RetirementReason
+		cp.RetirementReason = &reason
+	}
+	cp.GenotypeMarkerIDs = append([]string(nil), s.GenotypeMarkerIDs...)
+	container, err := s.StrainExtensions()
+	if err != nil {
+		panic(fmt.Errorf("memory: clone strain extensions: %w", err))
+	}
+	if err := cp.SetStrainExtensions(container); err != nil {
+		panic(fmt.Errorf("memory: set strain extensions: %w", err))
+	}
+	return cp
+}
+
+func cloneGenotypeMarker(g GenotypeMarker) GenotypeMarker {
+	cp := g
+	cp.Alleles = append([]string(nil), g.Alleles...)
+	container, err := g.GenotypeMarkerExtensions()
+	if err != nil {
+		panic(fmt.Errorf("memory: clone genotype marker extensions: %w", err))
+	}
+	if err := cp.SetGenotypeMarkerExtensions(container); err != nil {
+		panic(fmt.Errorf("memory: set genotype marker extensions: %w", err))
+	}
 	return cp
 }
 
@@ -549,11 +948,12 @@ func cloneProject(p Project) Project {
 
 func cloneFacility(f Facility) Facility {
 	cp := f
-	if f.EnvironmentBaselines != nil {
-		cp.EnvironmentBaselines = make(map[string]any, len(f.EnvironmentBaselines))
-		for k, v := range f.EnvironmentBaselines {
-			cp.EnvironmentBaselines[k] = v
-		}
+	container, err := f.FacilityExtensions()
+	if err != nil {
+		panic(fmt.Errorf("memory: clone facility baselines: %w", err))
+	}
+	if err := cp.SetFacilityExtensions(container); err != nil {
+		panic(fmt.Errorf("memory: set facility baselines: %w", err))
 	}
 	cp.HousingUnitIDs = append([]string(nil), f.HousingUnitIDs...)
 	cp.ProjectIDs = append([]string(nil), f.ProjectIDs...)
@@ -571,11 +971,12 @@ func cloneTreatment(t Treatment) Treatment {
 
 func cloneObservation(o Observation) Observation {
 	cp := o
-	if o.Data != nil {
-		cp.Data = make(map[string]any, len(o.Data))
-		for k, v := range o.Data {
-			cp.Data[k] = v
-		}
+	container, err := o.ObservationExtensions()
+	if err != nil {
+		panic(fmt.Errorf("memory: clone observation data: %w", err))
+	}
+	if err := cp.SetObservationExtensions(container); err != nil {
+		panic(fmt.Errorf("memory: set observation data: %w", err))
 	}
 	return cp
 }
@@ -583,11 +984,12 @@ func cloneObservation(o Observation) Observation {
 func cloneSample(s Sample) Sample {
 	cp := s
 	cp.ChainOfCustody = append([]domain.SampleCustodyEvent(nil), s.ChainOfCustody...)
-	if s.Attributes != nil {
-		cp.Attributes = make(map[string]any, len(s.Attributes))
-		for k, v := range s.Attributes {
-			cp.Attributes[k] = v
-		}
+	container, err := s.SampleExtensions()
+	if err != nil {
+		panic(fmt.Errorf("memory: clone sample attributes: %w", err))
+	}
+	if err := cp.SetSampleExtensions(container); err != nil {
+		panic(fmt.Errorf("memory: set sample attributes: %w", err))
 	}
 	return cp
 }
@@ -648,6 +1050,13 @@ func filterIDs(values []string, exists func(string) bool) ([]string, bool) {
 		return values, false
 	}
 	return out, true
+}
+
+func requireNonEmpty(field string, values []string) error {
+	if len(values) == 0 {
+		return fmt.Errorf("%s requires at least one value", field)
+	}
+	return nil
 }
 
 func facilityHousingIDs(state *memoryState, facilityID string) []string {
@@ -754,11 +1163,12 @@ func cloneSupplyItem(s SupplyItem) SupplyItem {
 	}
 	cp.FacilityIDs = append([]string(nil), s.FacilityIDs...)
 	cp.ProjectIDs = append([]string(nil), s.ProjectIDs...)
-	if s.Attributes != nil {
-		cp.Attributes = make(map[string]any, len(s.Attributes))
-		for k, v := range s.Attributes {
-			cp.Attributes[k] = v
-		}
+	container, err := s.SupplyItemExtensions()
+	if err != nil {
+		panic(fmt.Errorf("memory: clone supply attributes: %w", err))
+	}
+	if err := cp.SetSupplyItemExtensions(container); err != nil {
+		panic(fmt.Errorf("memory: set supply attributes: %w", err))
 	}
 	return cp
 }
@@ -863,11 +1273,38 @@ func (v transactionView) ListFacilities() []Facility {
 	return out
 }
 
+// ListLines returns all lines in the snapshot.
+func (v transactionView) ListLines() []Line {
+	out := make([]Line, 0, len(v.state.lines))
+	for _, line := range v.state.lines {
+		out = append(out, cloneLine(line))
+	}
+	return out
+}
+
+// ListStrains returns all strains in the snapshot.
+func (v transactionView) ListStrains() []Strain {
+	out := make([]Strain, 0, len(v.state.strains))
+	for _, strain := range v.state.strains {
+		out = append(out, cloneStrain(strain))
+	}
+	return out
+}
+
+// ListGenotypeMarkers returns all genotype markers in the snapshot.
+func (v transactionView) ListGenotypeMarkers() []GenotypeMarker {
+	out := make([]GenotypeMarker, 0, len(v.state.markers))
+	for _, marker := range v.state.markers {
+		out = append(out, cloneGenotypeMarker(marker))
+	}
+	return out
+}
+
 // FindOrganism retrieves an organism by ID from the snapshot.
 func (v transactionView) FindOrganism(id string) (Organism, bool) {
 	o, ok := v.state.organisms[id]
 	if !ok {
-		return Organism{}, false
+		return Organism{Organism: entitymodel.Organism{}}, false
 	}
 	return cloneOrganism(o), true
 }
@@ -876,7 +1313,7 @@ func (v transactionView) FindOrganism(id string) (Organism, bool) {
 func (v transactionView) FindHousingUnit(id string) (HousingUnit, bool) {
 	h, ok := v.state.housing[id]
 	if !ok {
-		return HousingUnit{}, false
+		return HousingUnit{HousingUnit: entitymodel.HousingUnit{}}, false
 	}
 	return cloneHousing(h), true
 }
@@ -885,9 +1322,36 @@ func (v transactionView) FindHousingUnit(id string) (HousingUnit, bool) {
 func (v transactionView) FindFacility(id string) (Facility, bool) {
 	f, ok := v.state.facilities[id]
 	if !ok {
-		return Facility{}, false
+		return Facility{Facility: entitymodel.Facility{}}, false
 	}
 	return cloneFacility(decorateFacility(v.state, f)), true
+}
+
+// FindLine retrieves a line by ID from the snapshot.
+func (v transactionView) FindLine(id string) (Line, bool) {
+	line, ok := v.state.lines[id]
+	if !ok {
+		return Line{Line: entitymodel.Line{}}, false
+	}
+	return cloneLine(line), true
+}
+
+// FindStrain retrieves a strain by ID from the snapshot.
+func (v transactionView) FindStrain(id string) (Strain, bool) {
+	strain, ok := v.state.strains[id]
+	if !ok {
+		return Strain{Strain: entitymodel.Strain{}}, false
+	}
+	return cloneStrain(strain), true
+}
+
+// FindGenotypeMarker retrieves a genotype marker by ID from the snapshot.
+func (v transactionView) FindGenotypeMarker(id string) (GenotypeMarker, bool) {
+	marker, ok := v.state.markers[id]
+	if !ok {
+		return GenotypeMarker{GenotypeMarker: entitymodel.GenotypeMarker{}}, false
+	}
+	return cloneGenotypeMarker(marker), true
 }
 
 // ListProtocols returns all protocols present in the snapshot.
@@ -912,7 +1376,7 @@ func (v transactionView) ListTreatments() []Treatment {
 func (v transactionView) FindTreatment(id string) (Treatment, bool) {
 	t, ok := v.state.treatments[id]
 	if !ok {
-		return Treatment{}, false
+		return Treatment{Treatment: entitymodel.Treatment{}}, false
 	}
 	return cloneTreatment(t), true
 }
@@ -930,7 +1394,7 @@ func (v transactionView) ListObservations() []Observation {
 func (v transactionView) FindObservation(id string) (Observation, bool) {
 	o, ok := v.state.observations[id]
 	if !ok {
-		return Observation{}, false
+		return Observation{Observation: entitymodel.Observation{}}, false
 	}
 	return cloneObservation(o), true
 }
@@ -948,7 +1412,7 @@ func (v transactionView) ListSamples() []Sample {
 func (v transactionView) FindSample(id string) (Sample, bool) {
 	s, ok := v.state.samples[id]
 	if !ok {
-		return Sample{}, false
+		return Sample{Sample: entitymodel.Sample{}}, false
 	}
 	return cloneSample(s), true
 }
@@ -966,7 +1430,7 @@ func (v transactionView) ListPermits() []Permit {
 func (v transactionView) FindPermit(id string) (Permit, bool) {
 	p, ok := v.state.permits[id]
 	if !ok {
-		return Permit{}, false
+		return Permit{Permit: entitymodel.Permit{}}, false
 	}
 	return clonePermit(p), true
 }
@@ -993,9 +1457,18 @@ func (v transactionView) ListSupplyItems() []SupplyItem {
 func (v transactionView) FindSupplyItem(id string) (SupplyItem, bool) {
 	s, ok := v.state.supplies[id]
 	if !ok {
-		return SupplyItem{}, false
+		return SupplyItem{SupplyItem: entitymodel.SupplyItem{}}, false
 	}
 	return cloneSupplyItem(s), true
+}
+
+// FindProcedure retrieves a procedure by ID from the snapshot.
+func (v transactionView) FindProcedure(id string) (Procedure, bool) {
+	p, ok := v.state.procedures[id]
+	if !ok {
+		return Procedure{Procedure: entitymodel.Procedure{}}, false
+	}
+	return cloneProcedure(p), true
 }
 
 // RunInTransaction executes fn within a transactional copy of the store state.
@@ -1054,7 +1527,7 @@ func (tx *transaction) Snapshot() TransactionView {
 func (tx *transaction) FindHousingUnit(id string) (HousingUnit, bool) {
 	h, ok := tx.state.housing[id]
 	if !ok {
-		return HousingUnit{}, false
+		return HousingUnit{HousingUnit: entitymodel.HousingUnit{}}, false
 	}
 	return cloneHousing(h), true
 }
@@ -1063,7 +1536,7 @@ func (tx *transaction) FindHousingUnit(id string) (HousingUnit, bool) {
 func (tx *transaction) FindProtocol(id string) (Protocol, bool) {
 	p, ok := tx.state.protocols[id]
 	if !ok {
-		return Protocol{}, false
+		return Protocol{Protocol: entitymodel.Protocol{}}, false
 	}
 	return cloneProtocol(p), true
 }
@@ -1072,16 +1545,43 @@ func (tx *transaction) FindProtocol(id string) (Protocol, bool) {
 func (tx *transaction) FindFacility(id string) (Facility, bool) {
 	f, ok := tx.state.facilities[id]
 	if !ok {
-		return Facility{}, false
+		return Facility{Facility: entitymodel.Facility{}}, false
 	}
 	return cloneFacility(decorateFacility(&tx.state, f)), true
+}
+
+// FindLine exposes line lookup within the transaction scope.
+func (tx *transaction) FindLine(id string) (Line, bool) {
+	line, ok := tx.state.lines[id]
+	if !ok {
+		return Line{Line: entitymodel.Line{}}, false
+	}
+	return cloneLine(line), true
+}
+
+// FindStrain exposes strain lookup within the transaction scope.
+func (tx *transaction) FindStrain(id string) (Strain, bool) {
+	strain, ok := tx.state.strains[id]
+	if !ok {
+		return Strain{Strain: entitymodel.Strain{}}, false
+	}
+	return cloneStrain(strain), true
+}
+
+// FindGenotypeMarker exposes genotype marker lookup within the transaction scope.
+func (tx *transaction) FindGenotypeMarker(id string) (GenotypeMarker, bool) {
+	marker, ok := tx.state.markers[id]
+	if !ok {
+		return GenotypeMarker{GenotypeMarker: entitymodel.GenotypeMarker{}}, false
+	}
+	return cloneGenotypeMarker(marker), true
 }
 
 // FindTreatment exposes treatment lookup within the transaction scope.
 func (tx *transaction) FindTreatment(id string) (Treatment, bool) {
 	t, ok := tx.state.treatments[id]
 	if !ok {
-		return Treatment{}, false
+		return Treatment{Treatment: entitymodel.Treatment{}}, false
 	}
 	return cloneTreatment(t), true
 }
@@ -1090,7 +1590,7 @@ func (tx *transaction) FindTreatment(id string) (Treatment, bool) {
 func (tx *transaction) FindObservation(id string) (Observation, bool) {
 	o, ok := tx.state.observations[id]
 	if !ok {
-		return Observation{}, false
+		return Observation{Observation: entitymodel.Observation{}}, false
 	}
 	return cloneObservation(o), true
 }
@@ -1099,7 +1599,7 @@ func (tx *transaction) FindObservation(id string) (Observation, bool) {
 func (tx *transaction) FindSample(id string) (Sample, bool) {
 	s, ok := tx.state.samples[id]
 	if !ok {
-		return Sample{}, false
+		return Sample{Sample: entitymodel.Sample{}}, false
 	}
 	return cloneSample(s), true
 }
@@ -1108,7 +1608,7 @@ func (tx *transaction) FindSample(id string) (Sample, bool) {
 func (tx *transaction) FindPermit(id string) (Permit, bool) {
 	p, ok := tx.state.permits[id]
 	if !ok {
-		return Permit{}, false
+		return Permit{Permit: entitymodel.Permit{}}, false
 	}
 	return clonePermit(p), true
 }
@@ -1117,9 +1617,18 @@ func (tx *transaction) FindPermit(id string) (Permit, bool) {
 func (tx *transaction) FindSupplyItem(id string) (SupplyItem, bool) {
 	s, ok := tx.state.supplies[id]
 	if !ok {
-		return SupplyItem{}, false
+		return SupplyItem{SupplyItem: entitymodel.SupplyItem{}}, false
 	}
 	return cloneSupplyItem(s), true
+}
+
+// FindProcedure exposes procedure lookup within the transaction scope.
+func (tx *transaction) FindProcedure(id string) (Procedure, bool) {
+	p, ok := tx.state.procedures[id]
+	if !ok {
+		return Procedure{Procedure: entitymodel.Procedure{}}, false
+	}
+	return cloneProcedure(p), true
 }
 
 // CreateOrganism stores a new organism within the transaction.
@@ -1127,13 +1636,18 @@ func (tx *transaction) CreateOrganism(o Organism) (Organism, error) {
 	if o.ID == "" {
 		o.ID = tx.store.newID()
 	}
+	if o.Stage == "" {
+		o.Stage = domain.StagePlanned
+	}
 	if _, exists := tx.state.organisms[o.ID]; exists {
-		return Organism{}, fmt.Errorf("organism %q already exists", o.ID)
+		return Organism{Organism: entitymodel.Organism{}}, fmt.Errorf("organism %q already exists", o.ID)
 	}
 	o.CreatedAt = tx.now
 	o.UpdatedAt = tx.now
-	if o.Attributes == nil {
-		o.Attributes = map[string]any{}
+	if attrs := o.CoreAttributes(); attrs == nil {
+		mustApply("apply organism attributes", o.SetCoreAttributes(map[string]any{}))
+	} else {
+		mustApply("apply organism attributes", o.SetCoreAttributes(attrs))
 	}
 	tx.state.organisms[o.ID] = cloneOrganism(o)
 	tx.recordChange(Change{Entity: domain.EntityOrganism, Action: domain.ActionCreate, After: cloneOrganism(o)})
@@ -1144,11 +1658,11 @@ func (tx *transaction) CreateOrganism(o Organism) (Organism, error) {
 func (tx *transaction) UpdateOrganism(id string, mutator func(*Organism) error) (Organism, error) {
 	current, ok := tx.state.organisms[id]
 	if !ok {
-		return Organism{}, fmt.Errorf("organism %q not found", id)
+		return Organism{Organism: entitymodel.Organism{}}, fmt.Errorf("organism %q not found", id)
 	}
 	before := cloneOrganism(current)
 	if err := mutator(&current); err != nil {
-		return Organism{}, err
+		return Organism{Organism: entitymodel.Organism{}}, err
 	}
 	current.ID = id
 	current.UpdatedAt = tx.now
@@ -1179,7 +1693,7 @@ func (tx *transaction) CreateCohort(c Cohort) (Cohort, error) {
 		c.ID = tx.store.newID()
 	}
 	if _, exists := tx.state.cohorts[c.ID]; exists {
-		return Cohort{}, fmt.Errorf("cohort %q already exists", c.ID)
+		return Cohort{Cohort: entitymodel.Cohort{}}, fmt.Errorf("cohort %q already exists", c.ID)
 	}
 	c.CreatedAt = tx.now
 	c.UpdatedAt = tx.now
@@ -1192,11 +1706,11 @@ func (tx *transaction) CreateCohort(c Cohort) (Cohort, error) {
 func (tx *transaction) UpdateCohort(id string, mutator func(*Cohort) error) (Cohort, error) {
 	current, ok := tx.state.cohorts[id]
 	if !ok {
-		return Cohort{}, fmt.Errorf("cohort %q not found", id)
+		return Cohort{Cohort: entitymodel.Cohort{}}, fmt.Errorf("cohort %q not found", id)
 	}
 	before := cloneCohort(current)
 	if err := mutator(&current); err != nil {
-		return Cohort{}, err
+		return Cohort{Cohort: entitymodel.Cohort{}}, err
 	}
 	current.ID = id
 	current.UpdatedAt = tx.now
@@ -1227,16 +1741,19 @@ func (tx *transaction) CreateHousingUnit(h HousingUnit) (HousingUnit, error) {
 		h.ID = tx.store.newID()
 	}
 	if _, exists := tx.state.housing[h.ID]; exists {
-		return HousingUnit{}, fmt.Errorf("housing unit %q already exists", h.ID)
+		return HousingUnit{HousingUnit: entitymodel.HousingUnit{}}, fmt.Errorf("housing unit %q already exists", h.ID)
 	}
 	if h.FacilityID == "" {
-		return HousingUnit{}, errors.New("housing unit requires facility id")
+		return HousingUnit{HousingUnit: entitymodel.HousingUnit{}}, errors.New("housing unit requires facility id")
 	}
 	if _, ok := tx.state.facilities[h.FacilityID]; !ok {
-		return HousingUnit{}, fmt.Errorf("facility %q not found", h.FacilityID)
+		return HousingUnit{HousingUnit: entitymodel.HousingUnit{}}, fmt.Errorf("facility %q not found", h.FacilityID)
 	}
 	if h.Capacity <= 0 {
-		return HousingUnit{}, errors.New("housing capacity must be positive")
+		return HousingUnit{HousingUnit: entitymodel.HousingUnit{}}, errors.New("housing capacity must be positive")
+	}
+	if err := normalizeHousingUnit(&h); err != nil {
+		return HousingUnit{HousingUnit: entitymodel.HousingUnit{}}, err
 	}
 	h.CreatedAt = tx.now
 	h.UpdatedAt = tx.now
@@ -1249,20 +1766,23 @@ func (tx *transaction) CreateHousingUnit(h HousingUnit) (HousingUnit, error) {
 func (tx *transaction) UpdateHousingUnit(id string, mutator func(*HousingUnit) error) (HousingUnit, error) {
 	current, ok := tx.state.housing[id]
 	if !ok {
-		return HousingUnit{}, fmt.Errorf("housing unit %q not found", id)
+		return HousingUnit{HousingUnit: entitymodel.HousingUnit{}}, fmt.Errorf("housing unit %q not found", id)
 	}
 	before := cloneHousing(current)
 	if err := mutator(&current); err != nil {
-		return HousingUnit{}, err
+		return HousingUnit{HousingUnit: entitymodel.HousingUnit{}}, err
 	}
 	if current.FacilityID == "" {
-		return HousingUnit{}, errors.New("housing unit requires facility id")
+		return HousingUnit{HousingUnit: entitymodel.HousingUnit{}}, errors.New("housing unit requires facility id")
 	}
 	if _, ok := tx.state.facilities[current.FacilityID]; !ok {
-		return HousingUnit{}, fmt.Errorf("facility %q not found", current.FacilityID)
+		return HousingUnit{HousingUnit: entitymodel.HousingUnit{}}, fmt.Errorf("facility %q not found", current.FacilityID)
 	}
 	if current.Capacity <= 0 {
-		return HousingUnit{}, errors.New("housing capacity must be positive")
+		return HousingUnit{HousingUnit: entitymodel.HousingUnit{}}, errors.New("housing capacity must be positive")
+	}
+	if err := normalizeHousingUnit(&current); err != nil {
+		return HousingUnit{HousingUnit: entitymodel.HousingUnit{}}, err
 	}
 	current.ID = id
 	current.UpdatedAt = tx.now
@@ -1288,14 +1808,16 @@ func (tx *transaction) CreateFacility(f Facility) (Facility, error) {
 		f.ID = tx.store.newID()
 	}
 	if _, exists := tx.state.facilities[f.ID]; exists {
-		return Facility{}, fmt.Errorf("facility %q already exists", f.ID)
+		return Facility{Facility: entitymodel.Facility{}}, fmt.Errorf("facility %q already exists", f.ID)
 	}
 	f.CreatedAt = tx.now
 	f.UpdatedAt = tx.now
 	f.HousingUnitIDs = nil
 	f.ProjectIDs = nil
-	if f.EnvironmentBaselines == nil {
-		f.EnvironmentBaselines = map[string]any{}
+	if baselines := f.EnvironmentBaselines(); baselines == nil {
+		mustApply("apply facility baselines", f.ApplyEnvironmentBaselines(map[string]any{}))
+	} else {
+		mustApply("apply facility baselines", f.ApplyEnvironmentBaselines(baselines))
 	}
 	tx.state.facilities[f.ID] = cloneFacility(f)
 	created := decorateFacility(&tx.state, f)
@@ -1307,15 +1829,17 @@ func (tx *transaction) CreateFacility(f Facility) (Facility, error) {
 func (tx *transaction) UpdateFacility(id string, mutator func(*Facility) error) (Facility, error) {
 	current, ok := tx.state.facilities[id]
 	if !ok {
-		return Facility{}, fmt.Errorf("facility %q not found", id)
+		return Facility{Facility: entitymodel.Facility{}}, fmt.Errorf("facility %q not found", id)
 	}
 	beforeDecorated := decorateFacility(&tx.state, current)
 	before := cloneFacility(beforeDecorated)
 	if err := mutator(&current); err != nil {
-		return Facility{}, err
+		return Facility{Facility: entitymodel.Facility{}}, err
 	}
-	if current.EnvironmentBaselines == nil {
-		current.EnvironmentBaselines = map[string]any{}
+	if baselines := current.EnvironmentBaselines(); baselines == nil {
+		mustApply("apply facility baselines", current.ApplyEnvironmentBaselines(map[string]any{}))
+	} else {
+		mustApply("apply facility baselines", current.ApplyEnvironmentBaselines(baselines))
 	}
 	current.HousingUnitIDs = nil
 	current.ProjectIDs = nil
@@ -1373,10 +1897,15 @@ func (tx *transaction) CreateBreedingUnit(b BreedingUnit) (BreedingUnit, error) 
 		b.ID = tx.store.newID()
 	}
 	if _, exists := tx.state.breeding[b.ID]; exists {
-		return BreedingUnit{}, fmt.Errorf("breeding unit %q already exists", b.ID)
+		return BreedingUnit{BreedingUnit: entitymodel.BreedingUnit{}}, fmt.Errorf("breeding unit %q already exists", b.ID)
 	}
 	b.CreatedAt = tx.now
 	b.UpdatedAt = tx.now
+	if attrs := b.PairingAttributes(); attrs == nil {
+		mustApply("apply breeding attributes", b.ApplyPairingAttributes(map[string]any{}))
+	} else {
+		mustApply("apply breeding attributes", b.ApplyPairingAttributes(attrs))
+	}
 	tx.state.breeding[b.ID] = cloneBreeding(b)
 	tx.recordChange(Change{Entity: domain.EntityBreeding, Action: domain.ActionCreate, After: cloneBreeding(b)})
 	return cloneBreeding(b), nil
@@ -1386,11 +1915,16 @@ func (tx *transaction) CreateBreedingUnit(b BreedingUnit) (BreedingUnit, error) 
 func (tx *transaction) UpdateBreedingUnit(id string, mutator func(*BreedingUnit) error) (BreedingUnit, error) {
 	current, ok := tx.state.breeding[id]
 	if !ok {
-		return BreedingUnit{}, fmt.Errorf("breeding unit %q not found", id)
+		return BreedingUnit{BreedingUnit: entitymodel.BreedingUnit{}}, fmt.Errorf("breeding unit %q not found", id)
 	}
 	before := cloneBreeding(current)
 	if err := mutator(&current); err != nil {
-		return BreedingUnit{}, err
+		return BreedingUnit{BreedingUnit: entitymodel.BreedingUnit{}}, err
+	}
+	if attrs := current.PairingAttributes(); attrs == nil {
+		mustApply("apply breeding attributes", current.ApplyPairingAttributes(map[string]any{}))
+	} else {
+		mustApply("apply breeding attributes", current.ApplyPairingAttributes(attrs))
 	}
 	current.ID = id
 	current.UpdatedAt = tx.now
@@ -1410,13 +1944,262 @@ func (tx *transaction) DeleteBreedingUnit(id string) error {
 	return nil
 }
 
+// CreateLine stores a new line record.
+func (tx *transaction) CreateLine(l Line) (Line, error) {
+	if l.ID == "" {
+		l.ID = tx.store.newID()
+	}
+	if _, exists := tx.state.lines[l.ID]; exists {
+		return Line{Line: entitymodel.Line{}}, fmt.Errorf("line %q already exists", l.ID)
+	}
+	if filtered, changed := filterIDs(l.GenotypeMarkerIDs, func(id string) bool { _, ok := tx.state.markers[id]; return ok }); changed {
+		l.GenotypeMarkerIDs = filtered
+	}
+	if err := requireNonEmpty("line.genotype_marker_ids", l.GenotypeMarkerIDs); err != nil {
+		return Line{Line: entitymodel.Line{}}, err
+	}
+	if attrs := l.DefaultAttributes(); attrs == nil {
+		mustApply("apply line default attributes", l.ApplyDefaultAttributes(map[string]any{}))
+	} else {
+		mustApply("apply line default attributes", l.ApplyDefaultAttributes(attrs))
+	}
+	if overrides := l.ExtensionOverrides(); overrides == nil {
+		mustApply("apply line extension overrides", l.ApplyExtensionOverrides(map[string]any{}))
+	} else {
+		mustApply("apply line extension overrides", l.ApplyExtensionOverrides(overrides))
+	}
+	l.CreatedAt = tx.now
+	l.UpdatedAt = tx.now
+	tx.state.lines[l.ID] = cloneLine(l)
+	tx.recordChange(Change{Entity: domain.EntityLine, Action: domain.ActionCreate, After: cloneLine(l)})
+	return cloneLine(l), nil
+}
+
+// UpdateLine mutates an existing line.
+func (tx *transaction) UpdateLine(id string, mutator func(*Line) error) (Line, error) {
+	current, ok := tx.state.lines[id]
+	if !ok {
+		return Line{Line: entitymodel.Line{}}, fmt.Errorf("line %q not found", id)
+	}
+	before := cloneLine(current)
+	if err := mutator(&current); err != nil {
+		return Line{Line: entitymodel.Line{}}, err
+	}
+	if filtered, changed := filterIDs(current.GenotypeMarkerIDs, func(markerID string) bool { _, ok := tx.state.markers[markerID]; return ok }); changed {
+		current.GenotypeMarkerIDs = filtered
+	}
+	if err := requireNonEmpty("line.genotype_marker_ids", current.GenotypeMarkerIDs); err != nil {
+		return Line{Line: entitymodel.Line{}}, err
+	}
+	if attrs := current.DefaultAttributes(); attrs == nil {
+		mustApply("apply line default attributes", current.ApplyDefaultAttributes(map[string]any{}))
+	} else {
+		mustApply("apply line default attributes", current.ApplyDefaultAttributes(attrs))
+	}
+	if overrides := current.ExtensionOverrides(); overrides == nil {
+		mustApply("apply line extension overrides", current.ApplyExtensionOverrides(map[string]any{}))
+	} else {
+		mustApply("apply line extension overrides", current.ApplyExtensionOverrides(overrides))
+	}
+	current.ID = id
+	current.UpdatedAt = tx.now
+	tx.state.lines[id] = cloneLine(current)
+	tx.recordChange(Change{Entity: domain.EntityLine, Action: domain.ActionUpdate, Before: before, After: cloneLine(current)})
+	return cloneLine(current), nil
+}
+
+// DeleteLine removes a line from state if no dependants reference it.
+func (tx *transaction) DeleteLine(id string) error {
+	current, ok := tx.state.lines[id]
+	if !ok {
+		return fmt.Errorf("line %q not found", id)
+	}
+	for _, strain := range tx.state.strains {
+		if strain.LineID == id {
+			return fmt.Errorf("line %q still referenced by strain %q", id, strain.ID)
+		}
+	}
+	for _, breeding := range tx.state.breeding {
+		if breeding.LineID != nil && *breeding.LineID == id {
+			return fmt.Errorf("line %q still referenced by breeding unit %q", id, breeding.ID)
+		}
+		if breeding.TargetLineID != nil && *breeding.TargetLineID == id {
+			return fmt.Errorf("line %q still referenced by breeding unit %q", id, breeding.ID)
+		}
+	}
+	for _, organism := range tx.state.organisms {
+		if organism.LineID != nil && *organism.LineID == id {
+			return fmt.Errorf("line %q still referenced by organism %q", id, organism.ID)
+		}
+	}
+	delete(tx.state.lines, id)
+	tx.recordChange(Change{Entity: domain.EntityLine, Action: domain.ActionDelete, Before: cloneLine(current)})
+	return nil
+}
+
+// CreateStrain stores a new strain record.
+func (tx *transaction) CreateStrain(s Strain) (Strain, error) {
+	if s.ID == "" {
+		s.ID = tx.store.newID()
+	}
+	if _, exists := tx.state.strains[s.ID]; exists {
+		return Strain{Strain: entitymodel.Strain{}}, fmt.Errorf("strain %q already exists", s.ID)
+	}
+	if s.LineID == "" {
+		return Strain{Strain: entitymodel.Strain{}}, errors.New("strain requires line id")
+	}
+	if _, ok := tx.state.lines[s.LineID]; !ok {
+		return Strain{Strain: entitymodel.Strain{}}, fmt.Errorf("line %q not found for strain", s.LineID)
+	}
+	if filtered, changed := filterIDs(s.GenotypeMarkerIDs, func(markerID string) bool { _, ok := tx.state.markers[markerID]; return ok }); changed {
+		s.GenotypeMarkerIDs = filtered
+	}
+	if attrs := s.StrainAttributesByPlugin(); attrs == nil {
+		mustApply("apply strain attributes", s.ApplyStrainAttributes(map[string]any{}))
+	} else {
+		mustApply("apply strain attributes", s.ApplyStrainAttributes(attrs))
+	}
+	s.CreatedAt = tx.now
+	s.UpdatedAt = tx.now
+	tx.state.strains[s.ID] = cloneStrain(s)
+	tx.recordChange(Change{Entity: domain.EntityStrain, Action: domain.ActionCreate, After: cloneStrain(s)})
+	return cloneStrain(s), nil
+}
+
+// UpdateStrain mutates an existing strain.
+func (tx *transaction) UpdateStrain(id string, mutator func(*Strain) error) (Strain, error) {
+	current, ok := tx.state.strains[id]
+	if !ok {
+		return Strain{Strain: entitymodel.Strain{}}, fmt.Errorf("strain %q not found", id)
+	}
+	before := cloneStrain(current)
+	if err := mutator(&current); err != nil {
+		return Strain{Strain: entitymodel.Strain{}}, err
+	}
+	if current.LineID == "" {
+		return Strain{Strain: entitymodel.Strain{}}, errors.New("strain requires line id")
+	}
+	if _, ok := tx.state.lines[current.LineID]; !ok {
+		return Strain{Strain: entitymodel.Strain{}}, fmt.Errorf("line %q not found for strain", current.LineID)
+	}
+	if filtered, changed := filterIDs(current.GenotypeMarkerIDs, func(markerID string) bool { _, ok := tx.state.markers[markerID]; return ok }); changed {
+		current.GenotypeMarkerIDs = filtered
+	}
+	if attrs := current.StrainAttributesByPlugin(); attrs == nil {
+		mustApply("apply strain attributes", current.ApplyStrainAttributes(map[string]any{}))
+	} else {
+		mustApply("apply strain attributes", current.ApplyStrainAttributes(attrs))
+	}
+	current.ID = id
+	current.UpdatedAt = tx.now
+	tx.state.strains[id] = cloneStrain(current)
+	tx.recordChange(Change{Entity: domain.EntityStrain, Action: domain.ActionUpdate, Before: before, After: cloneStrain(current)})
+	return cloneStrain(current), nil
+}
+
+// DeleteStrain removes a strain from state.
+func (tx *transaction) DeleteStrain(id string) error {
+	current, ok := tx.state.strains[id]
+	if !ok {
+		return fmt.Errorf("strain %q not found", id)
+	}
+	for _, organism := range tx.state.organisms {
+		if organism.StrainID != nil && *organism.StrainID == id {
+			return fmt.Errorf("strain %q still referenced by organism %q", id, organism.ID)
+		}
+	}
+	for _, breeding := range tx.state.breeding {
+		if breeding.StrainID != nil && *breeding.StrainID == id {
+			return fmt.Errorf("strain %q still referenced by breeding unit %q", id, breeding.ID)
+		}
+		if breeding.TargetStrainID != nil && *breeding.TargetStrainID == id {
+			return fmt.Errorf("strain %q still referenced by breeding unit %q", id, breeding.ID)
+		}
+	}
+	delete(tx.state.strains, id)
+	tx.recordChange(Change{Entity: domain.EntityStrain, Action: domain.ActionDelete, Before: cloneStrain(current)})
+	return nil
+}
+
+// CreateGenotypeMarker stores a new genotype marker record.
+func (tx *transaction) CreateGenotypeMarker(g GenotypeMarker) (GenotypeMarker, error) {
+	if g.ID == "" {
+		g.ID = tx.store.newID()
+	}
+	if _, exists := tx.state.markers[g.ID]; exists {
+		return GenotypeMarker{GenotypeMarker: entitymodel.GenotypeMarker{}}, fmt.Errorf("genotype marker %q already exists", g.ID)
+	}
+	if len(g.Alleles) > 0 {
+		g.Alleles = dedupeStrings(g.Alleles)
+	}
+	if attrs := g.GenotypeMarkerAttributesByPlugin(); attrs == nil {
+		mustApply("apply genotype marker attributes", g.ApplyGenotypeMarkerAttributes(map[string]any{}))
+	} else {
+		mustApply("apply genotype marker attributes", g.ApplyGenotypeMarkerAttributes(attrs))
+	}
+	g.CreatedAt = tx.now
+	g.UpdatedAt = tx.now
+	tx.state.markers[g.ID] = cloneGenotypeMarker(g)
+	tx.recordChange(Change{Entity: domain.EntityGenotypeMarker, Action: domain.ActionCreate, After: cloneGenotypeMarker(g)})
+	return cloneGenotypeMarker(g), nil
+}
+
+// UpdateGenotypeMarker mutates an existing genotype marker.
+func (tx *transaction) UpdateGenotypeMarker(id string, mutator func(*GenotypeMarker) error) (GenotypeMarker, error) {
+	current, ok := tx.state.markers[id]
+	if !ok {
+		return GenotypeMarker{GenotypeMarker: entitymodel.GenotypeMarker{}}, fmt.Errorf("genotype marker %q not found", id)
+	}
+	before := cloneGenotypeMarker(current)
+	if err := mutator(&current); err != nil {
+		return GenotypeMarker{GenotypeMarker: entitymodel.GenotypeMarker{}}, err
+	}
+	if len(current.Alleles) > 0 {
+		current.Alleles = dedupeStrings(current.Alleles)
+	}
+	if attrs := current.GenotypeMarkerAttributesByPlugin(); attrs == nil {
+		mustApply("apply genotype marker attributes", current.ApplyGenotypeMarkerAttributes(map[string]any{}))
+	} else {
+		mustApply("apply genotype marker attributes", current.ApplyGenotypeMarkerAttributes(attrs))
+	}
+	current.ID = id
+	current.UpdatedAt = tx.now
+	tx.state.markers[id] = cloneGenotypeMarker(current)
+	tx.recordChange(Change{Entity: domain.EntityGenotypeMarker, Action: domain.ActionUpdate, Before: before, After: cloneGenotypeMarker(current)})
+	return cloneGenotypeMarker(current), nil
+}
+
+// DeleteGenotypeMarker removes a genotype marker if no dependants reference it.
+func (tx *transaction) DeleteGenotypeMarker(id string) error {
+	current, ok := tx.state.markers[id]
+	if !ok {
+		return fmt.Errorf("genotype marker %q not found", id)
+	}
+	for _, line := range tx.state.lines {
+		if containsString(line.GenotypeMarkerIDs, id) {
+			return fmt.Errorf("genotype marker %q still referenced by line %q", id, line.ID)
+		}
+	}
+	for _, strain := range tx.state.strains {
+		if containsString(strain.GenotypeMarkerIDs, id) {
+			return fmt.Errorf("genotype marker %q still referenced by strain %q", id, strain.ID)
+		}
+	}
+	delete(tx.state.markers, id)
+	tx.recordChange(Change{Entity: domain.EntityGenotypeMarker, Action: domain.ActionDelete, Before: cloneGenotypeMarker(current)})
+	return nil
+}
+
 // CreateProcedure stores a procedure record.
 func (tx *transaction) CreateProcedure(p Procedure) (Procedure, error) {
 	if p.ID == "" {
 		p.ID = tx.store.newID()
 	}
 	if _, exists := tx.state.procedures[p.ID]; exists {
-		return Procedure{}, fmt.Errorf("procedure %q already exists", p.ID)
+		return Procedure{Procedure: entitymodel.Procedure{}}, fmt.Errorf("procedure %q already exists", p.ID)
+	}
+	if err := normalizeProcedure(&p); err != nil {
+		return Procedure{Procedure: entitymodel.Procedure{}}, err
 	}
 	p.TreatmentIDs = nil
 	p.ObservationIDs = nil
@@ -1432,12 +2215,15 @@ func (tx *transaction) CreateProcedure(p Procedure) (Procedure, error) {
 func (tx *transaction) UpdateProcedure(id string, mutator func(*Procedure) error) (Procedure, error) {
 	current, ok := tx.state.procedures[id]
 	if !ok {
-		return Procedure{}, fmt.Errorf("procedure %q not found", id)
+		return Procedure{Procedure: entitymodel.Procedure{}}, fmt.Errorf("procedure %q not found", id)
 	}
 	beforeDecorated := decorateProcedure(&tx.state, current)
 	before := cloneProcedure(beforeDecorated)
 	if err := mutator(&current); err != nil {
-		return Procedure{}, err
+		return Procedure{Procedure: entitymodel.Procedure{}}, err
+	}
+	if err := normalizeProcedure(&current); err != nil {
+		return Procedure{Procedure: entitymodel.Procedure{}}, err
 	}
 	current.TreatmentIDs = nil
 	current.ObservationIDs = nil
@@ -1477,24 +2263,27 @@ func (tx *transaction) CreateTreatment(t Treatment) (Treatment, error) {
 		t.ID = tx.store.newID()
 	}
 	if _, exists := tx.state.treatments[t.ID]; exists {
-		return Treatment{}, fmt.Errorf("treatment %q already exists", t.ID)
+		return Treatment{Treatment: entitymodel.Treatment{}}, fmt.Errorf("treatment %q already exists", t.ID)
 	}
 	if t.ProcedureID == "" {
-		return Treatment{}, errors.New("treatment requires procedure id")
+		return Treatment{Treatment: entitymodel.Treatment{}}, errors.New("treatment requires procedure id")
 	}
 	if _, ok := tx.state.procedures[t.ProcedureID]; !ok {
-		return Treatment{}, fmt.Errorf("procedure %q not found", t.ProcedureID)
+		return Treatment{Treatment: entitymodel.Treatment{}}, fmt.Errorf("procedure %q not found", t.ProcedureID)
+	}
+	if err := normalizeTreatment(&t); err != nil {
+		return Treatment{Treatment: entitymodel.Treatment{}}, err
 	}
 	t.OrganismIDs = dedupeStrings(t.OrganismIDs)
 	for _, organismID := range t.OrganismIDs {
 		if _, ok := tx.state.organisms[organismID]; !ok {
-			return Treatment{}, fmt.Errorf("organism %q not found for treatment", organismID)
+			return Treatment{Treatment: entitymodel.Treatment{}}, fmt.Errorf("organism %q not found for treatment", organismID)
 		}
 	}
 	t.CohortIDs = dedupeStrings(t.CohortIDs)
 	for _, cohortID := range t.CohortIDs {
 		if _, ok := tx.state.cohorts[cohortID]; !ok {
-			return Treatment{}, fmt.Errorf("cohort %q not found for treatment", cohortID)
+			return Treatment{Treatment: entitymodel.Treatment{}}, fmt.Errorf("cohort %q not found for treatment", cohortID)
 		}
 	}
 	t.CreatedAt = tx.now
@@ -1508,29 +2297,32 @@ func (tx *transaction) CreateTreatment(t Treatment) (Treatment, error) {
 func (tx *transaction) UpdateTreatment(id string, mutator func(*Treatment) error) (Treatment, error) {
 	current, ok := tx.state.treatments[id]
 	if !ok {
-		return Treatment{}, fmt.Errorf("treatment %q not found", id)
+		return Treatment{Treatment: entitymodel.Treatment{}}, fmt.Errorf("treatment %q not found", id)
 	}
 	before := cloneTreatment(current)
 	if err := mutator(&current); err != nil {
-		return Treatment{}, err
+		return Treatment{Treatment: entitymodel.Treatment{}}, err
 	}
 	if current.ProcedureID == "" {
-		return Treatment{}, errors.New("treatment requires procedure id")
+		return Treatment{Treatment: entitymodel.Treatment{}}, errors.New("treatment requires procedure id")
 	}
 	if _, ok := tx.state.procedures[current.ProcedureID]; !ok {
-		return Treatment{}, fmt.Errorf("procedure %q not found", current.ProcedureID)
+		return Treatment{Treatment: entitymodel.Treatment{}}, fmt.Errorf("procedure %q not found", current.ProcedureID)
 	}
 	current.OrganismIDs = dedupeStrings(current.OrganismIDs)
 	for _, organismID := range current.OrganismIDs {
 		if _, ok := tx.state.organisms[organismID]; !ok {
-			return Treatment{}, fmt.Errorf("organism %q not found for treatment", organismID)
+			return Treatment{Treatment: entitymodel.Treatment{}}, fmt.Errorf("organism %q not found for treatment", organismID)
 		}
 	}
 	current.CohortIDs = dedupeStrings(current.CohortIDs)
 	for _, cohortID := range current.CohortIDs {
 		if _, ok := tx.state.cohorts[cohortID]; !ok {
-			return Treatment{}, fmt.Errorf("cohort %q not found for treatment", cohortID)
+			return Treatment{Treatment: entitymodel.Treatment{}}, fmt.Errorf("cohort %q not found for treatment", cohortID)
 		}
+	}
+	if err := normalizeTreatment(&current); err != nil {
+		return Treatment{Treatment: entitymodel.Treatment{}}, err
 	}
 	current.ID = id
 	current.UpdatedAt = tx.now
@@ -1556,30 +2348,32 @@ func (tx *transaction) CreateObservation(o Observation) (Observation, error) {
 		o.ID = tx.store.newID()
 	}
 	if _, exists := tx.state.observations[o.ID]; exists {
-		return Observation{}, fmt.Errorf("observation %q already exists", o.ID)
+		return Observation{Observation: entitymodel.Observation{}}, fmt.Errorf("observation %q already exists", o.ID)
 	}
 	if o.ProcedureID == nil && o.OrganismID == nil && o.CohortID == nil {
-		return Observation{}, errors.New("observation requires procedure, organism, or cohort reference")
+		return Observation{Observation: entitymodel.Observation{}}, errors.New("observation requires procedure, organism, or cohort reference")
 	}
 	if o.ProcedureID != nil {
 		if _, ok := tx.state.procedures[*o.ProcedureID]; !ok {
-			return Observation{}, fmt.Errorf("procedure %q not found for observation", *o.ProcedureID)
+			return Observation{Observation: entitymodel.Observation{}}, fmt.Errorf("procedure %q not found for observation", *o.ProcedureID)
 		}
 	}
 	if o.OrganismID != nil {
 		if _, ok := tx.state.organisms[*o.OrganismID]; !ok {
-			return Observation{}, fmt.Errorf("organism %q not found for observation", *o.OrganismID)
+			return Observation{Observation: entitymodel.Observation{}}, fmt.Errorf("organism %q not found for observation", *o.OrganismID)
 		}
 	}
 	if o.CohortID != nil {
 		if _, ok := tx.state.cohorts[*o.CohortID]; !ok {
-			return Observation{}, fmt.Errorf("cohort %q not found for observation", *o.CohortID)
+			return Observation{Observation: entitymodel.Observation{}}, fmt.Errorf("cohort %q not found for observation", *o.CohortID)
 		}
 	}
 	o.CreatedAt = tx.now
 	o.UpdatedAt = tx.now
-	if o.Data == nil {
-		o.Data = map[string]any{}
+	if data := o.ObservationData(); data == nil {
+		mustApply("apply observation data", o.ApplyObservationData(map[string]any{}))
+	} else {
+		mustApply("apply observation data", o.ApplyObservationData(data))
 	}
 	tx.state.observations[o.ID] = cloneObservation(o)
 	tx.recordChange(Change{Entity: domain.EntityObservation, Action: domain.ActionCreate, After: cloneObservation(o)})
@@ -1590,32 +2384,34 @@ func (tx *transaction) CreateObservation(o Observation) (Observation, error) {
 func (tx *transaction) UpdateObservation(id string, mutator func(*Observation) error) (Observation, error) {
 	current, ok := tx.state.observations[id]
 	if !ok {
-		return Observation{}, fmt.Errorf("observation %q not found", id)
+		return Observation{Observation: entitymodel.Observation{}}, fmt.Errorf("observation %q not found", id)
 	}
 	before := cloneObservation(current)
 	if err := mutator(&current); err != nil {
-		return Observation{}, err
+		return Observation{Observation: entitymodel.Observation{}}, err
 	}
 	if current.ProcedureID == nil && current.OrganismID == nil && current.CohortID == nil {
-		return Observation{}, errors.New("observation requires procedure, organism, or cohort reference")
+		return Observation{Observation: entitymodel.Observation{}}, errors.New("observation requires procedure, organism, or cohort reference")
 	}
 	if current.ProcedureID != nil {
 		if _, ok := tx.state.procedures[*current.ProcedureID]; !ok {
-			return Observation{}, fmt.Errorf("procedure %q not found for observation", *current.ProcedureID)
+			return Observation{Observation: entitymodel.Observation{}}, fmt.Errorf("procedure %q not found for observation", *current.ProcedureID)
 		}
 	}
 	if current.OrganismID != nil {
 		if _, ok := tx.state.organisms[*current.OrganismID]; !ok {
-			return Observation{}, fmt.Errorf("organism %q not found for observation", *current.OrganismID)
+			return Observation{Observation: entitymodel.Observation{}}, fmt.Errorf("organism %q not found for observation", *current.OrganismID)
 		}
 	}
 	if current.CohortID != nil {
 		if _, ok := tx.state.cohorts[*current.CohortID]; !ok {
-			return Observation{}, fmt.Errorf("cohort %q not found for observation", *current.CohortID)
+			return Observation{Observation: entitymodel.Observation{}}, fmt.Errorf("cohort %q not found for observation", *current.CohortID)
 		}
 	}
-	if current.Data == nil {
-		current.Data = map[string]any{}
+	if data := current.ObservationData(); data == nil {
+		mustApply("apply observation data", current.ApplyObservationData(map[string]any{}))
+	} else {
+		mustApply("apply observation data", current.ApplyObservationData(data))
 	}
 	current.ID = id
 	current.UpdatedAt = tx.now
@@ -1641,31 +2437,39 @@ func (tx *transaction) CreateSample(s Sample) (Sample, error) {
 		s.ID = tx.store.newID()
 	}
 	if _, exists := tx.state.samples[s.ID]; exists {
-		return Sample{}, fmt.Errorf("sample %q already exists", s.ID)
+		return Sample{Sample: entitymodel.Sample{}}, fmt.Errorf("sample %q already exists", s.ID)
 	}
 	if s.FacilityID == "" {
-		return Sample{}, errors.New("sample requires facility id")
+		return Sample{Sample: entitymodel.Sample{}}, errors.New("sample requires facility id")
 	}
 	if _, ok := tx.state.facilities[s.FacilityID]; !ok {
-		return Sample{}, fmt.Errorf("facility %q not found for sample", s.FacilityID)
+		return Sample{Sample: entitymodel.Sample{}}, fmt.Errorf("facility %q not found for sample", s.FacilityID)
 	}
 	if s.OrganismID == nil && s.CohortID == nil {
-		return Sample{}, errors.New("sample requires organism or cohort reference")
+		return Sample{Sample: entitymodel.Sample{}}, errors.New("sample requires organism or cohort reference")
 	}
 	if s.OrganismID != nil {
 		if _, ok := tx.state.organisms[*s.OrganismID]; !ok {
-			return Sample{}, fmt.Errorf("organism %q not found for sample", *s.OrganismID)
+			return Sample{Sample: entitymodel.Sample{}}, fmt.Errorf("organism %q not found for sample", *s.OrganismID)
 		}
 	}
 	if s.CohortID != nil {
 		if _, ok := tx.state.cohorts[*s.CohortID]; !ok {
-			return Sample{}, fmt.Errorf("cohort %q not found for sample", *s.CohortID)
+			return Sample{Sample: entitymodel.Sample{}}, fmt.Errorf("cohort %q not found for sample", *s.CohortID)
 		}
+	}
+	if len(s.ChainOfCustody) == 0 {
+		return Sample{Sample: entitymodel.Sample{}}, errors.New("sample requires chain of custody")
+	}
+	if err := normalizeSample(&s); err != nil {
+		return Sample{Sample: entitymodel.Sample{}}, err
 	}
 	s.CreatedAt = tx.now
 	s.UpdatedAt = tx.now
-	if s.Attributes == nil {
-		s.Attributes = map[string]any{}
+	if attrs := s.SampleAttributes(); attrs == nil {
+		mustApply("apply sample attributes", s.ApplySampleAttributes(map[string]any{}))
+	} else {
+		mustApply("apply sample attributes", s.ApplySampleAttributes(attrs))
 	}
 	tx.state.samples[s.ID] = cloneSample(s)
 	tx.recordChange(Change{Entity: domain.EntitySample, Action: domain.ActionCreate, After: cloneSample(s)})
@@ -1676,33 +2480,41 @@ func (tx *transaction) CreateSample(s Sample) (Sample, error) {
 func (tx *transaction) UpdateSample(id string, mutator func(*Sample) error) (Sample, error) {
 	current, ok := tx.state.samples[id]
 	if !ok {
-		return Sample{}, fmt.Errorf("sample %q not found", id)
+		return Sample{Sample: entitymodel.Sample{}}, fmt.Errorf("sample %q not found", id)
 	}
 	before := cloneSample(current)
 	if err := mutator(&current); err != nil {
-		return Sample{}, err
+		return Sample{Sample: entitymodel.Sample{}}, err
 	}
 	if current.FacilityID == "" {
-		return Sample{}, errors.New("sample requires facility id")
+		return Sample{Sample: entitymodel.Sample{}}, errors.New("sample requires facility id")
 	}
 	if _, ok := tx.state.facilities[current.FacilityID]; !ok {
-		return Sample{}, fmt.Errorf("facility %q not found for sample", current.FacilityID)
+		return Sample{Sample: entitymodel.Sample{}}, fmt.Errorf("facility %q not found for sample", current.FacilityID)
 	}
 	if current.OrganismID == nil && current.CohortID == nil {
-		return Sample{}, errors.New("sample requires organism or cohort reference")
+		return Sample{Sample: entitymodel.Sample{}}, errors.New("sample requires organism or cohort reference")
 	}
 	if current.OrganismID != nil {
 		if _, ok := tx.state.organisms[*current.OrganismID]; !ok {
-			return Sample{}, fmt.Errorf("organism %q not found for sample", *current.OrganismID)
+			return Sample{Sample: entitymodel.Sample{}}, fmt.Errorf("organism %q not found for sample", *current.OrganismID)
 		}
 	}
 	if current.CohortID != nil {
 		if _, ok := tx.state.cohorts[*current.CohortID]; !ok {
-			return Sample{}, fmt.Errorf("cohort %q not found for sample", *current.CohortID)
+			return Sample{Sample: entitymodel.Sample{}}, fmt.Errorf("cohort %q not found for sample", *current.CohortID)
 		}
 	}
-	if current.Attributes == nil {
-		current.Attributes = map[string]any{}
+	if len(current.ChainOfCustody) == 0 {
+		return Sample{Sample: entitymodel.Sample{}}, errors.New("sample requires chain of custody")
+	}
+	if err := normalizeSample(&current); err != nil {
+		return Sample{Sample: entitymodel.Sample{}}, err
+	}
+	if attrs := current.SampleAttributes(); attrs == nil {
+		mustApply("apply sample attributes", current.ApplySampleAttributes(map[string]any{}))
+	} else {
+		mustApply("apply sample attributes", current.ApplySampleAttributes(attrs))
 	}
 	current.ID = id
 	current.UpdatedAt = tx.now
@@ -1728,7 +2540,10 @@ func (tx *transaction) CreateProtocol(p Protocol) (Protocol, error) {
 		p.ID = tx.store.newID()
 	}
 	if _, exists := tx.state.protocols[p.ID]; exists {
-		return Protocol{}, fmt.Errorf("protocol %q already exists", p.ID)
+		return Protocol{Protocol: entitymodel.Protocol{}}, fmt.Errorf("protocol %q already exists", p.ID)
+	}
+	if err := normalizeProtocol(&p); err != nil {
+		return Protocol{Protocol: entitymodel.Protocol{}}, err
 	}
 	p.CreatedAt = tx.now
 	p.UpdatedAt = tx.now
@@ -1741,11 +2556,14 @@ func (tx *transaction) CreateProtocol(p Protocol) (Protocol, error) {
 func (tx *transaction) UpdateProtocol(id string, mutator func(*Protocol) error) (Protocol, error) {
 	current, ok := tx.state.protocols[id]
 	if !ok {
-		return Protocol{}, fmt.Errorf("protocol %q not found", id)
+		return Protocol{Protocol: entitymodel.Protocol{}}, fmt.Errorf("protocol %q not found", id)
 	}
 	before := cloneProtocol(current)
 	if err := mutator(&current); err != nil {
-		return Protocol{}, err
+		return Protocol{Protocol: entitymodel.Protocol{}}, err
+	}
+	if err := normalizeProtocol(&current); err != nil {
+		return Protocol{Protocol: entitymodel.Protocol{}}, err
 	}
 	current.ID = id
 	current.UpdatedAt = tx.now
@@ -1776,19 +2594,31 @@ func (tx *transaction) CreatePermit(p Permit) (Permit, error) {
 		p.ID = tx.store.newID()
 	}
 	if _, exists := tx.state.permits[p.ID]; exists {
-		return Permit{}, fmt.Errorf("permit %q already exists", p.ID)
+		return Permit{Permit: entitymodel.Permit{}}, fmt.Errorf("permit %q already exists", p.ID)
+	}
+	if err := requireNonEmpty("permit.allowed_activities", p.AllowedActivities); err != nil {
+		return Permit{Permit: entitymodel.Permit{}}, err
 	}
 	p.FacilityIDs = dedupeStrings(p.FacilityIDs)
+	if err := requireNonEmpty("permit.facility_ids", p.FacilityIDs); err != nil {
+		return Permit{Permit: entitymodel.Permit{}}, err
+	}
 	for _, facilityID := range p.FacilityIDs {
 		if _, ok := tx.state.facilities[facilityID]; !ok {
-			return Permit{}, fmt.Errorf("facility %q not found for permit", facilityID)
+			return Permit{Permit: entitymodel.Permit{}}, fmt.Errorf("facility %q not found for permit", facilityID)
 		}
 	}
 	p.ProtocolIDs = dedupeStrings(p.ProtocolIDs)
+	if err := requireNonEmpty("permit.protocol_ids", p.ProtocolIDs); err != nil {
+		return Permit{Permit: entitymodel.Permit{}}, err
+	}
 	for _, protocolID := range p.ProtocolIDs {
 		if _, ok := tx.state.protocols[protocolID]; !ok {
-			return Permit{}, fmt.Errorf("protocol %q not found for permit", protocolID)
+			return Permit{Permit: entitymodel.Permit{}}, fmt.Errorf("protocol %q not found for permit", protocolID)
 		}
+	}
+	if err := normalizePermit(&p); err != nil {
+		return Permit{Permit: entitymodel.Permit{}}, err
 	}
 	p.CreatedAt = tx.now
 	p.UpdatedAt = tx.now
@@ -1801,23 +2631,35 @@ func (tx *transaction) CreatePermit(p Permit) (Permit, error) {
 func (tx *transaction) UpdatePermit(id string, mutator func(*Permit) error) (Permit, error) {
 	current, ok := tx.state.permits[id]
 	if !ok {
-		return Permit{}, fmt.Errorf("permit %q not found", id)
+		return Permit{Permit: entitymodel.Permit{}}, fmt.Errorf("permit %q not found", id)
 	}
 	before := clonePermit(current)
 	if err := mutator(&current); err != nil {
-		return Permit{}, err
+		return Permit{Permit: entitymodel.Permit{}}, err
+	}
+	if err := requireNonEmpty("permit.allowed_activities", current.AllowedActivities); err != nil {
+		return Permit{Permit: entitymodel.Permit{}}, err
 	}
 	current.FacilityIDs = dedupeStrings(current.FacilityIDs)
+	if err := requireNonEmpty("permit.facility_ids", current.FacilityIDs); err != nil {
+		return Permit{Permit: entitymodel.Permit{}}, err
+	}
 	for _, facilityID := range current.FacilityIDs {
 		if _, ok := tx.state.facilities[facilityID]; !ok {
-			return Permit{}, fmt.Errorf("facility %q not found for permit", facilityID)
+			return Permit{Permit: entitymodel.Permit{}}, fmt.Errorf("facility %q not found for permit", facilityID)
 		}
 	}
 	current.ProtocolIDs = dedupeStrings(current.ProtocolIDs)
+	if err := requireNonEmpty("permit.protocol_ids", current.ProtocolIDs); err != nil {
+		return Permit{Permit: entitymodel.Permit{}}, err
+	}
 	for _, protocolID := range current.ProtocolIDs {
 		if _, ok := tx.state.protocols[protocolID]; !ok {
-			return Permit{}, fmt.Errorf("protocol %q not found for permit", protocolID)
+			return Permit{Permit: entitymodel.Permit{}}, fmt.Errorf("protocol %q not found for permit", protocolID)
 		}
+	}
+	if err := normalizePermit(&current); err != nil {
+		return Permit{Permit: entitymodel.Permit{}}, err
 	}
 	current.ID = id
 	current.UpdatedAt = tx.now
@@ -1843,12 +2685,15 @@ func (tx *transaction) CreateProject(p Project) (Project, error) {
 		p.ID = tx.store.newID()
 	}
 	if _, exists := tx.state.projects[p.ID]; exists {
-		return Project{}, fmt.Errorf("project %q already exists", p.ID)
+		return Project{Project: entitymodel.Project{}}, fmt.Errorf("project %q already exists", p.ID)
 	}
 	p.FacilityIDs = dedupeStrings(p.FacilityIDs)
+	if err := requireNonEmpty("project.facility_ids", p.FacilityIDs); err != nil {
+		return Project{Project: entitymodel.Project{}}, err
+	}
 	for _, facilityID := range p.FacilityIDs {
 		if _, ok := tx.state.facilities[facilityID]; !ok {
-			return Project{}, fmt.Errorf("facility %q not found for project", facilityID)
+			return Project{Project: entitymodel.Project{}}, fmt.Errorf("facility %q not found for project", facilityID)
 		}
 	}
 	p.OrganismIDs = nil
@@ -1866,17 +2711,20 @@ func (tx *transaction) CreateProject(p Project) (Project, error) {
 func (tx *transaction) UpdateProject(id string, mutator func(*Project) error) (Project, error) {
 	current, ok := tx.state.projects[id]
 	if !ok {
-		return Project{}, fmt.Errorf("project %q not found", id)
+		return Project{Project: entitymodel.Project{}}, fmt.Errorf("project %q not found", id)
 	}
 	beforeDecorated := decorateProject(&tx.state, current)
 	before := cloneProject(beforeDecorated)
 	if err := mutator(&current); err != nil {
-		return Project{}, err
+		return Project{Project: entitymodel.Project{}}, err
 	}
 	current.FacilityIDs = dedupeStrings(current.FacilityIDs)
+	if err := requireNonEmpty("project.facility_ids", current.FacilityIDs); err != nil {
+		return Project{Project: entitymodel.Project{}}, err
+	}
 	for _, facilityID := range current.FacilityIDs {
 		if _, ok := tx.state.facilities[facilityID]; !ok {
-			return Project{}, fmt.Errorf("facility %q not found for project", facilityID)
+			return Project{Project: entitymodel.Project{}}, fmt.Errorf("facility %q not found for project", facilityID)
 		}
 	}
 	current.OrganismIDs = nil
@@ -1913,24 +2761,32 @@ func (tx *transaction) CreateSupplyItem(s SupplyItem) (SupplyItem, error) {
 		s.ID = tx.store.newID()
 	}
 	if _, exists := tx.state.supplies[s.ID]; exists {
-		return SupplyItem{}, fmt.Errorf("supply item %q already exists", s.ID)
+		return SupplyItem{SupplyItem: entitymodel.SupplyItem{}}, fmt.Errorf("supply item %q already exists", s.ID)
 	}
 	s.FacilityIDs = dedupeStrings(s.FacilityIDs)
+	if err := requireNonEmpty("supply_item.facility_ids", s.FacilityIDs); err != nil {
+		return SupplyItem{SupplyItem: entitymodel.SupplyItem{}}, err
+	}
 	for _, facilityID := range s.FacilityIDs {
 		if _, ok := tx.state.facilities[facilityID]; !ok {
-			return SupplyItem{}, fmt.Errorf("facility %q not found for supply item", facilityID)
+			return SupplyItem{SupplyItem: entitymodel.SupplyItem{}}, fmt.Errorf("facility %q not found for supply item", facilityID)
 		}
 	}
 	s.ProjectIDs = dedupeStrings(s.ProjectIDs)
+	if err := requireNonEmpty("supply_item.project_ids", s.ProjectIDs); err != nil {
+		return SupplyItem{SupplyItem: entitymodel.SupplyItem{}}, err
+	}
 	for _, projectID := range s.ProjectIDs {
 		if _, ok := tx.state.projects[projectID]; !ok {
-			return SupplyItem{}, fmt.Errorf("project %q not found for supply item", projectID)
+			return SupplyItem{SupplyItem: entitymodel.SupplyItem{}}, fmt.Errorf("project %q not found for supply item", projectID)
 		}
 	}
 	s.CreatedAt = tx.now
 	s.UpdatedAt = tx.now
-	if s.Attributes == nil {
-		s.Attributes = map[string]any{}
+	if attrs := s.SupplyAttributes(); attrs == nil {
+		mustApply("apply supply attributes", s.ApplySupplyAttributes(map[string]any{}))
+	} else {
+		mustApply("apply supply attributes", s.ApplySupplyAttributes(attrs))
 	}
 	tx.state.supplies[s.ID] = cloneSupplyItem(s)
 	tx.recordChange(Change{Entity: domain.EntitySupplyItem, Action: domain.ActionCreate, After: cloneSupplyItem(s)})
@@ -1941,26 +2797,34 @@ func (tx *transaction) CreateSupplyItem(s SupplyItem) (SupplyItem, error) {
 func (tx *transaction) UpdateSupplyItem(id string, mutator func(*SupplyItem) error) (SupplyItem, error) {
 	current, ok := tx.state.supplies[id]
 	if !ok {
-		return SupplyItem{}, fmt.Errorf("supply item %q not found", id)
+		return SupplyItem{SupplyItem: entitymodel.SupplyItem{}}, fmt.Errorf("supply item %q not found", id)
 	}
 	before := cloneSupplyItem(current)
 	if err := mutator(&current); err != nil {
-		return SupplyItem{}, err
+		return SupplyItem{SupplyItem: entitymodel.SupplyItem{}}, err
 	}
 	current.FacilityIDs = dedupeStrings(current.FacilityIDs)
+	if err := requireNonEmpty("supply_item.facility_ids", current.FacilityIDs); err != nil {
+		return SupplyItem{SupplyItem: entitymodel.SupplyItem{}}, err
+	}
 	for _, facilityID := range current.FacilityIDs {
 		if _, ok := tx.state.facilities[facilityID]; !ok {
-			return SupplyItem{}, fmt.Errorf("facility %q not found for supply item", facilityID)
+			return SupplyItem{SupplyItem: entitymodel.SupplyItem{}}, fmt.Errorf("facility %q not found for supply item", facilityID)
 		}
 	}
 	current.ProjectIDs = dedupeStrings(current.ProjectIDs)
+	if err := requireNonEmpty("supply_item.project_ids", current.ProjectIDs); err != nil {
+		return SupplyItem{SupplyItem: entitymodel.SupplyItem{}}, err
+	}
 	for _, projectID := range current.ProjectIDs {
 		if _, ok := tx.state.projects[projectID]; !ok {
-			return SupplyItem{}, fmt.Errorf("project %q not found for supply item", projectID)
+			return SupplyItem{SupplyItem: entitymodel.SupplyItem{}}, fmt.Errorf("project %q not found for supply item", projectID)
 		}
 	}
-	if current.Attributes == nil {
-		current.Attributes = map[string]any{}
+	if attrs := current.SupplyAttributes(); attrs == nil {
+		mustApply("apply supply attributes", current.ApplySupplyAttributes(map[string]any{}))
+	} else {
+		mustApply("apply supply attributes", current.ApplySupplyAttributes(attrs))
 	}
 	if current.ExpiresAt != nil {
 		t := *current.ExpiresAt
@@ -1992,7 +2856,7 @@ func (s *Store) GetOrganism(id string) (Organism, bool) {
 	defer s.mu.RUnlock()
 	o, ok := s.state.organisms[id]
 	if !ok {
-		return Organism{}, false
+		return Organism{Organism: entitymodel.Organism{}}, false
 	}
 	return cloneOrganism(o), true
 }
@@ -2014,7 +2878,7 @@ func (s *Store) GetHousingUnit(id string) (HousingUnit, bool) {
 	defer s.mu.RUnlock()
 	h, ok := s.state.housing[id]
 	if !ok {
-		return HousingUnit{}, false
+		return HousingUnit{HousingUnit: entitymodel.HousingUnit{}}, false
 	}
 	return cloneHousing(h), true
 }
@@ -2036,7 +2900,7 @@ func (s *Store) GetFacility(id string) (Facility, bool) {
 	defer s.mu.RUnlock()
 	f, ok := s.state.facilities[id]
 	if !ok {
-		return Facility{}, false
+		return Facility{Facility: entitymodel.Facility{}}, false
 	}
 	decorated := decorateFacility(&s.state, f)
 	return cloneFacility(decorated), true
@@ -2049,6 +2913,72 @@ func (s *Store) ListFacilities() []Facility {
 	out := make([]Facility, 0, len(s.state.facilities))
 	for _, f := range s.state.facilities {
 		out = append(out, cloneFacility(decorateFacility(&s.state, f)))
+	}
+	return out
+}
+
+// GetLine retrieves a line by ID.
+func (s *Store) GetLine(id string) (Line, bool) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	line, ok := s.state.lines[id]
+	if !ok {
+		return Line{Line: entitymodel.Line{}}, false
+	}
+	return cloneLine(line), true
+}
+
+// ListLines returns all lines.
+func (s *Store) ListLines() []Line {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	out := make([]Line, 0, len(s.state.lines))
+	for _, line := range s.state.lines {
+		out = append(out, cloneLine(line))
+	}
+	return out
+}
+
+// GetStrain retrieves a strain by ID.
+func (s *Store) GetStrain(id string) (Strain, bool) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	strain, ok := s.state.strains[id]
+	if !ok {
+		return Strain{Strain: entitymodel.Strain{}}, false
+	}
+	return cloneStrain(strain), true
+}
+
+// ListStrains returns all strains.
+func (s *Store) ListStrains() []Strain {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	out := make([]Strain, 0, len(s.state.strains))
+	for _, strain := range s.state.strains {
+		out = append(out, cloneStrain(strain))
+	}
+	return out
+}
+
+// GetGenotypeMarker retrieves a genotype marker by ID.
+func (s *Store) GetGenotypeMarker(id string) (GenotypeMarker, bool) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	marker, ok := s.state.markers[id]
+	if !ok {
+		return GenotypeMarker{GenotypeMarker: entitymodel.GenotypeMarker{}}, false
+	}
+	return cloneGenotypeMarker(marker), true
+}
+
+// ListGenotypeMarkers returns all genotype markers.
+func (s *Store) ListGenotypeMarkers() []GenotypeMarker {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	out := make([]GenotypeMarker, 0, len(s.state.markers))
+	for _, marker := range s.state.markers {
+		out = append(out, cloneGenotypeMarker(marker))
 	}
 	return out
 }
@@ -2114,7 +3044,7 @@ func (s *Store) GetPermit(id string) (Permit, bool) {
 	defer s.mu.RUnlock()
 	p, ok := s.state.permits[id]
 	if !ok {
-		return Permit{}, false
+		return Permit{Permit: entitymodel.Permit{}}, false
 	}
 	return clonePermit(p), true
 }

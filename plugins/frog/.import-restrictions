@@ -17,5 +17,4 @@ InverseRules:
       - "colonycore/plugins/frog"
       - "colonycore/internal/core"
       - "colonycore/internal/adapters/datasets"
-      - "colonycore/pkg/pluginapi"
-      - "colonycore/pkg/datasetapi"
+      - "colonycore/internal/adapters/testutil"

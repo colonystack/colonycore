@@ -2,7 +2,11 @@ package memory
 
 import (
 	"colonycore/pkg/domain"
+	entitymodel "colonycore/pkg/domain/entitymodel"
+	"colonycore/pkg/domain/extension"
 	"context"
+	"encoding/json"
+	"fmt"
 	"testing"
 	"time"
 )
@@ -15,42 +19,46 @@ func TestSnapshotAllEntities(t *testing.T) {
 	var housing domain.HousingUnit
 	var organism domain.Organism
 	if _, err := store.RunInTransaction(ctx, func(tx domain.Transaction) error {
-		facility, err := tx.CreateFacility(domain.Facility{Name: "Lab"})
+		facility, err := tx.CreateFacility(domain.Facility{Facility: entitymodel.Facility{Name: "Lab"}})
 		if err != nil {
 			return err
 		}
 		// Create project
-		if _, err := tx.CreateProject(domain.Project{Code: "P1", Title: "Project", FacilityIDs: []string{facility.ID}}); err != nil {
+		if _, err := tx.CreateProject(domain.Project{Project: entitymodel.Project{Code: "P1", Title: "Project", FacilityIDs: []string{facility.ID}}}); err != nil {
 			return err
 		}
 		// Create housing
-		h, err := tx.CreateHousingUnit(domain.HousingUnit{Name: "H1", FacilityID: facility.ID, Capacity: 2})
+		h, err := tx.CreateHousingUnit(domain.HousingUnit{HousingUnit: entitymodel.HousingUnit{Name: "H1", FacilityID: facility.ID, Capacity: 2}})
 		if err != nil {
 			return err
 		}
 		housing = h
 		// Create protocol
-		p, err := tx.CreateProtocol(domain.Protocol{Code: "PR", Title: "Proto", MaxSubjects: 5})
+		p, err := tx.CreateProtocol(domain.Protocol{Protocol: entitymodel.Protocol{Code: "PR", Title: "Proto", MaxSubjects: 5}})
 		if err != nil {
 			return err
 		}
 		_ = p // protocol used implicitly via references
 		// Create cohort
-		if _, err := tx.CreateCohort(domain.Cohort{Name: "C1"}); err != nil {
+		if _, err := tx.CreateCohort(domain.Cohort{Cohort: entitymodel.Cohort{Name: "C1"}}); err != nil {
 			return err
 		}
 		// Create organism with attributes
-		o, err := tx.CreateOrganism(domain.Organism{Name: "Spec", Species: "Frog", Attributes: map[string]any{"color": "green"}})
+		organismInput := domain.Organism{Organism: entitymodel.Organism{Name: "Spec", Species: "Frog"}}
+		if err := organismInput.SetCoreAttributes(map[string]any{"color": "green"}); err != nil {
+			return err
+		}
+		o, err := tx.CreateOrganism(organismInput)
 		if err != nil {
 			return err
 		}
 		organism = o
 		// Create breeding unit referencing organism
-		if _, err := tx.CreateBreedingUnit(domain.BreedingUnit{Name: "Pair", FemaleIDs: []string{o.ID}, MaleIDs: []string{"M"}, HousingID: &h.ID, ProtocolID: &p.ID}); err != nil {
+		if _, err := tx.CreateBreedingUnit(domain.BreedingUnit{BreedingUnit: entitymodel.BreedingUnit{Name: "Pair", FemaleIDs: []string{o.ID}, MaleIDs: []string{"M"}, HousingID: &h.ID, ProtocolID: &p.ID}}); err != nil {
 			return err
 		}
 		// Create procedure referencing organism
-		if _, err := tx.CreateProcedure(domain.Procedure{Name: "Check", Status: "scheduled", ScheduledAt: time.Now().UTC(), ProtocolID: p.ID, OrganismIDs: []string{o.ID}}); err != nil {
+		if _, err := tx.CreateProcedure(domain.Procedure{Procedure: entitymodel.Procedure{Name: "Check", Status: domain.ProcedureStatusScheduled, ScheduledAt: time.Now().UTC(), ProtocolID: p.ID, OrganismIDs: []string{o.ID}}}); err != nil {
 			return err
 		}
 		return nil
@@ -82,8 +90,9 @@ func TestSnapshotAllEntities(t *testing.T) {
 	}
 	// Ensure organism attributes remain isolated (deep copy validated indirectly by modifying snapshot copy)
 	snapOrg := snap.Organisms[organism.ID]
-	snapOrg.Attributes["color"] = "blue"
-	if store.ListOrganisms()[0].Attributes["color"] != "green" {
+	attrs := snapOrg.CoreAttributes()
+	attrs["color"] = "blue"
+	if store.ListOrganisms()[0].CoreAttributes()["color"] != "green" {
 		t.Fatalf("expected deep copy isolation")
 	}
 }
@@ -94,50 +103,50 @@ func TestImportStateAppliesRelationshipMigrations(t *testing.T) {
 	const facilityKey = "fac-1"
 
 	organisms := map[string]domain.Organism{
-		"org-1": {Base: domain.Base{ID: "org-1"}, Name: "Org", Species: "Spec"},
+		"org-1": {Organism: entitymodel.Organism{ID: "org-1", Name: "Org", Species: "Spec"}},
 	}
 	cohorts := map[string]domain.Cohort{
-		"cohort-1": {Base: domain.Base{ID: "cohort-1"}, Name: "Cohort"},
+		"cohort-1": {Cohort: entitymodel.Cohort{ID: "cohort-1", Name: "Cohort"}},
 	}
 	protocols := map[string]domain.Protocol{
-		"prot-1": {Base: domain.Base{ID: "prot-1"}, Code: "PR", Title: "Protocol", MaxSubjects: 10, Status: "active"},
+		"prot-1": {Protocol: entitymodel.Protocol{ID: "prot-1", Code: "PR", Title: "Protocol", MaxSubjects: 10, Status: domain.ProtocolStatusApproved}},
 	}
 	procedures := map[string]domain.Procedure{
-		"proc-1": {Base: domain.Base{ID: "proc-1"}, Name: "Proc", Status: "scheduled", ScheduledAt: now, ProtocolID: "prot-1", OrganismIDs: []string{"org-1"}},
+		"proc-1": {Procedure: entitymodel.Procedure{ID: "proc-1", Name: "Proc", Status: domain.ProcedureStatusScheduled, ScheduledAt: now, ProtocolID: "prot-1", OrganismIDs: []string{"org-1"}}},
 	}
 
 	snapshot := Snapshot{
 		Organisms: organisms,
 		Cohorts:   cohorts,
 		Housing: map[string]domain.HousingUnit{
-			"house-1":       {Base: domain.Base{ID: "house-1"}, Name: "Housing", FacilityID: facilityKey, Capacity: 2},
-			"house-invalid": {Base: domain.Base{ID: "house-invalid"}, Name: "Invalid", FacilityID: "missing", Capacity: 1},
+			"house-1":       {HousingUnit: entitymodel.HousingUnit{ID: "house-1", Name: "Housing", FacilityID: facilityKey, Capacity: 2}},
+			"house-invalid": {HousingUnit: entitymodel.HousingUnit{ID: "house-invalid", Name: "Invalid", FacilityID: "missing", Capacity: 1}},
 		},
 		Facilities: map[string]domain.Facility{
-			facilityKey: {Base: domain.Base{ID: facilityKey}, Name: "Facility"},
+			facilityKey: {Facility: entitymodel.Facility{ID: facilityKey, Name: "Facility"}},
 		},
 		Procedures: procedures,
 		Treatments: map[string]domain.Treatment{
-			"treat-1":   {Base: domain.Base{ID: "treat-1"}, Name: "Treat", ProcedureID: "proc-1", OrganismIDs: []string{"org-1", "missing", "org-1"}},
-			"treat-bad": {Base: domain.Base{ID: "treat-bad"}, Name: "Bad", ProcedureID: "missing"},
+			"treat-1":   {Treatment: entitymodel.Treatment{ID: "treat-1", Name: "Treat", ProcedureID: "proc-1", OrganismIDs: []string{"org-1", "missing", "org-1"}}},
+			"treat-bad": {Treatment: entitymodel.Treatment{ID: "treat-bad", Name: "Bad", ProcedureID: "missing"}},
 		},
 		Observations: map[string]domain.Observation{
-			"obs-1": {Base: domain.Base{ID: "obs-1"}, ProcedureID: ptr("proc-1"), Observer: "Tech", RecordedAt: now},
-			"obs-2": {Base: domain.Base{ID: "obs-2"}, ProcedureID: ptr("missing"), Observer: "Tech", RecordedAt: now},
+			"obs-1": {Observation: entitymodel.Observation{ID: "obs-1", ProcedureID: ptr("proc-1"), Observer: "Tech", RecordedAt: now}},
+			"obs-2": {Observation: entitymodel.Observation{ID: "obs-2", ProcedureID: ptr("missing"), Observer: "Tech", RecordedAt: now}},
 		},
 		Samples: map[string]domain.Sample{
-			"sample-1": {Base: domain.Base{ID: "sample-1"}, Identifier: "S1", SourceType: "blood", FacilityID: facilityKey, OrganismID: ptr("org-1"), CollectedAt: now, Status: "stored", StorageLocation: "freezer"},
-			"sample-2": {Base: domain.Base{ID: "sample-2"}, Identifier: "S2", SourceType: "blood", FacilityID: "missing", CollectedAt: now, Status: "stored", StorageLocation: "freezer"},
+			"sample-1": {Sample: entitymodel.Sample{ID: "sample-1", Identifier: "S1", SourceType: "blood", FacilityID: facilityKey, OrganismID: ptr("org-1"), CollectedAt: now, Status: domain.SampleStatusStored, StorageLocation: "freezer", ChainOfCustody: []domain.SampleCustodyEvent{{Actor: "tech", Location: "freezer", Timestamp: now}}}},
+			"sample-2": {Sample: entitymodel.Sample{ID: "sample-2", Identifier: "S2", SourceType: "blood", FacilityID: "missing", CollectedAt: now, Status: domain.SampleStatusStored, StorageLocation: "freezer", ChainOfCustody: []domain.SampleCustodyEvent{{Actor: "tech", Location: "freezer", Timestamp: now}}}},
 		},
 		Protocols: protocols,
 		Permits: map[string]domain.Permit{
-			"permit-1": {Base: domain.Base{ID: "permit-1"}, PermitNumber: "P1", Authority: "Gov", ValidFrom: now, ValidUntil: now.AddDate(1, 0, 0), FacilityIDs: []string{facilityKey, "missing", facilityKey}, ProtocolIDs: []string{"prot-1", "missing"}},
+			"permit-1": {Permit: entitymodel.Permit{ID: "permit-1", PermitNumber: "P1", Authority: "Gov", Status: domain.PermitStatusApproved, ValidFrom: now, ValidUntil: now.AddDate(1, 0, 0), FacilityIDs: []string{facilityKey, "missing", facilityKey}, ProtocolIDs: []string{"prot-1", "missing"}}},
 		},
 		Projects: map[string]domain.Project{
-			"proj-1": {Base: domain.Base{ID: "proj-1"}, Code: "P1", Title: "Project", FacilityIDs: []string{facilityKey, facilityKey, "missing"}},
+			"proj-1": {Project: entitymodel.Project{ID: "proj-1", Code: "P1", Title: "Project", FacilityIDs: []string{facilityKey, facilityKey, "missing"}}},
 		},
 		Supplies: map[string]domain.SupplyItem{
-			"supply-1": {Base: domain.Base{ID: "supply-1"}, SKU: "SKU", Name: "Gloves", QuantityOnHand: 5, Unit: "box", FacilityIDs: []string{facilityKey, "missing"}, ProjectIDs: []string{"proj-1", "missing", "proj-1"}},
+			"supply-1": {SupplyItem: entitymodel.SupplyItem{ID: "supply-1", SKU: "SKU", Name: "Gloves", QuantityOnHand: 5, Unit: "box", FacilityIDs: []string{facilityKey, "missing"}, ProjectIDs: []string{"proj-1", "missing", "proj-1"}}},
 		},
 	}
 
@@ -168,7 +177,7 @@ func TestImportStateAppliesRelationshipMigrations(t *testing.T) {
 	}
 
 	observations := store.ListObservations()
-	if len(observations) != 1 || observations[0].Data == nil {
+	if len(observations) != 1 || observations[0].ObservationData() == nil {
 		t.Fatalf("expected valid observation with data map initialised, got %+v", observations)
 	}
 
@@ -197,45 +206,45 @@ func TestMigrateSnapshotCleansDataVariants(t *testing.T) {
 	now := time.Now().UTC()
 	snapshot := Snapshot{
 		Organisms: map[string]domain.Organism{
-			"org-keep": {Base: domain.Base{ID: "org-keep"}, Name: "Org", Species: "Spec"},
+			"org-keep": {Organism: entitymodel.Organism{ID: "org-keep", Name: "Org", Species: "Spec"}},
 		},
 		Cohorts: map[string]domain.Cohort{
-			"cohort-keep": {Base: domain.Base{ID: "cohort-keep"}, Name: "Cohort"},
+			"cohort-keep": {Cohort: entitymodel.Cohort{ID: "cohort-keep", Name: "Cohort"}},
 		},
 		Facilities: map[string]domain.Facility{
-			facilityID: {Base: domain.Base{ID: facilityID}},
+			facilityID: {Facility: entitymodel.Facility{ID: facilityID}},
 		},
 		Housing: map[string]domain.HousingUnit{
-			"housing-valid":  {Base: domain.Base{ID: "housing-valid"}, Name: "HV", FacilityID: facilityID, Capacity: 0},
-			"housing-remove": {Base: domain.Base{ID: "housing-remove"}, Name: "HR", FacilityID: "missing", Capacity: 2},
+			"housing-valid":  {HousingUnit: entitymodel.HousingUnit{ID: "housing-valid", Name: "HV", FacilityID: facilityID, Capacity: 0}},
+			"housing-remove": {HousingUnit: entitymodel.HousingUnit{ID: "housing-remove", Name: "HR", FacilityID: "missing", Capacity: 2}},
 		},
 		Procedures: map[string]domain.Procedure{
-			"proc-keep": {Base: domain.Base{ID: "proc-keep"}, Name: "Proc", Status: "scheduled", ScheduledAt: now, ProtocolID: "prot-keep"},
+			"proc-keep": {Procedure: entitymodel.Procedure{ID: "proc-keep", Name: "Proc", Status: domain.ProcedureStatusScheduled, ScheduledAt: now, ProtocolID: "prot-keep"}},
 		},
 		Treatments: map[string]domain.Treatment{
-			"treatment-valid":  {Base: domain.Base{ID: "treatment-valid"}, Name: "Treat", ProcedureID: "proc-keep", OrganismIDs: []string{"org-keep", "org-keep", "missing"}, CohortIDs: []string{"cohort-keep", "missing"}},
-			"treatment-remove": {Base: domain.Base{ID: "treatment-remove"}, Name: "TreatBad", ProcedureID: "missing"},
+			"treatment-valid":  {Treatment: entitymodel.Treatment{ID: "treatment-valid", Name: "Treat", Status: domain.TreatmentStatusPlanned, ProcedureID: "proc-keep", OrganismIDs: []string{"org-keep", "org-keep", "missing"}, CohortIDs: []string{"cohort-keep", "missing"}}},
+			"treatment-remove": {Treatment: entitymodel.Treatment{ID: "treatment-remove", Name: "TreatBad", ProcedureID: "missing"}},
 		},
 		Observations: map[string]domain.Observation{
-			"observation-valid": {Base: domain.Base{ID: "observation-valid"}, ProcedureID: ptr("proc-keep"), Observer: "Tech", RecordedAt: now},
-			"observation-drop":  {Base: domain.Base{ID: "observation-drop"}, ProcedureID: ptr("missing"), Observer: "Tech", RecordedAt: now},
+			"observation-valid": {Observation: entitymodel.Observation{ID: "observation-valid", ProcedureID: ptr("proc-keep"), Observer: "Tech", RecordedAt: now}},
+			"observation-drop":  {Observation: entitymodel.Observation{ID: "observation-drop", ProcedureID: ptr("missing"), Observer: "Tech", RecordedAt: now}},
 		},
 		Samples: map[string]domain.Sample{
-			"sample-valid":            {Base: domain.Base{ID: "sample-valid"}, Identifier: "S", SourceType: "blood", FacilityID: facilityID, OrganismID: ptr("org-keep"), CollectedAt: now, Status: "stored", StorageLocation: "room"},
-			"sample-drop":             {Base: domain.Base{ID: "sample-drop"}, Identifier: "S2", SourceType: "blood", FacilityID: facilityID, OrganismID: ptr("missing"), CollectedAt: now, Status: "stored", StorageLocation: "room"},
-			"sample-missing-facility": {Base: domain.Base{ID: "sample-missing-facility"}, Identifier: "S3", SourceType: "blood", FacilityID: "missing", CollectedAt: now, Status: "stored", StorageLocation: "room"},
+			"sample-valid":            {Sample: entitymodel.Sample{ID: "sample-valid", Identifier: "S", SourceType: "blood", FacilityID: facilityID, OrganismID: ptr("org-keep"), CollectedAt: now, Status: domain.SampleStatusStored, StorageLocation: "room", ChainOfCustody: []domain.SampleCustodyEvent{{Actor: "tech", Location: "room", Timestamp: now}}}},
+			"sample-drop":             {Sample: entitymodel.Sample{ID: "sample-drop", Identifier: "S2", SourceType: "blood", FacilityID: facilityID, OrganismID: ptr("missing"), CollectedAt: now, Status: domain.SampleStatusStored, StorageLocation: "room", ChainOfCustody: []domain.SampleCustodyEvent{{Actor: "tech", Location: "room", Timestamp: now}}}},
+			"sample-missing-facility": {Sample: entitymodel.Sample{ID: "sample-missing-facility", Identifier: "S3", SourceType: "blood", FacilityID: "missing", CollectedAt: now, Status: domain.SampleStatusStored, StorageLocation: "room", ChainOfCustody: []domain.SampleCustodyEvent{{Actor: "tech", Location: "room", Timestamp: now}}}},
 		},
 		Protocols: map[string]domain.Protocol{
-			"prot-keep": {Base: domain.Base{ID: "prot-keep"}, Code: "PR", Title: "Protocol", MaxSubjects: 5, Status: "active"},
+			"prot-keep": {Protocol: entitymodel.Protocol{ID: "prot-keep", Code: "PR", Title: "Protocol", MaxSubjects: 5, Status: domain.ProtocolStatusApproved}},
 		},
 		Permits: map[string]domain.Permit{
-			"permit-valid": {Base: domain.Base{ID: "permit-valid"}, PermitNumber: "P", Authority: "Gov", ValidFrom: now, ValidUntil: now.Add(time.Hour), FacilityIDs: []string{facilityID, facilityID, "missing"}, ProtocolIDs: []string{"prot-keep", "missing"}},
+			"permit-valid": {Permit: entitymodel.Permit{ID: "permit-valid", PermitNumber: "P", Authority: "Gov", Status: domain.PermitStatusApproved, ValidFrom: now, ValidUntil: now.Add(time.Hour), FacilityIDs: []string{facilityID, facilityID, "missing"}, ProtocolIDs: []string{"prot-keep", "missing"}}},
 		},
 		Projects: map[string]domain.Project{
-			"project-valid": {Base: domain.Base{ID: "project-valid"}, Code: "PRJ", Title: "Project", FacilityIDs: []string{facilityID, facilityID, "missing"}},
+			"project-valid": {Project: entitymodel.Project{ID: "project-valid", Code: "PRJ", Title: "Project", FacilityIDs: []string{facilityID, facilityID, "missing"}}},
 		},
 		Supplies: map[string]domain.SupplyItem{
-			"supply-valid": {Base: domain.Base{ID: "supply-valid"}, SKU: "SKU", Name: "Supply", FacilityIDs: []string{facilityID, facilityID, "missing"}, ProjectIDs: []string{"project-valid", "missing"}},
+			"supply-valid": {SupplyItem: entitymodel.SupplyItem{ID: "supply-valid", SKU: "SKU", Name: "Supply", FacilityIDs: []string{facilityID, facilityID, "missing"}, ProjectIDs: []string{"project-valid", "missing"}}},
 		},
 	}
 
@@ -258,14 +267,14 @@ func TestMigrateSnapshotCleansDataVariants(t *testing.T) {
 	if len(migrated.Observations) != 1 {
 		t.Fatalf("expected single observation, got %+v", migrated.Observations)
 	}
-	if migrated.Observations["observation-valid"].Data == nil {
+	if obs := migrated.Observations["observation-valid"]; (&obs).ObservationData() == nil {
 		t.Fatalf("expected observation data map to be initialised")
 	}
 
 	if len(migrated.Samples) != 1 {
 		t.Fatalf("expected single valid sample, got %+v", migrated.Samples)
 	}
-	if migrated.Samples["sample-valid"].Attributes == nil {
+	if sample := migrated.Samples["sample-valid"]; (&sample).SampleAttributes() == nil {
 		t.Fatalf("expected sample attributes map to be initialised")
 	}
 
@@ -280,7 +289,7 @@ func TestMigrateSnapshotCleansDataVariants(t *testing.T) {
 		t.Fatalf("expected project facility IDs filtered")
 	}
 
-	if migrated.Supplies["supply-valid"].Attributes == nil {
+	if supply := migrated.Supplies["supply-valid"]; (&supply).SupplyAttributes() == nil {
 		t.Fatalf("expected supply attributes map initialised")
 	}
 	if len(migrated.Supplies["supply-valid"].FacilityIDs) != 1 || migrated.Supplies["supply-valid"].FacilityIDs[0] != facilityID {
@@ -291,7 +300,7 @@ func TestMigrateSnapshotCleansDataVariants(t *testing.T) {
 	}
 
 	facility := migrated.Facilities[facilityID]
-	if facility.EnvironmentBaselines == nil {
+	if (&facility).EnvironmentBaselines() == nil {
 		t.Fatalf("expected facility baselines map initialised")
 	}
 	if len(facility.HousingUnitIDs) != 1 || facility.HousingUnitIDs[0] != "housing-valid" {
@@ -299,5 +308,542 @@ func TestMigrateSnapshotCleansDataVariants(t *testing.T) {
 	}
 	if len(facility.ProjectIDs) != 1 || facility.ProjectIDs[0] != "project-valid" {
 		t.Fatalf("expected facility project IDs populated, got %+v", facility.ProjectIDs)
+	}
+}
+
+func TestObservationExtensionsSnapshotRoundTrip(t *testing.T) {
+	container, err := extension.FromRaw(map[string]map[string]any{
+		string(extension.HookObservationData): {
+			extension.PluginCore.String(): map[string]any{"score": 3},
+			"frog":                        map[string]any{"note": "warm"},
+		},
+	})
+	if err != nil {
+		t.Fatalf("build extension container: %v", err)
+	}
+	obs := domain.Observation{Observation: entitymodel.Observation{ID: "obs-1",
+		Observer: "Tech"},
+	}
+	if err := obs.SetObservationExtensions(container); err != nil {
+		t.Fatalf("seed observation extensions: %v", err)
+	}
+	snapshot := Snapshot{
+		Procedures: map[string]domain.Procedure{
+			"proc-1": {Procedure: entitymodel.Procedure{ID: "proc-1",
+				Name:        "Proc",
+				Status:      domain.ProcedureStatusScheduled,
+				ScheduledAt: time.Now().UTC(),
+				ProtocolID:  "prot-1"},
+			},
+		},
+		Protocols: map[string]domain.Protocol{
+			"prot-1": {Protocol: entitymodel.Protocol{ID: "prot-1",
+				Code:        "P1",
+				Title:       "Protocol",
+				MaxSubjects: 1,
+				Status:      domain.ProtocolStatusApproved},
+			},
+		},
+		Observations: map[string]domain.Observation{
+			"obs-1": func(o domain.Observation) domain.Observation {
+				o.ProcedureID = ptr("proc-1")
+				return o
+			}(obs),
+		},
+	}
+
+	store := NewStore(nil)
+	store.ImportState(snapshot)
+	encoded, err := json.Marshal(store.ExportState())
+	if err != nil {
+		t.Fatalf("marshal snapshot: %v", err)
+	}
+
+	var decoded Snapshot
+	if err := json.Unmarshal(encoded, &decoded); err != nil {
+		t.Fatalf("unmarshal snapshot: %v", err)
+	}
+	obs, ok := decoded.Observations["obs-1"]
+	if !ok {
+		t.Fatalf("expected observation present after round trip")
+	}
+	containerAfter, err := obs.ObservationExtensions()
+	if err != nil {
+		t.Fatalf("load observation extensions: %v", err)
+	}
+	hookPayload := containerAfter.Raw()[string(extension.HookObservationData)]
+	if hookPayload == nil {
+		t.Fatalf("expected hook payload preserved")
+	}
+	if frog, ok := hookPayload["frog"].(map[string]any); !ok || frog["note"] != "warm" {
+		t.Fatalf("expected frog payload to survive, got %#v", frog)
+	}
+	if core, ok := hookPayload[extension.PluginCore.String()].(map[string]any); !ok || core["score"] != float64(3) {
+		t.Fatalf("expected core payload to survive, got %#v", core)
+	}
+	if obs.ObservationData()["score"] != float64(3) {
+		t.Fatalf("expected ObservationData to reflect core payload after round trip")
+	}
+}
+
+func TestSnapshotPreservesExtensionContainers(t *testing.T) {
+	now := time.Now().UTC()
+
+	facilityContainer := extension.NewContainer()
+	if err := facilityContainer.Set(extension.HookFacilityEnvironmentBaselines, extension.PluginCore, map[string]any{"temperature": "21C"}); err != nil {
+		t.Fatalf("seed facility core payload: %v", err)
+	}
+	if err := facilityContainer.Set(extension.HookFacilityEnvironmentBaselines, extension.PluginID("plugin.facility"), map[string]any{"humidity": "65%"}); err != nil {
+		t.Fatalf("seed facility plugin payload: %v", err)
+	}
+	facility := domain.Facility{Facility: entitymodel.Facility{ID: "fac-ext",
+		Name: "Facility Ext",
+		Zone: "A1"},
+	}
+	if err := facility.SetFacilityExtensions(facilityContainer); err != nil {
+		t.Fatalf("apply facility extensions: %v", err)
+	}
+
+	breedingContainer := extension.NewContainer()
+	if err := breedingContainer.Set(extension.HookBreedingUnitPairingAttributes, extension.PluginCore, map[string]any{"strategy": "pair"}); err != nil {
+		t.Fatalf("seed breeding core payload: %v", err)
+	}
+	if err := breedingContainer.Set(extension.HookBreedingUnitPairingAttributes, extension.PluginID("plugin.breeding"), map[string]any{"notes": "cross-line"}); err != nil {
+		t.Fatalf("seed breeding plugin payload: %v", err)
+	}
+	breeding := domain.BreedingUnit{BreedingUnit: entitymodel.BreedingUnit{ID: "breed-ext",
+		Name:     "Breeding Ext",
+		Strategy: "pair"},
+	}
+	if err := breeding.SetBreedingUnitExtensions(breedingContainer); err != nil {
+		t.Fatalf("apply breeding extensions: %v", err)
+	}
+
+	sampleContainer := extension.NewContainer()
+	if err := sampleContainer.Set(extension.HookSampleAttributes, extension.PluginCore, map[string]any{"tissue": "blood"}); err != nil {
+		t.Fatalf("seed sample core payload: %v", err)
+	}
+	if err := sampleContainer.Set(extension.HookSampleAttributes, extension.PluginID("plugin.sample"), map[string]any{"note": "hemolyzed"}); err != nil {
+		t.Fatalf("seed sample plugin payload: %v", err)
+	}
+	sample := domain.Sample{Sample: entitymodel.Sample{ID: "sample-ext",
+		Identifier:      "S-ext",
+		SourceType:      "blood",
+		OrganismID:      ptr("org-ext"),
+		FacilityID:      facility.ID,
+		CollectedAt:     now,
+		Status:          domain.SampleStatusStored,
+		StorageLocation: "freezer"},
+	}
+	if err := sample.SetSampleExtensions(sampleContainer); err != nil {
+		t.Fatalf("apply sample extensions: %v", err)
+	}
+
+	supplyContainer := extension.NewContainer()
+	if err := supplyContainer.Set(extension.HookSupplyItemAttributes, extension.PluginCore, map[string]any{"sku": "core"}); err != nil {
+		t.Fatalf("seed supply core payload: %v", err)
+	}
+	if err := supplyContainer.Set(extension.HookSupplyItemAttributes, extension.PluginID("plugin.supply"), map[string]any{"lot": "L123"}); err != nil {
+		t.Fatalf("seed supply plugin payload: %v", err)
+	}
+	supply := domain.SupplyItem{SupplyItem: entitymodel.SupplyItem{ID: "supply-ext",
+		SKU:            "SKU-EXT",
+		Name:           "Supply Ext",
+		QuantityOnHand: 5,
+		Unit:           "box",
+		FacilityIDs:    []string{facility.ID},
+		ProjectIDs:     []string{"project-ext"}},
+	}
+	if err := supply.SetSupplyItemExtensions(supplyContainer); err != nil {
+		t.Fatalf("apply supply extensions: %v", err)
+	}
+
+	snapshot := Snapshot{
+		Organisms: map[string]domain.Organism{
+			"org-ext": {Organism: entitymodel.Organism{ID: "org-ext", Name: "Org", Species: "Spec"}},
+		},
+		Facilities: map[string]domain.Facility{
+			facility.ID: facility,
+		},
+		Breeding: map[string]domain.BreedingUnit{
+			breeding.ID: breeding,
+		},
+		Samples: map[string]domain.Sample{
+			sample.ID: sample,
+		},
+		Projects: map[string]domain.Project{
+			"project-ext": {Project: entitymodel.Project{ID: "project-ext", Code: "PRJ-ext", Title: "Project Ext", FacilityIDs: []string{facility.ID}}},
+		},
+		Supplies: map[string]domain.SupplyItem{
+			supply.ID: supply,
+		},
+	}
+
+	store := NewStore(nil)
+	store.ImportState(snapshot)
+	exported := store.ExportState()
+
+	facilityAfter := exported.Facilities[facility.ID]
+	facContainer, err := facilityAfter.FacilityExtensions()
+	if err != nil {
+		t.Fatalf("load facility extensions: %v", err)
+	}
+	assertPluginPayload(t, facContainer, extension.HookFacilityEnvironmentBaselines, extension.PluginID("plugin.facility"), "humidity", "65%")
+	if facilityAfter.EnvironmentBaselines()["temperature"] != "21C" {
+		t.Fatalf("expected facility core baseline preserved")
+	}
+
+	breedingAfter := exported.Breeding[breeding.ID]
+	breedContainer, err := breedingAfter.BreedingUnitExtensions()
+	if err != nil {
+		t.Fatalf("load breeding extensions: %v", err)
+	}
+	assertPluginPayload(t, breedContainer, extension.HookBreedingUnitPairingAttributes, extension.PluginID("plugin.breeding"), "notes", "cross-line")
+	if breedingAfter.PairingAttributes()["strategy"] != "pair" {
+		t.Fatalf("expected breeding core payload preserved")
+	}
+
+	sampleAfter := exported.Samples[sample.ID]
+	sampleContainerOut, err := sampleAfter.SampleExtensions()
+	if err != nil {
+		t.Fatalf("load sample extensions: %v", err)
+	}
+	assertPluginPayload(t, sampleContainerOut, extension.HookSampleAttributes, extension.PluginID("plugin.sample"), "note", "hemolyzed")
+	if sampleAfter.SampleAttributes()["tissue"] != "blood" {
+		t.Fatalf("expected sample core attributes preserved")
+	}
+
+	supplyAfter := exported.Supplies[supply.ID]
+	supplyContainerOut, err := supplyAfter.SupplyItemExtensions()
+	if err != nil {
+		t.Fatalf("load supply extensions: %v", err)
+	}
+	assertPluginPayload(t, supplyContainerOut, extension.HookSupplyItemAttributes, extension.PluginID("plugin.supply"), "lot", "L123")
+	if supplyAfter.SupplyAttributes()["sku"] != "core" {
+		t.Fatalf("expected supply core attributes preserved")
+	}
+}
+
+func assertPluginPayload(t *testing.T, container extension.Container, hook extension.Hook, plugin extension.PluginID, key string, expected any) {
+	t.Helper()
+	hookPayload := container.Raw()[string(hook)]
+	if hookPayload == nil {
+		t.Fatalf("expected hook %s payload present", hook)
+	}
+	pluginPayload, ok := hookPayload[plugin.String()].(map[string]any)
+	if !ok {
+		t.Fatalf("expected plugin %s payload present", plugin)
+	}
+	if pluginPayload[key] != expected {
+		t.Fatalf("expected %s=%v for plugin %s hook %s, got %#v", key, expected, plugin, hook, pluginPayload[key])
+	}
+}
+
+func TestMigrateSnapshotNormalizesCoreExtensions(t *testing.T) {
+	orgContainer := extension.NewContainer()
+	if err := orgContainer.Set(extension.HookOrganismAttributes, extension.PluginID("plugin.organism"), map[string]any{"flag": "green"}); err != nil {
+		t.Fatalf("seed organism plugin payload: %v", err)
+	}
+	breedingContainer := extension.NewContainer()
+	if err := breedingContainer.Set(extension.HookBreedingUnitPairingAttributes, extension.PluginID("plugin.breeding"), map[string]any{"note": "kept"}); err != nil {
+		t.Fatalf("seed breeding plugin payload: %v", err)
+	}
+
+	snapshot := Snapshot{
+		Organisms: map[string]domain.Organism{
+			"org-empty": {Organism: entitymodel.Organism{ID: "org-empty", Name: "Org", Species: "Spec"}},
+			"org-ext": func() domain.Organism {
+				o := domain.Organism{Organism: entitymodel.Organism{ID: "org-ext", Name: "OrgExt", Species: "Spec"}}
+				if err := o.SetOrganismExtensions(orgContainer); err != nil {
+					t.Fatalf("apply organism extensions: %v", err)
+				}
+				return o
+			}(),
+		},
+		Breeding: map[string]domain.BreedingUnit{
+			"breed-empty": {BreedingUnit: entitymodel.BreedingUnit{ID: "breed-empty", Name: "Breed"}},
+			"breed-ext": func() domain.BreedingUnit {
+				b := domain.BreedingUnit{BreedingUnit: entitymodel.BreedingUnit{ID: "breed-ext", Name: "BreedExt"}}
+				if err := b.SetBreedingUnitExtensions(breedingContainer); err != nil {
+					t.Fatalf("apply breeding extensions: %v", err)
+				}
+				return b
+			}(),
+		},
+	}
+
+	migrated := migrateSnapshot(snapshot)
+
+	orgEmpty := migrated.Organisms["org-empty"]
+	if attrs := orgEmpty.CoreAttributes(); attrs == nil || len(attrs) != 0 {
+		t.Fatalf("expected organism core attributes initialised, got %+v", attrs)
+	}
+	orgExt := migrated.Organisms["org-ext"]
+	orgExtContainer, err := orgExt.OrganismExtensions()
+	if err != nil {
+		t.Fatalf("load organism extensions: %v", err)
+	}
+	if orgPluginPayload, ok := orgExtContainer.Raw()[string(extension.HookOrganismAttributes)]["plugin.organism"].(map[string]any); !ok || orgPluginPayload["flag"] != "green" {
+		t.Fatalf("expected organism plugin payload preserved, got %#v", orgExtContainer.Raw())
+	}
+
+	breedEmpty := migrated.Breeding["breed-empty"]
+	if attrs := breedEmpty.PairingAttributes(); attrs == nil || len(attrs) != 0 {
+		t.Fatalf("expected breeding core attributes initialised, got %+v", attrs)
+	}
+	breedExt := migrated.Breeding["breed-ext"]
+	breedExtContainer, err := breedExt.BreedingUnitExtensions()
+	if err != nil {
+		t.Fatalf("load breeding extensions: %v", err)
+	}
+	if breedPluginPayload, ok := breedExtContainer.Raw()[string(extension.HookBreedingUnitPairingAttributes)]["plugin.breeding"].(map[string]any); !ok || breedPluginPayload["note"] != "kept" {
+		t.Fatalf("expected breeding plugin payload preserved, got %#v", breedExtContainer.Raw())
+	}
+}
+
+func TestBreedingUnitPairingAttributesNormalizedInTransactions(t *testing.T) {
+	store := NewStore(nil)
+	if _, err := store.RunInTransaction(context.Background(), func(tx domain.Transaction) error {
+		created, err := tx.CreateBreedingUnit(domain.BreedingUnit{BreedingUnit: entitymodel.BreedingUnit{Name: "Pair"}})
+		if err != nil {
+			return err
+		}
+		if attrs := created.PairingAttributes(); attrs == nil || len(attrs) != 0 {
+			return fmt.Errorf("expected pairing attributes initialised on create, got %+v", attrs)
+		}
+
+		updated, err := tx.UpdateBreedingUnit(created.ID, func(b *domain.BreedingUnit) error {
+			container := extension.NewContainer()
+			if err := container.Set(extension.HookBreedingUnitPairingAttributes, extension.PluginID("plugin.breeding"), map[string]any{"note": "txn"}); err != nil {
+				return err
+			}
+			if err := b.SetBreedingUnitExtensions(container); err != nil {
+				return err
+			}
+			return b.ApplyPairingAttributes(map[string]any{"strategy": "assisted"})
+		})
+		if err != nil {
+			return err
+		}
+		if attrs := updated.PairingAttributes(); attrs == nil || attrs["strategy"] != "assisted" {
+			return fmt.Errorf("expected updated pairing attributes preserved, got %+v", attrs)
+		}
+		container, err := updated.BreedingUnitExtensions()
+		if err != nil {
+			return err
+		}
+		if pluginPayload, ok := container.Raw()[string(extension.HookBreedingUnitPairingAttributes)]["plugin.breeding"].(map[string]any); !ok || pluginPayload["note"] != "txn" {
+			return fmt.Errorf("expected plugin payload preserved, got %#v", container.Raw())
+		}
+		return nil
+	}); err != nil {
+		t.Fatalf("transaction error: %v", err)
+	}
+
+	units := store.ListBreedingUnits()
+	if len(units) != 1 {
+		t.Fatalf("expected one breeding unit in store, got %d", len(units))
+	}
+	container, err := units[0].BreedingUnitExtensions()
+	if err != nil {
+		t.Fatalf("load breeding extensions from store: %v", err)
+	}
+	if pluginPayload, ok := container.Raw()[string(extension.HookBreedingUnitPairingAttributes)]["plugin.breeding"].(map[string]any); !ok || pluginPayload["note"] != "txn" {
+		t.Fatalf("expected persisted plugin payload, got %#v", container.Raw())
+	}
+	if attrs := units[0].PairingAttributes(); attrs == nil || attrs["strategy"] != "assisted" {
+		t.Fatalf("expected persisted pairing attributes, got %+v", attrs)
+	}
+}
+
+func TestStateNormalizationDefaultsAndValidation(t *testing.T) {
+	store := NewStore(nil)
+	now := time.Now().UTC()
+	if _, err := store.RunInTransaction(context.Background(), func(tx domain.Transaction) error {
+		facility, err := tx.CreateFacility(domain.Facility{Facility: entitymodel.Facility{Name: "Lab"}})
+		if err != nil {
+			return err
+		}
+
+		housing, err := tx.CreateHousingUnit(domain.HousingUnit{HousingUnit: entitymodel.HousingUnit{Name: "H", FacilityID: facility.ID, Capacity: 1}})
+		if err != nil {
+			return err
+		}
+		if housing.State != domain.HousingStateQuarantine {
+			return fmt.Errorf("expected housing state defaulted to quarantine, got %q", housing.State)
+		}
+		if housing.Environment != domain.HousingEnvironmentTerrestrial {
+			return fmt.Errorf("expected housing environment defaulted to terrestrial, got %q", housing.Environment)
+		}
+		if _, err := tx.CreateHousingUnit(domain.HousingUnit{HousingUnit: entitymodel.HousingUnit{Name: "BadEnv", FacilityID: facility.ID, Capacity: 1, Environment: domain.HousingEnvironment("invalid")}}); err == nil {
+			return fmt.Errorf("expected invalid housing environment to error")
+		}
+		if _, err := tx.CreateHousingUnit(domain.HousingUnit{HousingUnit: entitymodel.HousingUnit{Name: "BadState", FacilityID: facility.ID, Capacity: 1, Environment: domain.HousingEnvironmentHumid, State: domain.HousingState("invalid")}}); err == nil {
+			return fmt.Errorf("expected invalid housing state to error")
+		}
+
+		protocol, err := tx.CreateProtocol(domain.Protocol{Protocol: entitymodel.Protocol{Code: "P", Title: "Proto", MaxSubjects: 1}})
+		if err != nil {
+			return err
+		}
+		if protocol.Status != domain.ProtocolStatusDraft {
+			return fmt.Errorf("expected protocol status defaulted to draft, got %q", protocol.Status)
+		}
+		if _, err := tx.CreateProtocol(domain.Protocol{Protocol: entitymodel.Protocol{Code: "P2", Title: "Invalid", MaxSubjects: 1, Status: domain.ProtocolStatus("invalid")}}); err == nil {
+			return fmt.Errorf("expected invalid protocol status to error")
+		}
+
+		permit, err := tx.CreatePermit(domain.Permit{Permit: entitymodel.Permit{PermitNumber: "PER",
+			Authority:         "Gov",
+			ValidFrom:         now,
+			ValidUntil:        now.Add(time.Hour),
+			AllowedActivities: []string{"store"},
+			FacilityIDs:       []string{facility.ID},
+			ProtocolIDs:       []string{protocol.ID}},
+		})
+		if err != nil {
+			return err
+		}
+		if permit.Status != domain.PermitStatusDraft {
+			return fmt.Errorf("expected permit status defaulted to draft, got %q", permit.Status)
+		}
+		if _, err := tx.CreatePermit(domain.Permit{Permit: entitymodel.Permit{PermitNumber: "PER-2",
+			Authority:         "Gov",
+			Status:            domain.PermitStatus("invalid"),
+			ValidFrom:         now,
+			ValidUntil:        now.Add(time.Hour),
+			AllowedActivities: []string{"store"},
+			FacilityIDs:       []string{facility.ID},
+			ProtocolIDs:       []string{protocol.ID}},
+		}); err == nil {
+			return fmt.Errorf("expected invalid permit status to error")
+		}
+		if _, err := tx.UpdateHousingUnit(housing.ID, func(h *domain.HousingUnit) error {
+			h.Environment = domain.HousingEnvironment("invalid")
+			return nil
+		}); err == nil {
+			return fmt.Errorf("expected invalid housing environment on update to error")
+		}
+		if _, err := tx.UpdateProtocol(protocol.ID, func(p *domain.Protocol) error {
+			p.Status = domain.ProtocolStatus("invalid")
+			return nil
+		}); err == nil {
+			return fmt.Errorf("expected invalid protocol status on update to error")
+		}
+		if _, err := tx.UpdatePermit(permit.ID, func(p *domain.Permit) error {
+			p.Status = domain.PermitStatus("invalid")
+			return nil
+		}); err == nil {
+			return fmt.Errorf("expected invalid permit status on update to error")
+		}
+		return nil
+	}); err != nil {
+		t.Fatalf("transaction error: %v", err)
+	}
+}
+
+func TestProcedureObservationSampleLifecycle(t *testing.T) {
+	store := NewStore(nil)
+	now := time.Now().UTC()
+	if _, err := store.RunInTransaction(context.Background(), func(tx domain.Transaction) error {
+		facility, err := tx.CreateFacility(domain.Facility{Facility: entitymodel.Facility{Name: "Lab-2"}})
+		if err != nil {
+			return err
+		}
+		housing, err := tx.CreateHousingUnit(domain.HousingUnit{HousingUnit: entitymodel.HousingUnit{Name: "H2", FacilityID: facility.ID, Capacity: 1, Environment: domain.HousingEnvironmentTerrestrial}})
+		if err != nil {
+			return err
+		}
+		cohort, err := tx.CreateCohort(domain.Cohort{Cohort: entitymodel.Cohort{Name: "C2"}})
+		if err != nil {
+			return err
+		}
+		housingID := housing.ID
+		organism, err := tx.CreateOrganism(domain.Organism{Organism: entitymodel.Organism{Name: "Org", Species: "Spec", HousingID: &housingID}})
+		if err != nil {
+			return err
+		}
+		protocol, err := tx.CreateProtocol(domain.Protocol{Protocol: entitymodel.Protocol{Code: "PR-2", Title: "Protocol 2", MaxSubjects: 1, Status: domain.ProtocolStatusApproved}})
+		if err != nil {
+			return err
+		}
+		procedure, err := tx.CreateProcedure(domain.Procedure{Procedure: entitymodel.Procedure{Name: "Proc",
+			Status:      domain.ProcedureStatusScheduled,
+			ScheduledAt: now,
+			ProtocolID:  protocol.ID,
+			OrganismIDs: []string{organism.ID}},
+		})
+		if err != nil {
+			return err
+		}
+		treatment, err := tx.CreateTreatment(domain.Treatment{Treatment: entitymodel.Treatment{Name: "Treat",
+			Status:            domain.TreatmentStatusPlanned,
+			ProcedureID:       procedure.ID,
+			OrganismIDs:       []string{organism.ID},
+			AdministrationLog: []string{},
+			AdverseEvents:     []string{}},
+		})
+		if err != nil {
+			return err
+		}
+		if _, err := tx.UpdateTreatment(treatment.ID, func(t *domain.Treatment) error {
+			t.Status = domain.TreatmentStatusCompleted
+			return nil
+		}); err != nil {
+			return err
+		}
+		observation, err := tx.CreateObservation(domain.Observation{Observation: entitymodel.Observation{ProcedureID: &procedure.ID,
+			OrganismID: &organism.ID,
+			CohortID:   &cohort.ID,
+			Observer:   "Tech",
+			RecordedAt: now},
+		})
+		if err != nil {
+			return err
+		}
+		if _, err := tx.UpdateObservation(observation.ID, func(o *domain.Observation) error {
+			note := "updated"
+			o.Notes = &note
+			return nil
+		}); err != nil {
+			return err
+		}
+		sample, err := tx.CreateSample(domain.Sample{Sample: entitymodel.Sample{Identifier: "S-1",
+			SourceType:      "blood",
+			FacilityID:      facility.ID,
+			CollectedAt:     now,
+			Status:          domain.SampleStatusStored,
+			StorageLocation: "loc",
+			OrganismID:      &organism.ID,
+			ChainOfCustody: []domain.SampleCustodyEvent{{
+				Actor:     "tech",
+				Location:  "loc",
+				Timestamp: now,
+			}}},
+		})
+		if err != nil {
+			return err
+		}
+		if _, err := tx.UpdateSample(sample.ID, func(s *domain.Sample) error {
+			s.Status = domain.SampleStatusInTransit
+			return nil
+		}); err != nil {
+			return err
+		}
+		if err := tx.DeleteProcedure(procedure.ID); err == nil {
+			return fmt.Errorf("expected delete procedure to fail while referenced")
+		}
+		if err := tx.DeleteTreatment(treatment.ID); err != nil {
+			return err
+		}
+		if err := tx.DeleteObservation(observation.ID); err != nil {
+			return err
+		}
+		if err := tx.DeleteProcedure(procedure.ID); err != nil {
+			return err
+		}
+		return nil
+	}); err != nil {
+		t.Fatalf("transaction error: %v", err)
 	}
 }

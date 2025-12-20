@@ -5,6 +5,7 @@ package testhelper
 import (
 	"colonycore/pkg/datasetapi"
 	"colonycore/pkg/domain"
+	entitymodel "colonycore/pkg/domain/entitymodel"
 	"time"
 )
 
@@ -72,23 +73,43 @@ type HousingUnitFixtureConfig struct {
 // leaking domain imports into plugin test packages constrained by import-boss rules.
 func Organism(cfg OrganismFixtureConfig) datasetapi.Organism {
 	domainOrganism := domain.Organism{
-		Base:       cfg.baseDomain(),
-		Name:       cfg.Name,
-		Species:    cfg.Species,
-		Line:       cfg.Line,
-		LineID:     cloneOptionalString(cfg.LineID),
-		StrainID:   cloneOptionalString(cfg.StrainID),
-		ParentIDs:  append([]string(nil), cfg.ParentIDs...),
-		Stage:      domain.LifecycleStage(cfg.Stage),
-		CohortID:   cloneOptionalString(cfg.CohortID),
-		HousingID:  cloneOptionalString(cfg.HousingID),
-		ProtocolID: cloneOptionalString(cfg.ProtocolID),
-		ProjectID:  cloneOptionalString(cfg.ProjectID),
-		Attributes: cloneAttributes(cfg.Attributes),
+		Organism: entitymodel.Organism{
+			ID:         cfg.ID,
+			CreatedAt:  cfg.CreatedAt,
+			UpdatedAt:  cfg.UpdatedAt,
+			Name:       cfg.Name,
+			Species:    cfg.Species,
+			Line:       cfg.Line,
+			LineID:     cloneOptionalString(cfg.LineID),
+			StrainID:   cloneOptionalString(cfg.StrainID),
+			ParentIDs:  append([]string(nil), cfg.ParentIDs...),
+			Stage:      domain.LifecycleStage(cfg.Stage),
+			CohortID:   cloneOptionalString(cfg.CohortID),
+			HousingID:  cloneOptionalString(cfg.HousingID),
+			ProtocolID: cloneOptionalString(cfg.ProtocolID),
+			ProjectID:  cloneOptionalString(cfg.ProjectID),
+		},
+	}
+	if err := domainOrganism.SetCoreAttributes(cloneAttributes(cfg.Attributes)); err != nil {
+		panic(err)
+	}
+
+	coreExtensions := domainOrganism.CoreAttributes()
+	var extensionSet datasetapi.ExtensionSet
+	if len(coreExtensions) > 0 {
+		hook := datasetapi.NewExtensionHookContext().OrganismAttributes()
+		contributor := datasetapi.NewExtensionContributorContext().Core()
+		extensionSet = datasetapi.NewExtensionSet(map[string]map[string]any{
+			hook.String(): {
+				contributor.String(): cloneAttributes(coreExtensions),
+			},
+		})
+	} else {
+		extensionSet = datasetapi.NewExtensionSet(nil)
 	}
 
 	return datasetapi.NewOrganism(datasetapi.OrganismData{
-		Base:       baseDataFromDomain(domainOrganism.Base),
+		Base:       cfg.baseData(),
 		Name:       domainOrganism.Name,
 		Species:    domainOrganism.Species,
 		Line:       domainOrganism.Line,
@@ -100,7 +121,7 @@ func Organism(cfg OrganismFixtureConfig) datasetapi.Organism {
 		HousingID:  domainOrganism.HousingID,
 		ProtocolID: domainOrganism.ProtocolID,
 		ProjectID:  domainOrganism.ProjectID,
-		Attributes: domainOrganism.Attributes,
+		Extensions: extensionSet,
 	})
 }
 
@@ -119,35 +140,31 @@ func Organisms(cfgs ...OrganismFixtureConfig) []datasetapi.Organism {
 // HousingUnit constructs a datasetapi.HousingUnit using domain conversion helpers.
 func HousingUnit(cfg HousingUnitFixtureConfig) datasetapi.HousingUnit {
 	domainUnit := domain.HousingUnit{
-		Base:        cfg.baseDomain(),
-		Name:        cfg.Name,
-		FacilityID:  cfg.FacilityID,
-		Capacity:    cfg.Capacity,
-		Environment: cfg.Environment,
+		HousingUnit: entitymodel.HousingUnit{
+			ID:          cfg.ID,
+			CreatedAt:   cfg.CreatedAt,
+			UpdatedAt:   cfg.UpdatedAt,
+			Name:        cfg.Name,
+			FacilityID:  cfg.FacilityID,
+			Capacity:    cfg.Capacity,
+			Environment: domain.HousingEnvironment(cfg.Environment),
+		},
 	}
 
 	return datasetapi.NewHousingUnit(datasetapi.HousingUnitData{
-		Base:        baseDataFromDomain(domainUnit.Base),
+		Base:        cfg.baseData(),
 		Name:        domainUnit.Name,
 		FacilityID:  domainUnit.FacilityID,
 		Capacity:    domainUnit.Capacity,
-		Environment: domainUnit.Environment,
+		Environment: string(domainUnit.Environment),
 	})
 }
 
-func (cfg BaseFixture) baseDomain() domain.Base {
-	return domain.Base{
+func (cfg BaseFixture) baseData() datasetapi.BaseData {
+	return datasetapi.BaseData{
 		ID:        cfg.ID,
 		CreatedAt: cfg.CreatedAt,
 		UpdatedAt: cfg.UpdatedAt,
-	}
-}
-
-func baseDataFromDomain(base domain.Base) datasetapi.BaseData {
-	return datasetapi.BaseData{
-		ID:        base.ID,
-		CreatedAt: base.CreatedAt,
-		UpdatedAt: base.UpdatedAt,
 	}
 }
 

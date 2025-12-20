@@ -22,6 +22,7 @@ type RuleView interface {
 	FindSample(id string) (Sample, bool)
 	FindPermit(id string) (Permit, bool)
 	FindSupplyItem(id string) (SupplyItem, bool)
+	FindProcedure(id string) (Procedure, bool)
 }
 
 // Rule defines an evaluation executed within a transaction boundary.

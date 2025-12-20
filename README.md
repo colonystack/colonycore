@@ -24,7 +24,12 @@ ColonyCore is an extensible base module for laboratory colony management. It cou
 
 ### Storage
 
-Local development defaults to an embedded SQLite database file (`colonycore.db`) created in the current working directory, providing durable state across restarts. Unit tests continue to use the in-memory store directly. Set `COLONYCORE_STORAGE_DRIVER` to `memory`, `sqlite`, or `postgres` (placeholder) to select a driver. The blob/object store also works out of the box: if unset, `COLONYCORE_BLOB_DRIVER=fs` with its root at `./blobdata` (created automatically). See ADR-0007 (`docs/adr/0007-storage-baseline.md`) and ADR-0008 (`docs/adr/0008-object-storage-contract.md`) for detailed configuration, rationale, and roadmap (including blob driver options and S3 configuration variables).
+Local development defaults to an embedded SQLite database file (`colonycore.db`) created in the current working directory, providing durable state across restarts. Unit tests continue to use the in-memory store directly. Set `COLONYCORE_STORAGE_DRIVER` to `memory`, `sqlite`, or `postgres` to select a driver. The blob/object store also works out of the box: if unset, `COLONYCORE_BLOB_DRIVER=fs` with its root at `./blobdata` (created automatically). See ADR-0007 (`docs/adr/0007-storage-baseline.md`) and ADR-0008 (`docs/adr/0008-object-storage-contract.md`) for detailed configuration, rationale, and roadmap (including blob driver options and S3 configuration variables).
+
+When changing persistence, keep driver parity and guardrails in mind:
+* Preserve env-based selection behavior (`COLONYCORE_STORAGE_DRIVER`) and blob driver defaults.
+* Align semantics across memory, SQLite snapshot, and Postgres drivers; their tests live under `internal/infra/persistence/**` and `internal/core/sqlite_store*_test.go`.
+* Entity-model driven changes may require regenerating SQL artifacts (`docs/schema/sql/*.sql`) via `make entity-model-verify`.
 
 **At a glance:** You can switch between all supported persistence and blob drivers purely by setting environment variables—no code changes or recompilation are required, and safe local defaults are used when variables are unset.
 
@@ -56,7 +61,7 @@ export COLONYCORE_BLOB_S3_PATH_STYLE=true
 
 ### Optional Postgres (Experimental)
 
-You do **not** need any external services (containers, databases, object stores) for normal local development—the default embedded SQLite + filesystem blob store work out of the box. A `docker-compose.yml` is included only to spin up a Postgres 16 instance for experimenting with the future high-concurrency driver. The Postgres driver is still a placeholder; behavior and schema are subject to change.
+You do **not** need any external services (containers, databases, object stores) for normal local development—the default embedded SQLite + filesystem blob store work out of the box. A `docker-compose.yml` is included to spin up a Postgres 16 instance for exercising the normalized entity-model schema. The Postgres driver applies the generated DDL on startup and persists through the normalized tables; behavior may still evolve while the high-concurrency path hardens.
 
 To try Postgres locally (purely optional):
 
@@ -65,7 +70,7 @@ docker compose up -d            # start the postgres container
 export COLONYCORE_STORAGE_DRIVER=postgres
 export COLONYCORE_POSTGRES_DSN='postgres://colonycore:colonycore@localhost:5432/colonycore?sslmode=disable'
 
-# Run tests or your binary as usual; the placeholder driver may not yet implement all features.
+# Run tests or your binary as usual; the Postgres driver writes to the generated schema.
 ```
 
 Tear down when finished:

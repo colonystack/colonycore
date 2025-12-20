@@ -5,16 +5,17 @@ import (
 	"testing"
 	"time"
 
+	"colonycore/internal/adapters/testutil"
 	"colonycore/internal/core"
 	"colonycore/pkg/datasetapi"
 	"colonycore/pkg/domain"
-	"colonycore/plugins/frog"
+	entitymodel "colonycore/pkg/domain/entitymodel"
 )
 
 func TestWorkerProcessesExport(t *testing.T) {
 	formatProvider := datasetapi.GetFormatProvider()
 	svc := core.NewInMemoryService(core.NewDefaultRulesEngine())
-	meta, err := svc.InstallPlugin(frog.New())
+	meta, err := testutil.InstallFrogPlugin(svc)
 	if err != nil {
 		t.Fatalf("install plugin: %v", err)
 	}
@@ -27,12 +28,16 @@ func TestWorkerProcessesExport(t *testing.T) {
 	t.Cleanup(func() { _ = worker.Stop(context.Background()) })
 
 	ctx := context.Background()
-	project, _, err := svc.CreateProject(ctx, domain.Project{Code: "PRJ-WORK", Title: "Worker"})
+	facility, _, err := svc.CreateFacility(ctx, domain.Facility{Facility: entitymodel.Facility{Name: "Worker Facility"}})
+	if err != nil {
+		t.Fatalf("create facility: %v", err)
+	}
+	project, _, err := svc.CreateProject(ctx, domain.Project{Project: entitymodel.Project{Code: "PRJ-WORK", Title: "Worker", FacilityIDs: []string{facility.ID}}})
 	if err != nil {
 		t.Fatalf("create project: %v", err)
 	}
 	projectID := project.ID
-	if _, _, err := svc.CreateOrganism(ctx, domain.Organism{Name: "Frog", Species: "Tree Frog", Stage: domain.StageAdult, ProjectID: &projectID}); err != nil {
+	if _, _, err := svc.CreateOrganism(ctx, domain.Organism{Organism: entitymodel.Organism{Name: "Frog", Species: "Tree Frog", Stage: domain.StageAdult, ProjectID: &projectID}}); err != nil {
 		t.Fatalf("create organism: %v", err)
 	}
 
@@ -71,7 +76,7 @@ func TestWorkerProcessesExport(t *testing.T) {
 
 func TestWorkerRejectsUnsupportedFormat(t *testing.T) {
 	svc := core.NewInMemoryService(core.NewDefaultRulesEngine())
-	meta, err := svc.InstallPlugin(frog.New())
+	meta, err := testutil.InstallFrogPlugin(svc)
 	if err != nil {
 		t.Fatalf("install plugin: %v", err)
 	}

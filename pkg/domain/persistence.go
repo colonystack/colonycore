@@ -21,6 +21,15 @@ type Transaction interface {
 	CreateBreedingUnit(BreedingUnit) (BreedingUnit, error)
 	UpdateBreedingUnit(id string, mutator func(*BreedingUnit) error) (BreedingUnit, error)
 	DeleteBreedingUnit(id string) error
+	CreateLine(Line) (Line, error)
+	UpdateLine(id string, mutator func(*Line) error) (Line, error)
+	DeleteLine(id string) error
+	CreateStrain(Strain) (Strain, error)
+	UpdateStrain(id string, mutator func(*Strain) error) (Strain, error)
+	DeleteStrain(id string) error
+	CreateGenotypeMarker(GenotypeMarker) (GenotypeMarker, error)
+	UpdateGenotypeMarker(id string, mutator func(*GenotypeMarker) error) (GenotypeMarker, error)
+	DeleteGenotypeMarker(id string) error
 	CreateProcedure(Procedure) (Procedure, error)
 	UpdateProcedure(id string, mutator func(*Procedure) error) (Procedure, error)
 	DeleteProcedure(id string) error
@@ -48,11 +57,15 @@ type Transaction interface {
 	FindHousingUnit(id string) (HousingUnit, bool)
 	FindProtocol(id string) (Protocol, bool)
 	FindFacility(id string) (Facility, bool)
+	FindLine(id string) (Line, bool)
+	FindStrain(id string) (Strain, bool)
+	FindGenotypeMarker(id string) (GenotypeMarker, bool)
 	FindTreatment(id string) (Treatment, bool)
 	FindObservation(id string) (Observation, bool)
 	FindSample(id string) (Sample, bool)
 	FindPermit(id string) (Permit, bool)
 	FindSupplyItem(id string) (SupplyItem, bool)
+	FindProcedure(id string) (Procedure, bool)
 }
 
 // TransactionView provides read-only access to snapshot data for rules.
@@ -60,9 +73,15 @@ type TransactionView interface {
 	ListOrganisms() []Organism
 	ListHousingUnits() []HousingUnit
 	ListFacilities() []Facility
+	ListLines() []Line
+	ListStrains() []Strain
+	ListGenotypeMarkers() []GenotypeMarker
 	FindOrganism(id string) (Organism, bool)
 	FindHousingUnit(id string) (HousingUnit, bool)
 	FindFacility(id string) (Facility, bool)
+	FindLine(id string) (Line, bool)
+	FindStrain(id string) (Strain, bool)
+	FindGenotypeMarker(id string) (GenotypeMarker, bool)
 	ListTreatments() []Treatment
 	ListObservations() []Observation
 	ListSamples() []Sample
@@ -75,6 +94,7 @@ type TransactionView interface {
 	FindSample(id string) (Sample, bool)
 	FindPermit(id string) (Permit, bool)
 	FindSupplyItem(id string) (SupplyItem, bool)
+	FindProcedure(id string) (Procedure, bool)
 }
 
 // PersistentStore is a minimal abstraction over durable backends. It mirrors
@@ -88,6 +108,12 @@ type PersistentStore interface {
 	ListHousingUnits() []HousingUnit
 	GetFacility(id string) (Facility, bool)
 	ListFacilities() []Facility
+	GetLine(id string) (Line, bool)
+	ListLines() []Line
+	GetStrain(id string) (Strain, bool)
+	ListStrains() []Strain
+	GetGenotypeMarker(id string) (GenotypeMarker, bool)
+	ListGenotypeMarkers() []GenotypeMarker
 	ListCohorts() []Cohort
 	ListTreatments() []Treatment
 	ListObservations() []Observation

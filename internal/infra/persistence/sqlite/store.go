@@ -1,6 +1,7 @@
 package sqlite
 
 import (
+	"colonycore/internal/entitymodel/sqlbundle"
 	"context"
 	"database/sql"
 	"encoding/json"
@@ -8,6 +9,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 
 	_ "modernc.org/sqlite" // pure go sqlite driver
@@ -42,6 +44,9 @@ func NewStore(path string, engine *RulesEngine) (*Store, error) {
 	)`); err != nil {
 		return nil, fmt.Errorf("create state table: %w", err)
 	}
+	if err := applyEntityModelDDL(db); err != nil {
+		return nil, fmt.Errorf("apply entity-model ddl: %w", err)
+	}
 	ms := newMemStore(engine)
 	s := &Store{memStore: ms, db: db, path: path}
 	if err := s.load(); err != nil {
@@ -56,6 +61,9 @@ var sqliteBuckets = []string{
 	"housing",
 	"facilities",
 	"breeding",
+	"lines",
+	"strains",
+	"markers",
 	"procedures",
 	"treatments",
 	"observations",
@@ -109,6 +117,18 @@ func (s *Store) load() error {
 		case "breeding":
 			if err := json.Unmarshal(r.payload, &snapshot.Breeding); err != nil {
 				return fmt.Errorf("decode breeding: %w", err)
+			}
+		case "lines":
+			if err := json.Unmarshal(r.payload, &snapshot.Lines); err != nil {
+				return fmt.Errorf("decode lines: %w", err)
+			}
+		case "strains":
+			if err := json.Unmarshal(r.payload, &snapshot.Strains); err != nil {
+				return fmt.Errorf("decode strains: %w", err)
+			}
+		case "markers":
+			if err := json.Unmarshal(r.payload, &snapshot.Markers); err != nil {
+				return fmt.Errorf("decode markers: %w", err)
 			}
 		case "procedures":
 			if err := json.Unmarshal(r.payload, &snapshot.Procedures); err != nil {
@@ -174,6 +194,12 @@ func (s *Store) persist() (retErr error) {
 			data, err = json.Marshal(snapshot.Facilities)
 		case "breeding":
 			data, err = json.Marshal(snapshot.Breeding)
+		case "lines":
+			data, err = json.Marshal(snapshot.Lines)
+		case "strains":
+			data, err = json.Marshal(snapshot.Strains)
+		case "markers":
+			data, err = json.Marshal(snapshot.Markers)
 		case "procedures":
 			data, err = json.Marshal(snapshot.Procedures)
 		case "treatments":
@@ -223,3 +249,19 @@ func (s *Store) DB() *sql.DB { return s.db }
 
 // Path returns the configured database path.
 func (s *Store) Path() string { return s.path }
+
+type ddlExec interface {
+	Exec(query string, args ...any) (sql.Result, error)
+}
+
+func applyEntityModelDDL(exec ddlExec) error {
+	for _, stmt := range sqlbundle.SplitStatements(sqlbundle.SQLite()) {
+		if strings.TrimSpace(stmt) == "" {
+			continue
+		}
+		if _, err := exec.Exec(stmt); err != nil {
+			return fmt.Errorf("execute ddl: %w", err)
+		}
+	}
+	return nil
+}

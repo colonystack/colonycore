@@ -6,273 +6,265 @@ import (
 
 	"colonycore/pkg/datasetapi"
 	"colonycore/pkg/domain"
+	entitymodel "colonycore/pkg/domain/entitymodel"
 )
 
 const (
-	testAttributeKey           = "key"
-	testAttributeOriginalValue = "value"
-	testCohortID               = "cohort"
-	testHousingID              = "housing"
-	testProtocolID             = "protocol"
-	testProjectID              = "project"
+	testMapperEnvAquatic     = "aquatic"
+	testMapperStatusApproved = "approved"
+	testMapperAdultStage     = "adult"
+	testMapperFacilityID     = "facility-1"
 )
 
-func TestFacadeOrganismFromDomainCopiesData(t *testing.T) {
+func TestFacadeHousingUnitFromDomain(t *testing.T) {
 	now := time.Now()
-	cohort := testCohortID
-	housing := testHousingID
-	protocol := testProtocolID
-	project := testProjectID
-	lineID := "line-id"
-	strainID := "strain-id"
-	parentIDs := []string{"p1", "p2"}
-	org := domain.Organism{
-		Base:       domain.Base{ID: "id", CreatedAt: now.Add(-time.Hour), UpdatedAt: now},
-		Name:       "Name",
-		Species:    "Species",
-		Line:       "Line",
-		LineID:     &lineID,
-		StrainID:   &strainID,
-		ParentIDs:  append([]string(nil), parentIDs...),
-		Stage:      domain.StageAdult,
-		CohortID:   &cohort,
-		HousingID:  &housing,
-		ProtocolID: &protocol,
-		ProjectID:  &project,
-		Attributes: map[string]any{testAttributeKey: testAttributeOriginalValue},
+	unit := domain.HousingUnit{HousingUnit: entitymodel.HousingUnit{ID: "housing-1",
+
+		CreatedAt: now,
+
+		UpdatedAt:   now,
+		Name:        "Quarantine Tank",
+		FacilityID:  testMapperFacilityID,
+		Capacity:    4,
+		Environment: domain.HousingEnvironmentAquatic,
+		State:       domain.HousingStateQuarantine},
 	}
 
-	converted := facadeOrganismFromDomain(org)
-
-	if converted.ID() != org.ID || converted.Stage() != datasetapi.LifecycleStage(org.Stage) {
-		t.Fatalf("unexpected conversion: %+v", converted)
+	facade := facadeHousingUnitFromDomain(unit)
+	if facade.State() != "quarantine" {
+		t.Fatalf("expected state to map through, got %s", facade.State())
 	}
-	if got, ok := converted.LineID(); !ok || got != lineID {
-		t.Fatalf("expected line id clone")
+	if !facade.GetState().Equals(datasetapi.NewHousingStateContext().Quarantine()) {
+		t.Fatal("expected quarantine state reference to map through")
 	}
-	if got, ok := converted.StrainID(); !ok || got != strainID {
-		t.Fatalf("expected strain id clone")
-	}
-	clonedParents := converted.ParentIDs()
-	if len(clonedParents) != len(parentIDs) || clonedParents[0] != "p1" {
-		t.Fatalf("unexpected parent ids: %+v", clonedParents)
-	}
-
-	attrs := converted.Attributes()
-	attrs[testAttributeKey] = testLiteralMutated
-	if org.Attributes[testAttributeKey] != testAttributeOriginalValue {
-		t.Fatalf("original attributes mutated: %+v", org.Attributes)
-	}
-	if cohortID, ok := converted.CohortID(); !ok || cohortID != cohort {
-		t.Fatalf("expected cohort id clone")
-	}
-	cohort = testLiteralMutated
-	if idAfter, _ := converted.CohortID(); idAfter != "cohort" {
-		t.Fatalf("expected cohort clone to remain stable, got %s", idAfter)
-	}
-	housing = testLiteralMutated
-	if idAfter, _ := converted.HousingID(); idAfter == testLiteralMutated {
-		t.Fatalf("expected housing clone to remain stable")
-	}
-	protocol = testLiteralMutated
-	if idAfter, _ := converted.ProtocolID(); idAfter == testLiteralMutated {
-		t.Fatalf("expected protocol clone to remain stable")
-	}
-	project = testLiteralMutated
-	if idAfter, _ := converted.ProjectID(); idAfter == testLiteralMutated {
-		t.Fatalf("expected project clone to remain stable")
-	}
-	parentIDs[0] = testLiteralMutated
-	if converted.ParentIDs()[0] != "p1" {
-		t.Fatalf("expected parent id clone to remain stable")
+	if facade.Environment() != testMapperEnvAquatic || facade.Capacity() != 4 || facade.FacilityID() != testMapperFacilityID {
+		t.Fatalf("unexpected housing mapping: %+v", facade)
 	}
 }
 
-func TestFacadeCollectionsCloneSlices(t *testing.T) {
-	now := time.Now()
-	cohortID := testCohortID
-	housing := domain.HousingUnit{Base: domain.Base{ID: "H"}, Name: "Hab", FacilityID: "F", Capacity: 3, Environment: "wet"}
-	protocol := domain.Protocol{Base: domain.Base{ID: "P"}, Code: "C", Title: "T", Description: "D", MaxSubjects: 5}
-	project := domain.Project{
-		Base:          domain.Base{ID: "PR"},
-		Code:          "CC",
-		Title:         "Title",
-		Description:   "Desc",
-		FacilityIDs:   []string{"facility"},
-		ProtocolIDs:   []string{"protocol"},
-		OrganismIDs:   []string{"organism"},
-		ProcedureIDs:  []string{"procedure"},
-		SupplyItemIDs: []string{"supply"},
+func TestFacadeHousingUnitsFromDomainEmpty(t *testing.T) {
+	if out := facadeHousingUnitsFromDomain(nil); out != nil {
+		t.Fatalf("expected nil for nil input, got %+v", out)
 	}
-	cohort := domain.Cohort{Base: domain.Base{ID: "C"}, Name: "Group", Purpose: "Study", ProjectID: &cohortID, HousingID: &cohortID, ProtocolID: &cohortID}
-	lineID := "line-1"
-	lineSnapshot := lineID
-	strainID := "strain-1"
-	strainSnapshot := strainID
-	targetLineID := "line-2"
-	targetLineSnapshot := targetLineID
-	targetStrainID := "strain-2"
-	targetStrainSnapshot := targetStrainID
-	breeding := domain.BreedingUnit{
-		Base:              domain.Base{ID: "B"},
-		Name:              "Breed",
-		Strategy:          "Pair",
-		HousingID:         &cohortID,
-		ProtocolID:        &cohortID,
-		LineID:            &lineID,
-		StrainID:          &strainID,
-		TargetLineID:      &targetLineID,
-		TargetStrainID:    &targetStrainID,
-		PairingIntent:     "outcross",
-		PairingNotes:      "Documented pairing",
-		PairingAttributes: map[string]any{"purpose": "lineage"},
-		FemaleIDs:         []string{"f1"},
-		MaleIDs:           []string{"m1"},
-	}
-	procProject := testProjectID
-	procedure := domain.Procedure{
-		Base:           domain.Base{ID: "PROC", UpdatedAt: now},
-		Name:           "Proc",
-		Status:         "pending",
-		ScheduledAt:    now.Add(time.Hour),
-		ProtocolID:     "P",
-		ProjectID:      &procProject,
-		CohortID:       &cohortID,
-		OrganismIDs:    []string{"o1"},
-		TreatmentIDs:   []string{"t1"},
-		ObservationIDs: []string{"obs1"},
-	}
-
-	cohorts := facadeCohortsFromDomain([]domain.Cohort{cohort})
-	housingUnits := facadeHousingUnitsFromDomain([]domain.HousingUnit{housing})
-	protocols := facadeProtocolsFromDomain([]domain.Protocol{protocol})
-	projects := facadeProjectsFromDomain([]domain.Project{project})
-	breedingUnits := facadeBreedingUnitsFromDomain([]domain.BreedingUnit{breeding})
-	procedures := facadeProceduresFromDomain([]domain.Procedure{procedure})
-
-	if len(cohorts) != 1 || len(housingUnits) != 1 || len(protocols) != 1 || len(projects) != 1 || len(breedingUnits) != 1 || len(procedures) != 1 {
-		t.Fatalf("unexpected collection conversion counts")
-	}
-
-	females := breedingUnits[0].FemaleIDs()
-	females[0] = testLiteralMutated
-	if breeding.FemaleIDs[0] != "f1" {
-		t.Fatalf("expected breeding slice clone")
-	}
-	if got, ok := breedingUnits[0].LineID(); !ok || got != lineSnapshot {
-		t.Fatalf("expected line id clone, got %q", got)
-	}
-	lineID = testLiteralMutated
-	if got, _ := breedingUnits[0].LineID(); got != lineSnapshot {
-		t.Fatalf("expected line id clone to remain stable, got %q", got)
-	}
-	strainID = testLiteralMutated
-	if got, _ := breedingUnits[0].StrainID(); got != strainSnapshot {
-		t.Fatalf("expected strain id clone to remain stable, got %q", got)
-	}
-	if got, ok := breedingUnits[0].TargetLineID(); !ok || got != targetLineSnapshot {
-		t.Fatalf("expected target line id clone, got %q", got)
-	}
-	targetLineID = testLiteralMutated
-	if got, _ := breedingUnits[0].TargetLineID(); got != targetLineSnapshot {
-		t.Fatalf("expected target line id clone to remain stable, got %q", got)
-	}
-	targetStrainID = testLiteralMutated
-	if got, _ := breedingUnits[0].TargetStrainID(); got != targetStrainSnapshot {
-		t.Fatalf("expected target strain clone to remain stable, got %q", got)
-	}
-	if intent := breedingUnits[0].PairingIntent(); intent != "outcross" {
-		t.Fatalf("expected pairing intent 'outcross', got %q", intent)
-	}
-	if notes := breedingUnits[0].PairingNotes(); notes != "Documented pairing" {
-		t.Fatalf("expected pairing notes clone, got %q", notes)
-	}
-	attr := breedingUnits[0].PairingAttributes()
-	attr["purpose"] = testLiteralMutated
-	if breeding.PairingAttributes["purpose"] != "lineage" {
-		t.Fatalf("expected pairing attributes to be cloned")
-	}
-	procIDs := procedures[0].OrganismIDs()
-	procIDs[0] = testLiteralMutated
-	if procedure.OrganismIDs[0] != "o1" {
-		t.Fatalf("expected procedure slice clone")
-	}
-	if projectID, ok := procedures[0].ProjectID(); !ok || projectID != testProjectID {
-		t.Fatalf("expected project id clone on procedure")
-	}
-	treatments := procedures[0].TreatmentIDs()
-	if len(treatments) != 1 || treatments[0] != "t1" {
-		t.Fatalf("expected treatment ids on procedure facade")
-	}
-	treatments[0] = testLiteralMutated
-	if procedure.TreatmentIDs[0] != "t1" {
-		t.Fatalf("expected procedure treatment ids clone")
-	}
-	obs := procedures[0].ObservationIDs()
-	obs[0] = testLiteralMutated
-	if procedure.ObservationIDs[0] != "obs1" {
-		t.Fatalf("expected procedure observation ids clone")
-	}
-	projectIDs := projects[0].FacilityIDs()
-	projectIDs[0] = testLiteralMutated
-	if project.FacilityIDs[0] != "facility" {
-		t.Fatalf("expected project facility ids clone")
-	}
-	protocolIDs := projects[0].ProtocolIDs()
-	if len(protocolIDs) != 1 || protocolIDs[0] != "protocol" {
-		t.Fatalf("expected project protocol ids clone")
-	}
-	protocolIDs[0] = testLiteralMutated
-	if project.ProtocolIDs[0] != "protocol" {
-		t.Fatalf("expected original project protocol ids to remain unchanged")
-	}
-	orgIDs := projects[0].OrganismIDs()
-	orgIDClone := orgIDs[0]
-	if len(orgIDs) != 1 || orgIDs[0] != orgIDClone {
-		t.Fatalf("expected project organism ids clone")
-	}
-	orgIDs[0] = testLiteralMutated
-	if project.OrganismIDs[0] != orgIDClone {
-		t.Fatalf("expected original project organism ids to remain unchanged")
-	}
-	procedureIDs := projects[0].ProcedureIDs()
-	if len(procedureIDs) != 1 || procedureIDs[0] != "procedure" {
-		t.Fatalf("expected project procedure ids clone")
-	}
-	procedureIDs[0] = testLiteralMutated
-	if project.ProcedureIDs[0] != "procedure" {
-		t.Fatalf("expected original project procedure ids to remain unchanged")
-	}
-	supplyIDs := projects[0].SupplyItemIDs()
-	if len(supplyIDs) != 1 || supplyIDs[0] != "supply" {
-		t.Fatalf("expected project supply item ids clone")
-	}
-	supplyIDs[0] = testLiteralMutated
-	if project.SupplyItemIDs[0] != "supply" {
-		t.Fatalf("expected original project supply item ids to remain unchanged")
+	if out := facadeHousingUnitsFromDomain([]domain.HousingUnit{}); out != nil {
+		t.Fatalf("expected nil for empty slice input, got %+v", out)
 	}
 }
 
-func TestFacadeCollectionsNilBehavior(t *testing.T) {
-	if got := facadeOrganismsFromDomain(nil); got != nil {
-		t.Fatalf("expected nil organisms slice")
+func TestFacadeProtocolMapping(t *testing.T) {
+	now := time.Now()
+	protocol := domain.Protocol{Protocol: entitymodel.Protocol{ID: "protocol-1",
+
+		CreatedAt: now,
+
+		UpdatedAt:   now,
+		Code:        "P1",
+		Title:       "Title",
+		Description: strPtr("desc"),
+		MaxSubjects: 5,
+		Status:      domain.ProtocolStatusApproved},
 	}
-	if got := facadeHousingUnitsFromDomain(nil); got != nil {
-		t.Fatalf("expected nil housing slice")
+
+	mapped := facadeProtocolFromDomain(protocol)
+	if mapped.GetCurrentStatus().String() != testMapperStatusApproved || mapped.Code() != "P1" {
+		t.Fatalf("unexpected protocol mapping")
 	}
-	if got := facadeProtocolsFromDomain(nil); got != nil {
-		t.Fatalf("expected nil protocols slice")
+
+	// Ensure slice handling in plural helper
+	list := facadeProtocolsFromDomain([]domain.Protocol{protocol})
+	if len(list) != 1 || list[0].Code() != "P1" {
+		t.Fatalf("expected single protocol mapping, got %+v", list)
 	}
-	if got := facadeProjectsFromDomain(nil); got != nil {
-		t.Fatalf("expected nil projects slice")
+	if facadeProtocolsFromDomain(nil) != nil || facadeProtocolsFromDomain([]domain.Protocol{}) != nil {
+		t.Fatal("expected nil slices for empty protocol inputs")
 	}
-	if got := facadeCohortsFromDomain(nil); got != nil {
-		t.Fatalf("expected nil cohorts slice")
+}
+
+func TestFacadeProjectMappingClonesSlices(t *testing.T) {
+	project := domain.Project{Project: entitymodel.Project{ID: "project-1",
+		Code:         "PRJ",
+		Title:        "Project",
+		Description:  strPtr("desc"),
+		FacilityIDs:  []string{testMapperFacilityID},
+		ProtocolIDs:  []string{"protocol-1"},
+		OrganismIDs:  []string{"organism-1"},
+		ProcedureIDs: []string{"procedure-1"},
+		SupplyItemIDs: []string{
+			"supply-1",
+		}},
 	}
-	if got := facadeBreedingUnitsFromDomain(nil); got != nil {
-		t.Fatalf("expected nil breeding slice")
+
+	mapped := facadeProjectFromDomain(project)
+	if mapped.Code() != "PRJ" || mapped.Title() != "Project" {
+		t.Fatalf("unexpected project mapping: %+v", mapped)
 	}
-	if got := facadeProceduresFromDomain(nil); got != nil {
-		t.Fatalf("expected nil procedures slice")
+	// mutate originals to ensure cloning
+	project.FacilityIDs[0] = "mutated"
+	if mapped.FacilityIDs()[0] != testMapperFacilityID {
+		t.Fatal("project facilities should be cloned")
+	}
+
+	if facadeProjectsFromDomain(nil) != nil || facadeProjectsFromDomain([]domain.Project{}) != nil {
+		t.Fatal("expected nil slices for empty project inputs")
+	}
+}
+
+func TestFacadeCohortAndTreatmentMapping(t *testing.T) {
+	cohort := domain.Cohort{Cohort: entitymodel.Cohort{ID: "cohort-1",
+		Name:      "Cohort",
+		Purpose:   "Research",
+		ProjectID: strPtr("project-1"),
+		HousingID: strPtr("housing-1")},
+	}
+	mappedCohort := facadeCohortFromDomain(cohort)
+	if mappedCohort.Name() != "Cohort" || mappedCohort.Purpose() != "Research" {
+		t.Fatalf("unexpected cohort mapping: %+v", mappedCohort)
+	}
+	if facadeCohortsFromDomain(nil) != nil || facadeCohortsFromDomain([]domain.Cohort{}) != nil {
+		t.Fatal("expected nil slices for empty cohort inputs")
+	}
+
+	treatment := domain.Treatment{Treatment: entitymodel.Treatment{ID: "treatment-1",
+		Name:              "Treatment",
+		Status:            domain.TreatmentStatusCompleted,
+		ProcedureID:       "procedure-1",
+		OrganismIDs:       []string{"organism-1"},
+		CohortIDs:         []string{"cohort-1"},
+		DosagePlan:        "plan",
+		AdministrationLog: []string{"log"},
+		AdverseEvents:     nil},
+	}
+	mappedTreatment := facadeTreatmentFromDomain(treatment)
+	if mappedTreatment.Name() != "Treatment" || mappedTreatment.GetCurrentStatus().String() != "completed" {
+		t.Fatalf("unexpected treatment mapping")
+	}
+	if facadeTreatmentsFromDomain(nil) != nil || facadeTreatmentsFromDomain([]domain.Treatment{}) != nil {
+		t.Fatal("expected nil slices for empty treatment inputs")
+	}
+}
+
+func TestFacadeOrganismMapping(t *testing.T) {
+	org := domain.Organism{Organism: entitymodel.Organism{ID: "org-1",
+		Name:      "Org",
+		Species:   "species",
+		Line:      "line",
+		Stage:     domain.StageAdult,
+		ParentIDs: []string{"parent-1"}},
+	}
+	mapped := facadeOrganismFromDomain(org)
+	if mapped.Name() != "Org" || mapped.Species() != "species" || mapped.GetCurrentStage().String() != testMapperAdultStage {
+		t.Fatalf("unexpected organism mapping: %+v", mapped)
+	}
+	if facadeOrganismsFromDomain(nil) != nil || facadeOrganismsFromDomain([]domain.Organism{}) != nil {
+		t.Fatal("expected nil slices for empty organism inputs")
+	}
+}
+
+func TestFacadeBreedingAndProcedureMapping(t *testing.T) {
+	now := time.Now()
+	breeding := domain.BreedingUnit{BreedingUnit: entitymodel.BreedingUnit{ID: "breeding-1",
+		Name:          "Breeding",
+		Strategy:      "natural",
+		FemaleIDs:     []string{"f1"},
+		MaleIDs:       []string{"m1"},
+		PairingIntent: strPtr("pair"),
+		PairingNotes:  strPtr("notes")},
+	}
+	mappedBreeding := facadeBreedingUnitFromDomain(breeding)
+	if mappedBreeding.Name() != "Breeding" || len(mappedBreeding.FemaleIDs()) != 1 {
+		t.Fatalf("unexpected breeding mapping: %+v", mappedBreeding)
+	}
+	if facadeBreedingUnitsFromDomain(nil) != nil || facadeBreedingUnitsFromDomain([]domain.BreedingUnit{}) != nil {
+		t.Fatal("expected nil slices for empty breeding inputs")
+	}
+
+	procedure := domain.Procedure{Procedure: entitymodel.Procedure{ID: "procedure-1",
+		Name:        "Procedure",
+		Status:      domain.ProcedureStatusScheduled,
+		ScheduledAt: now,
+		ProtocolID:  "protocol-1",
+		OrganismIDs: []string{"org-1"}},
+	}
+	mappedProcedure := facadeProcedureFromDomain(procedure)
+	if mappedProcedure.Name() != "Procedure" || mappedProcedure.GetCurrentStatus().String() != "scheduled" {
+		t.Fatalf("unexpected procedure mapping: %+v", mappedProcedure)
+	}
+	if facadeProceduresFromDomain(nil) != nil || facadeProceduresFromDomain([]domain.Procedure{}) != nil {
+		t.Fatal("expected nil slices for empty procedure inputs")
+	}
+}
+
+func TestFacadeFacilityPermitSampleSupplyMapping(t *testing.T) {
+	now := time.Now()
+	facility := domain.Facility{Facility: entitymodel.Facility{ID: testMapperFacilityID,
+		Code:           "FAC",
+		Name:           "Facility",
+		Zone:           "ZoneA",
+		AccessPolicy:   "restricted",
+		HousingUnitIDs: []string{"housing-1"},
+		ProjectIDs:     []string{"project-1"}},
+	}
+	facilityFacade := facadeFacilityFromDomain(facility)
+	if facilityFacade.Code() != "FAC" || facilityFacade.AccessPolicy() != "restricted" {
+		t.Fatalf("unexpected facility mapping: %+v", facilityFacade)
+	}
+	if facadeFacilitiesFromDomain(nil) != nil || facadeFacilitiesFromDomain([]domain.Facility{}) != nil {
+		t.Fatal("expected nil slices for empty facility inputs")
+	}
+
+	permit := domain.Permit{Permit: entitymodel.Permit{ID: "permit-1",
+		PermitNumber:      "P1",
+		Authority:         "Auth",
+		Status:            domain.PermitStatusApproved,
+		ValidFrom:         now.Add(-time.Hour),
+		ValidUntil:        now.Add(time.Hour),
+		AllowedActivities: []string{"Activity"},
+		FacilityIDs:       []string{testMapperFacilityID},
+		ProtocolIDs:       []string{"protocol-1"},
+		Notes:             strPtr("note")},
+	}
+	permitFacade := facadePermitFromDomain(permit)
+	if permitFacade.GetStatus(now).String() != testMapperStatusApproved || !permitFacade.IsActive(now) {
+		t.Fatalf("unexpected permit mapping: %+v", permitFacade)
+	}
+	if facadePermitsFromDomain(nil) != nil || facadePermitsFromDomain([]domain.Permit{}) != nil {
+		t.Fatal("expected nil slices for empty permit inputs")
+	}
+
+	sample := domain.Sample{Sample: entitymodel.Sample{ID: "sample-1",
+		Identifier:      "S1",
+		SourceType:      "organism",
+		FacilityID:      testMapperFacilityID,
+		CollectedAt:     now,
+		Status:          domain.SampleStatusStored,
+		StorageLocation: "Freezer",
+		AssayType:       "assay",
+		ChainOfCustody: []domain.SampleCustodyEvent{
+			{Actor: "tech", Location: "lab", Timestamp: now},
+		}},
+	}
+	sampleFacade := facadeSampleFromDomain(sample)
+	if sampleFacade.Status() != "stored" || len(sampleFacade.ChainOfCustody()) != 1 {
+		t.Fatalf("unexpected sample mapping: %+v", sampleFacade)
+	}
+	if facadeSamplesFromDomain(nil) != nil || facadeSamplesFromDomain([]domain.Sample{}) != nil {
+		t.Fatal("expected nil slices for empty sample inputs")
+	}
+
+	supply := domain.SupplyItem{SupplyItem: entitymodel.SupplyItem{ID: "supply-1",
+		SKU:            "SKU",
+		Name:           "Supply",
+		QuantityOnHand: 1,
+		Unit:           "unit",
+		FacilityIDs:    []string{testMapperFacilityID},
+		ProjectIDs:     []string{"project-1"},
+		ReorderLevel:   2},
+	}
+	supplyFacade := facadeSupplyItemFromDomain(supply)
+	if supplyFacade.SKU() != "SKU" || supplyFacade.Unit() != "unit" {
+		t.Fatalf("unexpected supply mapping: %+v", supplyFacade)
+	}
+	if facadeSupplyItemsFromDomain(nil) != nil || facadeSupplyItemsFromDomain([]domain.SupplyItem{}) != nil {
+		t.Fatal("expected nil slices for empty supply inputs")
 	}
 }

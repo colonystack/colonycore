@@ -1,0 +1,822 @@
+{
+  "version": "0.2.0",
+  "enums": {
+    "housing_environment": [
+      "aquatic",
+      "arboreal",
+      "humid",
+      "terrestrial"
+    ],
+    "housing_state": [
+      "active",
+      "cleaning",
+      "decommissioned",
+      "quarantine"
+    ],
+    "lifecycle_stage": [
+      "adult",
+      "deceased",
+      "embryo_larva",
+      "juvenile",
+      "planned",
+      "retired"
+    ],
+    "permit_status": [
+      "approved",
+      "archived",
+      "draft",
+      "expired",
+      "on_hold",
+      "submitted"
+    ],
+    "procedure_status": [
+      "cancelled",
+      "completed",
+      "failed",
+      "in_progress",
+      "scheduled"
+    ],
+    "protocol_status": [
+      "approved",
+      "archived",
+      "draft",
+      "expired",
+      "on_hold",
+      "submitted"
+    ],
+    "sample_status": [
+      "consumed",
+      "disposed",
+      "in_transit",
+      "stored"
+    ],
+    "treatment_status": [
+      "completed",
+      "flagged",
+      "in_progress",
+      "planned"
+    ]
+  },
+  "entities": {
+    "BreedingUnit": {
+      "properties": [
+        "created_at",
+        "female_ids",
+        "housing_id",
+        "id",
+        "line_id",
+        "male_ids",
+        "name",
+        "pairing_attributes",
+        "pairing_intent",
+        "pairing_notes",
+        "protocol_id",
+        "strain_id",
+        "strategy",
+        "target_line_id",
+        "target_strain_id",
+        "updated_at"
+      ],
+      "required": [
+        "created_at",
+        "id",
+        "name",
+        "strategy",
+        "updated_at"
+      ],
+      "invariants": [
+        "lineage_integrity"
+      ],
+      "relationships": {
+        "female_ids": {
+          "target": "Organism",
+          "cardinality": "0..n",
+          "storage": ""
+        },
+        "housing_id": {
+          "target": "HousingUnit",
+          "cardinality": "0..1",
+          "storage": ""
+        },
+        "line_id": {
+          "target": "Line",
+          "cardinality": "0..1",
+          "storage": ""
+        },
+        "male_ids": {
+          "target": "Organism",
+          "cardinality": "0..n",
+          "storage": ""
+        },
+        "protocol_id": {
+          "target": "Protocol",
+          "cardinality": "0..1",
+          "storage": ""
+        },
+        "strain_id": {
+          "target": "Strain",
+          "cardinality": "0..1",
+          "storage": ""
+        },
+        "target_line_id": {
+          "target": "Line",
+          "cardinality": "0..1",
+          "storage": ""
+        },
+        "target_strain_id": {
+          "target": "Strain",
+          "cardinality": "0..1",
+          "storage": ""
+        }
+      }
+    },
+    "Cohort": {
+      "properties": [
+        "created_at",
+        "housing_id",
+        "id",
+        "name",
+        "project_id",
+        "protocol_id",
+        "purpose",
+        "updated_at"
+      ],
+      "required": [
+        "created_at",
+        "id",
+        "name",
+        "purpose",
+        "updated_at"
+      ],
+      "invariants": null,
+      "relationships": {
+        "housing_id": {
+          "target": "HousingUnit",
+          "cardinality": "0..1",
+          "storage": ""
+        },
+        "project_id": {
+          "target": "Project",
+          "cardinality": "0..1",
+          "storage": ""
+        },
+        "protocol_id": {
+          "target": "Protocol",
+          "cardinality": "0..1",
+          "storage": ""
+        }
+      }
+    },
+    "Facility": {
+      "properties": [
+        "access_policy",
+        "code",
+        "created_at",
+        "environment_baselines",
+        "housing_unit_ids",
+        "id",
+        "name",
+        "project_ids",
+        "updated_at",
+        "zone"
+      ],
+      "required": [
+        "access_policy",
+        "code",
+        "created_at",
+        "id",
+        "name",
+        "updated_at",
+        "zone"
+      ],
+      "invariants": null,
+      "relationships": {
+        "housing_unit_ids": {
+          "target": "HousingUnit",
+          "cardinality": "0..n",
+          "storage": "derived"
+        },
+        "project_ids": {
+          "target": "Project",
+          "cardinality": "0..n",
+          "storage": ""
+        }
+      }
+    },
+    "GenotypeMarker": {
+      "properties": [
+        "alleles",
+        "assay_method",
+        "created_at",
+        "id",
+        "interpretation",
+        "locus",
+        "name",
+        "updated_at",
+        "version"
+      ],
+      "required": [
+        "alleles",
+        "assay_method",
+        "created_at",
+        "id",
+        "interpretation",
+        "locus",
+        "name",
+        "updated_at",
+        "version"
+      ],
+      "invariants": null,
+      "relationships": {}
+    },
+    "HousingUnit": {
+      "properties": [
+        "capacity",
+        "created_at",
+        "environment",
+        "facility_id",
+        "id",
+        "name",
+        "state",
+        "updated_at"
+      ],
+      "required": [
+        "capacity",
+        "created_at",
+        "environment",
+        "facility_id",
+        "id",
+        "name",
+        "state",
+        "updated_at"
+      ],
+      "invariants": [
+        "housing_capacity",
+        "lifecycle_transition"
+      ],
+      "relationships": {
+        "facility_id": {
+          "target": "Facility",
+          "cardinality": "1..1",
+          "storage": ""
+        }
+      },
+      "states": {
+        "enum": "housing_state",
+        "initial": "quarantine",
+        "terminal": [
+          "decommissioned"
+        ]
+      }
+    },
+    "Line": {
+      "properties": [
+        "code",
+        "created_at",
+        "default_attributes",
+        "deprecated_at",
+        "deprecation_reason",
+        "description",
+        "extension_overrides",
+        "genotype_marker_ids",
+        "id",
+        "name",
+        "origin",
+        "updated_at"
+      ],
+      "required": [
+        "code",
+        "created_at",
+        "genotype_marker_ids",
+        "id",
+        "name",
+        "origin",
+        "updated_at"
+      ],
+      "invariants": null,
+      "relationships": {
+        "genotype_marker_ids": {
+          "target": "GenotypeMarker",
+          "cardinality": "1..n",
+          "storage": ""
+        }
+      }
+    },
+    "Observation": {
+      "properties": [
+        "cohort_id",
+        "created_at",
+        "data",
+        "id",
+        "notes",
+        "observer",
+        "organism_id",
+        "procedure_id",
+        "recorded_at",
+        "updated_at"
+      ],
+      "required": [
+        "created_at",
+        "id",
+        "observer",
+        "recorded_at",
+        "updated_at"
+      ],
+      "invariants": null,
+      "relationships": {
+        "cohort_id": {
+          "target": "Cohort",
+          "cardinality": "0..1",
+          "storage": ""
+        },
+        "organism_id": {
+          "target": "Organism",
+          "cardinality": "0..1",
+          "storage": ""
+        },
+        "procedure_id": {
+          "target": "Procedure",
+          "cardinality": "0..1",
+          "storage": ""
+        }
+      }
+    },
+    "Organism": {
+      "properties": [
+        "attributes",
+        "cohort_id",
+        "created_at",
+        "housing_id",
+        "id",
+        "line",
+        "line_id",
+        "name",
+        "parent_ids",
+        "project_id",
+        "protocol_id",
+        "species",
+        "stage",
+        "strain_id",
+        "updated_at"
+      ],
+      "required": [
+        "created_at",
+        "id",
+        "line",
+        "name",
+        "species",
+        "stage",
+        "updated_at"
+      ],
+      "invariants": [
+        "housing_capacity",
+        "lifecycle_transition",
+        "lineage_integrity",
+        "protocol_subject_cap"
+      ],
+      "relationships": {
+        "cohort_id": {
+          "target": "Cohort",
+          "cardinality": "0..1",
+          "storage": ""
+        },
+        "housing_id": {
+          "target": "HousingUnit",
+          "cardinality": "0..1",
+          "storage": ""
+        },
+        "line_id": {
+          "target": "Line",
+          "cardinality": "0..1",
+          "storage": ""
+        },
+        "parent_ids": {
+          "target": "Organism",
+          "cardinality": "0..n",
+          "storage": ""
+        },
+        "project_id": {
+          "target": "Project",
+          "cardinality": "0..1",
+          "storage": ""
+        },
+        "protocol_id": {
+          "target": "Protocol",
+          "cardinality": "0..1",
+          "storage": ""
+        },
+        "strain_id": {
+          "target": "Strain",
+          "cardinality": "0..1",
+          "storage": ""
+        }
+      },
+      "states": {
+        "enum": "lifecycle_stage",
+        "initial": "planned",
+        "terminal": [
+          "retired",
+          "deceased"
+        ]
+      }
+    },
+    "Permit": {
+      "properties": [
+        "allowed_activities",
+        "authority",
+        "created_at",
+        "facility_ids",
+        "id",
+        "notes",
+        "permit_number",
+        "protocol_ids",
+        "status",
+        "updated_at",
+        "valid_from",
+        "valid_until"
+      ],
+      "required": [
+        "allowed_activities",
+        "authority",
+        "created_at",
+        "facility_ids",
+        "id",
+        "permit_number",
+        "protocol_ids",
+        "status",
+        "updated_at",
+        "valid_from",
+        "valid_until"
+      ],
+      "invariants": [
+        "lifecycle_transition"
+      ],
+      "relationships": {
+        "facility_ids": {
+          "target": "Facility",
+          "cardinality": "1..n",
+          "storage": ""
+        },
+        "protocol_ids": {
+          "target": "Protocol",
+          "cardinality": "1..n",
+          "storage": ""
+        }
+      },
+      "states": {
+        "enum": "permit_status",
+        "initial": "draft",
+        "terminal": [
+          "expired",
+          "archived"
+        ]
+      }
+    },
+    "Procedure": {
+      "properties": [
+        "cohort_id",
+        "created_at",
+        "id",
+        "name",
+        "observation_ids",
+        "organism_ids",
+        "project_id",
+        "protocol_id",
+        "scheduled_at",
+        "status",
+        "treatment_ids",
+        "updated_at"
+      ],
+      "required": [
+        "created_at",
+        "id",
+        "name",
+        "protocol_id",
+        "scheduled_at",
+        "status",
+        "updated_at"
+      ],
+      "invariants": [
+        "lifecycle_transition",
+        "protocol_coverage"
+      ],
+      "relationships": {
+        "cohort_id": {
+          "target": "Cohort",
+          "cardinality": "0..1",
+          "storage": ""
+        },
+        "observation_ids": {
+          "target": "Observation",
+          "cardinality": "0..n",
+          "storage": ""
+        },
+        "organism_ids": {
+          "target": "Organism",
+          "cardinality": "0..n",
+          "storage": ""
+        },
+        "project_id": {
+          "target": "Project",
+          "cardinality": "0..1",
+          "storage": ""
+        },
+        "protocol_id": {
+          "target": "Protocol",
+          "cardinality": "1..1",
+          "storage": ""
+        },
+        "treatment_ids": {
+          "target": "Treatment",
+          "cardinality": "0..n",
+          "storage": ""
+        }
+      },
+      "states": {
+        "enum": "procedure_status",
+        "initial": "scheduled",
+        "terminal": [
+          "completed",
+          "cancelled",
+          "failed"
+        ]
+      }
+    },
+    "Project": {
+      "properties": [
+        "code",
+        "created_at",
+        "description",
+        "facility_ids",
+        "id",
+        "organism_ids",
+        "procedure_ids",
+        "protocol_ids",
+        "supply_item_ids",
+        "title",
+        "updated_at"
+      ],
+      "required": [
+        "code",
+        "created_at",
+        "facility_ids",
+        "id",
+        "title",
+        "updated_at"
+      ],
+      "invariants": null,
+      "relationships": {
+        "facility_ids": {
+          "target": "Facility",
+          "cardinality": "1..n",
+          "storage": ""
+        },
+        "organism_ids": {
+          "target": "Organism",
+          "cardinality": "0..n",
+          "storage": ""
+        },
+        "procedure_ids": {
+          "target": "Procedure",
+          "cardinality": "0..n",
+          "storage": ""
+        },
+        "protocol_ids": {
+          "target": "Protocol",
+          "cardinality": "0..n",
+          "storage": ""
+        },
+        "supply_item_ids": {
+          "target": "SupplyItem",
+          "cardinality": "0..n",
+          "storage": ""
+        }
+      }
+    },
+    "Protocol": {
+      "properties": [
+        "code",
+        "created_at",
+        "description",
+        "id",
+        "max_subjects",
+        "status",
+        "title",
+        "updated_at"
+      ],
+      "required": [
+        "code",
+        "created_at",
+        "id",
+        "max_subjects",
+        "status",
+        "title",
+        "updated_at"
+      ],
+      "invariants": [
+        "lifecycle_transition",
+        "protocol_subject_cap"
+      ],
+      "relationships": {},
+      "states": {
+        "enum": "protocol_status",
+        "initial": "draft",
+        "terminal": [
+          "expired",
+          "archived"
+        ]
+      }
+    },
+    "Sample": {
+      "properties": [
+        "assay_type",
+        "attributes",
+        "chain_of_custody",
+        "cohort_id",
+        "collected_at",
+        "created_at",
+        "facility_id",
+        "id",
+        "identifier",
+        "organism_id",
+        "source_type",
+        "status",
+        "storage_location",
+        "updated_at"
+      ],
+      "required": [
+        "assay_type",
+        "chain_of_custody",
+        "collected_at",
+        "created_at",
+        "facility_id",
+        "id",
+        "identifier",
+        "source_type",
+        "status",
+        "storage_location",
+        "updated_at"
+      ],
+      "invariants": [
+        "lifecycle_transition"
+      ],
+      "relationships": {
+        "cohort_id": {
+          "target": "Cohort",
+          "cardinality": "0..1",
+          "storage": ""
+        },
+        "facility_id": {
+          "target": "Facility",
+          "cardinality": "1..1",
+          "storage": ""
+        },
+        "organism_id": {
+          "target": "Organism",
+          "cardinality": "0..1",
+          "storage": ""
+        }
+      },
+      "states": {
+        "enum": "sample_status",
+        "initial": "stored",
+        "terminal": [
+          "consumed",
+          "disposed"
+        ]
+      }
+    },
+    "Strain": {
+      "properties": [
+        "code",
+        "created_at",
+        "description",
+        "generation",
+        "genotype_marker_ids",
+        "id",
+        "line_id",
+        "name",
+        "retired_at",
+        "retirement_reason",
+        "updated_at"
+      ],
+      "required": [
+        "code",
+        "created_at",
+        "id",
+        "line_id",
+        "name",
+        "updated_at"
+      ],
+      "invariants": null,
+      "relationships": {
+        "genotype_marker_ids": {
+          "target": "GenotypeMarker",
+          "cardinality": "0..n",
+          "storage": ""
+        },
+        "line_id": {
+          "target": "Line",
+          "cardinality": "1..1",
+          "storage": ""
+        }
+      }
+    },
+    "SupplyItem": {
+      "properties": [
+        "attributes",
+        "created_at",
+        "description",
+        "expires_at",
+        "facility_ids",
+        "id",
+        "lot_number",
+        "name",
+        "project_ids",
+        "quantity_on_hand",
+        "reorder_level",
+        "sku",
+        "unit",
+        "updated_at"
+      ],
+      "required": [
+        "created_at",
+        "facility_ids",
+        "id",
+        "name",
+        "project_ids",
+        "quantity_on_hand",
+        "reorder_level",
+        "sku",
+        "unit",
+        "updated_at"
+      ],
+      "invariants": null,
+      "relationships": {
+        "facility_ids": {
+          "target": "Facility",
+          "cardinality": "1..n",
+          "storage": ""
+        },
+        "project_ids": {
+          "target": "Project",
+          "cardinality": "1..n",
+          "storage": ""
+        }
+      }
+    },
+    "Treatment": {
+      "properties": [
+        "administration_log",
+        "adverse_events",
+        "cohort_ids",
+        "created_at",
+        "dosage_plan",
+        "id",
+        "name",
+        "organism_ids",
+        "procedure_id",
+        "status",
+        "updated_at"
+      ],
+      "required": [
+        "created_at",
+        "dosage_plan",
+        "id",
+        "name",
+        "procedure_id",
+        "status",
+        "updated_at"
+      ],
+      "invariants": [
+        "lifecycle_transition",
+        "protocol_coverage"
+      ],
+      "relationships": {
+        "cohort_ids": {
+          "target": "Cohort",
+          "cardinality": "0..n",
+          "storage": ""
+        },
+        "organism_ids": {
+          "target": "Organism",
+          "cardinality": "0..n",
+          "storage": ""
+        },
+        "procedure_id": {
+          "target": "Procedure",
+          "cardinality": "1..1",
+          "storage": ""
+        }
+      },
+      "states": {
+        "enum": "treatment_status",
+        "initial": "planned",
+        "terminal": [
+          "completed",
+          "flagged"
+        ]
+      }
+    }
+  }
+}

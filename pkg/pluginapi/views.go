@@ -24,6 +24,9 @@ type OrganismView interface {
 	ProtocolID() (string, bool)
 	ProjectID() (string, bool)
 	Attributes() map[string]any
+	Extensions() ExtensionSet
+	CoreAttributes() map[string]any
+	CoreAttributesPayload() ObjectPayload
 
 	// Contextual lifecycle stage accessors
 	GetCurrentStage() LifecycleStageRef
@@ -39,12 +42,16 @@ type HousingUnitView interface {
 	FacilityID() string
 	Capacity() int
 	Environment() string
+	State() string
 
 	// Contextual environment accessors
 	GetEnvironmentType() EnvironmentTypeRef
 	IsAquaticEnvironment() bool
 	IsHumidEnvironment() bool
 	SupportsSpecies(species string) bool
+	GetCurrentState() HousingStateRef
+	IsActiveState() bool
+	IsDecommissioned() bool
 }
 
 // FacilityView is a read-only projection of a facility record.
@@ -55,6 +62,9 @@ type FacilityView interface {
 	Zone() string
 	AccessPolicy() string
 	EnvironmentBaselines() map[string]any
+	Extensions() ExtensionSet
+	CoreEnvironmentBaselines() map[string]any
+	CoreEnvironmentBaselinesPayload() ObjectPayload
 	HousingUnitIDs() []string
 	ProjectIDs() []string
 
@@ -90,6 +100,9 @@ type ObservationView interface {
 	RecordedAt() time.Time
 	Observer() string
 	Data() map[string]any
+	Extensions() ExtensionSet
+	CoreData() map[string]any
+	CoreDataPayload() ObjectPayload
 	Notes() string
 
 	// Contextual data shape accessors
@@ -112,6 +125,9 @@ type SampleView interface {
 	AssayType() string
 	ChainOfCustody() []map[string]any
 	Attributes() map[string]any
+	Extensions() ExtensionSet
+	CoreAttributes() map[string]any
+	CoreAttributesPayload() ObjectPayload
 
 	// Contextual sample accessors
 	GetSource() SampleSourceRef
@@ -175,6 +191,9 @@ type SupplyItemView interface {
 	ProjectIDs() []string
 	ReorderLevel() int
 	Attributes() map[string]any
+	Extensions() ExtensionSet
+	CoreAttributes() map[string]any
+	CoreAttributesPayload() ObjectPayload
 
 	// Contextual inventory accessors
 	GetInventoryStatus(reference time.Time) SupplyStatusRef

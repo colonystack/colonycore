@@ -110,6 +110,13 @@ func (o stubOrganism) HousingID() (string, bool) {
 func (stubOrganism) ProtocolID() (string, bool) { return "", false }
 func (stubOrganism) ProjectID() (string, bool)  { return "", false }
 func (stubOrganism) Attributes() map[string]any { return nil }
+func (stubOrganism) Extensions() pluginapi.ExtensionSet {
+	return pluginapi.NewExtensionSet(nil)
+}
+func (stubOrganism) CoreAttributes() map[string]any { return nil }
+func (stubOrganism) CoreAttributesPayload() pluginapi.ObjectPayload {
+	return pluginapi.NewObjectPayload(nil)
+}
 
 // Contextual lifecycle stage accessors
 func (stubOrganism) GetCurrentStage() pluginapi.LifecycleStageRef {
@@ -122,6 +129,7 @@ func (stubOrganism) IsDeceased() bool { return false }
 type stubHousing struct {
 	id          string
 	environment string
+	state       string
 }
 
 func (h stubHousing) ID() string          { return h.id }
@@ -131,6 +139,7 @@ func (stubHousing) Name() string          { return "" }
 func (stubHousing) FacilityID() string    { return "" }
 func (stubHousing) Capacity() int         { return 0 }
 func (h stubHousing) Environment() string { return h.environment }
+func (h stubHousing) State() string       { return h.state }
 
 // Contextual environment accessors
 func (h stubHousing) GetEnvironmentType() pluginapi.EnvironmentTypeRef {
@@ -161,6 +170,28 @@ func (h stubHousing) SupportsSpecies(species string) bool {
 		return envType.IsAquatic() || envType.IsHumid()
 	}
 	return true // Default support for test
+}
+
+func (h stubHousing) GetCurrentState() pluginapi.HousingStateRef {
+	ctx := pluginapi.NewHousingStateContext()
+	switch h.state {
+	case ctx.Quarantine().String():
+		return ctx.Quarantine()
+	case ctx.Cleaning().String():
+		return ctx.Cleaning()
+	case ctx.Decommissioned().String():
+		return ctx.Decommissioned()
+	default:
+		return ctx.Active()
+	}
+}
+
+func (h stubHousing) IsActiveState() bool {
+	return h.GetCurrentState().IsActive()
+}
+
+func (h stubHousing) IsDecommissioned() bool {
+	return h.GetCurrentState().IsDecommissioned()
 }
 
 // TestFrogPluginRegisterAndRuleEvaluation covers plugin registration and rule violation generation.

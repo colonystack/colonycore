@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"colonycore/pkg/domain"
+	entitymodel "colonycore/pkg/domain/entitymodel"
 )
 
 func TestOrganism_UpdateDeleteBranches(t *testing.T) {
@@ -13,7 +14,7 @@ func TestOrganism_UpdateDeleteBranches(t *testing.T) {
 	var org domain.Organism
 	// Create & update organism
 	if _, err := store.RunInTransaction(context.Background(), func(tx domain.Transaction) error {
-		created, err := tx.CreateOrganism(domain.Organism{Species: "frog"})
+		created, err := tx.CreateOrganism(domain.Organism{Organism: entitymodel.Organism{Species: "frog"}})
 		if err != nil {
 			return err
 		}

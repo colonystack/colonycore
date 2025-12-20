@@ -1,6 +1,6 @@
 # ADR 0003: Core Domain Schema Normalization
 
-- Status: Planned
+- Status: Accepted
 - Deciders: Tobias Harnickell
 - Date: 2025-09-21
 - Related RFCs: 0001-colonycore-base-module
@@ -29,6 +29,12 @@ ColonyCore adopts a single canonical entity contract named **Entity Model v0**. 
 - Plugin contract documentation (`docs/annex/plugin-contract.md`) and the static analyzer fed by `scripts/validate_plugin_contract.go` are generated from the same model to enumerate mandatory fields and permitted extension points.
 - An ERD diagram (`docs/annex/entity-model-erd.svg`) is rendered from the model using `make entity-model-erd`.
 - Synthetic datasets and fixtures (`testutil/fixtures/entity-model/*.json`) are produced from the model to exercise constraints in CI.
+
+### Tooling & Usage
+- Validate the logical schema: `make entity-model-validate`.
+- Regenerate code, OpenAPI, and DDL: `make entity-model-generate` (runs as part of `make lint`).
+- Full verification (validate + generate): `make entity-model-verify`.
+- Render the ERD: `make entity-model-erd` (requires Docker; spins up a temporary Postgres container, loads the generated Postgres DDL with `psql -X -v ON_ERROR_STOP=1 -1`, runs SchemaSpy, and writes `docs/annex/entity-model-erd.svg` plus `docs/annex/entity-model-erd.dot`; the full HTML report lives under `.cache/schemaspy/entitymodel-erd`).
 
 ### Change Control
 - `entity-model.json` is versioned using SemVer (`version` field) and follows ADR-0009 for compatibility. Breaking schema changes require an RFC and MAJOR bump; additive fields follow MINOR.

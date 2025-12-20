@@ -49,6 +49,15 @@ func TestEnvironmentTypeRefChecker(_ *testing.T) {
 	aquatic.isEnvironmentTypeRef()
 }
 
+// TestHousingStateRefChecker tests the isHousingStateRef function
+func TestHousingStateRefChecker(_ *testing.T) {
+	ctx := NewHousingStateContext()
+	active := ctx.Active()
+
+	// Call the function to ensure it's covered
+	active.isHousingStateRef()
+}
+
 // TestLifecycleStageRefChecker tests the isLifecycleStageRef function
 func TestLifecycleStageRefChecker(_ *testing.T) {
 	ctx := NewLifecycleStageContext()
@@ -70,19 +79,19 @@ func TestObservationShapeRefChecker(_ *testing.T) {
 // TestPermitStatusRefChecker tests the isPermitStatusRef function
 func TestPermitStatusRefChecker(_ *testing.T) {
 	ctx := NewPermitContext()
-	active := ctx.Statuses().Active()
+	approved := ctx.Statuses().Approved()
 
 	// Call the function to ensure it's covered
-	active.isPermitStatusRef()
+	approved.isPermitStatusRef()
 }
 
 // TestProtocolStatusRefChecker tests the isProtocolStatusRef function
 func TestProtocolStatusRefChecker(_ *testing.T) {
 	ctx := NewProtocolContext()
-	active := ctx.Active()
+	approved := ctx.Approved()
 
 	// Call the function to ensure it's covered
-	active.isProtocolStatusRef()
+	approved.isProtocolStatusRef()
 }
 
 // TestSampleSourceRefChecker tests the isSampleSourceRef function

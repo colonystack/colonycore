@@ -222,3 +222,11 @@ func (a datasetTransactionViewAdapter) FindSupplyItem(id string) (datasetapi.Sup
 	}
 	return facadeSupplyItemFromDomain(item), true
 }
+
+func (a datasetTransactionViewAdapter) FindProcedure(id string) (datasetapi.Procedure, bool) {
+	procedure, ok := a.view.FindProcedure(id)
+	if !ok {
+		return nil, false
+	}
+	return facadeProcedureFromDomain(procedure), true
+}

@@ -13,6 +13,10 @@ type stringerValue struct{ value string }
 
 func (s stringerValue) String() string { return s.value }
 
+func intPtr(v int) *int {
+	return &v
+}
+
 func TestNewHostTemplateAndRuntime(t *testing.T) {
 	now := time.Date(2025, 1, 2, 3, 4, 5, 0, time.UTC)
 	dialectProvider := GetDialectProvider()
@@ -36,11 +40,12 @@ func TestNewHostTemplateAndRuntime(t *testing.T) {
 			Description: "value column",
 		}},
 		Metadata: Metadata{
-			Source:          "tests",
-			Documentation:   "docs",
-			RefreshInterval: "PT1H",
-			Tags:            []string{"tag"},
-			Annotations:     map[string]string{"k": "v"},
+			Source:           "tests",
+			Documentation:    "docs",
+			RefreshInterval:  "PT1H",
+			Tags:             []string{"tag"},
+			Annotations:      map[string]string{"k": "v"},
+			EntityModelMajor: intPtr(1),
 		},
 		OutputFormats: []Format{formatProvider.JSON(), formatProvider.CSV()},
 	}
@@ -77,6 +82,9 @@ func TestNewHostTemplateAndRuntime(t *testing.T) {
 	}
 	if !host.SupportsFormat(formatProvider.JSON()) || host.SupportsFormat(formatProvider.PNG()) {
 		t.Fatalf("unexpected format support")
+	}
+	if host.Descriptor().Metadata.EntityModelMajor == nil || *host.Descriptor().Metadata.EntityModelMajor != 1 {
+		t.Fatalf("expected metadata to carry entity model major")
 	}
 
 	env := Environment{Now: func() time.Time { return now }}
@@ -306,7 +314,7 @@ func TestSlugAndCloneHelpers(t *testing.T) {
 		Query:         "select 1",
 		Parameters:    []Parameter{{Name: "enum", Type: "string", Enum: []string{"a"}}},
 		Columns:       []Column{{Name: "c", Type: "string"}},
-		Metadata:      Metadata{Tags: []string{"t"}, Annotations: map[string]string{"k": "v"}},
+		Metadata:      Metadata{Tags: []string{"t"}, Annotations: map[string]string{"k": "v"}, EntityModelMajor: intPtr(2)},
 		OutputFormats: []Format{formatProvider.JSON()},
 	}
 	clone := cloneTemplate(tpl)
@@ -314,6 +322,9 @@ func TestSlugAndCloneHelpers(t *testing.T) {
 	clone.Metadata.Tags[0] = mutatedLiteral
 	if tpl.Parameters[0].Enum[0] != "a" || tpl.Metadata.Tags[0] != "t" {
 		t.Fatalf("expected clone to be defensive")
+	}
+	if clone.Metadata.EntityModelMajor == nil || tpl.Metadata.EntityModelMajor == nil || *clone.Metadata.EntityModelMajor != *tpl.Metadata.EntityModelMajor {
+		t.Fatalf("expected entity model major to be copied")
 	}
 
 	scope := Scope{Requestor: "user", Roles: []string{"role"}, ProjectIDs: []string{"project"}}

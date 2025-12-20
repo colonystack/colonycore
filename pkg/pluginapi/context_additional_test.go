@@ -131,20 +131,23 @@ func TestSampleContextSemantics(t *testing.T) {
 func TestPermitContextStatuses(t *testing.T) {
 	statuses := NewPermitContext().Statuses()
 
-	if !statuses.Active().IsActive() {
-		t.Fatal("Active status should report active")
+	if !statuses.Approved().IsActive() {
+		t.Fatal("Approved status should report active")
 	}
 	if !statuses.Expired().IsExpired() {
 		t.Fatal("Expired status should report expired")
 	}
-	if statuses.Pending().IsExpired() {
-		t.Fatal("Pending status should not be expired")
+	if statuses.Submitted().IsExpired() {
+		t.Fatal("Submitted status should not be expired")
 	}
-	if statuses.Pending().String() == "" {
+	if statuses.Draft().String() == "" {
 		t.Fatal("Permit status string should not be empty")
 	}
-	if !statuses.Pending().Equals(statuses.Pending()) {
+	if !statuses.Submitted().Equals(statuses.Submitted()) {
 		t.Fatal("Identical permit statuses should compare equal")
+	}
+	if !statuses.Archived().IsArchived() {
+		t.Fatal("Archived status should report archived")
 	}
 }
 

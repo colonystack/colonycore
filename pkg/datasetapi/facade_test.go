@@ -7,16 +7,26 @@ import (
 )
 
 const (
-	organismCohortID   = "cohort"
-	organismHousingID  = "housing"
-	organismProtocolID = "protocol"
-	organismProjectID  = "project"
-	mutatedLiteral     = "mutated"
+	organismCohortID      = "cohort"
+	organismHousingID     = "housing"
+	organismProtocolID    = "protocol"
+	organismProjectID     = "project"
+	mutatedLiteral        = "mutated"
+	pairingPurposeLineage = "lineage"
+	coreAttributeValue    = "value"
 )
+
+func strPtr(v string) *string {
+	return &v
+}
 
 func TestOrganismFacadeReadOnly(t *testing.T) {
 	createdAt := time.Date(2024, 1, 2, 3, 4, 5, 0, time.UTC)
 	updatedAt := createdAt.Add(time.Hour)
+	hooks := NewExtensionHookContext()
+	contributors := NewExtensionContributorContext()
+	orgHook := hooks.OrganismAttributes()
+	corePlugin := contributors.Core()
 	cohort := organismCohortID
 	housing := organismHousingID
 	protocol := organismProtocolID
@@ -39,7 +49,7 @@ func TestOrganismFacadeReadOnly(t *testing.T) {
 		HousingID:  &housing,
 		ProtocolID: &protocol,
 		ProjectID:  &project,
-		Attributes: attrs,
+		Extensions: newCoreExtensionSet(orgHook, attrs),
 	})
 
 	expectedStage := LifecycleStage(NewLifecycleStageContext().Adult().String())
@@ -96,6 +106,35 @@ func TestOrganismFacadeReadOnly(t *testing.T) {
 	if organism.Attributes()["flag"] != true {
 		t.Fatalf("expected attributes clone to remain immutable")
 	}
+	extSet := organism.Extensions()
+	if plugins := extSet.Plugins(orgHook); len(plugins) != 1 || !plugins[0].Equals(corePlugin) {
+		t.Fatalf("expected core plugin payload, got %+v", plugins)
+	}
+	corePayload, ok := extSet.Core(orgHook)
+	if !ok {
+		t.Fatal("expected organism extension payload")
+	}
+	corePayload.(map[string]any)["flag"] = false
+	if fresh, _ := extSet.Core(orgHook); fresh.(map[string]any)["flag"] != true {
+		t.Fatalf("expected extension payload clone to remain stable, got %+v", fresh)
+	}
+	payloadView := organism.CoreAttributesPayload()
+	if !payloadView.Defined() {
+		t.Fatal("expected organism payload to be defined")
+	}
+	if payloadView.Map()["flag"] != true {
+		t.Fatalf("expected payload map to expose flag value, got %+v", payloadView.Map())
+	}
+	cloned := payloadView.Map()
+	cloned["flag"] = mutatedLiteral
+	if organism.CoreAttributesPayload().Map()["flag"] != true {
+		t.Fatal("expected payload map clone to remain stable after mutation")
+	}
+	raw := extSet.Raw()
+	raw[orgHook.value()][corePlugin.value()].(map[string]any)["flag"] = false
+	if fresh, _ := extSet.Core(orgHook); fresh.(map[string]any)["flag"] != true {
+		t.Fatalf("expected raw mutation not to leak into stored payload")
+	}
 	if organism.ParentIDs()[0] != "p1" {
 		t.Fatalf("expected parent ids clone to remain immutable")
 	}
@@ -134,21 +173,23 @@ func TestBreedingProcedureFacadesCloneCollections(t *testing.T) {
 	targetLineSnapshot := targetLineID
 	targetStrainID := "strain-2"
 	targetStrainSnapshot := targetStrainID
+	hookCtx := NewExtensionHookContext()
+	breedingHook := hookCtx.BreedingUnitPairingAttributes()
 	breeding := NewBreedingUnit(BreedingUnitData{
-		Base:              BaseData{ID: "breed", CreatedAt: created},
-		Name:              "Breeding",
-		Strategy:          "pair",
-		HousingID:         &housing,
-		ProtocolID:        &protocol,
-		LineID:            &lineID,
-		StrainID:          &strainID,
-		TargetLineID:      &targetLineID,
-		TargetStrainID:    &targetStrainID,
-		PairingIntent:     "outcross",
-		PairingNotes:      "Documented pairing intent",
-		PairingAttributes: map[string]any{"purpose": "lineage"},
-		FemaleIDs:         []string{"f1"},
-		MaleIDs:           []string{"m1"},
+		Base:           BaseData{ID: "breed", CreatedAt: created},
+		Name:           "Breeding",
+		Strategy:       "pair",
+		HousingID:      &housing,
+		ProtocolID:     &protocol,
+		LineID:         &lineID,
+		StrainID:       &strainID,
+		TargetLineID:   &targetLineID,
+		TargetStrainID: &targetStrainID,
+		PairingIntent:  strPtr("outcross"),
+		PairingNotes:   strPtr("Documented pairing intent"),
+		Extensions:     newCoreExtensionSet(breedingHook, map[string]any{"purpose": pairingPurposeLineage}),
+		FemaleIDs:      []string{"f1"},
+		MaleIDs:        []string{"m1"},
 	})
 
 	females := breeding.FemaleIDs()
@@ -199,8 +240,26 @@ func TestBreedingProcedureFacadesCloneCollections(t *testing.T) {
 	}
 	attrs := breeding.PairingAttributes()
 	attrs["purpose"] = mutatedLiteral
-	if breeding.PairingAttributes()["purpose"] != "lineage" {
+	if breeding.PairingAttributes()["purpose"] != pairingPurposeLineage {
 		t.Fatalf("expected pairing attributes map to be cloned")
+	}
+	ext := breeding.Extensions()
+	if payload, ok := ext.Core(breedingHook); !ok {
+		t.Fatal("expected breeding unit extension payload")
+	} else {
+		payload.(map[string]any)["purpose"] = mutatedLiteral
+		if fresh, _ := ext.Core(breedingHook); fresh.(map[string]any)["purpose"] != pairingPurposeLineage {
+			t.Fatalf("expected breeding unit extension payload to be cloned, got %+v", fresh)
+		}
+	}
+	breedingPayload := breeding.CorePairingAttributesPayload()
+	if !breedingPayload.Defined() || breedingPayload.Map()["purpose"] != pairingPurposeLineage {
+		t.Fatal("expected breeding payload to expose pairing attributes")
+	}
+	breedingClone := breedingPayload.Map()
+	breedingClone["purpose"] = mutatedLiteral
+	if breeding.CorePairingAttributesPayload().Map()["purpose"] != pairingPurposeLineage {
+		t.Fatal("expected breeding payload clone to remain stable after mutation")
 	}
 
 	procedureProject := "project-1"
@@ -264,7 +323,7 @@ func TestBreedingProcedureFacadesCloneCollections(t *testing.T) {
 		if serialized["pairing_intent"] != "outcross" {
 			t.Fatalf("expected serialized pairing intent, got %+v", serialized["pairing_intent"])
 		}
-		if attrs, ok := serialized["pairing_attributes"].(map[string]any); !ok || attrs["purpose"] != "lineage" {
+		if attrs, ok := serialized["pairing_attributes"].(map[string]any); !ok || attrs["purpose"] != pairingPurposeLineage {
 			t.Fatalf("expected serialized pairing attributes, got %+v", serialized["pairing_attributes"])
 		}
 	}
@@ -313,7 +372,7 @@ func TestProtocolProjectCohortFacades(t *testing.T) {
 		Base:        BaseData{ID: "protocol", CreatedAt: now},
 		Code:        "P",
 		Title:       "Protocol",
-		Description: "Desc",
+		Description: strPtr("Desc"),
 		MaxSubjects: 5,
 	})
 	if protocol.Code() != "P" || protocol.Title() != "Protocol" || protocol.MaxSubjects() != 5 {
@@ -329,7 +388,7 @@ func TestProtocolProjectCohortFacades(t *testing.T) {
 		Base:          BaseData{ID: "project", CreatedAt: now},
 		Code:          "PR",
 		Title:         "Project",
-		Description:   "Description",
+		Description:   strPtr("Description"),
 		FacilityIDs:   append([]string(nil), projectFacilityIDs...),
 		ProtocolIDs:   append([]string(nil), projectProtocolIDs...),
 		OrganismIDs:   append([]string(nil), projectOrganismIDs...),
@@ -356,8 +415,9 @@ func TestProtocolProjectCohortFacades(t *testing.T) {
 		FacilityID:  "Facility",
 		Capacity:    3,
 		Environment: "humid",
+		State:       "active",
 	})
-	if housing.Environment() != envHumid || housing.Capacity() != 3 {
+	if housing.Environment() != environmentTypeHumid || housing.Capacity() != 3 {
 		t.Fatalf("unexpected housing values")
 	}
 
@@ -425,7 +485,7 @@ func TestProtocolProjectCohortFacades(t *testing.T) {
 		if err := json.Unmarshal(payload, &serialized); err != nil {
 			t.Fatalf("unmarshal housing: %v", err)
 		}
-		if serialized["id"] != "housing" || serialized["environment"] != envHumid {
+		if serialized["id"] != "housing" || serialized["environment"] != environmentTypeHumid || serialized["state"] != "active" {
 			t.Fatalf("unexpected housing json: %+v", serialized)
 		}
 	}
@@ -436,16 +496,17 @@ func TestExtendedFacades(t *testing.T) {
 	now := time.Now().UTC()
 	expires := now.Add(24 * time.Hour)
 	housingID := "H1"
+	hooks := NewExtensionHookContext()
 
 	facility := NewFacility(FacilityData{
-		Base:                 BaseData{ID: "facility", CreatedAt: now, UpdatedAt: now},
-		Code:                 "FAC-1",
-		Name:                 "Biosecure",
-		Zone:                 "Biosecure Wing",
-		AccessPolicy:         "Restricted",
-		EnvironmentBaselines: map[string]any{"temp": 21},
-		HousingUnitIDs:       []string{housingID},
-		ProjectIDs:           []string{"proj"},
+		Base:           BaseData{ID: "facility", CreatedAt: now, UpdatedAt: now},
+		Code:           "FAC-1",
+		Name:           "Biosecure",
+		Zone:           "Biosecure Wing",
+		AccessPolicy:   "Restricted",
+		Extensions:     newCoreExtensionSet(hooks.FacilityEnvironmentBaselines(), map[string]any{"temp": 21}),
+		HousingUnitIDs: []string{housingID},
+		ProjectIDs:     []string{"proj"},
 	})
 	if facility.Name() == "" || facility.Zone() == "" || facility.AccessPolicy() == "" {
 		t.Fatal("facility getters should expose values")
@@ -461,6 +522,25 @@ func TestExtendedFacades(t *testing.T) {
 	}
 	if facility.Code() != "FAC-1" {
 		t.Fatalf("expected facility code in facade, got %q", facility.Code())
+	}
+	facilityExt := facility.Extensions()
+	facilityHook := hooks.FacilityEnvironmentBaselines()
+	if payload, ok := facilityExt.Core(facilityHook); !ok {
+		t.Fatal("expected facility extension payload")
+	} else {
+		payload.(map[string]any)["temp"] = 30
+		if facility.EnvironmentBaselines()["temp"] != 21 {
+			t.Fatal("expected facility baselines clone to remain stable after extension mutation")
+		}
+	}
+	facilityPayload := facility.CoreEnvironmentBaselinesPayload()
+	if !facilityPayload.Defined() || facilityPayload.Map()["temp"] != 21 {
+		t.Fatal("expected facility payload to expose baseline value")
+	}
+	baselineClone := facilityPayload.Map()
+	baselineClone["temp"] = 99
+	if facility.CoreEnvironmentBaselinesPayload().Map()["temp"] != 21 {
+		t.Fatal("expected facility payload clone to remain stable after mutation")
 	}
 	if !facility.GetZone().IsBiosecure() || !facility.GetAccessPolicy().IsRestricted() {
 		t.Fatal("facility contextual helpers should reflect semantics")
@@ -513,8 +593,8 @@ func TestExtendedFacades(t *testing.T) {
 		ProcedureID: &procID,
 		OrganismID:  &organObs,
 		CohortID:    &cohortObs,
-		Notes:       "value",
-		Data:        map[string]any{"score": 1},
+		Notes:       strPtr(coreAttributeValue),
+		Extensions:  newCoreExtensionSet(hooks.ObservationData(), map[string]any{"score": 1}),
 	})
 	if observation.Observer() == "" || observation.Notes() == "" {
 		t.Fatal("observation should retain data")
@@ -541,6 +621,23 @@ func TestExtendedFacades(t *testing.T) {
 	if observation.Data()["score"] != 1 || observation.Notes() == "" {
 		t.Fatal("observation should expose data payload and notes")
 	}
+	if payload, ok := observation.Extensions().Core(hooks.ObservationData()); !ok {
+		t.Fatal("expected observation extension payload")
+	} else {
+		payload.(map[string]any)["score"] = 99
+		if observation.Data()["score"] != 1 {
+			t.Fatal("expected observation data clone to remain stable after extension mutation")
+		}
+	}
+	observationPayload := observation.CoreDataPayload()
+	if !observationPayload.Defined() || observationPayload.Map()["score"] != 1 {
+		t.Fatal("expected observation payload to expose structured data")
+	}
+	observationClone := observationPayload.Map()
+	observationClone["score"] = 42
+	if observation.CoreDataPayload().Map()["score"] != 1 {
+		t.Fatal("expected observation payload clone to remain stable after mutation")
+	}
 
 	organID := "org"
 	cohortSample := "cohort"
@@ -555,12 +652,12 @@ func TestExtendedFacades(t *testing.T) {
 		Status:          "stored",
 		StorageLocation: "freezer",
 		AssayType:       "assay",
-		Attributes:      map[string]any{"key": "value"},
+		Extensions:      newCoreExtensionSet(hooks.SampleAttributes(), map[string]any{"key": coreAttributeValue}),
 		ChainOfCustody: []SampleCustodyEventData{{
 			Actor:     "tech",
 			Location:  "lab",
 			Timestamp: now,
-			Notes:     "handoff",
+			Notes:     strPtr("handoff"),
 		}},
 	})
 	if sample.Identifier() == "" || sample.AssayType() == "" || sample.StorageLocation() == "" {
@@ -588,20 +685,38 @@ func TestExtendedFacades(t *testing.T) {
 	if sample.Status() == "" || sample.StorageLocation() == "" {
 		t.Fatal("sample should expose status and storage location")
 	}
-	if sample.Attributes()["key"] != "value" {
+	if sample.Attributes()["key"] != coreAttributeValue {
 		t.Fatal("sample attributes should round-trip")
+	}
+	if payload, ok := sample.Extensions().Core(hooks.SampleAttributes()); !ok {
+		t.Fatal("expected sample extension payload")
+	} else {
+		payload.(map[string]any)["key"] = mutatedLiteral
+		if sample.Attributes()["key"] != coreAttributeValue {
+			t.Fatal("expected sample attribute clone to remain stable after extension mutation")
+		}
+	}
+	samplePayload := sample.CoreAttributesPayload()
+	if !samplePayload.Defined() || samplePayload.Map()["key"] != coreAttributeValue {
+		t.Fatal("expected sample payload to expose attributes")
+	}
+	sampleClone := samplePayload.Map()
+	sampleClone["key"] = mutatedLiteral
+	if sample.CoreAttributesPayload().Map()["key"] != coreAttributeValue {
+		t.Fatal("expected sample payload clone to remain stable after mutation")
 	}
 
 	permit := NewPermit(PermitData{
 		Base:              BaseData{ID: "permit", CreatedAt: now},
 		PermitNumber:      "PERMIT",
 		Authority:         "Gov",
+		Status:            datasetPermitStatusApproved,
 		ValidFrom:         now.Add(-time.Hour),
 		ValidUntil:        now.Add(time.Hour),
 		AllowedActivities: []string{"activity"},
 		FacilityIDs:       []string{facility.ID()},
 		ProtocolIDs:       []string{"protocol"},
-		Notes:             "note",
+		Notes:             strPtr("note"),
 	})
 	if permit.PermitNumber() == "" || permit.Authority() == "" || permit.Notes() == "" {
 		t.Fatal("permit should expose fields")
@@ -626,14 +741,14 @@ func TestExtendedFacades(t *testing.T) {
 		Base:           BaseData{ID: "supply", CreatedAt: now, UpdatedAt: now},
 		SKU:            "SKU",
 		Name:           "Feed",
-		Description:    "desc",
+		Description:    strPtr("desc"),
 		QuantityOnHand: 1,
 		Unit:           "kg",
-		LotNumber:      "LOT",
+		LotNumber:      strPtr("LOT"),
 		FacilityIDs:    []string{facility.ID()},
 		ProjectIDs:     []string{"proj"},
 		ReorderLevel:   2,
-		Attributes:     map[string]any{"key": "value"},
+		Extensions:     newCoreExtensionSet(hooks.SupplyItemAttributes(), map[string]any{"key": coreAttributeValue}),
 		ExpiresAt:      &expires,
 	})
 	if supply.SKU() == "" || supply.Name() == "" || supply.Unit() == "" || supply.LotNumber() == "" {
@@ -642,7 +757,7 @@ func TestExtendedFacades(t *testing.T) {
 	if len(supply.FacilityIDs()) != 1 || len(supply.ProjectIDs()) != 1 {
 		t.Fatal("supply should expose related ids")
 	}
-	if !supply.RequiresReorder(now) || supply.Attributes()["key"] != "value" {
+	if !supply.RequiresReorder(now) || supply.Attributes()["key"] != coreAttributeValue {
 		t.Fatal("supply helpers should report reorder and attributes")
 	}
 	if !supply.GetInventoryStatus(expires.Add(time.Hour)).IsExpired() {
@@ -656,6 +771,23 @@ func TestExtendedFacades(t *testing.T) {
 	}
 	if qty := supply.QuantityOnHand(); qty != 1 {
 		t.Fatalf("expected quantity 1, got %d", qty)
+	}
+	if payload, ok := supply.Extensions().Core(hooks.SupplyItemAttributes()); !ok {
+		t.Fatal("expected supply extension payload")
+	} else {
+		payload.(map[string]any)["key"] = mutatedLiteral
+		if supply.Attributes()["key"] != coreAttributeValue {
+			t.Fatal("expected supply attribute clone to remain stable after extension mutation")
+		}
+	}
+	supplyPayload := supply.CoreAttributesPayload()
+	if !supplyPayload.Defined() || supplyPayload.Map()["key"] != coreAttributeValue {
+		t.Fatal("expected supply payload to expose attributes")
+	}
+	supplyClone := supplyPayload.Map()
+	supplyClone["key"] = mutatedLiteral
+	if supply.CoreAttributesPayload().Map()["key"] != coreAttributeValue {
+		t.Fatal("expected supply payload clone to remain stable after mutation")
 	}
 
 	// JSON round-trips cover MarshalJSON code paths for new facades
@@ -690,10 +822,33 @@ func TestOptionalAccessorsBehaviors(t *testing.T) {
 	if organism.Attributes() != nil {
 		t.Fatalf("expected nil attributes for empty map")
 	}
+	payload := organism.CoreAttributesPayload()
+	if !payload.Defined() {
+		t.Fatalf("expected payload wrapper to be defined even when empty")
+	}
+	if !payload.IsEmpty() {
+		t.Fatalf("expected empty payload for organism without attributes")
+	}
+	if payload.Map() != nil {
+		t.Fatalf("expected nil map for empty payload")
+	}
+	ext := organism.Extensions()
+	if ext == nil {
+		t.Fatalf("expected extensions set instance")
+	}
+	if ext.Hooks() != nil {
+		t.Fatalf("expected no hooks for empty organism extensions")
+	}
+	if organism.ParentIDs() != nil {
+		t.Fatalf("expected nil parent ids for empty organism")
+	}
 
 	breeding := NewBreedingUnit(BreedingUnitData{Base: BaseData{ID: "breed"}})
 	if breeding.FemaleIDs() != nil || breeding.MaleIDs() != nil {
 		t.Fatalf("expected female/male slices to be nil when empty")
+	}
+	if payload := breeding.CorePairingAttributesPayload(); !payload.IsEmpty() {
+		t.Fatalf("expected empty payload for breeding unit without attributes")
 	}
 
 	procedure := NewProcedure(ProcedureData{Base: BaseData{ID: "proc"}, ProtocolID: "proto"})
@@ -712,18 +867,19 @@ func TestOptionalAccessorsBehaviors(t *testing.T) {
 }
 
 func TestDeepCloneAttributes(t *testing.T) {
+	hooks := NewExtensionHookContext()
 	nested := map[string]any{
 		"level1": map[string]any{
 			"level2": []any{map[string]any{"k": "v"}, []string{"a", "b"}},
 		},
 	}
-	org := NewOrganism(OrganismData{Base: BaseData{ID: "deep"}, Attributes: nested})
+	org := NewOrganism(OrganismData{Base: BaseData{ID: "deep"}, Extensions: newCoreExtensionSet(hooks.OrganismAttributes(), nested)})
 	attrs := org.Attributes()
 	// mutate returned structure deeply
 	lvl1 := attrs["level1"].(map[string]any)
 	lvl2 := lvl1["level2"].([]any)
 	innerMap := lvl2[0].(map[string]any)
-	innerMap["k"] = "mutated"
+	innerMap["k"] = extTestMutated
 	slice := lvl2[1].([]string)
 	slice[0] = "z"
 	// original should remain unchanged
@@ -808,7 +964,7 @@ func TestOrganismGetCurrentStageEdgeCases(t *testing.T) {
 
 	currentStage := organism.GetCurrentStage()
 	stages := NewLifecycleStageContext()
-	if !currentStage.Equals(stages.Adult()) {
-		t.Error("expected unknown stage to fallback to Adult")
+	if !currentStage.Equals(stages.Planned()) {
+		t.Error("expected unknown stage to fallback to Planned")
 	}
 }

@@ -7,10 +7,21 @@ func NewRulesEngine() *domain.RulesEngine {
 	return domain.NewRulesEngine()
 }
 
+func defaultRules() []domain.Rule {
+	return []domain.Rule{
+		NewHousingCapacityRule(),
+		NewProtocolSubjectCapRule(),
+		LineageIntegrityRule(),
+		LifecycleTransitionRule(),
+		ProtocolCoverageRule(),
+	}
+}
+
 // NewDefaultRulesEngine builds a rules engine with the built-in policy set.
 func NewDefaultRulesEngine() *domain.RulesEngine {
 	engine := NewRulesEngine()
-	engine.Register(NewHousingCapacityRule())
-	engine.Register(NewProtocolSubjectCapRule())
+	for _, rule := range defaultRules() {
+		engine.Register(rule)
+	}
 	return engine
 }

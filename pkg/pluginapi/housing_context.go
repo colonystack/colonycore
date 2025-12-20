@@ -40,11 +40,11 @@ func (e environmentTypeRef) String() string {
 }
 
 func (e environmentTypeRef) IsAquatic() bool {
-	return e.value == "aquatic" || e.value == "semi-aquatic"
+	return e.value == environmentTypeAquatic || e.value == "semi-aquatic"
 }
 
 func (e environmentTypeRef) IsHumid() bool {
-	return e.value == "humid" || e.value == "aquatic" || e.value == "tropical"
+	return e.value == environmentTypeHumid || e.value == environmentTypeAquatic || e.value == "tropical"
 }
 
 func (e environmentTypeRef) Equals(other EnvironmentTypeRef) bool {
@@ -61,22 +61,22 @@ type DefaultHousingContext struct{}
 
 // Aquatic returns the aquatic environment type reference.
 func (DefaultHousingContext) Aquatic() EnvironmentTypeRef {
-	return environmentTypeRef{value: "aquatic"}
+	return environmentTypeRef{value: environmentTypeAquatic}
 }
 
 // Terrestrial returns the terrestrial environment type reference.
 func (DefaultHousingContext) Terrestrial() EnvironmentTypeRef {
-	return environmentTypeRef{value: "terrestrial"}
+	return environmentTypeRef{value: environmentTypeTerrestrial}
 }
 
 // Arboreal returns the arboreal environment type reference.
 func (DefaultHousingContext) Arboreal() EnvironmentTypeRef {
-	return environmentTypeRef{value: "arboreal"}
+	return environmentTypeRef{value: environmentTypeArboreal}
 }
 
 // Humid returns the humid environment type reference.
 func (DefaultHousingContext) Humid() EnvironmentTypeRef {
-	return environmentTypeRef{value: "humid"}
+	return environmentTypeRef{value: environmentTypeHumid}
 }
 
 // NewHousingContext creates a new housing context instance.

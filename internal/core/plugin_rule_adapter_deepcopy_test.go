@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"colonycore/pkg/domain"
+	entitymodel "colonycore/pkg/domain/entitymodel"
 )
 
 // TestOrganismViewAttributesDeepCopy ensures that nested reference types returned
@@ -17,7 +18,9 @@ func TestOrganismViewAttributesDeepCopy(t *testing.T) {
 	}
 
 	org := domainOrganismFixture() // use existing test helper if available; fallback create minimal
-	org.Attributes = original
+	if err := org.SetCoreAttributes(original); err != nil {
+		t.Fatalf("SetCoreAttributes: %v", err)
+	}
 
 	view := newOrganismView(org)
 
@@ -37,7 +40,7 @@ func TestOrganismViewAttributesDeepCopy(t *testing.T) {
 	lsMap["m"] = "updated"
 	strSlice := ls[1].([]string)
 	if len(strSlice) > 0 {
-		strSlice[0] = "mutated"
+		strSlice[0] = testLiteralMutated
 	}
 
 	// Fetch again to ensure underlying data remains unchanged
@@ -70,5 +73,29 @@ func TestOrganismViewAttributesDeepCopy(t *testing.T) {
 // domainOrganismFixture provides a minimal domain.Organism; replaced if a helper exists.
 func domainOrganismFixture() domain.Organism {
 	now := time.Now().UTC()
-	return domain.Organism{Base: domain.Base{ID: "o1", CreatedAt: now, UpdatedAt: now}}
+	return domain.Organism{Organism: entitymodel.Organism{ID: "o1",
+		CreatedAt: now,
+		UpdatedAt: now}}
+}
+
+func TestCoreAttributesHelperClone(t *testing.T) {
+	var org domain.Organism
+	if attrs := org.CoreAttributes(); attrs != nil {
+		t.Fatalf("expected nil core attributes for zero-value organism")
+	}
+
+	original := map[string]any{"flag": true}
+	if err := org.SetCoreAttributes(original); err != nil {
+		t.Fatalf("SetCoreAttributes: %v", err)
+	}
+
+	values := org.CoreAttributes()
+	if values["flag"] != true {
+		t.Fatalf("expected cloned payload to include flag")
+	}
+	values["flag"] = false
+	result := org.CoreAttributes()
+	if result["flag"] != true {
+		t.Fatalf("expected subsequent clone to remain unchanged")
+	}
 }

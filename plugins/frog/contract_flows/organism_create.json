@@ -1,0 +1,17 @@
+{
+  "entity": "Organism",
+  "action": "create",
+  "payload": {
+    "id": "00000000-0000-0000-0000-000000000000",
+    "created_at": "2024-01-01T00:00:00Z",
+    "updated_at": "2024-01-01T00:00:00Z",
+    "name": "Specimen-001",
+    "species": "Lithobates catesbeianus",
+    "line": "amphibian-line-alpha",
+    "stage": "planned",
+    "attributes": {
+      "habitat_profile": "freshwater",
+      "preferred_temperature_c": 23
+    }
+  }
+}

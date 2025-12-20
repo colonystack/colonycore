@@ -5,12 +5,14 @@ Rules:
       - "colonycore/pkg/domain"
       - "colonycore/pkg/datasetapi"
       - "colonycore/pkg/pluginapi"
+      - "colonycore/pkg/extension"
       - "colonycore/internal/infra/persistence"
-      - "colonycore/internal/persistence"
       - "colonycore/internal/infra/blob"
+      - "colonycore/internal/entitymodel"
 InverseRules:
   - SelectorRegexp: "^colonycore/"
     AllowedPrefixes:
       - "colonycore/internal/core"
       - "colonycore/internal/adapters/datasets"
+      - "colonycore/internal/adapters/testutil"
       - "colonycore/internal/integration"

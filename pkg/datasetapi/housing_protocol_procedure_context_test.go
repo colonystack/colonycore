@@ -6,7 +6,7 @@ const (
 	// Test string constants
 	expectedAquatic     = "aquatic"
 	expectedTerrestrial = "terrestrial"
-	expectedActive      = "active"
+	expectedApproved    = "approved"
 	expectedCompleted   = "completed"
 	expectedCancelled   = "cancelled"
 	expectedFailed      = "failed"
@@ -76,29 +76,34 @@ func TestDatasetProtocolContext(t *testing.T) {
 
 		// Test all status type methods exist and return proper types
 		draft := ctx.Draft()
-		active := ctx.Active()
-		suspended := ctx.Suspended()
-		completed := ctx.Completed()
-		cancelled := ctx.Cancelled()
+		submitted := ctx.Submitted()
+		approved := ctx.Approved()
+		onHold := ctx.OnHold()
+		expired := ctx.Expired()
+		archived := ctx.Archived()
 
 		if draft.String() != "draft" {
 			t.Errorf("Expected draft status, got %s", draft.String())
 		}
 
-		if active.String() != expectedActive {
-			t.Errorf("Expected active status, got %s", active.String())
+		if submitted.String() != "submitted" {
+			t.Errorf("Expected submitted status, got %s", submitted.String())
 		}
 
-		if suspended.String() != "suspended" {
-			t.Errorf("Expected suspended status, got %s", suspended.String())
+		if approved.String() != expectedApproved {
+			t.Errorf("Expected approved status, got %s", approved.String())
 		}
 
-		if completed.String() != expectedCompleted {
-			t.Errorf("Expected completed status, got %s", completed.String())
+		if onHold.String() != "on_hold" {
+			t.Errorf("Expected on_hold status, got %s", onHold.String())
 		}
 
-		if cancelled.String() != expectedCancelled {
-			t.Errorf("Expected cancelled status, got %s", cancelled.String())
+		if expired.String() != "expired" {
+			t.Errorf("Expected expired status, got %s", expired.String())
+		}
+
+		if archived.String() != "archived" {
+			t.Errorf("Expected archived status, got %s", archived.String())
 		}
 	})
 
@@ -106,13 +111,13 @@ func TestDatasetProtocolContext(t *testing.T) {
 		ctx := NewProtocolContext()
 
 		draft := ctx.Draft()
-		active := ctx.Active()
-		completed := ctx.Completed()
-		cancelled := ctx.Cancelled()
+		approved := ctx.Approved()
+		expired := ctx.Expired()
+		archived := ctx.Archived()
 
 		// Test IsActive behavior
-		if !active.IsActive() {
-			t.Error("Active status should return true for IsActive()")
+		if !approved.IsActive() {
+			t.Error("Approved status should return true for IsActive()")
 		}
 
 		if draft.IsActive() {
@@ -120,16 +125,16 @@ func TestDatasetProtocolContext(t *testing.T) {
 		}
 
 		// Test IsTerminal behavior
-		if !completed.IsTerminal() {
-			t.Error("Completed status should return true for IsTerminal()")
+		if !expired.IsTerminal() {
+			t.Error("Expired status should return true for IsTerminal()")
 		}
 
-		if !cancelled.IsTerminal() {
-			t.Error("Cancelled status should return true for IsTerminal()")
+		if !archived.IsTerminal() {
+			t.Error("Archived status should return true for IsTerminal()")
 		}
 
-		if active.IsTerminal() {
-			t.Error("Active status should return false for IsTerminal()")
+		if approved.IsTerminal() {
+			t.Error("Approved status should return false for IsTerminal()")
 		}
 	})
 }
@@ -216,6 +221,65 @@ func TestDatasetProcedureContext(t *testing.T) {
 	})
 }
 
+func TestDatasetPermitContext(t *testing.T) {
+	t.Run("permit context provides all status types", func(t *testing.T) {
+		statuses := NewPermitContext().Statuses()
+
+		draft := statuses.Draft()
+		submitted := statuses.Submitted()
+		approved := statuses.Approved()
+		onHold := statuses.OnHold()
+		expired := statuses.Expired()
+		archived := statuses.Archived()
+
+		if draft.String() != datasetPermitStatusDraft {
+			t.Errorf("Expected draft status, got %s", draft.String())
+		}
+		if submitted.String() != datasetPermitStatusSubmitted {
+			t.Errorf("Expected submitted status, got %s", submitted.String())
+		}
+		if approved.String() != datasetPermitStatusApproved {
+			t.Errorf("Expected approved status, got %s", approved.String())
+		}
+		if onHold.String() != datasetPermitStatusOnHold {
+			t.Errorf("Expected on_hold status, got %s", onHold.String())
+		}
+		if expired.String() != datasetPermitStatusExpired {
+			t.Errorf("Expected expired status, got %s", expired.String())
+		}
+		if archived.String() != datasetPermitStatusArchived {
+			t.Errorf("Expected archived status, got %s", archived.String())
+		}
+	})
+
+	t.Run("permit status contextual methods work correctly", func(t *testing.T) {
+		statuses := NewPermitContext().Statuses()
+
+		approved := statuses.Approved()
+		expired := statuses.Expired()
+		archived := statuses.Archived()
+
+		if !approved.IsActive() {
+			t.Error("Approved status should be active")
+		}
+		if approved.IsExpired() || approved.IsArchived() {
+			t.Error("Approved status should not be expired or archived")
+		}
+		if !expired.IsExpired() {
+			t.Error("Expired status should be expired")
+		}
+		if expired.IsActive() {
+			t.Error("Expired status should not be active")
+		}
+		if !archived.IsArchived() {
+			t.Error("Archived status should be archived")
+		}
+		if archived.IsActive() {
+			t.Error("Archived status should not be active")
+		}
+	})
+}
+
 // Test utility methods that were previously untested
 func TestEnvironmentTypeRefUtilityMethods(t *testing.T) {
 	t.Run("Equals method works correctly", func(t *testing.T) {
@@ -272,24 +336,24 @@ func TestProcedureStatusRefUtilityMethods(t *testing.T) {
 func TestProtocolStatusRefUtilityMethods(t *testing.T) {
 	t.Run("Equals method works correctly", func(t *testing.T) {
 		ctx := NewProtocolContext()
-		active1 := ctx.Active()
-		active2 := ctx.Active()
-		completed := ctx.Completed()
+		approved1 := ctx.Approved()
+		approved2 := ctx.Approved()
+		expired := ctx.Expired()
 
-		if !active1.Equals(active2) {
-			t.Error("Two active status refs should be equal")
+		if !approved1.Equals(approved2) {
+			t.Error("Two approved status refs should be equal")
 		}
 
-		if active1.Equals(completed) {
-			t.Error("Active and completed status refs should not be equal")
+		if approved1.Equals(expired) {
+			t.Error("Approved and expired status refs should not be equal")
 		}
 	})
 
 	t.Run("isProtocolStatusRef marker method exists", func(_ *testing.T) {
 		ctx := NewProtocolContext()
-		active := ctx.Active()
+		approved := ctx.Approved()
 
 		// This method should exist (it's a marker method for type safety)
-		var _ = active
+		var _ = approved
 	})
 }

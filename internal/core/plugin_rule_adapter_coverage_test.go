@@ -5,19 +5,17 @@ import (
 	"time"
 
 	"colonycore/pkg/domain"
+	entitymodel "colonycore/pkg/domain/entitymodel"
 )
 
 // TestFacilityViewSupportsHousingUnit tests the SupportsHousingUnit method with 0% coverage
 func TestFacilityViewSupportsHousingUnit(t *testing.T) {
-	facility := domain.Facility{
-		Base: domain.Base{
-			ID: "facility-1",
-		},
+	facility := domain.Facility{Facility: entitymodel.Facility{ID: "facility-1",
 		Name:           "Test Facility",
 		Zone:           "Zone A",
 		AccessPolicy:   "restricted",
 		HousingUnitIDs: []string{"housing-1", "housing-2"},
-		ProjectIDs:     []string{"project-1"},
+		ProjectIDs:     []string{"project-1"}},
 	}
 
 	view := newFacilityView(facility)
@@ -39,12 +37,9 @@ func TestFacilityViewSupportsHousingUnit(t *testing.T) {
 
 // TestTreatmentViewAdministrationLog tests the AdministrationLog method with 0% coverage
 func TestTreatmentViewAdministrationLog(t *testing.T) {
-	treatment := domain.Treatment{
-		Base: domain.Base{
-			ID: "treatment-1",
-		},
+	treatment := domain.Treatment{Treatment: entitymodel.Treatment{ID: "treatment-1",
 		Name:              "Test Treatment",
-		AdministrationLog: []string{"admin-1", "admin-2"},
+		AdministrationLog: []string{"admin-1", "admin-2"}},
 	}
 
 	view := newTreatmentView(treatment)
@@ -61,12 +56,9 @@ func TestTreatmentViewAdministrationLog(t *testing.T) {
 
 // TestTreatmentViewAdverseEvents tests the AdverseEvents method with 0% coverage
 func TestTreatmentViewAdverseEvents(t *testing.T) {
-	treatment := domain.Treatment{
-		Base: domain.Base{
-			ID: "treatment-1",
-		},
+	treatment := domain.Treatment{Treatment: entitymodel.Treatment{ID: "treatment-1",
 		Name:          "Test Treatment",
-		AdverseEvents: []string{"event-1", "event-2"},
+		AdverseEvents: []string{"event-1", "event-2"}},
 	}
 
 	view := newTreatmentView(treatment)
@@ -84,11 +76,8 @@ func TestTreatmentViewAdverseEvents(t *testing.T) {
 // TestObservationViewOrganismID tests the OrganismID method with 0% coverage
 func TestObservationViewOrganismID(t *testing.T) {
 	orgID := "organism-123"
-	observation := domain.Observation{
-		Base: domain.Base{
-			ID: "observation-1",
-		},
-		OrganismID: &orgID,
+	observation := domain.Observation{Observation: entitymodel.Observation{ID: "observation-1",
+		OrganismID: &orgID},
 	}
 
 	view := newObservationView(observation)
@@ -101,11 +90,8 @@ func TestObservationViewOrganismID(t *testing.T) {
 // TestObservationViewCohortID tests the CohortID method with 0% coverage
 func TestObservationViewCohortID(t *testing.T) {
 	cohortID := "cohort-123"
-	observation := domain.Observation{
-		Base: domain.Base{
-			ID: "observation-1",
-		},
-		CohortID: &cohortID,
+	observation := domain.Observation{Observation: entitymodel.Observation{ID: "observation-1",
+		CohortID: &cohortID},
 	}
 
 	view := newObservationView(observation)
@@ -118,11 +104,8 @@ func TestObservationViewCohortID(t *testing.T) {
 // TestObservationViewRecordedAt tests the RecordedAt method with 0% coverage
 func TestObservationViewRecordedAt(t *testing.T) {
 	recordedTime := time.Now()
-	observation := domain.Observation{
-		Base: domain.Base{
-			ID: "observation-1",
-		},
-		RecordedAt: recordedTime,
+	observation := domain.Observation{Observation: entitymodel.Observation{ID: "observation-1",
+		RecordedAt: recordedTime},
 	}
 
 	view := newObservationView(observation)
@@ -138,11 +121,9 @@ func TestObservationViewData(t *testing.T) {
 		"temperature": 25.5,
 		"notes":       "test observation",
 	}
-	observation := domain.Observation{
-		Base: domain.Base{
-			ID: "observation-1",
-		},
-		Data: data,
+	observation := domain.Observation{Observation: entitymodel.Observation{ID: "observation-1"}}
+	if err := observation.ApplyObservationData(data); err != nil {
+		t.Fatalf("apply observation data: %v", err)
 	}
 
 	view := newObservationView(observation)
@@ -164,11 +145,9 @@ func TestObservationViewHasStructuredPayload(t *testing.T) {
 		"temperature": 25.5,
 		"notes":       "test observation",
 	}
-	observation := domain.Observation{
-		Base: domain.Base{
-			ID: "observation-1",
-		},
-		Data: dataWithStructure,
+	observation := domain.Observation{Observation: entitymodel.Observation{ID: "observation-1"}}
+	if err := observation.ApplyObservationData(dataWithStructure); err != nil {
+		t.Fatalf("apply observation data: %v", err)
 	}
 
 	view := newObservationView(observation)
@@ -177,12 +156,7 @@ func TestObservationViewHasStructuredPayload(t *testing.T) {
 	}
 
 	// Test with nil data
-	observationEmpty := domain.Observation{
-		Base: domain.Base{
-			ID: "observation-2",
-		},
-		Data: nil,
-	}
+	observationEmpty := domain.Observation{Observation: entitymodel.Observation{ID: "observation-2"}}
 	viewEmpty := newObservationView(observationEmpty)
 	if viewEmpty.HasStructuredPayload() {
 		t.Errorf("Expected HasStructuredPayload to be false for nil data")
@@ -192,11 +166,8 @@ func TestObservationViewHasStructuredPayload(t *testing.T) {
 // TestObservationViewHasNarrativeNotes tests the HasNarrativeNotes method with 0% coverage
 func TestObservationViewHasNarrativeNotes(t *testing.T) {
 	// Test with notes
-	observation := domain.Observation{
-		Base: domain.Base{
-			ID: "observation-1",
-		},
-		Notes: "These are some notes",
+	observation := domain.Observation{Observation: entitymodel.Observation{ID: "observation-1",
+		Notes: strPtr("These are some notes")},
 	}
 
 	view := newObservationView(observation)
@@ -205,15 +176,12 @@ func TestObservationViewHasNarrativeNotes(t *testing.T) {
 	}
 
 	// Test without notes
-	observationEmpty := domain.Observation{
-		Base: domain.Base{
-			ID: "observation-2",
-		},
-		Notes: "",
+	observationEmpty := domain.Observation{Observation: entitymodel.Observation{ID: "observation-2",
+		Notes: strPtr("")},
 	}
 	viewEmpty := newObservationView(observationEmpty)
-	if !viewEmpty.HasNarrativeNotes() {
-		t.Errorf("Expected HasNarrativeNotes to be true even for empty notes (narrative capability)")
+	if viewEmpty.HasNarrativeNotes() {
+		t.Errorf("Expected HasNarrativeNotes to be false for empty notes")
 	}
 }
 

@@ -1,0 +1,1582 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ColonyCore Entity Model v0",
+  "version": "0.2.0",
+  "description": "Canonical, species-agnostic entity contract derived from RFC-0001 and ADR-0003.",
+  "metadata": {
+    "source": "docs/adr/0003-core-domain-schema.md",
+    "status": "accepted"
+  },
+  "id_semantics": {
+    "type": "uuidv7",
+    "scope": "global",
+    "required": true,
+    "description": "Opaque identifiers required for every entity instance."
+  },
+  "enums": {
+    "lifecycle_stage": {
+      "type": "string",
+      "values": [
+        "planned",
+        "embryo_larva",
+        "juvenile",
+        "adult",
+        "retired",
+        "deceased"
+      ],
+      "initial": "planned",
+      "terminal": [
+        "retired",
+        "deceased"
+      ],
+      "description": "Organism lifecycle states (RFC-0001 §5.1)."
+    },
+    "procedure_status": {
+      "type": "string",
+      "values": [
+        "scheduled",
+        "in_progress",
+        "completed",
+        "cancelled",
+        "failed"
+      ],
+      "description": "Procedure workflow states (RFC-0001 §5.4)."
+    },
+    "treatment_status": {
+      "type": "string",
+      "values": [
+        "planned",
+        "in_progress",
+        "completed",
+        "flagged"
+      ],
+      "description": "Treatment lifecycle states."
+    },
+    "sample_status": {
+      "type": "string",
+      "values": [
+        "stored",
+        "in_transit",
+        "consumed",
+        "disposed"
+      ],
+      "description": "Sample custody states."
+    },
+    "permit_status": {
+      "type": "string",
+      "values": [
+        "draft",
+        "submitted",
+        "approved",
+        "on_hold",
+        "expired",
+        "archived"
+      ],
+      "description": "Compliance lifecycle states for permits."
+    },
+    "protocol_status": {
+      "type": "string",
+      "values": [
+        "draft",
+        "submitted",
+        "approved",
+        "on_hold",
+        "expired",
+        "archived"
+      ],
+      "description": "Compliance lifecycle states (RFC-0001 §5.3) used by contextual accessors."
+    },
+    "housing_state": {
+      "type": "string",
+      "values": [
+        "quarantine",
+        "active",
+        "cleaning",
+        "decommissioned"
+      ],
+      "initial": "quarantine",
+      "terminal": [
+        "decommissioned"
+      ],
+      "description": "Housing lifecycle states (RFC-0001 §5.2)."
+    },
+    "housing_environment": {
+      "type": "string",
+      "values": [
+        "aquatic",
+        "terrestrial",
+        "arboreal",
+        "humid"
+      ],
+      "description": "Canonical housing environments (ADR-0010 contextual helpers)."
+    }
+  },
+  "entities": {
+    "Organism": {
+      "description": "Individual organism with lifecycle and housing context.",
+      "required": [
+        "id",
+        "created_at",
+        "updated_at",
+        "name",
+        "species",
+        "line",
+        "stage"
+      ],
+      "natural_keys": [
+        {
+          "fields": [
+            "species",
+            "line",
+            "name"
+          ],
+          "scope": "species"
+        }
+      ],
+      "states": {
+        "enum": "lifecycle_stage",
+        "initial": "planned",
+        "terminal": [
+          "retired",
+          "deceased"
+        ]
+      },
+      "properties": {
+        "id": {
+          "$ref": "#/definitions/id"
+        },
+        "created_at": {
+          "$ref": "#/definitions/timestamp"
+        },
+        "updated_at": {
+          "$ref": "#/definitions/timestamp"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "species": {
+          "type": "string",
+          "minLength": 1
+        },
+        "line": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Human-readable line code or name."
+        },
+        "line_id": {
+          "$ref": "#/definitions/entity_id",
+          "description": "FK to Line"
+        },
+        "strain_id": {
+          "$ref": "#/definitions/entity_id",
+          "description": "FK to Strain"
+        },
+        "parent_ids": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/entity_id"
+          },
+          "uniqueItems": true
+        },
+        "stage": {
+          "$ref": "#/enums/lifecycle_stage"
+        },
+        "cohort_id": {
+          "$ref": "#/definitions/entity_id",
+          "description": "FK to Cohort"
+        },
+        "housing_id": {
+          "$ref": "#/definitions/entity_id",
+          "description": "FK to HousingUnit"
+        },
+        "protocol_id": {
+          "$ref": "#/definitions/entity_id",
+          "description": "FK to Protocol"
+        },
+        "project_id": {
+          "$ref": "#/definitions/entity_id",
+          "description": "FK to Project"
+        },
+        "attributes": {
+          "$ref": "#/definitions/extension_attributes",
+          "description": "Species-agnostic extension slot"
+        }
+      },
+      "relationships": {
+        "line_id": {
+          "target": "Line",
+          "cardinality": "0..1"
+        },
+        "strain_id": {
+          "target": "Strain",
+          "cardinality": "0..1"
+        },
+        "parent_ids": {
+          "target": "Organism",
+          "cardinality": "0..n"
+        },
+        "cohort_id": {
+          "target": "Cohort",
+          "cardinality": "0..1"
+        },
+        "housing_id": {
+          "target": "HousingUnit",
+          "cardinality": "0..1"
+        },
+        "protocol_id": {
+          "target": "Protocol",
+          "cardinality": "0..1"
+        },
+        "project_id": {
+          "target": "Project",
+          "cardinality": "0..1"
+        }
+      },
+      "invariants": [
+        "housing_capacity",
+        "protocol_subject_cap",
+        "lineage_integrity",
+        "lifecycle_transition"
+      ]
+    },
+    "Cohort": {
+      "description": "Managed group of organisms bound to housing and project context.",
+      "natural_keys": [
+        {
+          "fields": [
+            "project_id",
+            "name"
+          ],
+          "scope": "project"
+        }
+      ],
+      "required": [
+        "id",
+        "created_at",
+        "updated_at",
+        "name",
+        "purpose"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/definitions/id"
+        },
+        "created_at": {
+          "$ref": "#/definitions/timestamp"
+        },
+        "updated_at": {
+          "$ref": "#/definitions/timestamp"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "purpose": {
+          "type": "string",
+          "minLength": 1
+        },
+        "project_id": {
+          "$ref": "#/definitions/entity_id",
+          "description": "FK to Project"
+        },
+        "housing_id": {
+          "$ref": "#/definitions/entity_id",
+          "description": "FK to HousingUnit"
+        },
+        "protocol_id": {
+          "$ref": "#/definitions/entity_id",
+          "description": "FK to Protocol"
+        }
+      },
+      "relationships": {
+        "project_id": {
+          "target": "Project",
+          "cardinality": "0..1"
+        },
+        "housing_id": {
+          "target": "HousingUnit",
+          "cardinality": "0..1"
+        },
+        "protocol_id": {
+          "target": "Protocol",
+          "cardinality": "0..1"
+        }
+      },
+      "invariants": []
+    },
+    "HousingUnit": {
+      "description": "Physical housing with capacity and environmental baseline.",
+      "natural_keys": [
+        {
+          "fields": [
+            "facility_id",
+            "name"
+          ],
+          "scope": "facility"
+        }
+      ],
+      "required": [
+        "id",
+        "created_at",
+        "updated_at",
+        "name",
+        "facility_id",
+        "capacity",
+        "environment",
+        "state"
+      ],
+      "states": {
+        "enum": "housing_state",
+        "initial": "quarantine",
+        "terminal": [
+          "decommissioned"
+        ]
+      },
+      "properties": {
+        "id": {
+          "$ref": "#/definitions/id"
+        },
+        "created_at": {
+          "$ref": "#/definitions/timestamp"
+        },
+        "updated_at": {
+          "$ref": "#/definitions/timestamp"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "facility_id": {
+          "$ref": "#/definitions/entity_id",
+          "description": "FK to Facility"
+        },
+        "capacity": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "state": {
+          "$ref": "#/enums/housing_state"
+        },
+        "environment": {
+          "$ref": "#/enums/housing_environment"
+        }
+      },
+      "relationships": {
+        "facility_id": {
+          "target": "Facility",
+          "cardinality": "1..1"
+        }
+      },
+      "invariants": [
+        "housing_capacity",
+        "lifecycle_transition"
+      ]
+    },
+    "Facility": {
+      "description": "Facility with zone and access policy constraints.",
+      "natural_keys": [
+        {
+          "fields": [
+            "code"
+          ],
+          "scope": "global",
+          "description": "Facility code must be unique."
+        }
+      ],
+      "required": [
+        "id",
+        "created_at",
+        "updated_at",
+        "code",
+        "name",
+        "zone",
+        "access_policy"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/definitions/id"
+        },
+        "created_at": {
+          "$ref": "#/definitions/timestamp"
+        },
+        "updated_at": {
+          "$ref": "#/definitions/timestamp"
+        },
+        "code": {
+          "type": "string",
+          "minLength": 1
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "zone": {
+          "type": "string",
+          "minLength": 1
+        },
+        "access_policy": {
+          "type": "string",
+          "minLength": 1
+        },
+        "housing_unit_ids": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/entity_id"
+          },
+          "uniqueItems": true
+        },
+        "project_ids": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/entity_id"
+          },
+          "uniqueItems": true
+        },
+        "environment_baselines": {
+          "$ref": "#/definitions/extension_attributes",
+          "description": "Facility environment baselines extension slot"
+        }
+      },
+      "relationships": {
+        "housing_unit_ids": {
+          "target": "HousingUnit",
+          "cardinality": "0..n",
+          "storage": "derived"
+        },
+        "project_ids": {
+          "target": "Project",
+          "cardinality": "0..n"
+        }
+      },
+      "invariants": []
+    },
+    "BreedingUnit": {
+      "description": "Configured breeding group with lineage targets.",
+      "natural_keys": [
+        {
+          "fields": [
+            "name",
+            "line_id"
+          ],
+          "scope": "line"
+        }
+      ],
+      "required": [
+        "id",
+        "created_at",
+        "updated_at",
+        "name",
+        "strategy"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/definitions/id"
+        },
+        "created_at": {
+          "$ref": "#/definitions/timestamp"
+        },
+        "updated_at": {
+          "$ref": "#/definitions/timestamp"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "strategy": {
+          "type": "string",
+          "minLength": 1
+        },
+        "housing_id": {
+          "$ref": "#/definitions/entity_id",
+          "description": "FK to HousingUnit"
+        },
+        "protocol_id": {
+          "$ref": "#/definitions/entity_id",
+          "description": "FK to Protocol"
+        },
+        "line_id": {
+          "$ref": "#/definitions/entity_id",
+          "description": "FK to Line"
+        },
+        "strain_id": {
+          "$ref": "#/definitions/entity_id",
+          "description": "FK to Strain"
+        },
+        "target_line_id": {
+          "$ref": "#/definitions/entity_id",
+          "description": "Target FK to Line"
+        },
+        "target_strain_id": {
+          "$ref": "#/definitions/entity_id",
+          "description": "Target FK to Strain"
+        },
+        "pairing_intent": {
+          "type": "string"
+        },
+        "pairing_notes": {
+          "type": "string"
+        },
+        "female_ids": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/entity_id"
+          },
+          "uniqueItems": true
+        },
+        "male_ids": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/entity_id"
+          },
+          "uniqueItems": true
+        },
+        "pairing_attributes": {
+          "$ref": "#/definitions/extension_attributes",
+          "description": "Pairing attribute extension slot"
+        }
+      },
+      "relationships": {
+        "housing_id": {
+          "target": "HousingUnit",
+          "cardinality": "0..1"
+        },
+        "protocol_id": {
+          "target": "Protocol",
+          "cardinality": "0..1"
+        },
+        "line_id": {
+          "target": "Line",
+          "cardinality": "0..1"
+        },
+        "strain_id": {
+          "target": "Strain",
+          "cardinality": "0..1"
+        },
+        "target_line_id": {
+          "target": "Line",
+          "cardinality": "0..1"
+        },
+        "target_strain_id": {
+          "target": "Strain",
+          "cardinality": "0..1"
+        },
+        "female_ids": {
+          "target": "Organism",
+          "cardinality": "0..n"
+        },
+        "male_ids": {
+          "target": "Organism",
+          "cardinality": "0..n"
+        }
+      },
+      "invariants": [
+        "lineage_integrity"
+      ]
+    },
+    "Line": {
+      "description": "Genetic lineage definition.",
+      "natural_keys": [
+        {
+          "fields": [
+            "code"
+          ],
+          "scope": "global"
+        }
+      ],
+      "required": [
+        "id",
+        "created_at",
+        "updated_at",
+        "code",
+        "name",
+        "origin",
+        "genotype_marker_ids"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/definitions/id"
+        },
+        "created_at": {
+          "$ref": "#/definitions/timestamp"
+        },
+        "updated_at": {
+          "$ref": "#/definitions/timestamp"
+        },
+        "code": {
+          "type": "string",
+          "minLength": 1
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "description": {
+          "type": "string"
+        },
+        "origin": {
+          "type": "string",
+          "minLength": 1
+        },
+        "genotype_marker_ids": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/entity_id"
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "default_attributes": {
+          "$ref": "#/definitions/extension_attributes",
+          "description": "Default attributes extension slot"
+        },
+        "extension_overrides": {
+          "$ref": "#/definitions/extension_attributes",
+          "description": "Override attributes extension slot"
+        },
+        "deprecated_at": {
+          "$ref": "#/definitions/timestamp"
+        },
+        "deprecation_reason": {
+          "type": "string"
+        }
+      },
+      "relationships": {
+        "genotype_marker_ids": {
+          "target": "GenotypeMarker",
+          "cardinality": "1..n"
+        }
+      },
+      "invariants": []
+    },
+    "Strain": {
+      "description": "Managed strain derived from a Line.",
+      "natural_keys": [
+        {
+          "fields": [
+            "line_id",
+            "code"
+          ],
+          "scope": "line"
+        }
+      ],
+      "required": [
+        "id",
+        "created_at",
+        "updated_at",
+        "code",
+        "name",
+        "line_id"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/definitions/id"
+        },
+        "created_at": {
+          "$ref": "#/definitions/timestamp"
+        },
+        "updated_at": {
+          "$ref": "#/definitions/timestamp"
+        },
+        "code": {
+          "type": "string",
+          "minLength": 1
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "line_id": {
+          "$ref": "#/definitions/entity_id",
+          "description": "FK to Line"
+        },
+        "description": {
+          "type": "string"
+        },
+        "generation": {
+          "type": "string"
+        },
+        "genotype_marker_ids": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/entity_id"
+          },
+          "uniqueItems": true
+        },
+        "retired_at": {
+          "$ref": "#/definitions/timestamp"
+        },
+        "retirement_reason": {
+          "type": "string"
+        }
+      },
+      "relationships": {
+        "line_id": {
+          "target": "Line",
+          "cardinality": "1..1"
+        },
+        "genotype_marker_ids": {
+          "target": "GenotypeMarker",
+          "cardinality": "0..n"
+        }
+      },
+      "invariants": []
+    },
+    "GenotypeMarker": {
+      "description": "Genotype marker metadata with assay details.",
+      "natural_keys": [
+        {
+          "fields": [
+            "name",
+            "version"
+          ],
+          "scope": "global"
+        }
+      ],
+      "required": [
+        "id",
+        "created_at",
+        "updated_at",
+        "name",
+        "locus",
+        "alleles",
+        "assay_method",
+        "interpretation",
+        "version"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/definitions/id"
+        },
+        "created_at": {
+          "$ref": "#/definitions/timestamp"
+        },
+        "updated_at": {
+          "$ref": "#/definitions/timestamp"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "locus": {
+          "type": "string",
+          "minLength": 1
+        },
+        "alleles": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "uniqueItems": true
+        },
+        "assay_method": {
+          "type": "string",
+          "minLength": 1
+        },
+        "interpretation": {
+          "type": "string",
+          "minLength": 1
+        },
+        "version": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "relationships": {},
+      "invariants": []
+    },
+    "Procedure": {
+      "description": "Scheduled or executed procedure with protocol coverage.",
+      "natural_keys": [
+        {
+          "fields": [
+            "protocol_id",
+            "name",
+            "scheduled_at"
+          ],
+          "scope": "protocol"
+        }
+      ],
+      "required": [
+        "id",
+        "created_at",
+        "updated_at",
+        "name",
+        "status",
+        "scheduled_at",
+        "protocol_id"
+      ],
+      "states": {
+        "enum": "procedure_status",
+        "initial": "scheduled",
+        "terminal": [
+          "completed",
+          "cancelled",
+          "failed"
+        ]
+      },
+      "properties": {
+        "id": {
+          "$ref": "#/definitions/id"
+        },
+        "created_at": {
+          "$ref": "#/definitions/timestamp"
+        },
+        "updated_at": {
+          "$ref": "#/definitions/timestamp"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "status": {
+          "$ref": "#/enums/procedure_status"
+        },
+        "scheduled_at": {
+          "$ref": "#/definitions/timestamp"
+        },
+        "protocol_id": {
+          "$ref": "#/definitions/entity_id",
+          "description": "FK to Protocol"
+        },
+        "project_id": {
+          "$ref": "#/definitions/entity_id",
+          "description": "FK to Project"
+        },
+        "cohort_id": {
+          "$ref": "#/definitions/entity_id",
+          "description": "FK to Cohort"
+        },
+        "organism_ids": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/entity_id"
+          },
+          "uniqueItems": true
+        },
+        "treatment_ids": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/entity_id"
+          },
+          "uniqueItems": true
+        },
+        "observation_ids": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/entity_id"
+          },
+          "uniqueItems": true
+        }
+      },
+      "relationships": {
+        "protocol_id": {
+          "target": "Protocol",
+          "cardinality": "1..1"
+        },
+        "project_id": {
+          "target": "Project",
+          "cardinality": "0..1"
+        },
+        "cohort_id": {
+          "target": "Cohort",
+          "cardinality": "0..1"
+        },
+        "organism_ids": {
+          "target": "Organism",
+          "cardinality": "0..n"
+        },
+        "treatment_ids": {
+          "target": "Treatment",
+          "cardinality": "0..n"
+        },
+        "observation_ids": {
+          "target": "Observation",
+          "cardinality": "0..n"
+        }
+      },
+      "invariants": [
+        "protocol_coverage",
+        "lifecycle_transition"
+      ]
+    },
+    "Treatment": {
+      "description": "Therapeutic intervention bound to procedure subjects.",
+      "natural_keys": [
+        {
+          "fields": [
+            "procedure_id",
+            "name"
+          ],
+          "scope": "procedure"
+        }
+      ],
+      "required": [
+        "id",
+        "created_at",
+        "updated_at",
+        "name",
+        "status",
+        "procedure_id",
+        "dosage_plan"
+      ],
+      "states": {
+        "enum": "treatment_status",
+        "initial": "planned",
+        "terminal": [
+          "completed",
+          "flagged"
+        ]
+      },
+      "properties": {
+        "id": {
+          "$ref": "#/definitions/id"
+        },
+        "created_at": {
+          "$ref": "#/definitions/timestamp"
+        },
+        "updated_at": {
+          "$ref": "#/definitions/timestamp"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "status": {
+          "$ref": "#/enums/treatment_status"
+        },
+        "procedure_id": {
+          "$ref": "#/definitions/entity_id",
+          "description": "FK to Procedure"
+        },
+        "organism_ids": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/entity_id"
+          },
+          "uniqueItems": true
+        },
+        "cohort_ids": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/entity_id"
+          },
+          "uniqueItems": true
+        },
+        "dosage_plan": {
+          "type": "string",
+          "minLength": 1
+        },
+        "administration_log": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "adverse_events": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "relationships": {
+        "procedure_id": {
+          "target": "Procedure",
+          "cardinality": "1..1"
+        },
+        "organism_ids": {
+          "target": "Organism",
+          "cardinality": "0..n"
+        },
+        "cohort_ids": {
+          "target": "Cohort",
+          "cardinality": "0..n"
+        }
+      },
+      "invariants": [
+        "protocol_coverage",
+        "lifecycle_transition"
+      ]
+    },
+    "Observation": {
+      "description": "Observation or measurement captured during workflows.",
+      "natural_keys": [
+        {
+          "fields": [
+            "procedure_id",
+            "recorded_at",
+            "observer"
+          ],
+          "scope": "procedure"
+        }
+      ],
+      "required": [
+        "id",
+        "created_at",
+        "updated_at",
+        "recorded_at",
+        "observer"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/definitions/id"
+        },
+        "created_at": {
+          "$ref": "#/definitions/timestamp"
+        },
+        "updated_at": {
+          "$ref": "#/definitions/timestamp"
+        },
+        "procedure_id": {
+          "$ref": "#/definitions/entity_id",
+          "description": "FK to Procedure"
+        },
+        "organism_id": {
+          "$ref": "#/definitions/entity_id",
+          "description": "FK to Organism"
+        },
+        "cohort_id": {
+          "$ref": "#/definitions/entity_id",
+          "description": "FK to Cohort"
+        },
+        "recorded_at": {
+          "$ref": "#/definitions/timestamp"
+        },
+        "observer": {
+          "type": "string",
+          "minLength": 1
+        },
+        "notes": {
+          "type": "string"
+        },
+        "data": {
+          "$ref": "#/definitions/extension_attributes",
+          "description": "Schema-less observation payload"
+        }
+      },
+      "relationships": {
+        "procedure_id": {
+          "target": "Procedure",
+          "cardinality": "0..1"
+        },
+        "organism_id": {
+          "target": "Organism",
+          "cardinality": "0..1"
+        },
+        "cohort_id": {
+          "target": "Cohort",
+          "cardinality": "0..1"
+        }
+      },
+      "invariants": []
+    },
+    "Sample": {
+      "description": "Sample with chain-of-custody and facility linkage.",
+      "natural_keys": [
+        {
+          "fields": [
+            "facility_id",
+            "identifier"
+          ],
+          "scope": "facility"
+        }
+      ],
+      "required": [
+        "id",
+        "created_at",
+        "updated_at",
+        "identifier",
+        "source_type",
+        "facility_id",
+        "collected_at",
+        "status",
+        "storage_location",
+        "assay_type",
+        "chain_of_custody"
+      ],
+      "states": {
+        "enum": "sample_status",
+        "initial": "stored",
+        "terminal": [
+          "consumed",
+          "disposed"
+        ]
+      },
+      "properties": {
+        "id": {
+          "$ref": "#/definitions/id"
+        },
+        "created_at": {
+          "$ref": "#/definitions/timestamp"
+        },
+        "updated_at": {
+          "$ref": "#/definitions/timestamp"
+        },
+        "identifier": {
+          "type": "string",
+          "minLength": 1
+        },
+        "source_type": {
+          "type": "string",
+          "minLength": 1
+        },
+        "organism_id": {
+          "$ref": "#/definitions/entity_id",
+          "description": "FK to Organism"
+        },
+        "cohort_id": {
+          "$ref": "#/definitions/entity_id",
+          "description": "FK to Cohort"
+        },
+        "facility_id": {
+          "$ref": "#/definitions/entity_id",
+          "description": "FK to Facility"
+        },
+        "collected_at": {
+          "$ref": "#/definitions/timestamp"
+        },
+        "status": {
+          "$ref": "#/enums/sample_status"
+        },
+        "storage_location": {
+          "type": "string",
+          "minLength": 1
+        },
+        "assay_type": {
+          "type": "string",
+          "minLength": 1
+        },
+        "chain_of_custody": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/sample_custody_event"
+          },
+          "minItems": 1
+        },
+        "attributes": {
+          "$ref": "#/definitions/extension_attributes",
+          "description": "Sample attribute extension slot"
+        }
+      },
+      "relationships": {
+        "organism_id": {
+          "target": "Organism",
+          "cardinality": "0..1"
+        },
+        "cohort_id": {
+          "target": "Cohort",
+          "cardinality": "0..1"
+        },
+        "facility_id": {
+          "target": "Facility",
+          "cardinality": "1..1"
+        }
+      },
+      "invariants": [
+        "lifecycle_transition"
+      ]
+    },
+    "Protocol": {
+      "description": "Compliance protocol with subject cap and status.",
+      "natural_keys": [
+        {
+          "fields": [
+            "code"
+          ],
+          "scope": "global"
+        }
+      ],
+      "required": [
+        "id",
+        "created_at",
+        "updated_at",
+        "code",
+        "title",
+        "max_subjects",
+        "status"
+      ],
+      "states": {
+        "enum": "protocol_status",
+        "initial": "draft",
+        "terminal": [
+          "expired",
+          "archived"
+        ]
+      },
+      "properties": {
+        "id": {
+          "$ref": "#/definitions/id"
+        },
+        "created_at": {
+          "$ref": "#/definitions/timestamp"
+        },
+        "updated_at": {
+          "$ref": "#/definitions/timestamp"
+        },
+        "code": {
+          "type": "string",
+          "minLength": 1
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "description": {
+          "type": "string"
+        },
+        "max_subjects": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "status": {
+          "$ref": "#/enums/protocol_status"
+        }
+      },
+      "relationships": {},
+      "invariants": [
+        "protocol_subject_cap",
+        "lifecycle_transition"
+      ]
+    },
+    "Permit": {
+      "description": "External authorization for protocols and facilities.",
+      "natural_keys": [
+        {
+          "fields": [
+            "authority",
+            "permit_number"
+          ],
+          "scope": "authority"
+        }
+      ],
+      "required": [
+        "id",
+        "created_at",
+        "updated_at",
+        "permit_number",
+        "authority",
+        "status",
+        "valid_from",
+        "valid_until",
+        "allowed_activities",
+        "facility_ids",
+        "protocol_ids"
+      ],
+      "states": {
+        "enum": "permit_status",
+        "initial": "draft",
+        "terminal": [
+          "expired",
+          "archived"
+        ]
+      },
+      "properties": {
+        "id": {
+          "$ref": "#/definitions/id"
+        },
+        "created_at": {
+          "$ref": "#/definitions/timestamp"
+        },
+        "updated_at": {
+          "$ref": "#/definitions/timestamp"
+        },
+        "permit_number": {
+          "type": "string",
+          "minLength": 1
+        },
+        "authority": {
+          "type": "string",
+          "minLength": 1
+        },
+        "status": {
+          "$ref": "#/enums/permit_status"
+        },
+        "valid_from": {
+          "$ref": "#/definitions/timestamp"
+        },
+        "valid_until": {
+          "$ref": "#/definitions/timestamp"
+        },
+        "allowed_activities": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "facility_ids": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/entity_id"
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "protocol_ids": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/entity_id"
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "notes": {
+          "type": "string"
+        }
+      },
+      "relationships": {
+        "facility_ids": {
+          "target": "Facility",
+          "cardinality": "1..n"
+        },
+        "protocol_ids": {
+          "target": "Protocol",
+          "cardinality": "1..n"
+        }
+      },
+      "invariants": [
+        "lifecycle_transition"
+      ]
+    },
+    "Project": {
+      "description": "Project with facility and protocol affiliations.",
+      "natural_keys": [
+        {
+          "fields": [
+            "code"
+          ],
+          "scope": "global"
+        }
+      ],
+      "required": [
+        "id",
+        "created_at",
+        "updated_at",
+        "code",
+        "title",
+        "facility_ids"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/definitions/id"
+        },
+        "created_at": {
+          "$ref": "#/definitions/timestamp"
+        },
+        "updated_at": {
+          "$ref": "#/definitions/timestamp"
+        },
+        "code": {
+          "type": "string",
+          "minLength": 1
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "description": {
+          "type": "string"
+        },
+        "facility_ids": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/entity_id"
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "protocol_ids": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/entity_id"
+          },
+          "uniqueItems": true
+        },
+        "organism_ids": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/entity_id"
+          },
+          "uniqueItems": true
+        },
+        "procedure_ids": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/entity_id"
+          },
+          "uniqueItems": true
+        },
+        "supply_item_ids": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/entity_id"
+          },
+          "uniqueItems": true
+        }
+      },
+      "relationships": {
+        "facility_ids": {
+          "target": "Facility",
+          "cardinality": "1..n"
+        },
+        "protocol_ids": {
+          "target": "Protocol",
+          "cardinality": "0..n"
+        },
+        "organism_ids": {
+          "target": "Organism",
+          "cardinality": "0..n"
+        },
+        "procedure_ids": {
+          "target": "Procedure",
+          "cardinality": "0..n"
+        },
+        "supply_item_ids": {
+          "target": "SupplyItem",
+          "cardinality": "0..n"
+        }
+      },
+      "invariants": []
+    },
+    "SupplyItem": {
+      "description": "Inventory item linked to facilities and projects.",
+      "natural_keys": [
+        {
+          "fields": [
+            "sku"
+          ],
+          "scope": "global"
+        }
+      ],
+      "required": [
+        "id",
+        "created_at",
+        "updated_at",
+        "sku",
+        "name",
+        "quantity_on_hand",
+        "unit",
+        "facility_ids",
+        "project_ids",
+        "reorder_level"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/definitions/id"
+        },
+        "created_at": {
+          "$ref": "#/definitions/timestamp"
+        },
+        "updated_at": {
+          "$ref": "#/definitions/timestamp"
+        },
+        "sku": {
+          "type": "string",
+          "minLength": 1
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "description": {
+          "type": "string"
+        },
+        "quantity_on_hand": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "unit": {
+          "type": "string",
+          "minLength": 1
+        },
+        "lot_number": {
+          "type": "string"
+        },
+        "expires_at": {
+          "$ref": "#/definitions/timestamp"
+        },
+        "facility_ids": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/entity_id"
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "project_ids": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/entity_id"
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "reorder_level": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "attributes": {
+          "$ref": "#/definitions/extension_attributes",
+          "description": "Supply attribute extension slot"
+        }
+      },
+      "relationships": {
+        "facility_ids": {
+          "target": "Facility",
+          "cardinality": "1..n"
+        },
+        "project_ids": {
+          "target": "Project",
+          "cardinality": "1..n"
+        }
+      },
+      "invariants": []
+    }
+  },
+  "definitions": {
+    "id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "entity_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "extension_attributes": {
+      "type": "object",
+      "additionalProperties": true,
+      "description": "Plugin-safe extension payload."
+    },
+    "sample_custody_event": {
+      "type": "object",
+      "required": [
+        "actor",
+        "location",
+        "timestamp"
+      ],
+      "properties": {
+        "actor": {
+          "type": "string",
+          "minLength": 1
+        },
+        "location": {
+          "type": "string",
+          "minLength": 1
+        },
+        "timestamp": {
+          "$ref": "#/definitions/timestamp"
+        },
+        "notes": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}

@@ -50,8 +50,8 @@ func validateAllViewInterfacesHaveContextualAccessors(t *testing.T, baseDir stri
 	requiredPatterns := map[string][]string{
 		"OrganismView":    {"GetCurrentStage", "IsActive", "IsRetired", "IsDeceased"},
 		"Organism":        {"GetCurrentStage", "IsActive", "IsRetired", "IsDeceased"},
-		"HousingUnitView": {"GetEnvironmentType", "IsAquaticEnvironment", "IsHumidEnvironment", "SupportsSpecies"},
-		"HousingUnit":     {"GetEnvironmentType", "IsAquaticEnvironment", "IsHumidEnvironment", "SupportsSpecies"},
+		"HousingUnitView": {"GetEnvironmentType", "IsAquaticEnvironment", "IsHumidEnvironment", "SupportsSpecies", "GetCurrentState", "IsActiveState", "IsDecommissioned"},
+		"HousingUnit":     {"GetEnvironmentType", "IsAquaticEnvironment", "IsHumidEnvironment", "SupportsSpecies", "GetState", "IsActiveState", "IsDecommissioned"},
 		"ProtocolView":    {"GetCurrentStatus", "IsActiveProtocol", "IsTerminalStatus", "CanAcceptNewSubjects"},
 		"Protocol":        {"GetCurrentStatus", "IsActiveProtocol", "IsTerminalStatus", "CanAcceptNewSubjects"},
 		"Procedure":       {"GetCurrentStatus", "IsActiveProcedure", "IsTerminalStatus", "IsSuccessful"},
@@ -201,7 +201,7 @@ func validateContextualPatternConsistency(t *testing.T, baseDir string) {
 	expectedContexts := map[string][]string{
 		"LifecycleStageContext": {"Planned", "Larva", "Juvenile", "Adult", "Retired", "Deceased"},
 		"HousingContext":        {"Aquatic", "Terrestrial", "Arboreal", "Humid"},
-		"ProtocolContext":       {"Draft", "Active", "Suspended", "Completed", "Cancelled"},
+		"ProtocolContext":       {"Draft", "Submitted", "Approved", "OnHold", "Expired", "Archived"},
 		"ProcedureContext":      {"Scheduled", "InProgress", "Completed", "Cancelled", "Failed"},
 		"EntityContext":         {"Organism", "Housing", "Protocol"},
 		"SeverityContext":       {"Log", "Warn", "Block"},

@@ -99,6 +99,14 @@ func TestContextMarkerMethodsAreCallable(t *testing.T) {
 		}
 	})
 
+	t.Run("HousingStateRef", func(t *testing.T) {
+		ref := NewHousingStateContext().Active()
+		ref.isHousingStateRef()
+		if ref.Equals(&housingStateRef{value: housingStateActive}) {
+			t.Fatal("housing state equality should reject pointer types")
+		}
+	})
+
 	t.Run("ProtocolStatusRef", func(t *testing.T) {
 		ref := NewProtocolContext().Draft()
 		ref.isProtocolStatusRef()
@@ -108,9 +116,9 @@ func TestContextMarkerMethodsAreCallable(t *testing.T) {
 	})
 
 	t.Run("PermitStatusRef", func(t *testing.T) {
-		ref := NewPermitContext().Statuses().Pending()
+		ref := NewPermitContext().Statuses().Approved()
 		ref.isPermitStatusRef()
-		if ref.Equals(&permitStatusRef{value: permitStatusPending}) {
+		if ref.Equals(&permitStatusRef{value: permitStatusApproved}) {
 			t.Fatal("permit status equality should reject pointer types")
 		}
 	})

@@ -39,9 +39,10 @@ func TestPersistentStoreImplementationsHardening(t *testing.T) {
 		t.Fatalf("failed to resolve PersistentStore interface")
 	}
 	allowed := map[string]struct{}{
-		"colonycore/internal/infra/persistence/memory": {},
-		"colonycore/internal/infra/persistence/sqlite": {},
-		"colonycore/internal/core":                     {}, // postgres (if present) lives here via OpenPersistentStore
+		"colonycore/internal/infra/persistence/memory":   {},
+		"colonycore/internal/infra/persistence/sqlite":   {},
+		"colonycore/internal/infra/persistence/postgres": {},
+		"colonycore/internal/core":                       {}, // postgres wrapper lives here via OpenPersistentStore
 	}
 	var unexpected []string
 	for _, p := range pkgs {

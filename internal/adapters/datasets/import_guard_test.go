@@ -15,7 +15,8 @@ func TestNoInternalCoreImports(t *testing.T) {
 			return err
 		}
 		if d.IsDir() {
-			if d.Name() == "testdata" {
+			switch d.Name() {
+			case "testdata", "testutil":
 				return filepath.SkipDir
 			}
 			return nil

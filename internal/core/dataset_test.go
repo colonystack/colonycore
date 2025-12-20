@@ -10,9 +10,10 @@ import (
 )
 
 const (
-	testPluginFrog     = "frog"
-	testLiteralMutated = "mutated"
-	testLiteralChanged = "changed"
+	testPluginFrog        = "frog"
+	testLiteralMutated    = "mutated"
+	testLiteralChanged    = "changed"
+	testSchemaValueColumn = "value"
 )
 
 type stringer struct{}
@@ -82,7 +83,7 @@ func TestDatasetTemplateRunSuccess(t *testing.T) {
 	if result.Format != formatProvider.CSV() {
 		t.Fatalf("expected format csv, got %s", result.Format)
 	}
-	if len(result.Schema) != 1 || result.Schema[0].Name != "value" {
+	if len(result.Schema) != 1 || result.Schema[0].Name != testSchemaValueColumn {
 		t.Fatalf("expected schema fallback from template, got %+v", result.Schema)
 	}
 	if !result.GeneratedAt.Equal(reference) {

@@ -2,6 +2,7 @@ package memory
 
 import (
 	"colonycore/pkg/domain"
+	entitymodel "colonycore/pkg/domain/entitymodel"
 	"context"
 	"fmt"
 	"testing"
@@ -14,7 +15,7 @@ func TestStoreRunInTransactionAndSnapshots(t *testing.T) {
 		if _, ok := tx.FindHousingUnit("missing"); ok {
 			t.Fatalf("expected missing housing lookup")
 		}
-		created, err := tx.CreateOrganism(domain.Organism{Name: "Test", Species: "Frog"})
+		created, err := tx.CreateOrganism(domain.Organism{Organism: entitymodel.Organism{Name: "Test", Species: "Frog"}})
 		if err != nil {
 			return err
 		}
@@ -54,7 +55,7 @@ func TestStoreRuleViolation(t *testing.T) {
 	store := NewStore(domain.NewRulesEngine())
 	store.RulesEngine().Register(blockingRule{})
 	_, err := store.RunInTransaction(context.Background(), func(tx domain.Transaction) error {
-		_, e := tx.CreateOrganism(domain.Organism{Name: "Fail"})
+		_, e := tx.CreateOrganism(domain.Organism{Organism: entitymodel.Organism{Name: "Fail"}})
 		return e
 	})
 	if err == nil {
@@ -79,11 +80,11 @@ func TestUpdateHousingUnitErrors(t *testing.T) {
 		if _, err := tx.UpdateHousingUnit("missing", func(*domain.HousingUnit) error { return nil }); err == nil {
 			t.Fatalf("expected missing housing error")
 		}
-		f, err := tx.CreateFacility(domain.Facility{Name: "Facility"})
+		f, err := tx.CreateFacility(domain.Facility{Facility: entitymodel.Facility{Name: "Facility"}})
 		if err != nil {
 			return err
 		}
-		h, err := tx.CreateHousingUnit(domain.HousingUnit{Name: "Unit", FacilityID: f.ID, Capacity: 2})
+		h, err := tx.CreateHousingUnit(domain.HousingUnit{HousingUnit: entitymodel.HousingUnit{Name: "Unit", FacilityID: f.ID, Capacity: 2}})
 		if err != nil {
 			return err
 		}

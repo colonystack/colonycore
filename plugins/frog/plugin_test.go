@@ -83,6 +83,7 @@ func (s *stubView) FindObservation(string) (datasetapi.Observation, bool) { retu
 func (s *stubView) FindSample(string) (datasetapi.Sample, bool)           { return nil, false }
 func (s *stubView) FindPermit(string) (datasetapi.Permit, bool)           { return nil, false }
 func (s *stubView) FindSupplyItem(string) (datasetapi.SupplyItem, bool)   { return nil, false }
+func (s *stubView) FindProcedure(string) (datasetapi.Procedure, bool)     { return nil, false }
 
 type stubStore struct {
 	view datasetapi.TransactionView

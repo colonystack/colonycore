@@ -119,7 +119,7 @@ func getAntiPatterns() map[string]string {
 		`[^,]*\.Stage\(\)\s*==\s*"`:                                 "Use organism.GetCurrentStage() contextual methods instead",
 		`"(aquatic|humid|terrestrial|arboreal)"`:                    "Use housingContext.Aquatic() instead of raw string literals",
 		`"(planned|larva|juvenile|adult|retired|deceased)"`:         "Use lifecycleContext.Adult() instead of raw string literals",
-		`"(draft|active|suspended|completed|cancelled)"`:            "Use protocolContext.Active() instead of raw string literals",
+		`"(draft|submitted|approved|on_hold|expired|archived)"`:     "Use protocolContext.Approved() instead of raw string literals",
 		`\b(EntityOrganism|EntityHousingUnit|EntityProtocol)\b`:     "Use entityContext.Organism() instead of raw constants",
 		`\b(SeverityLog|SeverityWarn|SeverityBlock)\b`:              "Use severityContext.Warn() instead of raw constants",
 		`\b(ActionCreate|ActionUpdate|ActionDelete)\b`:              "Use actionContext.Create() instead of raw constants",
@@ -213,17 +213,22 @@ func validateIdentifier(fset *token.FileSet, ident *ast.Ident) []Error {
 
 func getForbiddenConstants() map[string]string {
 	return map[string]string{
-		"EntityOrganism":       "Use entityContext.Organism()",
-		"EntityHousingUnit":    "Use entityContext.Housing()",
-		"SeverityWarn":         "Use severityContext.Warn()",
-		"SeverityLog":          "Use severityContext.Log()",
-		"SeverityBlock":        "Use severityContext.Block()",
-		"ActionCreate":         "Use actionContext.Create()",
-		"ActionUpdate":         "Use actionContext.Update()",
-		"ActionDelete":         "Use actionContext.Delete()",
-		"EnvironmentAquatic":   "Use housingContext.Aquatic()",
-		"LifecycleStageAdult":  "Use lifecycleContext.Adult()",
-		"ProtocolStatusActive": "Use protocolContext.Active()",
+		"EntityOrganism":          "Use entityContext.Organism()",
+		"EntityHousingUnit":       "Use entityContext.Housing()",
+		"SeverityWarn":            "Use severityContext.Warn()",
+		"SeverityLog":             "Use severityContext.Log()",
+		"SeverityBlock":           "Use severityContext.Block()",
+		"ActionCreate":            "Use actionContext.Create()",
+		"ActionUpdate":            "Use actionContext.Update()",
+		"ActionDelete":            "Use actionContext.Delete()",
+		"EnvironmentAquatic":      "Use housingContext.Aquatic()",
+		"LifecycleStageAdult":     "Use lifecycleContext.Adult()",
+		"ProtocolStatusDraft":     "Use protocolContext.Draft()",
+		"ProtocolStatusSubmitted": "Use protocolContext.Submitted()",
+		"ProtocolStatusApproved":  "Use protocolContext.Approved()",
+		"ProtocolStatusOnHold":    "Use protocolContext.OnHold()",
+		"ProtocolStatusExpired":   "Use protocolContext.Expired()",
+		"ProtocolStatusArchived":  "Use protocolContext.Archived()",
 	}
 }
 

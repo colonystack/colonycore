@@ -7,6 +7,7 @@ import (
 
 	"colonycore/pkg/datasetapi"
 	"colonycore/pkg/domain"
+	entitymodel "colonycore/pkg/domain/entitymodel"
 	"colonycore/pkg/pluginapi"
 )
 
@@ -114,31 +115,43 @@ func TestPluginRegistryGuardsAndCopies(t *testing.T) {
 
 type emptyView struct{}
 
-func (emptyView) ListOrganisms() []domain.Organism            { return nil }
-func (emptyView) ListHousingUnits() []domain.HousingUnit      { return nil }
-func (emptyView) ListFacilities() []domain.Facility           { return nil }
-func (emptyView) ListTreatments() []domain.Treatment          { return nil }
-func (emptyView) ListObservations() []domain.Observation      { return nil }
-func (emptyView) ListSamples() []domain.Sample                { return nil }
-func (emptyView) FindOrganism(string) (domain.Organism, bool) { return domain.Organism{}, false }
-func (emptyView) FindHousingUnit(string) (domain.HousingUnit, bool) {
-	return domain.HousingUnit{}, false
+func (emptyView) ListOrganisms() []domain.Organism       { return nil }
+func (emptyView) ListHousingUnits() []domain.HousingUnit { return nil }
+func (emptyView) ListFacilities() []domain.Facility      { return nil }
+func (emptyView) ListTreatments() []domain.Treatment     { return nil }
+func (emptyView) ListObservations() []domain.Observation { return nil }
+func (emptyView) ListSamples() []domain.Sample           { return nil }
+func (emptyView) FindOrganism(string) (domain.Organism, bool) {
+	return domain.Organism{Organism: entitymodel.Organism{}}, false
 }
-func (emptyView) FindFacility(string) (domain.Facility, bool) { return domain.Facility{}, false }
+func (emptyView) FindHousingUnit(string) (domain.HousingUnit, bool) {
+	return domain.HousingUnit{HousingUnit: entitymodel.HousingUnit{}}, false
+}
+func (emptyView) FindFacility(string) (domain.Facility, bool) {
+	return domain.Facility{Facility: entitymodel.Facility{}}, false
+}
 func (emptyView) FindTreatment(string) (domain.Treatment, bool) {
-	return domain.Treatment{}, false
+	return domain.Treatment{Treatment: entitymodel.Treatment{}}, false
 }
 func (emptyView) FindObservation(string) (domain.Observation, bool) {
-	return domain.Observation{}, false
+	return domain.Observation{Observation: entitymodel.Observation{}}, false
 }
-func (emptyView) FindSample(string) (domain.Sample, bool) { return domain.Sample{}, false }
-func (emptyView) ListProtocols() []domain.Protocol        { return nil }
-func (emptyView) ListPermits() []domain.Permit            { return nil }
-func (emptyView) ListProjects() []domain.Project          { return nil }
-func (emptyView) ListSupplyItems() []domain.SupplyItem    { return nil }
-func (emptyView) FindPermit(string) (domain.Permit, bool) { return domain.Permit{}, false }
+func (emptyView) FindSample(string) (domain.Sample, bool) {
+	return domain.Sample{Sample: entitymodel.Sample{}}, false
+}
+func (emptyView) ListProtocols() []domain.Protocol     { return nil }
+func (emptyView) ListPermits() []domain.Permit         { return nil }
+func (emptyView) ListProjects() []domain.Project       { return nil }
+func (emptyView) ListSupplyItems() []domain.SupplyItem { return nil }
+func (emptyView) FindPermit(string) (domain.Permit, bool) {
+	return domain.Permit{Permit: entitymodel.Permit{}}, false
+}
 func (emptyView) FindSupplyItem(string) (domain.SupplyItem, bool) {
-	return domain.SupplyItem{}, false
+	return domain.SupplyItem{SupplyItem: entitymodel.SupplyItem{}}, false
+}
+
+func (emptyView) FindProcedure(string) (domain.Procedure, bool) {
+	return domain.Procedure{Procedure: entitymodel.Procedure{}}, false
 }
 
 func TestRulesEngineEvaluateDirect(t *testing.T) {

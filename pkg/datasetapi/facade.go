@@ -10,12 +10,7 @@ import (
 	"time"
 )
 
-const (
-	// Procedure status constants
-	statusInProgress = "in_progress"
-	statusCompleted  = "completed"
-	statusCancelled  = "cancelled"
-)
+var extensionHooks = NewExtensionHookContext()
 
 // TransactionView offers read-only access to a snapshot of core entities for
 // dataset and rule execution within an ambient transaction.
@@ -38,6 +33,7 @@ type TransactionView interface {
 	FindSample(id string) (Sample, bool)
 	FindPermit(id string) (Permit, bool)
 	FindSupplyItem(id string) (SupplyItem, bool)
+	FindProcedure(id string) (Procedure, bool)
 }
 
 // PersistentStore exposes read-only query helpers used by dataset binders.
@@ -69,18 +65,127 @@ type BaseData struct {
 	UpdatedAt time.Time
 }
 
+func normalizeLifecycleStage(stage LifecycleStage) LifecycleStage {
+	switch strings.ToLower(string(stage)) {
+	case string(stagePlanned):
+		return stagePlanned
+	case string(stageLarva), "larva", "embryo":
+		return stageLarva
+	case string(stageJuvenile):
+		return stageJuvenile
+	case string(stageAdult):
+		return stageAdult
+	case string(stageRetired):
+		return stageRetired
+	case string(stageDeceased):
+		return stageDeceased
+	default:
+		return stagePlanned
+	}
+}
+
+func normalizeEnvironment(env string) string {
+	switch strings.ToLower(strings.TrimSpace(env)) {
+	case environmentTypeAquatic:
+		return environmentTypeAquatic
+	case environmentTypeTerrestrial:
+		return environmentTypeTerrestrial
+	case environmentTypeArboreal:
+		return environmentTypeArboreal
+	case environmentTypeHumid:
+		return environmentTypeHumid
+	default:
+		return environmentTypeTerrestrial
+	}
+}
+
+func normalizeHousingState(state string) HousingState {
+	switch strings.ToLower(strings.TrimSpace(state)) {
+	case string(housingStateQuarantine):
+		return housingStateQuarantine
+	case string(housingStateActive):
+		return housingStateActive
+	case string(housingStateCleaning):
+		return housingStateCleaning
+	case string(housingStateDecommissioned):
+		return housingStateDecommissioned
+	default:
+		return housingStateActive
+	}
+}
+
+func normalizeProcedureStatus(status string) string {
+	switch strings.ToLower(strings.TrimSpace(status)) {
+	case procedureStatusScheduled:
+		return procedureStatusScheduled
+	case procedureStatusInProgress, "inprogress", "running":
+		return procedureStatusInProgress
+	case procedureStatusCompleted, "done":
+		return procedureStatusCompleted
+	case procedureStatusCancelled:
+		return procedureStatusCancelled
+	case procedureStatusFailed, "error":
+		return procedureStatusFailed
+	default:
+		return procedureStatusScheduled
+	}
+}
+
+func normalizeSampleStatus(status string) string {
+	switch strings.ToLower(strings.TrimSpace(status)) {
+	case datasetSampleStatusStored:
+		return datasetSampleStatusStored
+	case datasetSampleStatusInTransit, "in-transit", "transit":
+		return datasetSampleStatusInTransit
+	case datasetSampleStatusConsumed:
+		return datasetSampleStatusConsumed
+	case datasetSampleStatusDisposed:
+		return datasetSampleStatusDisposed
+	default:
+		return datasetSampleStatusStored
+	}
+}
+
+func normalizeProtocolStatus(status string) string {
+	switch strings.ToLower(strings.TrimSpace(status)) {
+	case datasetProtocolStatusDraft:
+		return datasetProtocolStatusDraft
+	case datasetProtocolStatusSubmitted:
+		return datasetProtocolStatusSubmitted
+	case datasetProtocolStatusApproved:
+		return datasetProtocolStatusApproved
+	case datasetProtocolStatusOnHold, "paused":
+		return datasetProtocolStatusOnHold
+	case datasetProtocolStatusExpired:
+		return datasetProtocolStatusExpired
+	case datasetProtocolStatusArchived:
+		return datasetProtocolStatusArchived
+	default:
+		return datasetProtocolStatusDraft
+	}
+}
+
+func normalizePermitStatus(status string) string {
+	switch strings.ToLower(strings.TrimSpace(status)) {
+	case datasetPermitStatusDraft:
+		return datasetPermitStatusDraft
+	case datasetPermitStatusSubmitted:
+		return datasetPermitStatusSubmitted
+	case datasetPermitStatusApproved:
+		return datasetPermitStatusApproved
+	case datasetPermitStatusOnHold:
+		return datasetPermitStatusOnHold
+	case datasetPermitStatusExpired:
+		return datasetPermitStatusExpired
+	case datasetPermitStatusArchived:
+		return datasetPermitStatusArchived
+	default:
+		return datasetPermitStatusDraft
+	}
+}
+
 // LifecycleStage represents canonical organism lifecycle identifiers.
 type LifecycleStage string
-
-// Canonical lifecycle stage constants - now internal, accessed via contextual interfaces.
-const (
-	stagePlanned  LifecycleStage = "planned"
-	stageLarva    LifecycleStage = "embryo_larva"
-	stageJuvenile LifecycleStage = "juvenile"
-	stageAdult    LifecycleStage = "adult"
-	stageRetired  LifecycleStage = "retired"
-	stageDeceased LifecycleStage = "deceased"
-)
 
 // OrganismData describes the fields required to construct an Organism facade.
 type OrganismData struct {
@@ -96,7 +201,7 @@ type OrganismData struct {
 	HousingID  *string
 	ProtocolID *string
 	ProjectID  *string
-	Attributes map[string]any
+	Extensions ExtensionSet
 }
 
 // CohortData describes the fields required to construct a Cohort facade.
@@ -116,36 +221,37 @@ type HousingUnitData struct {
 	FacilityID  string
 	Capacity    int
 	Environment string
+	State       string
 }
 
 // FacilityData describes the fields required to construct a Facility facade.
 type FacilityData struct {
-	Base                 BaseData
-	Code                 string
-	Name                 string
-	Zone                 string
-	AccessPolicy         string
-	EnvironmentBaselines map[string]any
-	HousingUnitIDs       []string
-	ProjectIDs           []string
+	Base           BaseData
+	Code           string
+	Name           string
+	Zone           string
+	AccessPolicy   string
+	Extensions     ExtensionSet
+	HousingUnitIDs []string
+	ProjectIDs     []string
 }
 
 // BreedingUnitData describes the fields required to construct a BreedingUnit facade.
 type BreedingUnitData struct {
-	Base              BaseData
-	Name              string
-	Strategy          string
-	HousingID         *string
-	ProtocolID        *string
-	LineID            *string
-	StrainID          *string
-	TargetLineID      *string
-	TargetStrainID    *string
-	PairingIntent     string
-	PairingNotes      string
-	PairingAttributes map[string]any
-	FemaleIDs         []string
-	MaleIDs           []string
+	Base           BaseData
+	Name           string
+	Strategy       string
+	HousingID      *string
+	ProtocolID     *string
+	LineID         *string
+	StrainID       *string
+	TargetLineID   *string
+	TargetStrainID *string
+	PairingIntent  *string
+	PairingNotes   *string
+	Extensions     ExtensionSet
+	FemaleIDs      []string
+	MaleIDs        []string
 }
 
 // ProcedureData describes the fields required to construct a Procedure facade.
@@ -182,8 +288,8 @@ type ObservationData struct {
 	CohortID    *string
 	RecordedAt  time.Time
 	Observer    string
-	Data        map[string]any
-	Notes       string
+	Extensions  ExtensionSet
+	Notes       *string
 }
 
 // SampleData describes the fields required to construct a Sample facade.
@@ -199,7 +305,7 @@ type SampleData struct {
 	StorageLocation string
 	AssayType       string
 	ChainOfCustody  []SampleCustodyEventData
-	Attributes      map[string]any
+	Extensions      ExtensionSet
 }
 
 // SampleCustodyEventData represents an entry in a sample custody chain.
@@ -207,7 +313,7 @@ type SampleCustodyEventData struct {
 	Actor     string
 	Location  string
 	Timestamp time.Time
-	Notes     string
+	Notes     *string
 }
 
 // ProtocolData describes the fields required to construct a Protocol facade.
@@ -215,7 +321,7 @@ type ProtocolData struct {
 	Base        BaseData
 	Code        string
 	Title       string
-	Description string
+	Description *string
 	MaxSubjects int
 	Status      string
 }
@@ -225,12 +331,13 @@ type PermitData struct {
 	Base              BaseData
 	PermitNumber      string
 	Authority         string
+	Status            string
 	ValidFrom         time.Time
 	ValidUntil        time.Time
 	AllowedActivities []string
 	FacilityIDs       []string
 	ProtocolIDs       []string
-	Notes             string
+	Notes             *string
 }
 
 // ProjectData describes the fields required to construct a Project facade.
@@ -238,7 +345,7 @@ type ProjectData struct {
 	Base          BaseData
 	Code          string
 	Title         string
-	Description   string
+	Description   *string
 	FacilityIDs   []string
 	ProtocolIDs   []string
 	OrganismIDs   []string
@@ -251,15 +358,15 @@ type SupplyItemData struct {
 	Base           BaseData
 	SKU            string
 	Name           string
-	Description    string
+	Description    *string
 	QuantityOnHand int
 	Unit           string
-	LotNumber      string
+	LotNumber      *string
 	ExpiresAt      *time.Time
 	FacilityIDs    []string
 	ProjectIDs     []string
 	ReorderLevel   int
-	Attributes     map[string]any
+	Extensions     ExtensionSet
 }
 
 // Organism exposes read-only organism metadata to dataset plugins.
@@ -279,6 +386,9 @@ type Organism interface {
 	ProtocolID() (string, bool)
 	ProjectID() (string, bool)
 	Attributes() map[string]any
+	Extensions() ExtensionSet
+	CoreAttributes() map[string]any
+	CoreAttributesPayload() ExtensionPayload
 
 	// Contextual lifecycle stage accessors
 	GetCurrentStage() LifecycleStageRef
@@ -313,12 +423,16 @@ type HousingUnit interface {
 	FacilityID() string
 	Capacity() int
 	Environment() string
+	State() string
 
 	// Contextual environment accessors
 	GetEnvironmentType() EnvironmentTypeRef
 	IsAquaticEnvironment() bool
 	IsHumidEnvironment() bool
 	SupportsSpecies(species string) bool
+	GetState() HousingStateRef
+	IsActiveState() bool
+	IsDecommissioned() bool
 }
 
 // Facility exposes read-only facility metadata to dataset plugins.
@@ -331,6 +445,9 @@ type Facility interface {
 	Zone() string
 	AccessPolicy() string
 	EnvironmentBaselines() map[string]any
+	Extensions() ExtensionSet
+	CoreEnvironmentBaselines() map[string]any
+	CoreEnvironmentBaselinesPayload() ExtensionPayload
 	HousingUnitIDs() []string
 	ProjectIDs() []string
 
@@ -356,6 +473,9 @@ type BreedingUnit interface {
 	PairingIntent() string
 	PairingNotes() string
 	PairingAttributes() map[string]any
+	Extensions() ExtensionSet
+	CorePairingAttributes() map[string]any
+	CorePairingAttributesPayload() ExtensionPayload
 	FemaleIDs() []string
 	MaleIDs() []string
 
@@ -417,6 +537,9 @@ type Observation interface {
 	RecordedAt() time.Time
 	Observer() string
 	Data() map[string]any
+	Extensions() ExtensionSet
+	CoreData() map[string]any
+	CoreDataPayload() ExtensionPayload
 	Notes() string
 
 	// Contextual data shape accessors
@@ -441,6 +564,9 @@ type Sample interface {
 	AssayType() string
 	ChainOfCustody() []SampleCustodyEvent
 	Attributes() map[string]any
+	Extensions() ExtensionSet
+	CoreAttributes() map[string]any
+	CoreAttributesPayload() ExtensionPayload
 
 	// Contextual sample accessors
 	GetSource() SampleSourceRef
@@ -524,6 +650,9 @@ type SupplyItem interface {
 	ProjectIDs() []string
 	ReorderLevel() int
 	Attributes() map[string]any
+	Extensions() ExtensionSet
+	CoreAttributes() map[string]any
+	CoreAttributesPayload() ExtensionPayload
 
 	// Contextual inventory accessors
 	GetInventoryStatus(reference time.Time) SupplyStatusRef
@@ -551,36 +680,42 @@ func (b base) UpdatedAt() time.Time { return b.updatedAt }
 
 type organism struct {
 	base
-	name       string
-	species    string
-	line       string
-	lineID     *string
-	strainID   *string
-	parentIDs  []string
-	stage      LifecycleStage
-	cohortID   *string
-	housingID  *string
-	protocolID *string
-	projectID  *string
-	attributes map[string]any
+	name           string
+	species        string
+	line           string
+	lineID         *string
+	strainID       *string
+	parentIDs      []string
+	stage          LifecycleStage
+	cohortID       *string
+	housingID      *string
+	protocolID     *string
+	projectID      *string
+	extensions     ExtensionSet
+	coreAttributes map[string]any
 }
 
 // NewOrganism constructs a read-only Organism facade.
 func NewOrganism(data OrganismData) Organism {
+	ext := data.Extensions
+	if ext == nil {
+		ext = NewExtensionSet(nil)
+	}
 	return organism{
-		base:       newBase(data.Base),
-		name:       data.Name,
-		species:    data.Species,
-		line:       data.Line,
-		lineID:     cloneOptionalString(data.LineID),
-		strainID:   cloneOptionalString(data.StrainID),
-		parentIDs:  append([]string(nil), data.ParentIDs...),
-		stage:      data.Stage,
-		cohortID:   cloneOptionalString(data.CohortID),
-		housingID:  cloneOptionalString(data.HousingID),
-		protocolID: cloneOptionalString(data.ProtocolID),
-		projectID:  cloneOptionalString(data.ProjectID),
-		attributes: cloneAttributes(data.Attributes),
+		base:           newBase(data.Base),
+		name:           data.Name,
+		species:        data.Species,
+		line:           data.Line,
+		lineID:         cloneOptionalString(data.LineID),
+		strainID:       cloneOptionalString(data.StrainID),
+		parentIDs:      append([]string(nil), data.ParentIDs...),
+		stage:          normalizeLifecycleStage(data.Stage),
+		cohortID:       cloneOptionalString(data.CohortID),
+		housingID:      cloneOptionalString(data.HousingID),
+		protocolID:     cloneOptionalString(data.ProtocolID),
+		projectID:      cloneOptionalString(data.ProjectID),
+		extensions:     ext,
+		coreAttributes: extractCoreMap(ext, extensionHooks.OrganismAttributes()),
 	}
 }
 
@@ -615,7 +750,19 @@ func (o organism) ProjectID() (string, bool) {
 	return derefString(o.projectID)
 }
 func (o organism) Attributes() map[string]any {
-	return cloneAttributes(o.attributes)
+	return o.CoreAttributes()
+}
+func (o organism) Extensions() ExtensionSet {
+	return o.extensions
+}
+func (o organism) CoreAttributes() map[string]any {
+	return cloneAttributes(o.coreAttributes)
+}
+func (o organism) CoreAttributesPayload() ExtensionPayload {
+	if o.coreAttributes == nil {
+		return NewExtensionPayload(nil)
+	}
+	return NewExtensionPayload(o.coreAttributes)
 }
 
 // Contextual lifecycle stage accessors
@@ -635,8 +782,7 @@ func (o organism) GetCurrentStage() LifecycleStageRef {
 	case stageDeceased:
 		return stages.Deceased()
 	default:
-		// Fallback for unknown stages - should not happen in normal operation
-		return stages.Adult()
+		return stages.Planned()
 	}
 }
 
@@ -685,7 +831,7 @@ func (o organism) MarshalJSON() ([]byte, error) {
 		HousingID:  cloneOptionalString(o.housingID),
 		ProtocolID: cloneOptionalString(o.protocolID),
 		ProjectID:  cloneOptionalString(o.projectID),
-		Attributes: cloneAttributes(o.attributes),
+		Attributes: o.CoreAttributes(),
 	})
 }
 
@@ -779,6 +925,7 @@ type housingUnit struct {
 	facilityID  string
 	capacity    int
 	environment string
+	state       HousingState
 }
 
 // NewHousingUnit constructs a read-only HousingUnit facade.
@@ -788,7 +935,8 @@ func NewHousingUnit(data HousingUnitData) HousingUnit {
 		name:        data.Name,
 		facilityID:  data.FacilityID,
 		capacity:    data.Capacity,
-		environment: data.Environment,
+		environment: normalizeEnvironment(data.Environment),
+		state:       normalizeHousingState(data.State),
 	}
 }
 
@@ -796,21 +944,21 @@ func (h housingUnit) Name() string        { return h.name }
 func (h housingUnit) FacilityID() string  { return h.facilityID }
 func (h housingUnit) Capacity() int       { return h.capacity }
 func (h housingUnit) Environment() string { return h.environment }
+func (h housingUnit) State() string       { return string(h.state) }
 
 // Contextual environment accessors
 func (h housingUnit) GetEnvironmentType() EnvironmentTypeRef {
 	ctx := NewHousingContext()
-	switch strings.ToLower(h.environment) {
-	case "aquatic":
+	switch normalizeEnvironment(h.environment) {
+	case environmentTypeAquatic:
 		return ctx.Aquatic()
-	case "terrestrial":
+	case environmentTypeTerrestrial:
 		return ctx.Terrestrial()
-	case "arboreal":
+	case environmentTypeArboreal:
 		return ctx.Arboreal()
-	case "humid":
+	case environmentTypeHumid:
 		return ctx.Humid()
 	default:
-		// Default to terrestrial for unknown environments
 		return ctx.Terrestrial()
 	}
 }
@@ -821,6 +969,28 @@ func (h housingUnit) IsAquaticEnvironment() bool {
 
 func (h housingUnit) IsHumidEnvironment() bool {
 	return h.GetEnvironmentType().IsHumid()
+}
+
+func (h housingUnit) GetState() HousingStateRef {
+	ctx := NewHousingStateContext()
+	switch h.state {
+	case housingStateQuarantine:
+		return ctx.Quarantine()
+	case housingStateCleaning:
+		return ctx.Cleaning()
+	case housingStateDecommissioned:
+		return ctx.Decommissioned()
+	default:
+		return ctx.Active()
+	}
+}
+
+func (h housingUnit) IsActiveState() bool {
+	return h.GetState().IsActive()
+}
+
+func (h housingUnit) IsDecommissioned() bool {
+	return h.GetState().IsDecommissioned()
 }
 
 func (h housingUnit) SupportsSpecies(species string) bool {
@@ -849,6 +1019,7 @@ func (h housingUnit) MarshalJSON() ([]byte, error) {
 		FacilityID  string    `json:"facility_id"`
 		Capacity    int       `json:"capacity"`
 		Environment string    `json:"environment"`
+		State       string    `json:"state"`
 	}
 	return json.Marshal(housingJSON{
 		ID:          h.ID(),
@@ -858,31 +1029,38 @@ func (h housingUnit) MarshalJSON() ([]byte, error) {
 		FacilityID:  h.facilityID,
 		Capacity:    h.capacity,
 		Environment: h.environment,
+		State:       string(h.state),
 	})
 }
 
 type facility struct {
 	base
-	code                 string
-	name                 string
-	zone                 string
-	accessPolicy         string
-	environmentBaselines map[string]any
-	housingUnitIDs       []string
-	projectIDs           []string
+	code           string
+	name           string
+	zone           string
+	accessPolicy   string
+	extensions     ExtensionSet
+	coreBaselines  map[string]any
+	housingUnitIDs []string
+	projectIDs     []string
 }
 
 // NewFacility constructs a read-only Facility facade.
 func NewFacility(data FacilityData) Facility {
+	ext := data.Extensions
+	if ext == nil {
+		ext = NewExtensionSet(nil)
+	}
 	return facility{
-		base:                 newBase(data.Base),
-		code:                 data.Code,
-		name:                 data.Name,
-		zone:                 data.Zone,
-		accessPolicy:         data.AccessPolicy,
-		environmentBaselines: cloneAttributes(data.EnvironmentBaselines),
-		housingUnitIDs:       cloneStringSlice(data.HousingUnitIDs),
-		projectIDs:           cloneStringSlice(data.ProjectIDs),
+		base:           newBase(data.Base),
+		code:           data.Code,
+		name:           data.Name,
+		zone:           data.Zone,
+		accessPolicy:   data.AccessPolicy,
+		extensions:     ext,
+		coreBaselines:  extractCoreMap(ext, extensionHooks.FacilityEnvironmentBaselines()),
+		housingUnitIDs: cloneStringSlice(data.HousingUnitIDs),
+		projectIDs:     cloneStringSlice(data.ProjectIDs),
 	}
 }
 
@@ -891,7 +1069,19 @@ func (f facility) Name() string         { return f.name }
 func (f facility) Zone() string         { return f.zone }
 func (f facility) AccessPolicy() string { return f.accessPolicy }
 func (f facility) EnvironmentBaselines() map[string]any {
-	return cloneAttributes(f.environmentBaselines)
+	return f.CoreEnvironmentBaselines()
+}
+func (f facility) Extensions() ExtensionSet {
+	return f.extensions
+}
+func (f facility) CoreEnvironmentBaselines() map[string]any {
+	return cloneAttributes(f.coreBaselines)
+}
+func (f facility) CoreEnvironmentBaselinesPayload() ExtensionPayload {
+	if f.coreBaselines == nil {
+		return NewExtensionPayload(nil)
+	}
+	return NewExtensionPayload(f.coreBaselines)
 }
 func (f facility) HousingUnitIDs() []string { return cloneStringSlice(f.housingUnitIDs) }
 func (f facility) ProjectIDs() []string     { return cloneStringSlice(f.projectIDs) }
@@ -957,7 +1147,7 @@ func (f facility) MarshalJSON() ([]byte, error) {
 		Name:                 f.name,
 		Zone:                 f.zone,
 		AccessPolicy:         f.accessPolicy,
-		EnvironmentBaselines: cloneAttributes(f.environmentBaselines),
+		EnvironmentBaselines: f.CoreEnvironmentBaselines(),
 		HousingUnitIDs:       cloneStringSlice(f.housingUnitIDs),
 		ProjectIDs:           cloneStringSlice(f.projectIDs),
 	})
@@ -965,38 +1155,44 @@ func (f facility) MarshalJSON() ([]byte, error) {
 
 type breedingUnit struct {
 	base
-	name              string
-	strategy          string
-	housingID         *string
-	protocolID        *string
-	lineID            *string
-	strainID          *string
-	targetLineID      *string
-	targetStrainID    *string
-	pairingIntent     string
-	pairingNotes      string
-	pairingAttributes map[string]any
-	femaleIDs         []string
-	maleIDs           []string
+	name             string
+	strategy         string
+	housingID        *string
+	protocolID       *string
+	lineID           *string
+	strainID         *string
+	targetLineID     *string
+	targetStrainID   *string
+	pairingIntent    *string
+	pairingNotes     *string
+	extensions       ExtensionSet
+	corePairingAttrs map[string]any
+	femaleIDs        []string
+	maleIDs          []string
 }
 
 // NewBreedingUnit constructs a read-only BreedingUnit facade.
 func NewBreedingUnit(data BreedingUnitData) BreedingUnit {
+	ext := data.Extensions
+	if ext == nil {
+		ext = NewExtensionSet(nil)
+	}
 	return breedingUnit{
-		base:              newBase(data.Base),
-		name:              data.Name,
-		strategy:          data.Strategy,
-		housingID:         cloneOptionalString(data.HousingID),
-		protocolID:        cloneOptionalString(data.ProtocolID),
-		lineID:            cloneOptionalString(data.LineID),
-		strainID:          cloneOptionalString(data.StrainID),
-		targetLineID:      cloneOptionalString(data.TargetLineID),
-		targetStrainID:    cloneOptionalString(data.TargetStrainID),
-		pairingIntent:     data.PairingIntent,
-		pairingNotes:      data.PairingNotes,
-		pairingAttributes: cloneAttributes(data.PairingAttributes),
-		femaleIDs:         cloneStringSlice(data.FemaleIDs),
-		maleIDs:           cloneStringSlice(data.MaleIDs),
+		base:             newBase(data.Base),
+		name:             data.Name,
+		strategy:         data.Strategy,
+		housingID:        cloneOptionalString(data.HousingID),
+		protocolID:       cloneOptionalString(data.ProtocolID),
+		lineID:           cloneOptionalString(data.LineID),
+		strainID:         cloneOptionalString(data.StrainID),
+		targetLineID:     cloneOptionalString(data.TargetLineID),
+		targetStrainID:   cloneOptionalString(data.TargetStrainID),
+		pairingIntent:    cloneOptionalString(data.PairingIntent),
+		pairingNotes:     cloneOptionalString(data.PairingNotes),
+		extensions:       ext,
+		corePairingAttrs: extractCoreMap(ext, extensionHooks.BreedingUnitPairingAttributes()),
+		femaleIDs:        cloneStringSlice(data.FemaleIDs),
+		maleIDs:          cloneStringSlice(data.MaleIDs),
 	}
 }
 
@@ -1021,13 +1217,31 @@ func (b breedingUnit) TargetStrainID() (string, bool) {
 	return derefString(b.targetStrainID)
 }
 func (b breedingUnit) PairingIntent() string {
-	return b.pairingIntent
+	if v, ok := derefString(b.pairingIntent); ok {
+		return v
+	}
+	return ""
 }
 func (b breedingUnit) PairingNotes() string {
-	return b.pairingNotes
+	if v, ok := derefString(b.pairingNotes); ok {
+		return v
+	}
+	return ""
 }
 func (b breedingUnit) PairingAttributes() map[string]any {
-	return cloneAttributes(b.pairingAttributes)
+	return b.CorePairingAttributes()
+}
+func (b breedingUnit) Extensions() ExtensionSet {
+	return b.extensions
+}
+func (b breedingUnit) CorePairingAttributes() map[string]any {
+	return cloneAttributes(b.corePairingAttrs)
+}
+func (b breedingUnit) CorePairingAttributesPayload() ExtensionPayload {
+	if b.corePairingAttrs == nil {
+		return NewExtensionPayload(nil)
+	}
+	return NewExtensionPayload(b.corePairingAttrs)
 }
 func (b breedingUnit) FemaleIDs() []string {
 	return cloneStringSlice(b.femaleIDs)
@@ -1075,8 +1289,8 @@ func (b breedingUnit) MarshalJSON() ([]byte, error) {
 		StrainID          *string        `json:"strain_id,omitempty"`
 		TargetLineID      *string        `json:"target_line_id,omitempty"`
 		TargetStrainID    *string        `json:"target_strain_id,omitempty"`
-		PairingIntent     string         `json:"pairing_intent,omitempty"`
-		PairingNotes      string         `json:"pairing_notes,omitempty"`
+		PairingIntent     *string        `json:"pairing_intent,omitempty"`
+		PairingNotes      *string        `json:"pairing_notes,omitempty"`
 		PairingAttributes map[string]any `json:"pairing_attributes,omitempty"`
 		FemaleIDs         []string       `json:"female_ids"`
 		MaleIDs           []string       `json:"male_ids"`
@@ -1093,9 +1307,9 @@ func (b breedingUnit) MarshalJSON() ([]byte, error) {
 		StrainID:          cloneOptionalString(b.strainID),
 		TargetLineID:      cloneOptionalString(b.targetLineID),
 		TargetStrainID:    cloneOptionalString(b.targetStrainID),
-		PairingIntent:     b.pairingIntent,
-		PairingNotes:      b.pairingNotes,
-		PairingAttributes: cloneAttributes(b.pairingAttributes),
+		PairingIntent:     cloneOptionalString(b.pairingIntent),
+		PairingNotes:      cloneOptionalString(b.pairingNotes),
+		PairingAttributes: b.CorePairingAttributes(),
 		FemaleIDs:         cloneStringSlice(b.femaleIDs),
 		MaleIDs:           cloneStringSlice(b.maleIDs),
 	})
@@ -1119,7 +1333,7 @@ func NewProcedure(data ProcedureData) Procedure {
 	return procedure{
 		base:           newBase(data.Base),
 		name:           data.Name,
-		status:         data.Status,
+		status:         normalizeProcedureStatus(data.Status),
 		scheduledAt:    data.ScheduledAt,
 		protocolID:     data.ProtocolID,
 		projectID:      cloneOptionalString(data.ProjectID),
@@ -1153,19 +1367,18 @@ func (p procedure) ObservationIDs() []string {
 // Contextual status accessors
 func (p procedure) GetCurrentStatus() ProcedureStatusRef {
 	ctx := NewProcedureContext()
-	switch strings.ToLower(p.status) {
-	case "scheduled":
+	switch p.status {
+	case procedureStatusScheduled:
 		return ctx.Scheduled()
-	case statusInProgress, "inprogress", "running":
+	case procedureStatusInProgress:
 		return ctx.InProgress()
-	case statusCompleted, "done":
+	case procedureStatusCompleted:
 		return ctx.Completed()
-	case statusCancelled:
+	case procedureStatusCancelled:
 		return ctx.Cancelled()
-	case "failed", "error":
+	case procedureStatusFailed:
 		return ctx.Failed()
 	default:
-		// Default to scheduled for unknown statuses
 		return ctx.Scheduled()
 	}
 }
@@ -1298,12 +1511,17 @@ type observation struct {
 	cohortID    *string
 	recordedAt  time.Time
 	observer    string
-	data        map[string]any
-	notes       string
+	extensions  ExtensionSet
+	coreData    map[string]any
+	notes       *string
 }
 
 // NewObservation constructs a read-only Observation facade.
 func NewObservation(data ObservationData) Observation {
+	ext := data.Extensions
+	if ext == nil {
+		ext = NewExtensionSet(nil)
+	}
 	return observation{
 		base:        newBase(data.Base),
 		procedureID: cloneOptionalString(data.ProcedureID),
@@ -1311,8 +1529,9 @@ func NewObservation(data ObservationData) Observation {
 		cohortID:    cloneOptionalString(data.CohortID),
 		recordedAt:  data.RecordedAt,
 		observer:    data.Observer,
-		data:        cloneAttributes(data.Data),
-		notes:       data.Notes,
+		extensions:  ext,
+		coreData:    extractCoreMap(ext, extensionHooks.ObservationData()),
+		notes:       cloneOptionalString(data.Notes),
 	}
 }
 
@@ -1330,12 +1549,30 @@ func (o observation) CohortID() (string, bool) {
 
 func (o observation) RecordedAt() time.Time { return o.recordedAt }
 func (o observation) Observer() string      { return o.observer }
-func (o observation) Data() map[string]any  { return cloneAttributes(o.data) }
-func (o observation) Notes() string         { return o.notes }
+func (o observation) Data() map[string]any  { return o.CoreData() }
+func (o observation) Extensions() ExtensionSet {
+	return o.extensions
+}
+func (o observation) CoreData() map[string]any {
+	return cloneAttributes(o.coreData)
+}
+func (o observation) CoreDataPayload() ExtensionPayload {
+	if o.coreData == nil {
+		return NewExtensionPayload(nil)
+	}
+	return NewExtensionPayload(o.coreData)
+}
+func (o observation) Notes() string {
+	if v, ok := derefString(o.notes); ok {
+		return v
+	}
+	return ""
+}
 
 // Contextual data shape accessors
 func (o observation) GetDataShape() ObservationShapeRef {
-	return inferObservationShape(len(o.data) > 0, strings.TrimSpace(o.notes) != "")
+	narrative, _ := derefString(o.notes)
+	return inferObservationShape(len(o.coreData) > 0, strings.TrimSpace(narrative) != "")
 }
 
 func (o observation) HasStructuredPayload() bool {
@@ -1343,7 +1580,10 @@ func (o observation) HasStructuredPayload() bool {
 }
 
 func (o observation) HasNarrativeNotes() bool {
-	return o.GetDataShape().HasNarrativeNotes()
+	if note, ok := derefString(o.notes); ok {
+		return strings.TrimSpace(note) != ""
+	}
+	return false
 }
 
 func (o observation) MarshalJSON() ([]byte, error) {
@@ -1357,7 +1597,7 @@ func (o observation) MarshalJSON() ([]byte, error) {
 		RecordedAt  time.Time      `json:"recorded_at"`
 		Observer    string         `json:"observer"`
 		Data        map[string]any `json:"data,omitempty"`
-		Notes       string         `json:"notes,omitempty"`
+		Notes       *string        `json:"notes,omitempty"`
 	}
 	return json.Marshal(observationJSON{
 		ID:          o.ID(),
@@ -1368,8 +1608,8 @@ func (o observation) MarshalJSON() ([]byte, error) {
 		CohortID:    cloneOptionalString(o.cohortID),
 		RecordedAt:  o.recordedAt,
 		Observer:    o.observer,
-		Data:        cloneAttributes(o.data),
-		Notes:       o.notes,
+		Data:        o.CoreData(),
+		Notes:       cloneOptionalString(o.notes),
 	})
 }
 
@@ -1385,11 +1625,16 @@ type sample struct {
 	storageLocation string
 	assayType       string
 	chainOfCustody  []custodyEvent
-	attributes      map[string]any
+	extensions      ExtensionSet
+	coreAttributes  map[string]any
 }
 
 // NewSample constructs a read-only Sample facade.
 func NewSample(data SampleData) Sample {
+	ext := data.Extensions
+	if ext == nil {
+		ext = NewExtensionSet(nil)
+	}
 	return sample{
 		base:            newBase(data.Base),
 		identifier:      data.Identifier,
@@ -1398,11 +1643,12 @@ func NewSample(data SampleData) Sample {
 		cohortID:        cloneOptionalString(data.CohortID),
 		facilityID:      data.FacilityID,
 		collectedAt:     data.CollectedAt,
-		status:          data.Status,
+		status:          normalizeSampleStatus(data.Status),
 		storageLocation: data.StorageLocation,
 		assayType:       data.AssayType,
 		chainOfCustody:  buildCustodyEvents(data.ChainOfCustody),
-		attributes:      cloneAttributes(data.Attributes),
+		extensions:      ext,
+		coreAttributes:  extractCoreMap(ext, extensionHooks.SampleAttributes()),
 	}
 }
 
@@ -1414,7 +1660,15 @@ func (s sample) Status() string          { return s.status }
 func (s sample) StorageLocation() string { return s.storageLocation }
 func (s sample) AssayType() string       { return s.assayType }
 func (s sample) Attributes() map[string]any {
-	return cloneAttributes(s.attributes)
+	return s.CoreAttributes()
+}
+func (s sample) Extensions() ExtensionSet       { return s.extensions }
+func (s sample) CoreAttributes() map[string]any { return cloneAttributes(s.coreAttributes) }
+func (s sample) CoreAttributesPayload() ExtensionPayload {
+	if s.coreAttributes == nil {
+		return NewExtensionPayload(nil)
+	}
+	return NewExtensionPayload(s.coreAttributes)
 }
 
 func (s sample) OrganismID() (string, bool) {
@@ -1454,15 +1708,14 @@ func (s sample) GetSource() SampleSourceRef {
 
 func (s sample) GetStatus() SampleStatusRef {
 	ctx := NewSampleContext().Statuses()
-	status := strings.ToLower(strings.TrimSpace(s.status))
-	switch status {
-	case "stored":
+	switch s.status {
+	case datasetSampleStatusStored:
 		return ctx.Stored()
-	case "in_transit", "in-transit", "transit":
+	case datasetSampleStatusInTransit:
 		return ctx.InTransit()
-	case "consumed":
+	case datasetSampleStatusConsumed:
 		return ctx.Consumed()
-	case "disposed":
+	case datasetSampleStatusDisposed:
 		return ctx.Disposed()
 	default:
 		return ctx.Stored()
@@ -1504,7 +1757,7 @@ func (s sample) MarshalJSON() ([]byte, error) {
 		StorageLocation: s.storageLocation,
 		AssayType:       s.assayType,
 		ChainOfCustody:  serializeCustodyEvents(s.chainOfCustody),
-		Attributes:      cloneAttributes(s.attributes),
+		Attributes:      s.CoreAttributes(),
 	})
 }
 
@@ -1512,19 +1765,24 @@ type custodyEvent struct {
 	actor     string
 	location  string
 	timestamp time.Time
-	notes     string
+	notes     *string
 }
 
 func (c custodyEvent) Actor() string        { return c.actor }
 func (c custodyEvent) Location() string     { return c.location }
 func (c custodyEvent) Timestamp() time.Time { return c.timestamp }
-func (c custodyEvent) Notes() string        { return c.notes }
+func (c custodyEvent) Notes() string {
+	if v, ok := derefString(c.notes); ok {
+		return v
+	}
+	return ""
+}
 
 type protocol struct {
 	base
 	code        string
 	title       string
-	description string
+	description *string
 	maxSubjects int
 	status      string
 }
@@ -1535,33 +1793,39 @@ func NewProtocol(data ProtocolData) Protocol {
 		base:        newBase(data.Base),
 		code:        data.Code,
 		title:       data.Title,
-		description: data.Description,
+		description: cloneOptionalString(data.Description),
 		maxSubjects: data.MaxSubjects,
-		status:      data.Status,
+		status:      normalizeProtocolStatus(data.Status),
 	}
 }
 
-func (p protocol) Code() string        { return p.code }
-func (p protocol) Title() string       { return p.title }
-func (p protocol) Description() string { return p.description }
-func (p protocol) MaxSubjects() int    { return p.maxSubjects }
+func (p protocol) Code() string  { return p.code }
+func (p protocol) Title() string { return p.title }
+func (p protocol) Description() string {
+	if v, ok := derefString(p.description); ok {
+		return v
+	}
+	return ""
+}
+func (p protocol) MaxSubjects() int { return p.maxSubjects }
 
 // Contextual status accessors
 func (p protocol) GetCurrentStatus() ProtocolStatusRef {
 	ctx := NewProtocolContext()
-	switch strings.ToLower(p.status) {
-	case "draft":
+	switch p.status {
+	case datasetProtocolStatusDraft:
 		return ctx.Draft()
-	case "active":
-		return ctx.Active()
-	case "suspended", "paused":
-		return ctx.Suspended()
-	case "completed", "done":
-		return ctx.Completed()
-	case "cancelled":
-		return ctx.Cancelled()
+	case datasetProtocolStatusSubmitted:
+		return ctx.Submitted()
+	case datasetProtocolStatusApproved:
+		return ctx.Approved()
+	case datasetProtocolStatusOnHold:
+		return ctx.OnHold()
+	case datasetProtocolStatusExpired:
+		return ctx.Expired()
+	case datasetProtocolStatusArchived:
+		return ctx.Archived()
 	default:
-		// Default to draft for unknown statuses
 		return ctx.Draft()
 	}
 }
@@ -1585,7 +1849,7 @@ func (p protocol) MarshalJSON() ([]byte, error) {
 		UpdatedAt   time.Time `json:"updated_at"`
 		Code        string    `json:"code"`
 		Title       string    `json:"title"`
-		Description string    `json:"description"`
+		Description *string   `json:"description,omitempty"`
 		MaxSubjects int       `json:"max_subjects"`
 		Status      string    `json:"status"`
 	}
@@ -1595,7 +1859,7 @@ func (p protocol) MarshalJSON() ([]byte, error) {
 		UpdatedAt:   p.UpdatedAt(),
 		Code:        p.code,
 		Title:       p.title,
-		Description: p.description,
+		Description: cloneOptionalString(p.description),
 		MaxSubjects: p.maxSubjects,
 		Status:      p.status,
 	})
@@ -1605,12 +1869,13 @@ type permit struct {
 	base
 	permitNumber      string
 	authority         string
+	status            string
 	validFrom         time.Time
 	validUntil        time.Time
 	allowedActivities []string
 	facilityIDs       []string
 	protocolIDs       []string
-	notes             string
+	notes             *string
 }
 
 // NewPermit constructs a read-only Permit facade.
@@ -1619,12 +1884,13 @@ func NewPermit(data PermitData) Permit {
 		base:              newBase(data.Base),
 		permitNumber:      data.PermitNumber,
 		authority:         data.Authority,
+		status:            normalizePermitStatus(data.Status),
 		validFrom:         data.ValidFrom,
 		validUntil:        data.ValidUntil,
 		allowedActivities: cloneStringSlice(data.AllowedActivities),
 		facilityIDs:       cloneStringSlice(data.FacilityIDs),
 		protocolIDs:       cloneStringSlice(data.ProtocolIDs),
-		notes:             data.Notes,
+		notes:             cloneOptionalString(data.Notes),
 	}
 }
 
@@ -1637,18 +1903,34 @@ func (p permit) AllowedActivities() []string {
 }
 func (p permit) FacilityIDs() []string { return cloneStringSlice(p.facilityIDs) }
 func (p permit) ProtocolIDs() []string { return cloneStringSlice(p.protocolIDs) }
-func (p permit) Notes() string         { return p.notes }
+func (p permit) Notes() string {
+	if v, ok := derefString(p.notes); ok {
+		return v
+	}
+	return ""
+}
 
 // Contextual validity accessors
 func (p permit) GetStatus(reference time.Time) PermitStatusRef {
 	statuses := NewPermitContext().Statuses()
-	switch {
-	case reference.Before(p.validFrom):
-		return statuses.Pending()
-	case !p.validUntil.IsZero() && reference.After(p.validUntil):
+	switch p.status {
+	case datasetPermitStatusDraft:
+		return statuses.Draft()
+	case datasetPermitStatusSubmitted:
+		return statuses.Submitted()
+	case datasetPermitStatusApproved:
+		if !p.validUntil.IsZero() && reference.After(p.validUntil) {
+			return statuses.Expired()
+		}
+		return statuses.Approved()
+	case datasetPermitStatusOnHold:
+		return statuses.OnHold()
+	case datasetPermitStatusExpired:
 		return statuses.Expired()
+	case datasetPermitStatusArchived:
+		return statuses.Archived()
 	default:
-		return statuses.Active()
+		return statuses.Draft()
 	}
 }
 
@@ -1667,12 +1949,13 @@ func (p permit) MarshalJSON() ([]byte, error) {
 		UpdatedAt         time.Time `json:"updated_at"`
 		PermitNumber      string    `json:"permit_number"`
 		Authority         string    `json:"authority"`
+		Status            string    `json:"status"`
 		ValidFrom         time.Time `json:"valid_from"`
 		ValidUntil        time.Time `json:"valid_until"`
 		AllowedActivities []string  `json:"allowed_activities,omitempty"`
 		FacilityIDs       []string  `json:"facility_ids,omitempty"`
 		ProtocolIDs       []string  `json:"protocol_ids,omitempty"`
-		Notes             string    `json:"notes,omitempty"`
+		Notes             *string   `json:"notes,omitempty"`
 	}
 	return json.Marshal(permitJSON{
 		ID:                p.ID(),
@@ -1680,12 +1963,13 @@ func (p permit) MarshalJSON() ([]byte, error) {
 		UpdatedAt:         p.UpdatedAt(),
 		PermitNumber:      p.permitNumber,
 		Authority:         p.authority,
+		Status:            p.GetStatus(time.Now()).String(),
 		ValidFrom:         p.validFrom,
 		ValidUntil:        p.validUntil,
 		AllowedActivities: cloneStringSlice(p.allowedActivities),
 		FacilityIDs:       cloneStringSlice(p.facilityIDs),
 		ProtocolIDs:       cloneStringSlice(p.protocolIDs),
-		Notes:             p.notes,
+		Notes:             cloneOptionalString(p.notes),
 	})
 }
 
@@ -1693,7 +1977,7 @@ type project struct {
 	base
 	code          string
 	title         string
-	description   string
+	description   *string
 	facilityIDs   []string
 	protocolIDs   []string
 	organismIDs   []string
@@ -1707,7 +1991,7 @@ func NewProject(data ProjectData) Project {
 		base:          newBase(data.Base),
 		code:          data.Code,
 		title:         data.Title,
-		description:   data.Description,
+		description:   cloneOptionalString(data.Description),
 		facilityIDs:   cloneStringSlice(data.FacilityIDs),
 		protocolIDs:   cloneStringSlice(data.ProtocolIDs),
 		organismIDs:   cloneStringSlice(data.OrganismIDs),
@@ -1716,9 +2000,14 @@ func NewProject(data ProjectData) Project {
 	}
 }
 
-func (p project) Code() string        { return p.code }
-func (p project) Title() string       { return p.title }
-func (p project) Description() string { return p.description }
+func (p project) Code() string  { return p.code }
+func (p project) Title() string { return p.title }
+func (p project) Description() string {
+	if v, ok := derefString(p.description); ok {
+		return v
+	}
+	return ""
+}
 func (p project) FacilityIDs() []string {
 	return cloneStringSlice(p.facilityIDs)
 }
@@ -1742,7 +2031,7 @@ func (p project) MarshalJSON() ([]byte, error) {
 		UpdatedAt     time.Time `json:"updated_at"`
 		Code          string    `json:"code"`
 		Title         string    `json:"title"`
-		Description   string    `json:"description"`
+		Description   *string   `json:"description,omitempty"`
 		FacilityIDs   []string  `json:"facility_ids,omitempty"`
 		ProtocolIDs   []string  `json:"protocol_ids,omitempty"`
 		OrganismIDs   []string  `json:"organism_ids,omitempty"`
@@ -1755,7 +2044,7 @@ func (p project) MarshalJSON() ([]byte, error) {
 		UpdatedAt:     p.UpdatedAt(),
 		Code:          p.code,
 		Title:         p.title,
-		Description:   p.description,
+		Description:   cloneOptionalString(p.description),
 		FacilityIDs:   cloneStringSlice(p.facilityIDs),
 		ProtocolIDs:   cloneStringSlice(p.protocolIDs),
 		OrganismIDs:   cloneStringSlice(p.organismIDs),
@@ -1768,41 +2057,57 @@ type supplyItem struct {
 	base
 	sku            string
 	name           string
-	description    string
+	description    *string
 	quantityOnHand int
 	unit           string
-	lotNumber      string
+	lotNumber      *string
 	expiresAt      *time.Time
 	facilityIDs    []string
 	projectIDs     []string
 	reorderLevel   int
-	attributes     map[string]any
+	extensions     ExtensionSet
+	coreAttributes map[string]any
 }
 
 // NewSupplyItem constructs a read-only SupplyItem facade.
 func NewSupplyItem(data SupplyItemData) SupplyItem {
+	ext := data.Extensions
+	if ext == nil {
+		ext = NewExtensionSet(nil)
+	}
 	return supplyItem{
 		base:           newBase(data.Base),
 		sku:            data.SKU,
 		name:           data.Name,
-		description:    data.Description,
+		description:    cloneOptionalString(data.Description),
 		quantityOnHand: data.QuantityOnHand,
 		unit:           data.Unit,
-		lotNumber:      data.LotNumber,
+		lotNumber:      cloneOptionalString(data.LotNumber),
 		expiresAt:      cloneTimePtr(data.ExpiresAt),
 		facilityIDs:    cloneStringSlice(data.FacilityIDs),
 		projectIDs:     cloneStringSlice(data.ProjectIDs),
 		reorderLevel:   data.ReorderLevel,
-		attributes:     cloneAttributes(data.Attributes),
+		extensions:     ext,
+		coreAttributes: extractCoreMap(ext, extensionHooks.SupplyItemAttributes()),
 	}
 }
 
-func (s supplyItem) SKU() string         { return s.sku }
-func (s supplyItem) Name() string        { return s.name }
-func (s supplyItem) Description() string { return s.description }
+func (s supplyItem) SKU() string  { return s.sku }
+func (s supplyItem) Name() string { return s.name }
+func (s supplyItem) Description() string {
+	if v, ok := derefString(s.description); ok {
+		return v
+	}
+	return ""
+}
 func (s supplyItem) QuantityOnHand() int { return s.quantityOnHand }
 func (s supplyItem) Unit() string        { return s.unit }
-func (s supplyItem) LotNumber() string   { return s.lotNumber }
+func (s supplyItem) LotNumber() string {
+	if v, ok := derefString(s.lotNumber); ok {
+		return v
+	}
+	return ""
+}
 func (s supplyItem) FacilityIDs() []string {
 	return cloneStringSlice(s.facilityIDs)
 }
@@ -1811,7 +2116,19 @@ func (s supplyItem) ProjectIDs() []string {
 }
 func (s supplyItem) ReorderLevel() int { return s.reorderLevel }
 func (s supplyItem) Attributes() map[string]any {
-	return cloneAttributes(s.attributes)
+	return s.CoreAttributes()
+}
+func (s supplyItem) Extensions() ExtensionSet {
+	return s.extensions
+}
+func (s supplyItem) CoreAttributes() map[string]any {
+	return cloneAttributes(s.coreAttributes)
+}
+func (s supplyItem) CoreAttributesPayload() ExtensionPayload {
+	if s.coreAttributes == nil {
+		return NewExtensionPayload(nil)
+	}
+	return NewExtensionPayload(s.coreAttributes)
 }
 
 func (s supplyItem) ExpiresAt() (*time.Time, bool) {
@@ -1838,10 +2155,10 @@ func (s supplyItem) MarshalJSON() ([]byte, error) {
 		UpdatedAt      time.Time      `json:"updated_at"`
 		SKU            string         `json:"sku"`
 		Name           string         `json:"name"`
-		Description    string         `json:"description"`
+		Description    *string        `json:"description,omitempty"`
 		QuantityOnHand int            `json:"quantity_on_hand"`
 		Unit           string         `json:"unit"`
-		LotNumber      string         `json:"lot_number"`
+		LotNumber      *string        `json:"lot_number,omitempty"`
 		ExpiresAt      *time.Time     `json:"expires_at,omitempty"`
 		FacilityIDs    []string       `json:"facility_ids,omitempty"`
 		ProjectIDs     []string       `json:"project_ids,omitempty"`
@@ -1854,15 +2171,15 @@ func (s supplyItem) MarshalJSON() ([]byte, error) {
 		UpdatedAt:      s.UpdatedAt(),
 		SKU:            s.sku,
 		Name:           s.name,
-		Description:    s.description,
+		Description:    cloneOptionalString(s.description),
 		QuantityOnHand: s.quantityOnHand,
 		Unit:           s.unit,
-		LotNumber:      s.lotNumber,
+		LotNumber:      cloneOptionalString(s.lotNumber),
 		ExpiresAt:      cloneTimePtr(s.expiresAt),
 		FacilityIDs:    cloneStringSlice(s.facilityIDs),
 		ProjectIDs:     cloneStringSlice(s.projectIDs),
 		ReorderLevel:   s.reorderLevel,
-		Attributes:     cloneAttributes(s.attributes),
+		Attributes:     s.CoreAttributes(),
 	})
 }
 
@@ -1916,7 +2233,7 @@ func buildCustodyEvents(events []SampleCustodyEventData) []custodyEvent {
 			actor:     event.Actor,
 			location:  event.Location,
 			timestamp: event.Timestamp,
-			notes:     event.Notes,
+			notes:     cloneOptionalString(event.Notes),
 		}
 	}
 	return out
@@ -1928,14 +2245,32 @@ func serializeCustodyEvents(events []custodyEvent) []map[string]any {
 	}
 	out := make([]map[string]any, len(events))
 	for i, event := range events {
-		out[i] = map[string]any{
+		entry := map[string]any{
 			"actor":     event.actor,
 			"location":  event.location,
 			"timestamp": event.timestamp,
-			"notes":     event.notes,
 		}
+		if note, ok := derefString(event.notes); ok && strings.TrimSpace(note) != "" {
+			entry["notes"] = note
+		}
+		out[i] = entry
 	}
 	return out
+}
+
+func extractCoreMap(set ExtensionSet, hook HookRef) map[string]any {
+	if set == nil {
+		return nil
+	}
+	value, ok := set.Core(hook)
+	if !ok || value == nil {
+		return nil
+	}
+	m, ok := value.(map[string]any)
+	if !ok {
+		return nil
+	}
+	return cloneAttributes(m)
 }
 
 func cloneAttributes(attrs map[string]any) map[string]any {

@@ -6,10 +6,11 @@ package pluginapi
 type ProtocolContext interface {
 	// StatusTypes returns contextual references to protocol status types
 	Draft() ProtocolStatusRef
-	Active() ProtocolStatusRef
-	Suspended() ProtocolStatusRef
-	Completed() ProtocolStatusRef
-	Cancelled() ProtocolStatusRef
+	Submitted() ProtocolStatusRef
+	Approved() ProtocolStatusRef
+	OnHold() ProtocolStatusRef
+	Expired() ProtocolStatusRef
+	Archived() ProtocolStatusRef
 }
 
 // ProtocolStatusRef represents an opaque reference to a protocol status.
@@ -41,11 +42,11 @@ func (p protocolStatusRef) String() string {
 }
 
 func (p protocolStatusRef) IsActive() bool {
-	return p.value == "active"
+	return p.value == protocolStatusApproved
 }
 
 func (p protocolStatusRef) IsTerminal() bool {
-	return p.value == "completed" || p.value == "cancelled"
+	return p.value == protocolStatusExpired || p.value == protocolStatusArchived
 }
 
 func (p protocolStatusRef) Equals(other ProtocolStatusRef) bool {
@@ -62,27 +63,32 @@ type DefaultProtocolContext struct{}
 
 // Draft returns the draft protocol status reference.
 func (DefaultProtocolContext) Draft() ProtocolStatusRef {
-	return protocolStatusRef{value: "draft"}
+	return protocolStatusRef{value: protocolStatusDraft}
 }
 
-// Active returns the active protocol status reference.
-func (DefaultProtocolContext) Active() ProtocolStatusRef {
-	return protocolStatusRef{value: "active"}
+// Submitted returns the submitted protocol status reference.
+func (DefaultProtocolContext) Submitted() ProtocolStatusRef {
+	return protocolStatusRef{value: protocolStatusSubmitted}
 }
 
-// Suspended returns the suspended protocol status reference.
-func (DefaultProtocolContext) Suspended() ProtocolStatusRef {
-	return protocolStatusRef{value: "suspended"}
+// Approved returns the approved protocol status reference.
+func (DefaultProtocolContext) Approved() ProtocolStatusRef {
+	return protocolStatusRef{value: protocolStatusApproved}
 }
 
-// Completed returns the completed protocol status reference.
-func (DefaultProtocolContext) Completed() ProtocolStatusRef {
-	return protocolStatusRef{value: "completed"}
+// OnHold returns the on_hold protocol status reference.
+func (DefaultProtocolContext) OnHold() ProtocolStatusRef {
+	return protocolStatusRef{value: protocolStatusOnHold}
 }
 
-// Cancelled returns the cancelled protocol status reference.
-func (DefaultProtocolContext) Cancelled() ProtocolStatusRef {
-	return protocolStatusRef{value: "cancelled"}
+// Expired returns the expired protocol status reference.
+func (DefaultProtocolContext) Expired() ProtocolStatusRef {
+	return protocolStatusRef{value: protocolStatusExpired}
+}
+
+// Archived returns the archived protocol status reference.
+func (DefaultProtocolContext) Archived() ProtocolStatusRef {
+	return protocolStatusRef{value: protocolStatusArchived}
 }
 
 // NewProtocolContext creates a new protocol context instance.

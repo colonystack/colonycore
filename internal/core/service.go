@@ -1,6 +1,7 @@
 package core
 
 import (
+	"colonycore/internal/entitymodel"
 	"colonycore/pkg/datasetapi"
 	"colonycore/pkg/domain"
 	"colonycore/pkg/pluginapi"
@@ -119,6 +120,49 @@ func WithClock(clock Clock) ServiceOption {
 			opts.clock = clock
 		}
 	}
+}
+
+func entityModelMajorFromPlugin(plugin pluginapi.Plugin) (int, bool) {
+	if provider, ok := plugin.(pluginapi.EntityModelCompatibilityProvider); ok {
+		major := provider.EntityModelMajor()
+		if major < 0 {
+			return 0, false
+		}
+		return major, true
+	}
+	return 0, false
+}
+
+func entityModelMajorFromTemplate(template datasetapi.Template) (int, bool) {
+	if template.Metadata.EntityModelMajor == nil {
+		return 0, false
+	}
+	major := *template.Metadata.EntityModelMajor
+	if major < 0 {
+		return 0, false
+	}
+	return major, true
+}
+
+func requireEntityModelCompatibility(expected int, source string) error {
+	if expected < 0 {
+		return nil
+	}
+	hostMajor, ok := entitymodel.MajorVersion()
+	if !ok {
+		return fmt.Errorf("entity model version unavailable; %s requires major %d", source, expected)
+	}
+	if hostMajor == expected {
+		return nil
+	}
+	return fmt.Errorf("entity model major mismatch: host=%d, %s requires %d", hostMajor, source, expected)
+}
+
+func ensureTemplateCompatibility(templateMajor int, templateDeclared bool, pluginMajor int, pluginDeclared bool, slug string) error {
+	if templateDeclared && pluginDeclared && templateMajor != pluginMajor {
+		return fmt.Errorf("dataset template %s declares entity model major %d but plugin declares %d", slug, templateMajor, pluginMajor)
+	}
+	return nil
 }
 
 // WithLogger injects a logger used by the service.
@@ -739,6 +783,13 @@ func (s *Service) InstallPlugin(plugin pluginapi.Plugin) (PluginMetadata, error)
 		return PluginMetadata{}, fmt.Errorf("plugin %s already registered", plugin.Name())
 	}
 
+	pluginMajor, pluginDeclared := entityModelMajorFromPlugin(plugin)
+	if pluginDeclared {
+		if err := requireEntityModelCompatibility(pluginMajor, fmt.Sprintf("plugin %s", plugin.Name())); err != nil {
+			return PluginMetadata{}, err
+		}
+	}
+
 	registry := NewPluginRegistry()
 	if err := plugin.Register(registry); err != nil {
 		return PluginMetadata{}, err
@@ -760,6 +811,15 @@ func (s *Service) InstallPlugin(plugin pluginapi.Plugin) (PluginMetadata, error)
 
 	for _, dataset := range registry.DatasetTemplates() {
 		dataset.Plugin = plugin.Name()
+		templateMajor, templateDeclared := entityModelMajorFromTemplate(dataset.Template)
+		if err := ensureTemplateCompatibility(templateMajor, templateDeclared, pluginMajor, pluginDeclared, dataset.slug()); err != nil {
+			return PluginMetadata{}, err
+		}
+		if templateDeclared {
+			if err := requireEntityModelCompatibility(templateMajor, fmt.Sprintf("dataset template %s", dataset.slug())); err != nil {
+				return PluginMetadata{}, err
+			}
+		}
 		if err := dataset.bind(env); err != nil {
 			return PluginMetadata{}, fmt.Errorf("bind dataset %s: %w", dataset.Key, err)
 		}

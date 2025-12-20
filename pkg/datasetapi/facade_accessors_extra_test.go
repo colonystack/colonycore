@@ -8,20 +8,21 @@ import (
 func TestSupplyItemAccessors(t *testing.T) {
 	now := time.Now().UTC()
 	expires := now.Add(24 * time.Hour)
+	hook := NewExtensionHookContext().SupplyItemAttributes()
 
 	data := SupplyItemData{
 		Base:           BaseData{ID: "supply", CreatedAt: now, UpdatedAt: now},
 		SKU:            "SKU-1",
 		Name:           "Supply",
-		Description:    "desc",
+		Description:    strPtr("desc"),
 		QuantityOnHand: 2,
 		Unit:           "box",
-		LotNumber:      "LOT",
+		LotNumber:      strPtr("LOT"),
 		ExpiresAt:      &expires,
 		FacilityIDs:    []string{"fac"},
 		ProjectIDs:     []string{"proj"},
 		ReorderLevel:   5,
-		Attributes:     map[string]any{"color": "blue"},
+		Extensions:     newCoreExtensionSet(hook, map[string]any{"color": "blue"}),
 	}
 
 	item := NewSupplyItem(data)
@@ -71,12 +72,13 @@ func TestPermitAccessors(t *testing.T) {
 		Base:              BaseData{ID: "permit", CreatedAt: now, UpdatedAt: now},
 		PermitNumber:      "PERM-1",
 		Authority:         "Gov",
+		Status:            datasetPermitStatusApproved,
 		ValidFrom:         now,
 		ValidUntil:        until,
 		AllowedActivities: []string{"collect"},
 		FacilityIDs:       []string{"fac"},
 		ProtocolIDs:       []string{"prot"},
-		Notes:             "note",
+		Notes:             strPtr("note"),
 	}
 
 	permit := NewPermit(data)
@@ -98,5 +100,39 @@ func TestPermitAccessors(t *testing.T) {
 	}
 	if !permit.IsExpired(until.Add(24 * time.Hour)) {
 		t.Fatalf("expected permit expired after valid until")
+	}
+
+	status := permit.GetStatus(now)
+	if status.String() != datasetPermitStatusApproved || !status.IsActive() {
+		t.Fatalf("expected approved status to be active, got %s", status.String())
+	}
+	if permit.GetStatus(until.Add(24*time.Hour)).String() != datasetPermitStatusExpired {
+		t.Fatalf("expected approved permit to become expired after validity window")
+	}
+
+	onHold := NewPermit(PermitData{
+		Base:              BaseData{ID: "permit-onhold", CreatedAt: now, UpdatedAt: now},
+		PermitNumber:      "PERM-ONHOLD",
+		Authority:         "Gov",
+		Status:            datasetPermitStatusOnHold,
+		AllowedActivities: []string{"collect"},
+		FacilityIDs:       []string{"fac"},
+		ProtocolIDs:       []string{"prot"},
+	})
+	if onHold.GetStatus(now).String() != datasetPermitStatusOnHold {
+		t.Fatalf("expected on_hold status to remain on_hold")
+	}
+
+	archived := NewPermit(PermitData{
+		Base:              BaseData{ID: "permit-archived", CreatedAt: now, UpdatedAt: now},
+		PermitNumber:      "PERM-ARCH",
+		Authority:         "Gov",
+		Status:            datasetPermitStatusArchived,
+		AllowedActivities: []string{"collect"},
+		FacilityIDs:       []string{"fac"},
+		ProtocolIDs:       []string{"prot"},
+	})
+	if !archived.GetStatus(now).IsArchived() {
+		t.Fatalf("expected archived status to be archived")
 	}
 }

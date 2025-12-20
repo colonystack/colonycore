@@ -1,8 +1,8 @@
 package datasets
 
 import (
+	"colonycore/internal/adapters/testutil"
 	"colonycore/internal/core"
-	"colonycore/plugins/frog"
 	"context"
 	"testing"
 	"time"
@@ -11,7 +11,7 @@ import (
 // Smoke test verifying worker can enqueue & complete default export (JSON).
 func TestWorkerSmoke(t *testing.T) {
 	svc := core.NewInMemoryService(core.NewDefaultRulesEngine())
-	meta, err := svc.InstallPlugin(frog.New())
+	meta, err := testutil.InstallFrogPlugin(svc)
 	if err != nil {
 		t.Fatalf("install plugin: %v", err)
 	}

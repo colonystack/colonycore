@@ -3,6 +3,7 @@ package core_test
 import (
 	core "colonycore/internal/core"
 	"colonycore/pkg/domain"
+	entitymodel "colonycore/pkg/domain/entitymodel"
 	"context"
 	"os"
 	"path/filepath"
@@ -18,7 +19,7 @@ func TestSQLiteStoreSnapshot(t *testing.T) {
 	}
 	ctx := context.Background()
 	if _, err := store.RunInTransaction(ctx, func(tx domain.Transaction) error {
-		_, e := tx.CreateOrganism(domain.Organism{Name: "Alpha", Species: "Frog"})
+		_, e := tx.CreateOrganism(domain.Organism{Organism: entitymodel.Organism{Name: "Alpha", Species: "Frog"}})
 		return e
 	}); err != nil {
 		t.Fatalf("create organism: %v", err)

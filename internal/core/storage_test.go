@@ -1,8 +1,11 @@
 package core
 
 import (
+	"colonycore/internal/infra/persistence/postgres"
+	pgtu "colonycore/internal/infra/persistence/postgres/testutil"
 	"colonycore/internal/infra/persistence/sqlite"
 	"context"
+	"database/sql"
 	"os"
 	"path/filepath"
 	"testing"
@@ -91,14 +94,19 @@ func TestOpenPersistentStore_CustomSQLitePath(t *testing.T) {
 	})
 }
 
-func TestOpenPersistentStore_PostgresReturnsError(t *testing.T) {
+func TestOpenPersistentStore_Postgres(t *testing.T) {
 	withEnv("COLONYCORE_STORAGE_DRIVER", "postgres", func() {
 		withEnv("COLONYCORE_POSTGRES_DSN", "postgres://ignored", func() {
+			db, _ := pgtu.NewStubDB()
+			restore := postgres.OverrideSQLOpen(func(_, _ string) (*sql.DB, error) { return db, nil })
+			defer restore()
 			engine := NewDefaultRulesEngine()
-			_, err := OpenPersistentStore(engine)
-			if err == nil {
-				// The placeholder NewPostgresStore always returns an error currently.
-				t.Fatalf("expected error from postgres placeholder")
+			store, err := OpenPersistentStore(engine)
+			if err != nil {
+				t.Fatalf("expected postgres store, got error %v", err)
+			}
+			if _, ok := store.(*postgres.Store); !ok {
+				t.Fatalf("expected *postgres.Store, got %T", store)
 			}
 		})
 	})
@@ -116,13 +124,19 @@ func TestOpenPersistentStore_UnknownDriver(t *testing.T) {
 
 func TestNewPostgresStore(t *testing.T) {
 	engine := NewDefaultRulesEngine()
+	db, _ := pgtu.NewStubDB()
+	restore := postgres.OverrideSQLOpen(func(_, _ string) (*sql.DB, error) { return db, nil })
+	defer restore()
 	store, err := NewPostgresStore("postgres://example", engine)
-	if err == nil {
-		// placeholder should return error until implemented
-		t.Fatalf("expected error from placeholder NewPostgresStore")
+	if err != nil {
+		t.Fatalf("expected postgres store, got error %v", err)
 	}
-	if store == nil || store.Store == nil {
-		// still expect the embedded store to be initialized for forward compatibility
-		t.Fatalf("expected non-nil store with embedded memory store, got %#v", store)
+	if store == nil || store.DB() == nil {
+		t.Fatalf("expected non-nil postgres store with db handle, got %#v", store)
+	}
+	if store.RulesEngine() != engine {
+		t.Fatalf("expected postgres store to expose configured rules engine")
 	}
 }
+
+// --- postgres stub driver for storage tests ---

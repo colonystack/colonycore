@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"colonycore/pkg/domain"
+	entitymodel "colonycore/pkg/domain/entitymodel"
 )
 
 func TestMemoryStoreCRUDAndQueries(t *testing.T) {
@@ -26,29 +27,29 @@ func TestMemoryStoreCRUDAndQueries(t *testing.T) {
 	)
 
 	if _, err := store.RunInTransaction(ctx, func(tx domain.Transaction) error {
-		facility, err := tx.CreateFacility(domain.Facility{Name: "Lab"})
+		facility, err := tx.CreateFacility(domain.Facility{Facility: entitymodel.Facility{Name: "Lab"}})
 		if err != nil {
 			return err
 		}
 		facilityID = facility.ID
 
-		if _, err := tx.CreateHousingUnit(domain.HousingUnit{Name: "Invalid", FacilityID: facilityID, Capacity: 0}); err == nil {
+		if _, err := tx.CreateHousingUnit(domain.HousingUnit{HousingUnit: entitymodel.HousingUnit{Name: "Invalid", FacilityID: facilityID, Capacity: 0}}); err == nil {
 			return fmt.Errorf("expected capacity validation error")
 		}
 
-		project, err := tx.CreateProject(domain.Project{Code: "PRJ-1", Title: "Project"})
+		project, err := tx.CreateProject(domain.Project{Project: entitymodel.Project{Code: "PRJ-1", Title: "Project", FacilityIDs: []string{facilityID}}})
 		if err != nil {
 			return err
 		}
 		projectID = project.ID
 
-		protocol, err := tx.CreateProtocol(domain.Protocol{Code: "PROT-1", Title: "Protocol", MaxSubjects: 5})
+		protocol, err := tx.CreateProtocol(domain.Protocol{Protocol: entitymodel.Protocol{Code: "PROT-1", Title: "Protocol", MaxSubjects: 5}})
 		if err != nil {
 			return err
 		}
 		protocolID = protocol.ID
 
-		housing, err := tx.CreateHousingUnit(domain.HousingUnit{Name: "Tank", FacilityID: facilityID, Capacity: 2, Environment: "arid"})
+		housing, err := tx.CreateHousingUnit(domain.HousingUnit{HousingUnit: entitymodel.HousingUnit{Name: "Tank", FacilityID: facilityID, Capacity: 2, Environment: domain.HousingEnvironmentTerrestrial}})
 		if err != nil {
 			return err
 		}
@@ -58,7 +59,7 @@ func TestMemoryStoreCRUDAndQueries(t *testing.T) {
 		housingPtr := housingID
 		protocolPtr := protocolID
 
-		cohort, err := tx.CreateCohort(domain.Cohort{Name: "Cohort", Purpose: "Observation", ProjectID: &projectPtr, HousingID: &housingPtr, ProtocolID: &protocolPtr})
+		cohort, err := tx.CreateCohort(domain.Cohort{Cohort: entitymodel.Cohort{Name: "Cohort", Purpose: "Observation", ProjectID: &projectPtr, HousingID: &housingPtr, ProtocolID: &protocolPtr}})
 		if err != nil {
 			return err
 		}
@@ -67,16 +68,18 @@ func TestMemoryStoreCRUDAndQueries(t *testing.T) {
 		cohortPtr := cohortID
 
 		attrs := map[string]any{"skin_color_index": 5}
-		organismA, err := tx.CreateOrganism(domain.Organism{
-			Name:       "Alpha",
+		organismAInput := domain.Organism{Organism: entitymodel.Organism{Name: "Alpha",
 			Species:    "Test Frog",
 			Stage:      domain.StageJuvenile,
 			ProjectID:  &projectPtr,
 			ProtocolID: &protocolPtr,
 			CohortID:   &cohortPtr,
-			HousingID:  &housingPtr,
-			Attributes: attrs,
-		})
+			HousingID:  &housingPtr},
+		}
+		if err := organismAInput.SetCoreAttributes(attrs); err != nil {
+			return err
+		}
+		organismA, err := tx.CreateOrganism(organismAInput)
 		if err != nil {
 			return err
 		}
@@ -84,40 +87,38 @@ func TestMemoryStoreCRUDAndQueries(t *testing.T) {
 
 		attrs["skin_color_index"] = 9
 
-		organismB, err := tx.CreateOrganism(domain.Organism{
-			Name:     "Beta",
+		organismBInput := domain.Organism{Organism: entitymodel.Organism{Name: "Beta",
 			Species:  "Test Toad",
 			Stage:    domain.StageAdult,
-			CohortID: &cohortPtr,
-		})
+			CohortID: &cohortPtr},
+		}
+		organismB, err := tx.CreateOrganism(organismBInput)
 		if err != nil {
 			return err
 		}
 		organismBID = organismB.ID
 
-		if _, err := tx.CreateOrganism(domain.Organism{Base: domain.Base{ID: organismAID}, Name: "Duplicate"}); err == nil {
+		if _, err := tx.CreateOrganism(domain.Organism{Organism: entitymodel.Organism{ID: organismAID, Name: "Duplicate"}}); err == nil {
 			return fmt.Errorf("expected duplicate organism error")
 		}
 
-		breeding, err := tx.CreateBreedingUnit(domain.BreedingUnit{
-			Name:       "Pair",
+		breeding, err := tx.CreateBreedingUnit(domain.BreedingUnit{BreedingUnit: entitymodel.BreedingUnit{Name: "Pair",
 			Strategy:   "pair",
 			HousingID:  &housingPtr,
 			ProtocolID: &protocolPtr,
 			FemaleIDs:  []string{organismAID},
-			MaleIDs:    []string{organismBID},
+			MaleIDs:    []string{organismBID}},
 		})
 		if err != nil {
 			return err
 		}
 		breedingID = breeding.ID
 
-		procedure, err := tx.CreateProcedure(domain.Procedure{
-			Name:        "Check",
-			Status:      "scheduled",
+		procedure, err := tx.CreateProcedure(domain.Procedure{Procedure: entitymodel.Procedure{Name: "Check",
+			Status:      domain.ProcedureStatusScheduled,
 			ScheduledAt: time.Now().Add(time.Minute),
 			ProtocolID:  protocolID,
-			OrganismIDs: []string{organismAID, organismBID},
+			OrganismIDs: []string{organismAID, organismBID}},
 		})
 		if err != nil {
 			return err
@@ -151,10 +152,14 @@ func TestMemoryStoreCRUDAndQueries(t *testing.T) {
 		if organism.ID != organismAID {
 			continue
 		}
-		if organism.Attributes["skin_color_index"].(int) != 5 {
-			t.Fatalf("expected cloned attributes value 5, got %v", organism.Attributes["skin_color_index"])
+		attrs := organism.CoreAttributes()
+		if attrs["skin_color_index"].(int) != 5 {
+			t.Fatalf("expected cloned attributes value 5, got %v", attrs["skin_color_index"])
 		}
-		organism.Attributes["skin_color_index"] = 1
+		attrs["skin_color_index"] = 1
+		if organism.CoreAttributes()["skin_color_index"].(int) != 5 {
+			t.Fatalf("expected organism attributes clone to remain unchanged")
+		}
 		copyCheckDone = true
 	}
 	if !copyCheckDone {
@@ -162,8 +167,8 @@ func TestMemoryStoreCRUDAndQueries(t *testing.T) {
 	}
 	if refreshed, ok := store.GetOrganism(organismAID); !ok {
 		t.Fatalf("expected organism %s to exist", organismAID)
-	} else if refreshed.Attributes["skin_color_index"].(int) != 5 {
-		t.Fatalf("expected store attributes to remain 5, got %v", refreshed.Attributes["skin_color_index"])
+	} else if refreshedAttrs := refreshed.CoreAttributes(); refreshedAttrs["skin_color_index"].(int) != 5 {
+		t.Fatalf("expected store attributes to remain 5, got %v", refreshedAttrs["skin_color_index"])
 	}
 
 	housingList := store.ListHousingUnits()
@@ -173,8 +178,8 @@ func TestMemoryStoreCRUDAndQueries(t *testing.T) {
 	housingList[0].Environment = "modified"
 	if stored, ok := store.GetHousingUnit(housingID); !ok {
 		t.Fatalf("expected housing unit %s to exist", housingID)
-	} else if stored.Environment != "arid" {
-		t.Fatalf("expected environment to remain arid, got %s", stored.Environment)
+	} else if stored.Environment != domain.HousingEnvironmentTerrestrial {
+		t.Fatalf("expected environment to remain terrestrial, got %s", stored.Environment)
 	}
 
 	if _, err := store.RunInTransaction(ctx, func(tx domain.Transaction) error {
@@ -192,13 +197,13 @@ func TestMemoryStoreCRUDAndQueries(t *testing.T) {
 		}
 		const updatedDesc = "updated"
 		if _, err := tx.UpdateProject(projectID, func(p *domain.Project) error {
-			p.Description = updatedDesc
+			p.Description = strPtr(updatedDesc)
 			return nil
 		}); err != nil {
 			return err
 		}
 		if _, err := tx.UpdateProtocol(protocolID, func(p *domain.Protocol) error {
-			p.Description = updatedDesc
+			p.Description = strPtr(updatedDesc)
 			return nil
 		}); err != nil {
 			return err
@@ -217,7 +222,7 @@ func TestMemoryStoreCRUDAndQueries(t *testing.T) {
 			return err
 		}
 		if _, err := tx.UpdateProcedure(procedureID, func(p *domain.Procedure) error {
-			p.Status = "completed"
+			p.Status = domain.ProcedureStatusCompleted
 			return nil
 		}); err != nil {
 			return err
@@ -300,11 +305,11 @@ func TestMemoryStoreViewReadOnly(t *testing.T) {
 	ctx := context.Background()
 	var housing domain.HousingUnit
 	if _, err := store.RunInTransaction(ctx, func(tx domain.Transaction) error {
-		facility, err := tx.CreateFacility(domain.Facility{Name: "Lab"})
+		facility, err := tx.CreateFacility(domain.Facility{Facility: entitymodel.Facility{Name: "Lab"}})
 		if err != nil {
 			return err
 		}
-		housing, err = tx.CreateHousingUnit(domain.HousingUnit{Name: "Tank", FacilityID: facility.ID, Capacity: 1})
+		housing, err = tx.CreateHousingUnit(domain.HousingUnit{HousingUnit: entitymodel.HousingUnit{Name: "Tank", FacilityID: facility.ID, Capacity: 1}})
 		return err
 	}); err != nil {
 		t.Fatalf("create housing: %v", err)
@@ -329,11 +334,11 @@ func TestUpdateHousingUnitValidation(t *testing.T) {
 	ctx := context.Background()
 	var housing domain.HousingUnit
 	if _, err := store.RunInTransaction(ctx, func(tx domain.Transaction) error {
-		facility, err := tx.CreateFacility(domain.Facility{Name: "Lab"})
+		facility, err := tx.CreateFacility(domain.Facility{Facility: entitymodel.Facility{Name: "Lab"}})
 		if err != nil {
 			return err
 		}
-		housing, err = tx.CreateHousingUnit(domain.HousingUnit{Name: "Validated", FacilityID: facility.ID, Capacity: 2})
+		housing, err = tx.CreateHousingUnit(domain.HousingUnit{HousingUnit: entitymodel.HousingUnit{Name: "Validated", FacilityID: facility.ID, Capacity: 2}})
 		return err
 	}); err != nil {
 		t.Fatalf("create housing: %v", err)
@@ -376,7 +381,11 @@ func TestRulesEngineAggregates(t *testing.T) {
 	ctx := context.Background()
 
 	res, err := store.RunInTransaction(ctx, func(tx domain.Transaction) error {
-		_, err := tx.CreateProject(domain.Project{Code: "P", Title: "Project"})
+		facility, err := tx.CreateFacility(domain.Facility{Facility: entitymodel.Facility{Name: "Rules Facility"}})
+		if err != nil {
+			return err
+		}
+		_, err = tx.CreateProject(domain.Project{Project: entitymodel.Project{Code: "P", Title: "Project", FacilityIDs: []string{facility.ID}}})
 		return err
 	})
 	if err == nil {

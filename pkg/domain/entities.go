@@ -2,7 +2,11 @@
 // rule evaluation primitives used by colonycore.
 package domain
 
-import "time"
+import (
+	"colonycore/pkg/domain/entitymodel"
+	"colonycore/pkg/domain/extension"
+	"encoding/json"
+)
 
 // EntityType identifies the type of record stored in the core domain.
 type EntityType string
@@ -44,18 +48,100 @@ const (
 )
 
 // LifecycleStage represents the canonical organism lifecycle states described in the RFC.
-type LifecycleStage string
+type LifecycleStage = entitymodel.LifecycleStage
 
 // Canonical organism lifecycle stages used for housing and capacity rule evaluation.
 const (
 	// StagePlanned indicates a planned organism not yet created in lab.
-	StagePlanned LifecycleStage = "planned"
+	StagePlanned LifecycleStage = entitymodel.LifecycleStagePlanned
 	// StageLarva indicates embryonic or larval stage.
-	StageLarva    LifecycleStage = "embryo_larva"
-	StageJuvenile LifecycleStage = "juvenile"
-	StageAdult    LifecycleStage = "adult"
-	StageRetired  LifecycleStage = "retired"
-	StageDeceased LifecycleStage = "deceased"
+	StageLarva    LifecycleStage = entitymodel.LifecycleStageEmbryoLarva
+	StageJuvenile LifecycleStage = entitymodel.LifecycleStageJuvenile
+	StageAdult    LifecycleStage = entitymodel.LifecycleStageAdult
+	StageRetired  LifecycleStage = entitymodel.LifecycleStageRetired
+	StageDeceased LifecycleStage = entitymodel.LifecycleStageDeceased
+)
+
+// ProtocolStatus enumerates compliance protocol lifecycle states (RFC-0001 §5.3).
+type ProtocolStatus = entitymodel.ProtocolStatus
+
+// Canonical protocol statuses aligned to Entity Model v0.
+const (
+	ProtocolStatusDraft     ProtocolStatus = entitymodel.ProtocolStatusDraft
+	ProtocolStatusSubmitted ProtocolStatus = entitymodel.ProtocolStatusSubmitted
+	ProtocolStatusApproved  ProtocolStatus = entitymodel.ProtocolStatusApproved
+	ProtocolStatusOnHold    ProtocolStatus = entitymodel.ProtocolStatusOnHold
+	ProtocolStatusExpired   ProtocolStatus = entitymodel.ProtocolStatusExpired
+	ProtocolStatusArchived  ProtocolStatus = entitymodel.ProtocolStatusArchived
+)
+
+// ProcedureStatus enumerates canonical procedure workflow states (RFC-0001 §5.4).
+type ProcedureStatus = entitymodel.ProcedureStatus
+
+// Canonical procedure statuses used for scheduling and validation.
+const (
+	ProcedureStatusScheduled  ProcedureStatus = entitymodel.ProcedureStatusScheduled
+	ProcedureStatusInProgress ProcedureStatus = entitymodel.ProcedureStatusInProgress
+	ProcedureStatusCompleted  ProcedureStatus = entitymodel.ProcedureStatusCompleted
+	ProcedureStatusCancelled  ProcedureStatus = entitymodel.ProcedureStatusCancelled
+	ProcedureStatusFailed     ProcedureStatus = entitymodel.ProcedureStatusFailed
+)
+
+// TreatmentStatus enumerates treatment lifecycle states enforced by the plugin contract.
+type TreatmentStatus = entitymodel.TreatmentStatus
+
+// Canonical treatment statuses recognised by rule and dataset adapters.
+const (
+	TreatmentStatusPlanned    TreatmentStatus = entitymodel.TreatmentStatusPlanned
+	TreatmentStatusInProgress TreatmentStatus = entitymodel.TreatmentStatusInProgress
+	TreatmentStatusCompleted  TreatmentStatus = entitymodel.TreatmentStatusCompleted
+	TreatmentStatusFlagged    TreatmentStatus = entitymodel.TreatmentStatusFlagged
+)
+
+// SampleStatus enumerates sample custody states (stored, in transit, consumed, disposed).
+type SampleStatus = entitymodel.SampleStatus
+
+// Canonical sample statuses used for chain-of-custody validation.
+const (
+	SampleStatusStored    SampleStatus = entitymodel.SampleStatusStored
+	SampleStatusInTransit SampleStatus = entitymodel.SampleStatusInTransit
+	SampleStatusConsumed  SampleStatus = entitymodel.SampleStatusConsumed
+	SampleStatusDisposed  SampleStatus = entitymodel.SampleStatusDisposed
+)
+
+// PermitStatus enumerates permit validity states consumed by compliance workflows.
+type PermitStatus = entitymodel.PermitStatus
+
+// Canonical permit statuses describing regulatory validity.
+const (
+	PermitStatusDraft     PermitStatus = entitymodel.PermitStatusDraft
+	PermitStatusSubmitted PermitStatus = entitymodel.PermitStatusSubmitted
+	PermitStatusApproved  PermitStatus = entitymodel.PermitStatusApproved
+	PermitStatusOnHold    PermitStatus = entitymodel.PermitStatusOnHold
+	PermitStatusExpired   PermitStatus = entitymodel.PermitStatusExpired
+	PermitStatusArchived  PermitStatus = entitymodel.PermitStatusArchived
+)
+
+// HousingState enumerates lifecycle states for housing units (RFC-0001 §5.2).
+type HousingState = entitymodel.HousingState
+
+// Canonical housing lifecycle states aligned to Entity Model v0.
+const (
+	HousingStateQuarantine     HousingState = entitymodel.HousingStateQuarantine
+	HousingStateActive         HousingState = entitymodel.HousingStateActive
+	HousingStateCleaning       HousingState = entitymodel.HousingStateCleaning
+	HousingStateDecommissioned HousingState = entitymodel.HousingStateDecommissioned
+)
+
+// HousingEnvironment enumerates canonical housing environments.
+type HousingEnvironment = entitymodel.HousingEnvironment
+
+// Canonical housing environments aligned to Entity Model v0.
+const (
+	HousingEnvironmentAquatic     HousingEnvironment = entitymodel.HousingEnvironmentAquatic
+	HousingEnvironmentTerrestrial HousingEnvironment = entitymodel.HousingEnvironmentTerrestrial
+	HousingEnvironmentArboreal    HousingEnvironment = entitymodel.HousingEnvironmentArboreal
+	HousingEnvironmentHumid       HousingEnvironment = entitymodel.HousingEnvironmentHumid
 )
 
 // Severity captures rule outcomes.
@@ -70,231 +156,491 @@ const (
 	SeverityLog  Severity = "log"
 )
 
-// Base contains common fields for all domain records.
-type Base struct {
-	ID        string    `json:"id"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
-}
-
 // Organism represents an individual animal tracked by the system.
 type Organism struct {
-	Base
-	Name       string         `json:"name"`
-	Species    string         `json:"species"`
-	Line       string         `json:"line"`
-	LineID     *string        `json:"line_id"`
-	StrainID   *string        `json:"strain_id"`
-	ParentIDs  []string       `json:"parent_ids"`
-	Stage      LifecycleStage `json:"stage"`
-	CohortID   *string        `json:"cohort_id"`
-	HousingID  *string        `json:"housing_id"`
-	ProtocolID *string        `json:"protocol_id"`
-	ProjectID  *string        `json:"project_id"`
-	Attributes map[string]any `json:"attributes"`
+	entitymodel.Organism
+	extensions *extension.Container `json:"-"`
 }
 
 // Cohort represents a managed group of organisms.
 type Cohort struct {
-	Base
-	Name       string  `json:"name"`
-	Purpose    string  `json:"purpose"`
-	ProjectID  *string `json:"project_id"`
-	HousingID  *string `json:"housing_id"`
-	ProtocolID *string `json:"protocol_id"`
+	entitymodel.Cohort
 }
 
 // HousingUnit captures physical housing metadata.
 type HousingUnit struct {
-	Base
-	Name        string `json:"name"`
-	FacilityID  string `json:"facility_id"`
-	Capacity    int    `json:"capacity"`
-	Environment string `json:"environment"`
+	entitymodel.HousingUnit
 }
 
 // Facility aggregates housing units with shared biosecurity controls.
 type Facility struct {
-	Base
-	Code                 string         `json:"code"`
-	Name                 string         `json:"name"`
-	Zone                 string         `json:"zone"`
-	AccessPolicy         string         `json:"access_policy"`
-	EnvironmentBaselines map[string]any `json:"environment_baselines"`
-	HousingUnitIDs       []string       `json:"housing_unit_ids"`
-	ProjectIDs           []string       `json:"project_ids"`
+	entitymodel.Facility
+	extensions *extension.Container `json:"-"`
 }
 
 // BreedingUnit tracks configured pairings or groups intended for reproduction.
 type BreedingUnit struct {
-	Base
-	Name              string         `json:"name"`
-	Strategy          string         `json:"strategy"`
-	HousingID         *string        `json:"housing_id"`
-	ProtocolID        *string        `json:"protocol_id"`
-	LineID            *string        `json:"line_id"`
-	StrainID          *string        `json:"strain_id"`
-	TargetLineID      *string        `json:"target_line_id"`
-	TargetStrainID    *string        `json:"target_strain_id"`
-	PairingIntent     string         `json:"pairing_intent"`
-	PairingNotes      string         `json:"pairing_notes"`
-	PairingAttributes map[string]any `json:"pairing_attributes"`
-	FemaleIDs         []string       `json:"female_ids"`
-	MaleIDs           []string       `json:"male_ids"`
+	entitymodel.BreedingUnit
+	extensions *extension.Container `json:"-"`
 }
 
 // Line represents a genetic lineage with shared inheritance characteristics.
 type Line struct {
-	Base
-	Code               string         `json:"code"`
-	Name               string         `json:"name"`
-	Description        string         `json:"description"`
-	Origin             string         `json:"origin"`
-	GenotypeMarkerIDs  []string       `json:"genotype_marker_ids"`
-	DefaultAttributes  map[string]any `json:"default_attributes"`
-	DeprecatedAt       *time.Time     `json:"deprecated_at"`
-	DeprecationReason  string         `json:"deprecation_reason"`
-	ExtensionOverrides map[string]any `json:"extension_overrides"`
+	entitymodel.Line
+	defaultAttributesSlot  *extension.Slot      `json:"-"` // cache avoids rehydrating the container; container remains canonical
+	extensionOverridesSlot *extension.Slot      `json:"-"` // cache avoids rehydrating the container; container remains canonical
+	extensions             *extension.Container `json:"-"`
 }
 
 // Strain represents a managed sub-population derived from a line.
 type Strain struct {
-	Base
-	Code              string         `json:"code"`
-	Name              string         `json:"name"`
-	LineID            string         `json:"line_id"`
-	Description       string         `json:"description"`
-	Generation        string         `json:"generation"`
-	GenotypeMarkerIDs []string       `json:"genotype_marker_ids"`
-	Attributes        map[string]any `json:"attributes"`
-	RetiredAt         *time.Time     `json:"retired_at"`
-	RetirementReason  string         `json:"retirement_reason"`
+	entitymodel.Strain
+	extensions *extension.Container `json:"-"`
 }
 
 // GenotypeMarker captures assay metadata for genetic markers used in lineage tracking.
 type GenotypeMarker struct {
-	Base
-	Name           string         `json:"name"`
-	Locus          string         `json:"locus"`
-	Alleles        []string       `json:"alleles"`
-	AssayMethod    string         `json:"assay_method"`
-	Interpretation string         `json:"interpretation"`
-	Version        string         `json:"version"`
-	Attributes     map[string]any `json:"attributes"`
+	entitymodel.GenotypeMarker
+	extensions *extension.Container `json:"-"`
 }
 
 // Procedure captures scheduled or completed animal procedures.
 type Procedure struct {
-	Base
-	Name           string    `json:"name"`
-	Status         string    `json:"status"`
-	ScheduledAt    time.Time `json:"scheduled_at"`
-	ProtocolID     string    `json:"protocol_id"`
-	ProjectID      *string   `json:"project_id"`
-	CohortID       *string   `json:"cohort_id"`
-	OrganismIDs    []string  `json:"organism_ids"`
-	TreatmentIDs   []string  `json:"treatment_ids"`
-	ObservationIDs []string  `json:"observation_ids"`
+	entitymodel.Procedure
 }
 
 // Treatment captures therapeutic interventions and their outcomes.
 type Treatment struct {
-	Base
-	Name              string   `json:"name"`
-	ProcedureID       string   `json:"procedure_id"`
-	OrganismIDs       []string `json:"organism_ids"`
-	CohortIDs         []string `json:"cohort_ids"`
-	DosagePlan        string   `json:"dosage_plan"`
-	AdministrationLog []string `json:"administration_log"`
-	AdverseEvents     []string `json:"adverse_events"`
+	entitymodel.Treatment
 }
 
 // Observation records structured or free-form notes captured during workflows.
 type Observation struct {
-	Base
-	ProcedureID *string        `json:"procedure_id"`
-	OrganismID  *string        `json:"organism_id"`
-	CohortID    *string        `json:"cohort_id"`
-	RecordedAt  time.Time      `json:"recorded_at"`
-	Observer    string         `json:"observer"`
-	Data        map[string]any `json:"data"`
-	Notes       string         `json:"notes"`
+	entitymodel.Observation
+	extensions *extension.Container `json:"-"`
 }
 
 // Sample tracks material derived from organisms or cohorts.
 type Sample struct {
-	Base
-	Identifier      string               `json:"identifier"`
-	SourceType      string               `json:"source_type"`
-	OrganismID      *string              `json:"organism_id"`
-	CohortID        *string              `json:"cohort_id"`
-	FacilityID      string               `json:"facility_id"`
-	CollectedAt     time.Time            `json:"collected_at"`
-	Status          string               `json:"status"`
-	StorageLocation string               `json:"storage_location"`
-	AssayType       string               `json:"assay_type"`
-	ChainOfCustody  []SampleCustodyEvent `json:"chain_of_custody"`
-	Attributes      map[string]any       `json:"attributes"`
+	entitymodel.Sample
+	extensions *extension.Container `json:"-"`
 }
 
 // SampleCustodyEvent logs a change in possession or storage for a sample.
-type SampleCustodyEvent struct {
-	Actor     string    `json:"actor"`
-	Location  string    `json:"location"`
-	Timestamp time.Time `json:"timestamp"`
-	Notes     string    `json:"notes"`
-}
+type SampleCustodyEvent = entitymodel.SampleCustodyEvent
 
 // Protocol represents compliance agreements.
 type Protocol struct {
-	Base
-	Code        string `json:"code"`
-	Title       string `json:"title"`
-	Description string `json:"description"`
-	MaxSubjects int    `json:"max_subjects"`
-	Status      string `json:"status"`
+	entitymodel.Protocol
 }
 
 // Permit represents external authorizations needed for compliance.
 type Permit struct {
-	Base
-	PermitNumber      string    `json:"permit_number"`
-	Authority         string    `json:"authority"`
-	ValidFrom         time.Time `json:"valid_from"`
-	ValidUntil        time.Time `json:"valid_until"`
-	AllowedActivities []string  `json:"allowed_activities"`
-	FacilityIDs       []string  `json:"facility_ids"`
-	ProtocolIDs       []string  `json:"protocol_ids"`
-	Notes             string    `json:"notes"`
+	entitymodel.Permit
 }
 
 // Project captures cost center allocations.
 type Project struct {
-	Base
-	Code          string   `json:"code"`
-	Title         string   `json:"title"`
-	Description   string   `json:"description"`
-	FacilityIDs   []string `json:"facility_ids"`
-	ProtocolIDs   []string `json:"protocol_ids"`
-	OrganismIDs   []string `json:"organism_ids"`
-	ProcedureIDs  []string `json:"procedure_ids"`
-	SupplyItemIDs []string `json:"supply_item_ids"`
+	entitymodel.Project
 }
 
 // SupplyItem models inventory resources consumed by projects or facilities.
 type SupplyItem struct {
-	Base
-	SKU            string         `json:"sku"`
-	Name           string         `json:"name"`
-	Description    string         `json:"description"`
-	QuantityOnHand int            `json:"quantity_on_hand"`
-	Unit           string         `json:"unit"`
-	LotNumber      string         `json:"lot_number"`
-	ExpiresAt      *time.Time     `json:"expires_at"`
-	FacilityIDs    []string       `json:"facility_ids"`
-	ProjectIDs     []string       `json:"project_ids"`
-	ReorderLevel   int            `json:"reorder_level"`
-	Attributes     map[string]any `json:"attributes"`
+	entitymodel.SupplyItem
+	extensions *extension.Container `json:"-"`
+}
+
+type organismAlias entitymodel.Organism
+
+// MarshalJSON ensures organism attributes are serialised via the core plugin payload.
+func (o Organism) MarshalJSON() ([]byte, error) {
+	container, err := o.OrganismExtensions()
+	if err != nil {
+		return nil, err
+	}
+	extensions := container.Raw()
+	if len(extensions) == 0 {
+		extensions = nil
+	}
+	type payload struct {
+		organismAlias
+		Attributes map[string]any            `json:"attributes,omitempty"`
+		Extensions map[string]map[string]any `json:"extensions,omitempty"`
+	}
+	return json.Marshal(payload{
+		organismAlias: organismAlias(o.Organism),
+		Attributes:    (&o).CoreAttributes(),
+		Extensions:    extensions,
+	})
+}
+
+// UnmarshalJSON hydrates organism extension slots from the JSON payload.
+func (o *Organism) UnmarshalJSON(data []byte) error {
+	type payload struct {
+		organismAlias
+		Attributes map[string]any            `json:"attributes"`
+		Extensions map[string]map[string]any `json:"extensions"`
+	}
+	var aux payload
+	if err := json.Unmarshal(data, &aux); err != nil {
+		return err
+	}
+	o.Organism = entitymodel.Organism(aux.organismAlias)
+	if len(aux.Extensions) != 0 {
+		container, err := extension.FromRaw(aux.Extensions)
+		if err != nil {
+			return err
+		}
+		if err := o.SetOrganismExtensions(container); err != nil {
+			return err
+		}
+	}
+	if aux.Attributes == nil {
+		return nil
+	}
+	return o.SetCoreAttributes(aux.Attributes)
+}
+
+type facilityAlias entitymodel.Facility
+
+// MarshalJSON ensures facility environment baselines are serialised via the core plugin payload.
+func (f Facility) MarshalJSON() ([]byte, error) {
+	container, err := f.FacilityExtensions()
+	if err != nil {
+		return nil, err
+	}
+	extensions := container.Raw()
+	if len(extensions) == 0 {
+		extensions = nil
+	}
+	type payload struct {
+		facilityAlias
+		EnvironmentBaselines map[string]any            `json:"environment_baselines,omitempty"`
+		Extensions           map[string]map[string]any `json:"extensions,omitempty"`
+	}
+	return json.Marshal(payload{
+		facilityAlias:        facilityAlias(f.Facility),
+		EnvironmentBaselines: (&f).EnvironmentBaselines(),
+		Extensions:           extensions,
+	})
+}
+
+// UnmarshalJSON hydrates facility extension slots from the JSON payload.
+func (f *Facility) UnmarshalJSON(data []byte) error {
+	type payload struct {
+		facilityAlias
+		EnvironmentBaselines map[string]any            `json:"environment_baselines"`
+		Extensions           map[string]map[string]any `json:"extensions"`
+	}
+	var aux payload
+	if err := json.Unmarshal(data, &aux); err != nil {
+		return err
+	}
+	f.Facility = entitymodel.Facility(aux.facilityAlias)
+	if len(aux.Extensions) != 0 {
+		container, err := extension.FromRaw(aux.Extensions)
+		if err != nil {
+			return err
+		}
+		if err := f.SetFacilityExtensions(container); err != nil {
+			return err
+		}
+	}
+	return f.ApplyEnvironmentBaselines(aux.EnvironmentBaselines)
+}
+
+type breedingUnitAlias entitymodel.BreedingUnit
+
+// MarshalJSON ensures breeding unit pairing attributes are serialised via the core plugin payload.
+func (b BreedingUnit) MarshalJSON() ([]byte, error) {
+	container, err := b.BreedingUnitExtensions()
+	if err != nil {
+		return nil, err
+	}
+	extensions := container.Raw()
+	if len(extensions) == 0 {
+		extensions = nil
+	}
+	type payload struct {
+		breedingUnitAlias
+		PairingAttributes map[string]any            `json:"pairing_attributes,omitempty"`
+		Extensions        map[string]map[string]any `json:"extensions,omitempty"`
+	}
+	return json.Marshal(payload{
+		breedingUnitAlias: breedingUnitAlias(b.BreedingUnit),
+		PairingAttributes: (&b).PairingAttributes(),
+		Extensions:        extensions,
+	})
+}
+
+// UnmarshalJSON hydrates breeding unit extension slots from the JSON payload.
+func (b *BreedingUnit) UnmarshalJSON(data []byte) error {
+	type payload struct {
+		breedingUnitAlias
+		PairingAttributes map[string]any            `json:"pairing_attributes"`
+		Extensions        map[string]map[string]any `json:"extensions"`
+	}
+	var aux payload
+	if err := json.Unmarshal(data, &aux); err != nil {
+		return err
+	}
+	b.BreedingUnit = entitymodel.BreedingUnit(aux.breedingUnitAlias)
+	if len(aux.Extensions) != 0 {
+		container, err := extension.FromRaw(aux.Extensions)
+		if err != nil {
+			return err
+		}
+		if err := b.SetBreedingUnitExtensions(container); err != nil {
+			return err
+		}
+	}
+	return b.ApplyPairingAttributes(aux.PairingAttributes)
+}
+
+type observationAlias entitymodel.Observation
+
+// MarshalJSON ensures observation data are serialised via the core plugin payload.
+func (o Observation) MarshalJSON() ([]byte, error) {
+	container, err := o.ObservationExtensions()
+	if err != nil {
+		return nil, err
+	}
+	extensions := container.Raw()
+	if len(extensions) == 0 {
+		extensions = nil
+	}
+	type payload struct {
+		observationAlias
+		Data       map[string]any            `json:"data,omitempty"`
+		Extensions map[string]map[string]any `json:"extensions,omitempty"`
+	}
+	return json.Marshal(payload{
+		observationAlias: observationAlias(o.Observation),
+		Data:             (&o).ObservationData(),
+		Extensions:       extensions,
+	})
+}
+
+// UnmarshalJSON hydrates observation extension slots from the JSON payload.
+func (o *Observation) UnmarshalJSON(data []byte) error {
+	type payload struct {
+		observationAlias
+		Data       map[string]any            `json:"data"`
+		Extensions map[string]map[string]any `json:"extensions"`
+	}
+	var aux payload
+	if err := json.Unmarshal(data, &aux); err != nil {
+		return err
+	}
+	o.Observation = entitymodel.Observation(aux.observationAlias)
+	if aux.Extensions != nil {
+		container, err := extension.FromRaw(aux.Extensions)
+		if err != nil {
+			return err
+		}
+		if _, ok := container.Get(extension.HookObservationData, extension.PluginCore); !ok && aux.Data != nil {
+			if err := container.Set(extension.HookObservationData, extension.PluginCore, aux.Data); err != nil {
+				return err
+			}
+		}
+		return o.SetObservationExtensions(container)
+	}
+	return o.ApplyObservationData(aux.Data)
+}
+
+type sampleAlias entitymodel.Sample
+
+// MarshalJSON ensures sample attributes are serialised via the core plugin payload.
+func (s Sample) MarshalJSON() ([]byte, error) {
+	container, err := s.SampleExtensions()
+	if err != nil {
+		return nil, err
+	}
+	extensions := container.Raw()
+	if len(extensions) == 0 {
+		extensions = nil
+	}
+	type payload struct {
+		sampleAlias
+		Attributes map[string]any            `json:"attributes,omitempty"`
+		Extensions map[string]map[string]any `json:"extensions,omitempty"`
+	}
+	return json.Marshal(payload{
+		sampleAlias: sampleAlias(s.Sample),
+		Attributes:  (&s).SampleAttributes(),
+		Extensions:  extensions,
+	})
+}
+
+// UnmarshalJSON hydrates sample extension slots from the JSON payload.
+func (s *Sample) UnmarshalJSON(data []byte) error {
+	type payload struct {
+		sampleAlias
+		Attributes map[string]any            `json:"attributes"`
+		Extensions map[string]map[string]any `json:"extensions"`
+	}
+	var aux payload
+	if err := json.Unmarshal(data, &aux); err != nil {
+		return err
+	}
+	s.Sample = entitymodel.Sample(aux.sampleAlias)
+	if len(aux.Extensions) != 0 {
+		container, err := extension.FromRaw(aux.Extensions)
+		if err != nil {
+			return err
+		}
+		if err := s.SetSampleExtensions(container); err != nil {
+			return err
+		}
+	}
+	if aux.Attributes == nil {
+		return nil
+	}
+	return s.ApplySampleAttributes(aux.Attributes)
+}
+
+type supplyAlias entitymodel.SupplyItem
+
+// MarshalJSON ensures supply item attributes are serialised via the core plugin payload.
+func (s SupplyItem) MarshalJSON() ([]byte, error) {
+	container, err := s.SupplyItemExtensions()
+	if err != nil {
+		return nil, err
+	}
+	extensions := container.Raw()
+	if len(extensions) == 0 {
+		extensions = nil
+	}
+	type payload struct {
+		supplyAlias
+		Attributes map[string]any            `json:"attributes,omitempty"`
+		Extensions map[string]map[string]any `json:"extensions,omitempty"`
+	}
+	return json.Marshal(payload{
+		supplyAlias: supplyAlias(s.SupplyItem),
+		Attributes:  (&s).SupplyAttributes(),
+		Extensions:  extensions,
+	})
+}
+
+// UnmarshalJSON hydrates supply item extension slots from the JSON payload.
+func (s *SupplyItem) UnmarshalJSON(data []byte) error {
+	type payload struct {
+		supplyAlias
+		Attributes map[string]any            `json:"attributes"`
+		Extensions map[string]map[string]any `json:"extensions"`
+	}
+	var aux payload
+	if err := json.Unmarshal(data, &aux); err != nil {
+		return err
+	}
+	s.SupplyItem = entitymodel.SupplyItem(aux.supplyAlias)
+	if len(aux.Extensions) != 0 {
+		container, err := extension.FromRaw(aux.Extensions)
+		if err != nil {
+			return err
+		}
+		if err := s.SetSupplyItemExtensions(container); err != nil {
+			return err
+		}
+	}
+	if aux.Attributes == nil {
+		return nil
+	}
+	return s.ApplySupplyAttributes(aux.Attributes)
+}
+
+type lineAlias entitymodel.Line
+
+// MarshalJSON ensures line extension slots are serialised as hook-indexed maps.
+func (l Line) MarshalJSON() ([]byte, error) {
+	type payload struct {
+		lineAlias
+		DefaultAttributes  map[string]any `json:"default_attributes"`
+		ExtensionOverrides map[string]any `json:"extension_overrides"`
+	}
+
+	return json.Marshal(payload{
+		lineAlias:          lineAlias(l.Line),
+		DefaultAttributes:  (&l).DefaultAttributes(),
+		ExtensionOverrides: (&l).ExtensionOverrides(),
+	})
+}
+
+// UnmarshalJSON hydrates line extension slots from the JSON payload.
+func (l *Line) UnmarshalJSON(data []byte) error {
+	type payload struct {
+		lineAlias
+		DefaultAttributes  map[string]any `json:"default_attributes"`
+		ExtensionOverrides map[string]any `json:"extension_overrides"`
+	}
+	var aux payload
+	if err := json.Unmarshal(data, &aux); err != nil {
+		return err
+	}
+	l.Line = entitymodel.Line(aux.lineAlias)
+	if err := l.ApplyDefaultAttributes(aux.DefaultAttributes); err != nil {
+		return err
+	}
+	return l.ApplyExtensionOverrides(aux.ExtensionOverrides)
+}
+
+type strainAlias entitymodel.Strain
+
+// MarshalJSON ensures strain attributes slot is serialised via hook-indexed map.
+func (s Strain) MarshalJSON() ([]byte, error) {
+	type payload struct {
+		strainAlias
+		Attributes map[string]any `json:"attributes"`
+	}
+
+	return json.Marshal(payload{
+		strainAlias: strainAlias(s.Strain),
+		Attributes:  (&s).StrainAttributesByPlugin(),
+	})
+}
+
+// UnmarshalJSON hydrates strain extension slot from the payload.
+func (s *Strain) UnmarshalJSON(data []byte) error {
+	type payload struct {
+		strainAlias
+		Attributes map[string]any `json:"attributes"`
+	}
+	var aux payload
+	if err := json.Unmarshal(data, &aux); err != nil {
+		return err
+	}
+	s.Strain = entitymodel.Strain(aux.strainAlias)
+	return s.ApplyStrainAttributes(aux.Attributes)
+}
+
+type genotypeMarkerAlias entitymodel.GenotypeMarker
+
+// MarshalJSON ensures genotype marker attributes are serialised via hook-indexed map.
+func (g GenotypeMarker) MarshalJSON() ([]byte, error) {
+	type payload struct {
+		genotypeMarkerAlias
+		Attributes map[string]any `json:"attributes"`
+	}
+
+	return json.Marshal(payload{
+		genotypeMarkerAlias: genotypeMarkerAlias(g.GenotypeMarker),
+		Attributes:          (&g).GenotypeMarkerAttributesByPlugin(),
+	})
+}
+
+// UnmarshalJSON hydrates genotype marker attributes from the JSON payload.
+func (g *GenotypeMarker) UnmarshalJSON(data []byte) error {
+	type payload struct {
+		genotypeMarkerAlias
+		Attributes map[string]any `json:"attributes"`
+	}
+	var aux payload
+	if err := json.Unmarshal(data, &aux); err != nil {
+		return err
+	}
+	g.GenotypeMarker = entitymodel.GenotypeMarker(aux.genotypeMarkerAlias)
+	return g.ApplyGenotypeMarkerAttributes(aux.Attributes)
 }
 
 // Change describes a mutation applied to an entity during a transaction.

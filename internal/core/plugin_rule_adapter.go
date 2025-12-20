@@ -2,6 +2,7 @@ package core
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"time"
 
@@ -157,11 +158,11 @@ type baseView struct {
 	updatedAt time.Time
 }
 
-func newBaseView(base domain.Base) baseView {
+func newBaseView(id string, createdAt, updatedAt time.Time) baseView {
 	return baseView{
-		id:        base.ID,
-		createdAt: base.CreatedAt,
-		updatedAt: base.UpdatedAt,
+		id:        id,
+		createdAt: createdAt,
+		updatedAt: updatedAt,
 	}
 }
 
@@ -171,35 +172,43 @@ func (b baseView) UpdatedAt() time.Time { return b.updatedAt }
 
 type organismView struct {
 	baseView
-	name       string
-	species    string
-	line       string
-	lineID     *string
-	strainID   *string
-	parentIDs  []string
-	stage      pluginapi.LifecycleStage
-	cohortID   *string
-	housingID  *string
-	protocolID *string
-	projectID  *string
-	attributes map[string]any
+	name           string
+	species        string
+	line           string
+	lineID         *string
+	strainID       *string
+	parentIDs      []string
+	stage          pluginapi.LifecycleStage
+	cohortID       *string
+	housingID      *string
+	protocolID     *string
+	projectID      *string
+	extensions     pluginapi.ExtensionSet
+	coreAttributes map[string]any
 }
 
 func newOrganismView(org domain.Organism) organismView {
+	container, err := org.OrganismExtensions()
+	if err != nil {
+		panic(fmt.Errorf("core: organism extensions: %w", err))
+	}
+	extSet := pluginapi.NewExtensionSet(container.Raw())
+	corePayload := org.CoreAttributesPayload().Map()
 	return organismView{
-		baseView:   newBaseView(org.Base),
-		name:       org.Name,
-		species:    org.Species,
-		line:       org.Line,
-		lineID:     cloneOptionalString(org.LineID),
-		strainID:   cloneOptionalString(org.StrainID),
-		parentIDs:  append([]string(nil), org.ParentIDs...),
-		stage:      pluginapi.LifecycleStage(org.Stage),
-		cohortID:   cloneOptionalString(org.CohortID),
-		housingID:  cloneOptionalString(org.HousingID),
-		protocolID: cloneOptionalString(org.ProtocolID),
-		projectID:  cloneOptionalString(org.ProjectID),
-		attributes: cloneAttributes(org.Attributes),
+		baseView:       newBaseView(org.ID, org.CreatedAt, org.UpdatedAt),
+		name:           org.Name,
+		species:        org.Species,
+		line:           org.Line,
+		lineID:         cloneOptionalString(org.LineID),
+		strainID:       cloneOptionalString(org.StrainID),
+		parentIDs:      append([]string(nil), org.ParentIDs...),
+		stage:          pluginapi.LifecycleStage(org.Stage),
+		cohortID:       cloneOptionalString(org.CohortID),
+		housingID:      cloneOptionalString(org.HousingID),
+		protocolID:     cloneOptionalString(org.ProtocolID),
+		projectID:      cloneOptionalString(org.ProjectID),
+		extensions:     extSet,
+		coreAttributes: cloneAttributes(corePayload),
 	}
 }
 
@@ -234,7 +243,19 @@ func (o organismView) ProjectID() (string, bool) {
 	return derefString(o.projectID)
 }
 func (o organismView) Attributes() map[string]any {
-	return cloneAttributes(o.attributes)
+	return o.CoreAttributes()
+}
+func (o organismView) Extensions() pluginapi.ExtensionSet {
+	return o.extensions
+}
+func (o organismView) CoreAttributes() map[string]any {
+	return cloneAttributes(o.coreAttributes)
+}
+func (o organismView) CoreAttributesPayload() pluginapi.ObjectPayload {
+	if o.coreAttributes == nil {
+		return pluginapi.NewObjectPayload(nil)
+	}
+	return pluginapi.NewObjectPayload(o.coreAttributes)
 }
 
 // Contextual lifecycle stage accessors
@@ -277,15 +298,17 @@ type housingUnitView struct {
 	facilityID  string
 	capacity    int
 	environment string
+	state       string
 }
 
 func newHousingUnitView(unit domain.HousingUnit) housingUnitView {
 	return housingUnitView{
-		baseView:    newBaseView(unit.Base),
+		baseView:    newBaseView(unit.ID, unit.CreatedAt, unit.UpdatedAt),
 		name:        unit.Name,
 		facilityID:  unit.FacilityID,
 		capacity:    unit.Capacity,
-		environment: unit.Environment,
+		environment: string(unit.Environment),
+		state:       string(unit.State),
 	}
 }
 
@@ -293,6 +316,7 @@ func (h housingUnitView) Name() string        { return h.name }
 func (h housingUnitView) FacilityID() string  { return h.facilityID }
 func (h housingUnitView) Capacity() int       { return h.capacity }
 func (h housingUnitView) Environment() string { return h.environment }
+func (h housingUnitView) State() string       { return h.state }
 
 // Contextual environment accessors
 func (h housingUnitView) GetEnvironmentType() pluginapi.EnvironmentTypeRef {
@@ -320,6 +344,28 @@ func (h housingUnitView) IsHumidEnvironment() bool {
 	return h.GetEnvironmentType().IsHumid()
 }
 
+func (h housingUnitView) GetCurrentState() pluginapi.HousingStateRef {
+	ctx := pluginapi.NewHousingStateContext()
+	switch h.state {
+	case ctx.Quarantine().String():
+		return ctx.Quarantine()
+	case ctx.Cleaning().String():
+		return ctx.Cleaning()
+	case ctx.Decommissioned().String():
+		return ctx.Decommissioned()
+	default:
+		return ctx.Active()
+	}
+}
+
+func (h housingUnitView) IsActiveState() bool {
+	return h.GetCurrentState().IsActive()
+}
+
+func (h housingUnitView) IsDecommissioned() bool {
+	return h.GetCurrentState().IsDecommissioned()
+}
+
 func (h housingUnitView) SupportsSpecies(species string) bool {
 	envType := h.GetEnvironmentType()
 
@@ -338,25 +384,33 @@ func (h housingUnitView) SupportsSpecies(species string) bool {
 
 type facilityView struct {
 	baseView
-	code                 string
-	name                 string
-	zone                 string
-	accessPolicy         string
-	environmentBaselines map[string]any
-	housingUnitIDs       []string
-	projectIDs           []string
+	code           string
+	name           string
+	zone           string
+	accessPolicy   string
+	extensions     pluginapi.ExtensionSet
+	coreBaselines  map[string]any
+	housingUnitIDs []string
+	projectIDs     []string
 }
 
 func newFacilityView(facility domain.Facility) facilityView {
+	container, err := facility.FacilityExtensions()
+	if err != nil {
+		panic(fmt.Errorf("core: facility extensions: %w", err))
+	}
+	extSet := pluginapi.NewExtensionSet(container.Raw())
+	baselines := facility.EnvironmentBaselinesPayload().Map()
 	return facilityView{
-		baseView:             newBaseView(facility.Base),
-		code:                 facility.Code,
-		name:                 facility.Name,
-		zone:                 facility.Zone,
-		accessPolicy:         facility.AccessPolicy,
-		environmentBaselines: cloneAttributes(facility.EnvironmentBaselines),
-		housingUnitIDs:       cloneStringSlice(facility.HousingUnitIDs),
-		projectIDs:           cloneStringSlice(facility.ProjectIDs),
+		baseView:       newBaseView(facility.ID, facility.CreatedAt, facility.UpdatedAt),
+		code:           facility.Code,
+		name:           facility.Name,
+		zone:           facility.Zone,
+		accessPolicy:   facility.AccessPolicy,
+		extensions:     extSet,
+		coreBaselines:  cloneAttributes(baselines),
+		housingUnitIDs: cloneStringSlice(facility.HousingUnitIDs),
+		projectIDs:     cloneStringSlice(facility.ProjectIDs),
 	}
 }
 
@@ -365,7 +419,19 @@ func (f facilityView) Name() string         { return f.name }
 func (f facilityView) Zone() string         { return f.zone }
 func (f facilityView) AccessPolicy() string { return f.accessPolicy }
 func (f facilityView) EnvironmentBaselines() map[string]any {
-	return cloneAttributes(f.environmentBaselines)
+	return f.CoreEnvironmentBaselines()
+}
+func (f facilityView) Extensions() pluginapi.ExtensionSet {
+	return f.extensions
+}
+func (f facilityView) CoreEnvironmentBaselines() map[string]any {
+	return cloneAttributes(f.coreBaselines)
+}
+func (f facilityView) CoreEnvironmentBaselinesPayload() pluginapi.ObjectPayload {
+	if f.coreBaselines == nil {
+		return pluginapi.NewObjectPayload(nil)
+	}
+	return pluginapi.NewObjectPayload(f.coreBaselines)
 }
 func (f facilityView) HousingUnitIDs() []string { return cloneStringSlice(f.housingUnitIDs) }
 func (f facilityView) ProjectIDs() []string     { return cloneStringSlice(f.projectIDs) }
@@ -423,7 +489,7 @@ type treatmentView struct {
 
 func newTreatmentView(treatment domain.Treatment) treatmentView {
 	return treatmentView{
-		baseView:          newBaseView(treatment.Base),
+		baseView:          newBaseView(treatment.ID, treatment.CreatedAt, treatment.UpdatedAt),
 		name:              treatment.Name,
 		procedureID:       treatment.ProcedureID,
 		organismIDs:       cloneStringSlice(treatment.OrganismIDs),
@@ -467,20 +533,28 @@ type observationView struct {
 	cohortID    *string
 	recordedAt  time.Time
 	observer    string
-	data        map[string]any
-	notes       string
+	extensions  pluginapi.ExtensionSet
+	coreData    map[string]any
+	notes       *string
 }
 
 func newObservationView(observation domain.Observation) observationView {
+	container, err := observation.ObservationExtensions()
+	if err != nil {
+		panic(fmt.Errorf("core: observation extensions: %w", err))
+	}
+	extSet := pluginapi.NewExtensionSet(container.Raw())
+	coreData := observation.ObservationDataPayload().Map()
 	return observationView{
-		baseView:    newBaseView(observation.Base),
+		baseView:    newBaseView(observation.ID, observation.CreatedAt, observation.UpdatedAt),
 		procedureID: cloneOptionalString(observation.ProcedureID),
 		organismID:  cloneOptionalString(observation.OrganismID),
 		cohortID:    cloneOptionalString(observation.CohortID),
 		recordedAt:  observation.RecordedAt,
 		observer:    observation.Observer,
-		data:        cloneAttributes(observation.Data),
-		notes:       observation.Notes,
+		extensions:  extSet,
+		coreData:    cloneAttributes(coreData),
+		notes:       cloneOptionalString(observation.Notes),
 	}
 }
 
@@ -498,12 +572,32 @@ func (o observationView) CohortID() (string, bool) {
 
 func (o observationView) RecordedAt() time.Time { return o.recordedAt }
 func (o observationView) Observer() string      { return o.observer }
-func (o observationView) Data() map[string]any  { return cloneAttributes(o.data) }
-func (o observationView) Notes() string         { return o.notes }
+func (o observationView) Data() map[string]any {
+	return o.CoreData()
+}
+func (o observationView) Extensions() pluginapi.ExtensionSet {
+	return o.extensions
+}
+func (o observationView) CoreData() map[string]any {
+	return cloneAttributes(o.coreData)
+}
+func (o observationView) CoreDataPayload() pluginapi.ObjectPayload {
+	if o.coreData == nil {
+		return pluginapi.NewObjectPayload(nil)
+	}
+	return pluginapi.NewObjectPayload(o.coreData)
+}
+func (o observationView) Notes() string {
+	if note, ok := derefString(o.notes); ok {
+		return note
+	}
+	return ""
+}
 
 // Contextual data shape accessors
 func (o observationView) GetDataShape() pluginapi.ObservationShapeRef {
-	return observationShapeFromData(len(o.data) > 0, o.notes)
+	note, _ := derefString(o.notes)
+	return observationShapeFromData(len(o.coreData) > 0, note)
 }
 
 func (o observationView) HasStructuredPayload() bool {
@@ -511,7 +605,10 @@ func (o observationView) HasStructuredPayload() bool {
 }
 
 func (o observationView) HasNarrativeNotes() bool {
-	return o.GetDataShape().HasNarrativeNotes()
+	if note, ok := derefString(o.notes); ok {
+		return strings.TrimSpace(note) != ""
+	}
+	return false
 }
 
 type sampleView struct {
@@ -526,23 +623,31 @@ type sampleView struct {
 	storageLocation string
 	assayType       string
 	chainOfCustody  []domain.SampleCustodyEvent
-	attributes      map[string]any
+	extensions      pluginapi.ExtensionSet
+	coreAttributes  map[string]any
 }
 
 func newSampleView(sample domain.Sample) sampleView {
+	container, err := sample.SampleExtensions()
+	if err != nil {
+		panic(fmt.Errorf("core: sample extensions: %w", err))
+	}
+	extSet := pluginapi.NewExtensionSet(container.Raw())
+	corePayload := sample.SampleAttributesPayload().Map()
 	return sampleView{
-		baseView:        newBaseView(sample.Base),
+		baseView:        newBaseView(sample.ID, sample.CreatedAt, sample.UpdatedAt),
 		identifier:      sample.Identifier,
 		sourceType:      sample.SourceType,
 		organismID:      cloneOptionalString(sample.OrganismID),
 		cohortID:        cloneOptionalString(sample.CohortID),
 		facilityID:      sample.FacilityID,
 		collectedAt:     sample.CollectedAt,
-		status:          sample.Status,
+		status:          string(sample.Status),
 		storageLocation: sample.StorageLocation,
 		assayType:       sample.AssayType,
 		chainOfCustody:  cloneCustodyEvents(sample.ChainOfCustody),
-		attributes:      cloneAttributes(sample.Attributes),
+		extensions:      extSet,
+		coreAttributes:  cloneAttributes(corePayload),
 	}
 }
 
@@ -557,7 +662,19 @@ func (s sampleView) ChainOfCustody() []map[string]any {
 	return cloneCustodyEventMaps(s.chainOfCustody)
 }
 func (s sampleView) Attributes() map[string]any {
-	return cloneAttributes(s.attributes)
+	return s.CoreAttributes()
+}
+func (s sampleView) Extensions() pluginapi.ExtensionSet {
+	return s.extensions
+}
+func (s sampleView) CoreAttributes() map[string]any {
+	return cloneAttributes(s.coreAttributes)
+}
+func (s sampleView) CoreAttributesPayload() pluginapi.ObjectPayload {
+	if s.coreAttributes == nil {
+		return pluginapi.NewObjectPayload(nil)
+	}
+	return pluginapi.NewObjectPayload(s.coreAttributes)
 }
 
 func (s sampleView) OrganismID() (string, bool) {
@@ -609,41 +726,48 @@ type protocolView struct {
 	baseView
 	code        string
 	title       string
-	description string
+	description *string
 	maxSubjects int
 	status      string
 }
 
 func newProtocolView(protocol domain.Protocol) protocolView {
 	return protocolView{
-		baseView:    newBaseView(protocol.Base),
+		baseView:    newBaseView(protocol.ID, protocol.CreatedAt, protocol.UpdatedAt),
 		code:        protocol.Code,
 		title:       protocol.Title,
-		description: protocol.Description,
+		description: cloneOptionalString(protocol.Description),
 		maxSubjects: protocol.MaxSubjects,
-		status:      protocol.Status,
+		status:      string(protocol.Status),
 	}
 }
 
-func (p protocolView) Code() string        { return p.code }
-func (p protocolView) Title() string       { return p.title }
-func (p protocolView) Description() string { return p.description }
-func (p protocolView) MaxSubjects() int    { return p.maxSubjects }
+func (p protocolView) Code() string  { return p.code }
+func (p protocolView) Title() string { return p.title }
+func (p protocolView) Description() string {
+	if desc, ok := derefString(p.description); ok {
+		return desc
+	}
+	return ""
+}
+func (p protocolView) MaxSubjects() int { return p.maxSubjects }
 
 // Contextual status accessors
 func (p protocolView) GetCurrentStatus() pluginapi.ProtocolStatusRef {
 	ctx := pluginapi.NewProtocolContext()
-	switch p.status {
+	switch strings.ToLower(p.status) {
 	case "draft":
 		return ctx.Draft()
-	case "active":
-		return ctx.Active()
-	case "suspended":
-		return ctx.Suspended()
-	case "completed":
-		return ctx.Completed()
-	case "cancelled":
-		return ctx.Cancelled()
+	case "submitted":
+		return ctx.Submitted()
+	case "approved":
+		return ctx.Approved()
+	case "on_hold":
+		return ctx.OnHold()
+	case "expired":
+		return ctx.Expired()
+	case "archived":
+		return ctx.Archived()
 	default:
 		// Default to draft for unknown statuses
 		return ctx.Draft()
@@ -666,25 +790,27 @@ type permitView struct {
 	baseView
 	permitNumber      string
 	authority         string
+	status            string
 	validFrom         time.Time
 	validUntil        time.Time
 	allowedActivities []string
 	facilityIDs       []string
 	protocolIDs       []string
-	notes             string
+	notes             *string
 }
 
 func newPermitView(permit domain.Permit) permitView {
 	return permitView{
-		baseView:          newBaseView(permit.Base),
+		baseView:          newBaseView(permit.ID, permit.CreatedAt, permit.UpdatedAt),
 		permitNumber:      permit.PermitNumber,
 		authority:         permit.Authority,
+		status:            string(permit.Status),
 		validFrom:         permit.ValidFrom,
 		validUntil:        permit.ValidUntil,
 		allowedActivities: cloneStringSlice(permit.AllowedActivities),
 		facilityIDs:       cloneStringSlice(permit.FacilityIDs),
 		protocolIDs:       cloneStringSlice(permit.ProtocolIDs),
-		notes:             permit.Notes,
+		notes:             cloneOptionalString(permit.Notes),
 	}
 }
 
@@ -697,18 +823,34 @@ func (p permitView) AllowedActivities() []string {
 }
 func (p permitView) FacilityIDs() []string { return cloneStringSlice(p.facilityIDs) }
 func (p permitView) ProtocolIDs() []string { return cloneStringSlice(p.protocolIDs) }
-func (p permitView) Notes() string         { return p.notes }
+func (p permitView) Notes() string {
+	if note, ok := derefString(p.notes); ok {
+		return note
+	}
+	return ""
+}
 
 // Contextual validity accessors
 func (p permitView) GetStatus(reference time.Time) pluginapi.PermitStatusRef {
 	statuses := pluginapi.NewPermitContext().Statuses()
-	switch {
-	case reference.Before(p.validFrom):
-		return statuses.Pending()
-	case !p.validUntil.IsZero() && reference.After(p.validUntil):
+	switch strings.ToLower(p.status) {
+	case "draft":
+		return statuses.Draft()
+	case "submitted":
+		return statuses.Submitted()
+	case "approved":
+		if !p.validUntil.IsZero() && reference.After(p.validUntil) {
+			return statuses.Expired()
+		}
+		return statuses.Approved()
+	case "on_hold":
+		return statuses.OnHold()
+	case "expired":
 		return statuses.Expired()
+	case "archived":
+		return statuses.Archived()
 	default:
-		return statuses.Active()
+		return statuses.Draft()
 	}
 }
 
@@ -724,23 +866,28 @@ type projectView struct {
 	baseView
 	code        string
 	title       string
-	description string
+	description *string
 	facilityIDs []string
 }
 
 func newProjectView(project domain.Project) projectView {
 	return projectView{
-		baseView:    newBaseView(project.Base),
+		baseView:    newBaseView(project.ID, project.CreatedAt, project.UpdatedAt),
 		code:        project.Code,
 		title:       project.Title,
-		description: project.Description,
+		description: cloneOptionalString(project.Description),
 		facilityIDs: cloneStringSlice(project.FacilityIDs),
 	}
 }
 
-func (p projectView) Code() string        { return p.code }
-func (p projectView) Title() string       { return p.title }
-func (p projectView) Description() string { return p.description }
+func (p projectView) Code() string  { return p.code }
+func (p projectView) Title() string { return p.title }
+func (p projectView) Description() string {
+	if desc, ok := derefString(p.description); ok {
+		return desc
+	}
+	return ""
+}
 func (p projectView) FacilityIDs() []string {
 	return cloneStringSlice(p.facilityIDs)
 }
@@ -749,40 +896,58 @@ type supplyItemView struct {
 	baseView
 	sku            string
 	name           string
-	description    string
+	description    *string
 	quantityOnHand int
 	unit           string
-	lotNumber      string
+	lotNumber      *string
 	expiresAt      *time.Time
 	facilityIDs    []string
 	projectIDs     []string
 	reorderLevel   int
-	attributes     map[string]any
+	extensions     pluginapi.ExtensionSet
+	coreAttributes map[string]any
 }
 
 func newSupplyItemView(item domain.SupplyItem) supplyItemView {
+	container, err := item.SupplyItemExtensions()
+	if err != nil {
+		panic(fmt.Errorf("core: supply item extensions: %w", err))
+	}
+	extSet := pluginapi.NewExtensionSet(container.Raw())
+	corePayload := item.SupplyAttributesPayload().Map()
 	return supplyItemView{
-		baseView:       newBaseView(item.Base),
+		baseView:       newBaseView(item.ID, item.CreatedAt, item.UpdatedAt),
 		sku:            item.SKU,
 		name:           item.Name,
-		description:    item.Description,
+		description:    cloneOptionalString(item.Description),
 		quantityOnHand: item.QuantityOnHand,
 		unit:           item.Unit,
-		lotNumber:      item.LotNumber,
+		lotNumber:      cloneOptionalString(item.LotNumber),
 		expiresAt:      cloneTimePtr(item.ExpiresAt),
 		facilityIDs:    cloneStringSlice(item.FacilityIDs),
 		projectIDs:     cloneStringSlice(item.ProjectIDs),
 		reorderLevel:   item.ReorderLevel,
-		attributes:     cloneAttributes(item.Attributes),
+		extensions:     extSet,
+		coreAttributes: cloneAttributes(corePayload),
 	}
 }
 
-func (s supplyItemView) SKU() string         { return s.sku }
-func (s supplyItemView) Name() string        { return s.name }
-func (s supplyItemView) Description() string { return s.description }
+func (s supplyItemView) SKU() string  { return s.sku }
+func (s supplyItemView) Name() string { return s.name }
+func (s supplyItemView) Description() string {
+	if desc, ok := derefString(s.description); ok {
+		return desc
+	}
+	return ""
+}
 func (s supplyItemView) QuantityOnHand() int { return s.quantityOnHand }
 func (s supplyItemView) Unit() string        { return s.unit }
-func (s supplyItemView) LotNumber() string   { return s.lotNumber }
+func (s supplyItemView) LotNumber() string {
+	if lot, ok := derefString(s.lotNumber); ok {
+		return lot
+	}
+	return ""
+}
 func (s supplyItemView) FacilityIDs() []string {
 	return cloneStringSlice(s.facilityIDs)
 }
@@ -791,7 +956,19 @@ func (s supplyItemView) ProjectIDs() []string {
 }
 func (s supplyItemView) ReorderLevel() int { return s.reorderLevel }
 func (s supplyItemView) Attributes() map[string]any {
-	return cloneAttributes(s.attributes)
+	return s.CoreAttributes()
+}
+func (s supplyItemView) Extensions() pluginapi.ExtensionSet {
+	return s.extensions
+}
+func (s supplyItemView) CoreAttributes() map[string]any {
+	return cloneAttributes(s.coreAttributes)
+}
+func (s supplyItemView) CoreAttributesPayload() pluginapi.ObjectPayload {
+	if s.coreAttributes == nil {
+		return pluginapi.NewObjectPayload(nil)
+	}
+	return pluginapi.NewObjectPayload(s.coreAttributes)
 }
 
 func (s supplyItemView) ExpiresAt() (*time.Time, bool) {
@@ -992,7 +1169,7 @@ func cloneCustodyEvents(events []domain.SampleCustodyEvent) []domain.SampleCusto
 			Actor:     event.Actor,
 			Location:  event.Location,
 			Timestamp: event.Timestamp,
-			Notes:     event.Notes,
+			Notes:     cloneOptionalString(event.Notes),
 		}
 	}
 	return out
@@ -1004,12 +1181,15 @@ func cloneCustodyEventMaps(events []domain.SampleCustodyEvent) []map[string]any 
 	}
 	out := make([]map[string]any, len(events))
 	for i, event := range events {
-		out[i] = map[string]any{
+		entry := map[string]any{
 			"actor":     event.Actor,
 			"location":  event.Location,
 			"timestamp": event.Timestamp,
-			"notes":     event.Notes,
 		}
+		if note, ok := derefString(event.Notes); ok && strings.TrimSpace(note) != "" {
+			entry["notes"] = note
+		}
+		out[i] = entry
 	}
 	return out
 }

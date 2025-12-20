@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"colonycore/pkg/domain"
+	entitymodel "colonycore/pkg/domain/entitymodel"
 )
 
 func TestHousingUnit_UpdateAndBranches(t *testing.T) {
@@ -14,7 +15,7 @@ func TestHousingUnit_UpdateAndBranches(t *testing.T) {
 	store := NewMemoryStore(eng)
 	var facility domain.Facility
 	if _, err := store.RunInTransaction(context.Background(), func(tx domain.Transaction) error {
-		f, err := tx.CreateFacility(domain.Facility{Name: "Facility-A"})
+		f, err := tx.CreateFacility(domain.Facility{Facility: entitymodel.Facility{Name: "Facility-A"}})
 		if err != nil {
 			return err
 		}
@@ -26,7 +27,7 @@ func TestHousingUnit_UpdateAndBranches(t *testing.T) {
 	// Create valid housing unit
 	var created domain.HousingUnit
 	if _, err := store.RunInTransaction(context.Background(), func(tx domain.Transaction) error {
-		h, err := tx.CreateHousingUnit(domain.HousingUnit{Name: "HU-A", FacilityID: facility.ID, Capacity: 2})
+		h, err := tx.CreateHousingUnit(domain.HousingUnit{HousingUnit: entitymodel.HousingUnit{Name: "HU-A", FacilityID: facility.ID, Capacity: 2}})
 		if err != nil {
 			return err
 		}
@@ -88,7 +89,7 @@ func TestHousingUnit_UpdateAndBranches(t *testing.T) {
 	}
 	// Invalid capacity on create
 	if _, err := store.RunInTransaction(context.Background(), func(tx domain.Transaction) error {
-		if _, cErr := tx.CreateHousingUnit(domain.HousingUnit{Name: "HU-B", FacilityID: facility.ID, Capacity: 0}); cErr == nil {
+		if _, cErr := tx.CreateHousingUnit(domain.HousingUnit{HousingUnit: entitymodel.HousingUnit{Name: "HU-B", FacilityID: facility.ID, Capacity: 0}}); cErr == nil {
 			t.Fatalf("expected create capacity error")
 		}
 		return nil

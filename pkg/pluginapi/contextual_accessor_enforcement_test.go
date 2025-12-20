@@ -37,7 +37,7 @@ func validateViewInterfaceContextualAccessors(t *testing.T) {
 			"GetCurrentStage", "IsActive", "IsRetired", "IsDeceased",
 		},
 		"HousingUnitView": {
-			"GetEnvironmentType", "IsAquaticEnvironment", "IsHumidEnvironment", "SupportsSpecies",
+			"GetEnvironmentType", "IsAquaticEnvironment", "IsHumidEnvironment", "SupportsSpecies", "GetCurrentState", "IsActiveState", "IsDecommissioned",
 		},
 		"FacilityView": {
 			"GetZone", "GetAccessPolicy", "SupportsHousingUnit",

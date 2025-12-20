@@ -50,6 +50,34 @@ jobs:
       - name: Install tooling
         run: pip install pre-commit ruff
 
+      - name: Verify Docker existence
+        run: docker --version
+
+      - name: Warm Docker image cache
+        run: |
+          set -euo pipefail
+          cache_dir=".cache/docker-images"
+          mkdir -p "$cache_dir"
+          make list-docker-images | while read -r img; do
+            [ -z "$img" ] && continue
+            tar="$cache_dir/$(echo "$img" | tr '/:' '__').tar"
+            if docker image inspect "$img" >/dev/null 2>&1; then
+              if [ -f "$tar" ]; then
+                continue
+              fi
+              docker save "$img" -o "$tar"
+              continue
+            fi
+
+            if [ -f "$tar" ]; then
+              docker load -i "$tar"
+              continue
+            fi
+
+            docker pull "$img"
+            docker save "$img" -o "$tar"
+          done
+
       - name: Run pre-commit
         run: |
           PRE_COMMIT_HOME=$PWD/.cache/pre-commit \

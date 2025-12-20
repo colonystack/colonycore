@@ -36,17 +36,17 @@ func TestDatasetContextMarkerMethodsAreCallable(t *testing.T) {
 	})
 
 	t.Run("PermitStatusRef", func(t *testing.T) {
-		ref := NewPermitContext().Statuses().Active()
+		ref := NewPermitContext().Statuses().Approved()
 		ref.isPermitStatusRef()
-		if ref.Equals(&permitStatusRef{value: datasetPermitStatusActive}) {
+		if ref.Equals(&permitStatusRef{value: datasetPermitStatusApproved}) {
 			t.Fatal("permit status equality should reject pointer types")
 		}
 	})
 
 	t.Run("ProtocolStatusRef", func(t *testing.T) {
-		ref := NewProtocolContext().Completed()
+		ref := NewProtocolContext().Approved()
 		ref.isProtocolStatusRef()
-		if ref.Equals(&protocolStatusRef{value: "completed"}) {
+		if ref.Equals(&protocolStatusRef{value: "approved"}) {
 			t.Fatal("protocol status equality should reject pointer types")
 		}
 	})
@@ -86,8 +86,16 @@ func TestDatasetContextMarkerMethodsAreCallable(t *testing.T) {
 	t.Run("HousingEnvironmentTypeRef", func(t *testing.T) {
 		ref := NewHousingContext().Aquatic()
 		ref.isEnvironmentTypeRef()
-		if ref.Equals(&environmentTypeRef{value: envAquatic}) {
+		if ref.Equals(&environmentTypeRef{value: environmentTypeAquatic}) {
 			t.Fatal("environment type equality should reject pointer types")
+		}
+	})
+
+	t.Run("HousingStateRef", func(t *testing.T) {
+		ref := NewHousingStateContext().Cleaning()
+		ref.isHousingStateRef()
+		if ref.Equals(&housingStateRef{value: housingStateCleaning}) {
+			t.Fatal("housing state equality should reject pointer types")
 		}
 	})
 

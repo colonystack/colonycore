@@ -1,0 +1,17 @@
+Rules:
+  - SelectorRegexp: "^colonycore/"
+    AllowedPrefixes:
+      - "colonycore/internal/adapters/testutil"
+      - "colonycore/internal/core"
+      - "colonycore/plugins/frog"
+      - "colonycore/internal/infra/persistence/memory"
+      - "colonycore/internal/infra/persistence/sqlite"
+      - "colonycore/internal/infra/persistence/postgres"
+      - "colonycore/pkg/datasetapi"
+      - "colonycore/pkg/domain"
+      - "colonycore/pkg/pluginapi"
+      - "colonycore/internal/entitymodel"
+InverseRules:
+  - SelectorRegexp: "^colonycore/"
+    AllowedPrefixes:
+      - "colonycore/internal/adapters/datasets"
