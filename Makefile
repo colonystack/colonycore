@@ -23,7 +23,7 @@ SCHEMASPY_PG_USER ?= postgres
 SCHEMASPY_PG_PASSWORD ?= postgres
 SCHEMASPY_PG_TIMEOUT ?= 60
 
-.PHONY: all build lint go-test test registry-check fmt-check vet registry-lint golangci golangci-install python-lint r-lint go-lint import-boss import-boss-install entity-model-validate entity-model-generate entity-model-verify entity-model-erd entity-model-diff entity-model-diff-update api-snapshots list-docker-images
+.PHONY: all build lint go-test test registry-check fmt-check vet registry-lint golangci golangci-install python-lint r-lint go-lint import-boss import-boss-install entity-model-validate entity-model-generate entity-model-verify entity-model-erd entity-model-diff entity-model-diff-update api-snapshots list-docker-images validate-any-usage
 
 all: build
 
@@ -43,6 +43,7 @@ lint:
 	@$(MAKE) --no-print-directory api-snapshots
 	@$(MAKE) --no-print-directory go-lint
 	@$(MAKE) --no-print-directory validate-plugin-patterns
+	@$(MAKE) --no-print-directory validate-any-usage
 	@$(MAKE) --no-print-directory python-lint
 	@$(MAKE) --no-print-directory r-lint
 	@echo "Lint suite finished successfully"
@@ -56,6 +57,11 @@ validate-plugin-patterns:
 		fi; \
 	done
 	@echo "validate-plugin-patterns: OK"
+
+validate-any-usage:
+	@echo "==> Validating any usage"
+	@GOCACHE=$(GOCACHE) go run ./scripts/validate_any_usage
+	@echo "validate-any-usage: OK"
 
 api-snapshots:
 	@echo "==> api snapshots"

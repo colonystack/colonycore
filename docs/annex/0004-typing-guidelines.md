@@ -53,10 +53,12 @@ Format (JSON, no new dependencies):
   - `entries`: array of allowlist entries.
 - Entry fields:
   - `path`: repo-relative file path.
-  - `symbols`: optional list of exported identifiers within the file.
+  - `symbols`: optional list of identifiers within the file (type or function names;
+    for methods use the receiver type name).
   - `category`: one of `json-boundary`, `third-party-shim`, `reflection`,
-    `generic-constraint`, `internal-helper`, `test-only`.
-  - `public`: boolean; public exceptions should be `json-boundary` only.
+    `generic-constraint`, `internal-helper`, `test-only`, `legacy-exception`.
+  - `public`: boolean; public exceptions should be `json-boundary` only. Temporary
+    `legacy-exception` entries are allowed when a migration is tracked in TODO.
   - `rationale`: short explanation tied to this policy.
   - `owner`: maintainer group or area owner.
   - `refs`: optional list of relevant docs (ADR/RFC/annex paths).
@@ -64,6 +66,16 @@ Format (JSON, no new dependencies):
 Guard behavior:
 - Prefer file- or symbol-level entries; avoid line-level to reduce drift.
 - Exclude tests via `exclude_globs` rather than per-entry.
+- `legacy-exception` entries must include a removal note in the rationale and stay
+  linked to TODO tracking.
+
+## Guard implementation
+The lint-time guard is implemented in `scripts/validate_any_usage/main.go` and runs via
+`make lint` (target `validate-any-usage`). For local verification:
+
+```bash
+GOCACHE=$PWD/.cache/go-build go run ./scripts/validate_any_usage
+```
 
 ## Layering and contract constraints
 - Follow dependency direction in `ARCHITECTURE.md`; do not introduce imports that

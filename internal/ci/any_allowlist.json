@@ -1,0 +1,151 @@
+{
+  "version": 1,
+  "exclude_globs": [
+    "**/*_test.go"
+  ],
+  "entries": [
+    {
+      "path": "pkg/pluginapi/views.go",
+      "category": "json-boundary",
+      "public": true,
+      "rationale": "View attributes and custody payloads are JSON boundary data.",
+      "owner": "core maintainers",
+      "refs": [
+        "docs/annex/0004-typing-guidelines.md",
+        "docs/adr/0009-plugin-interface-stability-and-versioning.md"
+      ]
+    },
+    {
+      "path": "pkg/pluginapi/payload.go",
+      "category": "json-boundary",
+      "public": true,
+      "rationale": "ObjectPayload wraps JSON-like extension payloads.",
+      "owner": "core maintainers",
+      "refs": [
+        "docs/annex/0004-typing-guidelines.md"
+      ]
+    },
+    {
+      "path": "pkg/pluginapi/plugin.go",
+      "category": "json-boundary",
+      "public": true,
+      "rationale": "RegisterSchema accepts JSON Schema payloads.",
+      "owner": "core maintainers",
+      "refs": [
+        "docs/annex/0004-typing-guidelines.md"
+      ]
+    },
+    {
+      "path": "pkg/pluginapi/extensions.go",
+      "category": "legacy-exception",
+      "public": true,
+      "rationale": "ExtensionSet Get/Core still return any; migrate to payload wrappers in the typing hardening work. See TODO.md API changes section for ExtensionSet replacement (target removal by 2026-03-31).",
+      "owner": "core maintainers",
+      "refs": [
+        "docs/annex/0004-typing-guidelines.md",
+        "TODO.md"
+      ]
+    },
+    {
+      "path": "pkg/pluginapi/domain_aliases.go",
+      "category": "legacy-exception",
+      "public": true,
+      "rationale": "Change/ChangeBuilder use any until ChangePayload refactor in typing hardening work. See TODO.md API changes section for Change/ChangePayload replacement (target removal by 2026-03-31).",
+      "owner": "core maintainers",
+      "refs": [
+        "docs/annex/0004-typing-guidelines.md",
+        "TODO.md"
+      ]
+    },
+    {
+      "path": "pkg/datasetapi/types.go",
+      "symbols": [
+        "RunRequest",
+        "Row",
+        "RunResult",
+        "TemplateRuntime"
+      ],
+      "category": "json-boundary",
+      "public": true,
+      "rationale": "Dataset execution boundaries use JSON-like maps for parameters and rows.",
+      "owner": "core maintainers",
+      "refs": [
+        "docs/annex/0004-typing-guidelines.md",
+        "docs/adr/0009-plugin-interface-stability-and-versioning.md"
+      ]
+    },
+    {
+      "path": "pkg/datasetapi/types.go",
+      "symbols": [
+        "Parameter"
+      ],
+      "category": "legacy-exception",
+      "public": true,
+      "rationale": "Parameter Example/Default still use any; migrate to json.RawMessage in typing hardening work. See TODO.md API changes section for Parameter json.RawMessage migration (target removal by 2026-03-31).",
+      "owner": "core maintainers",
+      "refs": [
+        "docs/annex/0004-typing-guidelines.md",
+        "TODO.md"
+      ]
+    },
+    {
+      "path": "pkg/datasetapi/extensions.go",
+      "category": "legacy-exception",
+      "public": true,
+      "rationale": "ExtensionSet Get/Core still return any; migrate to payload wrappers in typing hardening work. See TODO.md API changes section for ExtensionSet replacement (target removal by 2026-03-31).",
+      "owner": "core maintainers",
+      "refs": [
+        "docs/annex/0004-typing-guidelines.md",
+        "TODO.md"
+      ]
+    },
+    {
+      "path": "pkg/datasetapi/payload.go",
+      "category": "json-boundary",
+      "public": true,
+      "rationale": "ExtensionPayload wraps JSON-like extension data.",
+      "owner": "core maintainers",
+      "refs": [
+        "docs/annex/0004-typing-guidelines.md"
+      ]
+    },
+    {
+      "path": "pkg/datasetapi/facade.go",
+      "category": "json-boundary",
+      "public": true,
+      "rationale": "Facade serialization exposes JSON-like attributes and custody payloads.",
+      "owner": "core maintainers",
+      "refs": [
+        "docs/annex/0004-typing-guidelines.md"
+      ]
+    },
+    {
+      "path": "pkg/datasetapi/host_template.go",
+      "symbols": [
+        "HostTemplate"
+      ],
+      "category": "json-boundary",
+      "public": true,
+      "rationale": "HostTemplate validation and runtime signatures use JSON-like parameters.",
+      "owner": "core maintainers",
+      "refs": [
+        "docs/annex/0004-typing-guidelines.md"
+      ]
+    },
+    {
+      "path": "pkg/datasetapi/host_template.go",
+      "symbols": [
+        "validateParameters",
+        "findParamValue",
+        "coerceParameter"
+      ],
+      "category": "internal-helper",
+      "public": false,
+      "rationale": "Internal helper functions operate on untyped parameter values.",
+      "owner": "core maintainers",
+      "refs": [
+        "docs/annex/0004-typing-guidelines.md"
+      ]
+    }
+  ]
+}
