@@ -2262,15 +2262,11 @@ func extractCoreMap(set ExtensionSet, hook HookRef) map[string]any {
 	if set == nil {
 		return nil
 	}
-	value, ok := set.Core(hook)
-	if !ok || value == nil {
-		return nil
-	}
-	m, ok := value.(map[string]any)
+	payload, ok := set.Core(hook)
 	if !ok {
 		return nil
 	}
-	return cloneAttributes(m)
+	return payload.Map()
 }
 
 func cloneAttributes(attrs map[string]any) map[string]any {

@@ -12,7 +12,7 @@ func TestExtensionSetBasic(t *testing.T) {
 	contributors := NewExtensionContributorContext()
 	sampleHook := hooks.SampleAttributes()
 	corePlugin := contributors.Core()
-	raw := map[string]map[string]any{
+	raw := map[string]map[string]map[string]any{
 		sampleHook.value(): {
 			corePlugin.value(): map[string]any{"volume": "5ml"},
 			"external":         map[string]any{"notes": "custom"},
@@ -33,11 +33,11 @@ func TestExtensionSetBasic(t *testing.T) {
 	if !ok {
 		t.Fatalf("expected core payload")
 	}
-	payload := core.(map[string]any)
+	payload := core.Map()
 	payload["volume"] = "10ml"
 
 	fresh, ok := set.Core(sampleHook)
-	if !ok || fresh.(map[string]any)["volume"] != "5ml" {
+	if !ok || fresh.Map()["volume"] != "5ml" {
 		t.Fatalf("expected deep cloned core payload, got %+v", fresh)
 	}
 
@@ -46,9 +46,9 @@ func TestExtensionSetBasic(t *testing.T) {
 	}
 
 	rawCopy := set.Raw()
-	rawCopy[sampleHook.value()][corePlugin.value()].(map[string]any)["volume"] = extTestMutated
+	rawCopy[sampleHook.value()][corePlugin.value()]["volume"] = extTestMutated
 	fresh, ok = set.Core(sampleHook)
-	if !ok || fresh.(map[string]any)["volume"] != "5ml" {
+	if !ok || fresh.Map()["volume"] != "5ml" {
 		t.Fatalf("raw mutation should not affect stored payload")
 	}
 }
@@ -77,7 +77,7 @@ func TestExtractCoreMap(t *testing.T) {
 }
 
 func TestExtensionSetEmptyPayload(t *testing.T) {
-	set := NewExtensionSet(map[string]map[string]any{})
+	set := NewExtensionSet(map[string]map[string]map[string]any{})
 	if hooks := set.Hooks(); hooks != nil {
 		t.Fatalf("expected nil hooks for empty payload, got %+v", hooks)
 	}
@@ -87,15 +87,15 @@ func TestExtensionSetEmptyPayload(t *testing.T) {
 	}
 }
 
-func TestExtractCoreMapNonMapPayload(t *testing.T) {
+func TestExtractCoreMapNilPayload(t *testing.T) {
 	hookRef := NewExtensionHookContext().SampleAttributes()
 	corePlugin := NewExtensionContributorContext().Core()
-	set := NewExtensionSet(map[string]map[string]any{
+	set := NewExtensionSet(map[string]map[string]map[string]any{
 		hookRef.value(): {
-			corePlugin.value(): "not-a-map",
+			corePlugin.value(): nil,
 		},
 	})
 	if value := extractCoreMap(set, hookRef); value != nil {
-		t.Fatalf("expected nil when core payload is not a map, got %+v", value)
+		t.Fatalf("expected nil when core payload is nil, got %+v", value)
 	}
 }

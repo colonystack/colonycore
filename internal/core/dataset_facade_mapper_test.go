@@ -151,9 +151,17 @@ func TestFacadeOrganismMapping(t *testing.T) {
 		Stage:     domain.StageAdult,
 		ParentIDs: []string{"parent-1"}},
 	}
+	if err := org.SetCoreAttributes(map[string]any{"flag": true}); err != nil {
+		t.Fatalf("set core attributes: %v", err)
+	}
 	mapped := facadeOrganismFromDomain(org)
 	if mapped.Name() != "Org" || mapped.Species() != "species" || mapped.GetCurrentStage().String() != testMapperAdultStage {
 		t.Fatalf("unexpected organism mapping: %+v", mapped)
+	}
+	hook := datasetapi.NewExtensionHookContext().OrganismAttributes()
+	payload, ok := mapped.Extensions().Core(hook)
+	if !ok || payload.Map()["flag"] != true {
+		t.Fatalf("expected core extension payload mapping, got %+v", payload)
 	}
 	if facadeOrganismsFromDomain(nil) != nil || facadeOrganismsFromDomain([]domain.Organism{}) != nil {
 		t.Fatal("expected nil slices for empty organism inputs")

@@ -253,7 +253,7 @@ func TestSampleViewAccessors(t *testing.T) {
 	if !ok {
 		t.Fatalf("expected core sample attributes payload")
 	}
-	if corePayload.(map[string]any)["color"] != testSampleColor {
+	if corePayload.Map()["color"] != testSampleColor {
 		t.Fatalf("expected extension payload color %s, got %v", testSampleColor, corePayload)
 	}
 

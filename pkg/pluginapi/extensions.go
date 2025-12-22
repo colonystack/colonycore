@@ -7,19 +7,19 @@ import "slices"
 type ExtensionSet interface {
 	Hooks() []HookRef
 	Plugins(h HookRef) []PluginRef
-	Get(h HookRef, plugin PluginRef) (any, bool)
-	Core(h HookRef) (any, bool)
-	Raw() map[string]map[string]any
+	Get(h HookRef, plugin PluginRef) (ObjectPayload, bool)
+	Core(h HookRef) (ObjectPayload, bool)
+	Raw() map[string]map[string]map[string]any
 }
 
 // NewExtensionSet constructs a defensive copy of the provided raw payload.
-func NewExtensionSet(raw map[string]map[string]any) ExtensionSet {
+func NewExtensionSet(raw map[string]map[string]map[string]any) ExtensionSet {
 	payload := cloneRaw(raw)
 	return &extensionSet{payload: payload}
 }
 
 type extensionSet struct {
-	payload map[string]map[string]any
+	payload map[string]map[string]map[string]any
 }
 
 func (s *extensionSet) Hooks() []HookRef {
@@ -76,42 +76,47 @@ func (s *extensionSet) Plugins(h HookRef) []PluginRef {
 	return result
 }
 
-func (s *extensionSet) Get(h HookRef, plugin PluginRef) (any, bool) {
+func (s *extensionSet) Get(h HookRef, plugin PluginRef) (ObjectPayload, bool) {
 	if len(s.payload) == 0 {
-		return nil, false
+		return UndefinedPayload(), false
 	}
 	entries, ok := s.payload[h.value()]
 	if !ok {
-		return nil, false
+		return UndefinedPayload(), false
 	}
 	value, ok := entries[plugin.value()]
 	if !ok {
-		return nil, false
+		return UndefinedPayload(), false
 	}
-	return cloneValue(value), true
+	return NewObjectPayload(value), true
 }
 
-func (s *extensionSet) Core(h HookRef) (any, bool) {
+func (s *extensionSet) Core(h HookRef) (ObjectPayload, bool) {
 	return s.Get(h, extensionContributorContext{}.Core())
 }
 
-func (s *extensionSet) Raw() map[string]map[string]any {
+func (s *extensionSet) Raw() map[string]map[string]map[string]any {
 	return cloneRaw(s.payload)
 }
 
-func cloneRaw(raw map[string]map[string]any) map[string]map[string]any {
+func cloneRaw(raw map[string]map[string]map[string]any) map[string]map[string]map[string]any {
 	if len(raw) == 0 {
 		return nil
 	}
-	out := make(map[string]map[string]any, len(raw))
+	out := make(map[string]map[string]map[string]any, len(raw))
 	for hook, plugins := range raw {
 		if len(plugins) == 0 {
 			out[hook] = nil
 			continue
 		}
-		cloned := make(map[string]any, len(plugins))
+		cloned := make(map[string]map[string]any, len(plugins))
 		for plugin, value := range plugins {
-			cloned[plugin] = cloneValue(value)
+			if value == nil {
+				cloned[plugin] = nil
+				continue
+			}
+			clone, _ := cloneValue(value).(map[string]any)
+			cloned[plugin] = clone
 		}
 		out[hook] = cloned
 	}

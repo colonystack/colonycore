@@ -29,6 +29,7 @@ This policy applies across the repo and is especially strict for public surfaces
 - Concrete structs or narrowly scoped interfaces.
 - `json.RawMessage` when a raw JSON payload must be passed through.
 - Typed payload wrappers that keep untyped maps at a single boundary.
+- `ObjectPayload`/`ExtensionPayload` for extension payload access (`ExtensionSet.Get/Core`).
 
 ### Dataset parameter defaults
 For `pkg/datasetapi.Parameter` examples/defaults, prefer `json.RawMessage` to keep

@@ -99,7 +99,7 @@ func Organism(cfg OrganismFixtureConfig) datasetapi.Organism {
 	if len(coreExtensions) > 0 {
 		hook := datasetapi.NewExtensionHookContext().OrganismAttributes()
 		contributor := datasetapi.NewExtensionContributorContext().Core()
-		extensionSet = datasetapi.NewExtensionSet(map[string]map[string]any{
+		extensionSet = datasetapi.NewExtensionSet(map[string]map[string]map[string]any{
 			hook.String(): {
 				contributor.String(): cloneAttributes(coreExtensions),
 			},

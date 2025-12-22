@@ -192,7 +192,7 @@ func newOrganismView(org domain.Organism) organismView {
 	if err != nil {
 		panic(fmt.Errorf("core: organism extensions: %w", err))
 	}
-	extSet := pluginapi.NewExtensionSet(container.Raw())
+	extSet := pluginapi.NewExtensionSet(mapExtensionPayloads(container.Raw()))
 	corePayload := org.CoreAttributesPayload().Map()
 	return organismView{
 		baseView:       newBaseView(org.ID, org.CreatedAt, org.UpdatedAt),
@@ -399,7 +399,7 @@ func newFacilityView(facility domain.Facility) facilityView {
 	if err != nil {
 		panic(fmt.Errorf("core: facility extensions: %w", err))
 	}
-	extSet := pluginapi.NewExtensionSet(container.Raw())
+	extSet := pluginapi.NewExtensionSet(mapExtensionPayloads(container.Raw()))
 	baselines := facility.EnvironmentBaselinesPayload().Map()
 	return facilityView{
 		baseView:       newBaseView(facility.ID, facility.CreatedAt, facility.UpdatedAt),
@@ -543,7 +543,7 @@ func newObservationView(observation domain.Observation) observationView {
 	if err != nil {
 		panic(fmt.Errorf("core: observation extensions: %w", err))
 	}
-	extSet := pluginapi.NewExtensionSet(container.Raw())
+	extSet := pluginapi.NewExtensionSet(mapExtensionPayloads(container.Raw()))
 	coreData := observation.ObservationDataPayload().Map()
 	return observationView{
 		baseView:    newBaseView(observation.ID, observation.CreatedAt, observation.UpdatedAt),
@@ -632,7 +632,7 @@ func newSampleView(sample domain.Sample) sampleView {
 	if err != nil {
 		panic(fmt.Errorf("core: sample extensions: %w", err))
 	}
-	extSet := pluginapi.NewExtensionSet(container.Raw())
+	extSet := pluginapi.NewExtensionSet(mapExtensionPayloads(container.Raw()))
 	corePayload := sample.SampleAttributesPayload().Map()
 	return sampleView{
 		baseView:        newBaseView(sample.ID, sample.CreatedAt, sample.UpdatedAt),
@@ -913,7 +913,7 @@ func newSupplyItemView(item domain.SupplyItem) supplyItemView {
 	if err != nil {
 		panic(fmt.Errorf("core: supply item extensions: %w", err))
 	}
-	extSet := pluginapi.NewExtensionSet(container.Raw())
+	extSet := pluginapi.NewExtensionSet(mapExtensionPayloads(container.Raw()))
 	corePayload := item.SupplyAttributesPayload().Map()
 	return supplyItemView{
 		baseView:       newBaseView(item.ID, item.CreatedAt, item.UpdatedAt),

@@ -37,13 +37,12 @@
     },
     {
       "path": "pkg/pluginapi/extensions.go",
-      "category": "legacy-exception",
+      "category": "json-boundary",
       "public": true,
-      "rationale": "ExtensionSet Get/Core still return any; migrate to payload wrappers in the typing hardening work. See TODO.md API changes section for ExtensionSet replacement (target removal by 2026-03-31).",
+      "rationale": "ExtensionSet carries JSON object payloads grouped by hook and plugin; Get/Core return ObjectPayload wrappers.",
       "owner": "core maintainers",
       "refs": [
-        "docs/annex/0004-typing-guidelines.md",
-        "TODO.md"
+        "docs/annex/0004-typing-guidelines.md"
       ]
     },
     {
@@ -76,13 +75,12 @@
     },
     {
       "path": "pkg/datasetapi/extensions.go",
-      "category": "legacy-exception",
+      "category": "json-boundary",
       "public": true,
-      "rationale": "ExtensionSet Get/Core still return any; migrate to payload wrappers in typing hardening work. See TODO.md API changes section for ExtensionSet replacement (target removal by 2026-03-31).",
+      "rationale": "ExtensionSet carries JSON object payloads grouped by hook and plugin; Get/Core return ExtensionPayload wrappers.",
       "owner": "core maintainers",
       "refs": [
-        "docs/annex/0004-typing-guidelines.md",
-        "TODO.md"
+        "docs/annex/0004-typing-guidelines.md"
       ]
     },
     {

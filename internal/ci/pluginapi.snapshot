@@ -9,7 +9,7 @@ FUNC NewChangeBuilder() *colonycore/pkg/pluginapi.ChangeBuilder
 FUNC NewEntityContext() colonycore/pkg/pluginapi.EntityContext
 FUNC NewExtensionContributorContext() colonycore/pkg/pluginapi.ExtensionContributorContext
 FUNC NewExtensionHookContext() colonycore/pkg/pluginapi.ExtensionHookContext
-FUNC NewExtensionSet(map[string]map[string]any) colonycore/pkg/pluginapi.ExtensionSet
+FUNC NewExtensionSet(map[string]map[string]map[string]any) colonycore/pkg/pluginapi.ExtensionSet
 FUNC NewFacilityContext() colonycore/pkg/pluginapi.FacilityContext
 FUNC NewHousingContext() colonycore/pkg/pluginapi.HousingContext
 FUNC NewHousingStateContext() colonycore/pkg/pluginapi.HousingStateContext
@@ -44,7 +44,7 @@ TYPE EntityTypeRef interface { Equals(colonycore/pkg/pluginapi.EntityTypeRef) bo
 TYPE EnvironmentTypeRef interface { Equals(colonycore/pkg/pluginapi.EnvironmentTypeRef) bool IsAquatic() bool IsHumid() bool String() string }
 TYPE ExtensionContributorContext interface { Core() colonycore/pkg/pluginapi.PluginRef Custom(string) colonycore/pkg/pluginapi.PluginRef }
 TYPE ExtensionHookContext interface { BreedingUnitPairingAttributes() colonycore/pkg/pluginapi.HookRef FacilityEnvironmentBaselines() colonycore/pkg/pluginapi.HookRef ObservationData() colonycore/pkg/pluginapi.HookRef OrganismAttributes() colonycore/pkg/pluginapi.HookRef SampleAttributes() colonycore/pkg/pluginapi.HookRef SupplyItemAttributes() colonycore/pkg/pluginapi.HookRef }
-TYPE ExtensionSet interface { Core(colonycore/pkg/pluginapi.HookRef) (any,bool) Get(colonycore/pkg/pluginapi.HookRef,colonycore/pkg/pluginapi.PluginRef) (any,bool) Hooks() []colonycore/pkg/pluginapi.HookRef Plugins(colonycore/pkg/pluginapi.HookRef) []colonycore/pkg/pluginapi.PluginRef Raw() map[string]map[string]any }
+TYPE ExtensionSet interface { Core(colonycore/pkg/pluginapi.HookRef) (colonycore/pkg/pluginapi.ObjectPayload,bool) Get(colonycore/pkg/pluginapi.HookRef,colonycore/pkg/pluginapi.PluginRef) (colonycore/pkg/pluginapi.ObjectPayload,bool) Hooks() []colonycore/pkg/pluginapi.HookRef Plugins(colonycore/pkg/pluginapi.HookRef) []colonycore/pkg/pluginapi.PluginRef Raw() map[string]map[string]map[string]any }
 TYPE FacilityAccessPolicyProvider interface { Open() colonycore/pkg/pluginapi.FacilityAccessPolicyRef Restricted() colonycore/pkg/pluginapi.FacilityAccessPolicyRef StaffOnly() colonycore/pkg/pluginapi.FacilityAccessPolicyRef }
 TYPE FacilityAccessPolicyRef interface { AllowsVisitors() bool Equals(colonycore/pkg/pluginapi.FacilityAccessPolicyRef) bool IsRestricted() bool String() string }
 TYPE FacilityContext interface { AccessPolicies() colonycore/pkg/pluginapi.FacilityAccessPolicyProvider Zones() colonycore/pkg/pluginapi.FacilityZoneProvider }

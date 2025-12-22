@@ -21,7 +21,7 @@ func facadeOrganismFromDomain(org domain.Organism) datasetapi.Organism {
 	if err != nil {
 		panic(fmt.Errorf("core: organism extensions: %w", err))
 	}
-	extSet := datasetapi.NewExtensionSet(container.Raw())
+	extSet := datasetapi.NewExtensionSet(mapExtensionPayloads(container.Raw()))
 	return datasetapi.NewOrganism(datasetapi.OrganismData{
 		Base:       baseDataFromDomain(org.ID, org.CreatedAt, org.UpdatedAt),
 		Name:       org.Name,
@@ -146,7 +146,7 @@ func facadeBreedingUnitFromDomain(unit domain.BreedingUnit) datasetapi.BreedingU
 	if err != nil {
 		panic(fmt.Errorf("core: breeding unit extensions: %w", err))
 	}
-	extSet := datasetapi.NewExtensionSet(container.Raw())
+	extSet := datasetapi.NewExtensionSet(mapExtensionPayloads(container.Raw()))
 	return datasetapi.NewBreedingUnit(datasetapi.BreedingUnitData{
 		Base:           baseDataFromDomain(unit.ID, unit.CreatedAt, unit.UpdatedAt),
 		Name:           unit.Name,
@@ -207,7 +207,7 @@ func facadeFacilityFromDomain(facility domain.Facility) datasetapi.Facility {
 	if err != nil {
 		panic(fmt.Errorf("core: facility extensions: %w", err))
 	}
-	extSet := datasetapi.NewExtensionSet(container.Raw())
+	extSet := datasetapi.NewExtensionSet(mapExtensionPayloads(container.Raw()))
 	return datasetapi.NewFacility(datasetapi.FacilityData{
 		Base:           baseDataFromDomain(facility.ID, facility.CreatedAt, facility.UpdatedAt),
 		Code:           facility.Code,
@@ -260,7 +260,7 @@ func facadeObservationFromDomain(observation domain.Observation) datasetapi.Obse
 	if err != nil {
 		panic(fmt.Errorf("core: observation extensions: %w", err))
 	}
-	extSet := datasetapi.NewExtensionSet(container.Raw())
+	extSet := datasetapi.NewExtensionSet(mapExtensionPayloads(container.Raw()))
 	return datasetapi.NewObservation(datasetapi.ObservationData{
 		Base:        baseDataFromDomain(observation.ID, observation.CreatedAt, observation.UpdatedAt),
 		ProcedureID: observation.ProcedureID,
@@ -289,7 +289,7 @@ func facadeSampleFromDomain(sample domain.Sample) datasetapi.Sample {
 	if err != nil {
 		panic(fmt.Errorf("core: sample extensions: %w", err))
 	}
-	extSet := datasetapi.NewExtensionSet(container.Raw())
+	extSet := datasetapi.NewExtensionSet(mapExtensionPayloads(container.Raw()))
 	return datasetapi.NewSample(datasetapi.SampleData{
 		Base:            baseDataFromDomain(sample.ID, sample.CreatedAt, sample.UpdatedAt),
 		Identifier:      sample.Identifier,
@@ -348,7 +348,7 @@ func facadeSupplyItemFromDomain(item domain.SupplyItem) datasetapi.SupplyItem {
 	if err != nil {
 		panic(fmt.Errorf("core: supply item extensions: %w", err))
 	}
-	extSet := datasetapi.NewExtensionSet(container.Raw())
+	extSet := datasetapi.NewExtensionSet(mapExtensionPayloads(container.Raw()))
 	return datasetapi.NewSupplyItem(datasetapi.SupplyItemData{
 		Base:           baseDataFromDomain(item.ID, item.CreatedAt, item.UpdatedAt),
 		SKU:            item.SKU,

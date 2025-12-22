@@ -8,7 +8,7 @@ func TestExtensionSetBasic(t *testing.T) {
 	organismHook := hooks.OrganismAttributes()
 	facilityHook := hooks.FacilityEnvironmentBaselines()
 	corePlugin := contributors.Core()
-	raw := map[string]map[string]any{
+	raw := map[string]map[string]map[string]any{
 		organismHook.String(): {
 			"alpha": map[string]any{"flag": true},
 		},
@@ -33,14 +33,14 @@ func TestExtensionSetBasic(t *testing.T) {
 	if !ok {
 		t.Fatalf("expected core payload")
 	}
-	payload := value.(map[string]any)
+	payload := value.Map()
 	payload["temp"] = 30
 
 	fresh, ok := set.Core(facilityHook)
 	if !ok {
 		t.Fatalf("expected payload after mutation")
 	}
-	if fresh.(map[string]any)["temp"] != 21 {
+	if fresh.Map()["temp"] != 21 {
 		t.Fatalf("expected deep copy protection, got %v", fresh)
 	}
 
@@ -49,9 +49,9 @@ func TestExtensionSetBasic(t *testing.T) {
 	}
 
 	rawCopy := set.Raw()
-	rawCopy[organismHook.String()]["alpha"].(map[string]any)["flag"] = false
+	rawCopy[organismHook.String()]["alpha"]["flag"] = false
 	value, ok = set.Get(organismHook, contributors.Custom("alpha"))
-	if !ok || value.(map[string]any)["flag"] != true {
+	if !ok || value.Map()["flag"] != true {
 		t.Fatalf("expected original payload unaffected, got %+v", value)
 	}
 }
