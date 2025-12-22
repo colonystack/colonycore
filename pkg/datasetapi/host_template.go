@@ -2,6 +2,7 @@ package datasetapi
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"sort"
@@ -186,8 +187,13 @@ func validateParameters(definitions []Parameter, supplied map[string]any) (map[s
 				errs = append(errs, ParameterError{Name: param.Name, Message: "required parameter missing"})
 				continue
 			}
-			if param.Default != nil {
-				cleaned[param.Name] = param.Default
+			if len(param.Default) > 0 {
+				coerced, err := coerceDefaultParameter(param)
+				if err != nil {
+					errs = append(errs, ParameterError{Name: param.Name, Message: err.Error()})
+					continue
+				}
+				cleaned[param.Name] = coerced
 			}
 			continue
 		}
@@ -206,6 +212,14 @@ func validateParameters(definitions []Parameter, supplied map[string]any) (map[s
 		sort.Slice(errs, func(i, j int) bool { return errs[i].Name < errs[j].Name })
 	}
 	return cleaned, errs
+}
+
+func coerceDefaultParameter(param Parameter) (any, error) {
+	var raw any
+	if err := json.Unmarshal(param.Default, &raw); err != nil {
+		return nil, fmt.Errorf("parameter %s default is invalid JSON: %w", param.Name, err)
+	}
+	return coerceParameter(param, raw)
 }
 
 func findParamValue(name string, supplied map[string]any) (any, bool) {
@@ -356,6 +370,12 @@ func cloneParameters(params []Parameter) []Parameter {
 	cloned := make([]Parameter, len(params))
 	copy(cloned, params)
 	for i := range cloned {
+		if len(cloned[i].Example) > 0 {
+			cloned[i].Example = append([]byte(nil), cloned[i].Example...)
+		}
+		if len(cloned[i].Default) > 0 {
+			cloned[i].Default = append([]byte(nil), cloned[i].Default...)
+		}
 		if len(cloned[i].Enum) > 0 {
 			cloned[i].Enum = append([]string(nil), cloned[i].Enum...)
 		}

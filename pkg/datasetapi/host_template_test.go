@@ -212,7 +212,7 @@ func TestValidateParametersErrors(t *testing.T) {
 			{Name: "limit", Type: "integer", Required: true},
 			{Name: "flag", Type: "boolean"},
 			{Name: "when", Type: "timestamp"},
-			{Name: "mode", Type: "string", Default: "auto"},
+			{Name: "mode", Type: "string", Default: json.RawMessage(`"auto"`)},
 			{Name: "alias", Type: "string"},
 		},
 		Binder: func(Environment) (Runner, error) {
@@ -273,6 +273,50 @@ func TestValidateParametersErrors(t *testing.T) {
 	}
 }
 
+func TestValidateParametersDefaultErrors(t *testing.T) {
+	dialectProvider := GetDialectProvider()
+	formatProvider := GetFormatProvider()
+
+	tpl := Template{
+		Key:           "k",
+		Version:       "1",
+		Title:         "t",
+		Dialect:       dialectProvider.SQL(),
+		Query:         "select 1",
+		Columns:       []Column{{Name: "c", Type: "string"}},
+		OutputFormats: []Format{formatProvider.JSON()},
+		Parameters: []Parameter{
+			{Name: "ok", Type: "string", Default: json.RawMessage(`"auto"`)},
+			{Name: "badjson", Type: "string", Default: json.RawMessage("not-json")},
+			{Name: "badtype", Type: "integer", Default: json.RawMessage(`"nope"`)},
+			{Name: "nullval", Type: "string", Default: json.RawMessage("null")},
+		},
+		Binder: func(Environment) (Runner, error) {
+			return func(context.Context, RunRequest) (RunResult, error) { return RunResult{}, nil }, nil
+		},
+	}
+	host, err := NewHostTemplate("plugin", tpl)
+	if err != nil {
+		t.Fatalf("NewHostTemplate: %v", err)
+	}
+	cleaned, errs := host.ValidateParameters(nil)
+	if len(errs) != 3 {
+		t.Fatalf("expected three default errors, got %+v", errs)
+	}
+	if cleaned["ok"].(string) != "auto" {
+		t.Fatalf("expected ok default to apply, got %v", cleaned["ok"])
+	}
+	if errs[0].Name != "badjson" || !strings.Contains(errs[0].Message, "invalid JSON") {
+		t.Fatalf("expected badjson error, got %+v", errs[0])
+	}
+	if errs[1].Name != "badtype" || !strings.Contains(errs[1].Message, "expects integer") {
+		t.Fatalf("expected badtype error, got %+v", errs[1])
+	}
+	if errs[2].Name != "nullval" || !strings.Contains(errs[2].Message, "cannot be null") {
+		t.Fatalf("expected nullval error, got %+v", errs[2])
+	}
+}
+
 func TestSortTemplateDescriptors(t *testing.T) {
 	descriptors := []TemplateDescriptor{
 		{Plugin: "b", Key: "alpha", Version: "2"},
@@ -307,21 +351,32 @@ func TestSlugAndCloneHelpers(t *testing.T) {
 	formatProvider := GetFormatProvider()
 
 	tpl := Template{
-		Key:           "clone",
-		Version:       "1",
-		Title:         "Clone",
-		Dialect:       dialectProvider.SQL(),
-		Query:         "select 1",
-		Parameters:    []Parameter{{Name: "enum", Type: "string", Enum: []string{"a"}}},
+		Key:     "clone",
+		Version: "1",
+		Title:   "Clone",
+		Dialect: dialectProvider.SQL(),
+		Query:   "select 1",
+		Parameters: []Parameter{{
+			Name:    "enum",
+			Type:    "string",
+			Enum:    []string{"a"},
+			Example: json.RawMessage(`"example"`),
+			Default: json.RawMessage(`"default"`),
+		}},
 		Columns:       []Column{{Name: "c", Type: "string"}},
 		Metadata:      Metadata{Tags: []string{"t"}, Annotations: map[string]string{"k": "v"}, EntityModelMajor: intPtr(2)},
 		OutputFormats: []Format{formatProvider.JSON()},
 	}
 	clone := cloneTemplate(tpl)
 	clone.Parameters[0].Enum[0] = mutatedLiteral
+	clone.Parameters[0].Example[0] = 'x'
+	clone.Parameters[0].Default[0] = 'y'
 	clone.Metadata.Tags[0] = mutatedLiteral
 	if tpl.Parameters[0].Enum[0] != "a" || tpl.Metadata.Tags[0] != "t" {
 		t.Fatalf("expected clone to be defensive")
+	}
+	if string(tpl.Parameters[0].Example) != `"example"` || string(tpl.Parameters[0].Default) != `"default"` {
+		t.Fatalf("expected clone to protect raw message defaults")
 	}
 	if clone.Metadata.EntityModelMajor == nil || tpl.Metadata.EntityModelMajor == nil || *clone.Metadata.EntityModelMajor != *tpl.Metadata.EntityModelMajor {
 		t.Fatalf("expected entity model major to be copied")

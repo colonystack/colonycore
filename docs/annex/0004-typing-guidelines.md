@@ -35,6 +35,8 @@ For `pkg/datasetapi.Parameter` examples/defaults, prefer `json.RawMessage` to ke
 the public surface free of `any` while preserving JSON flexibility. Decode and
 validate against `Parameter.Type` at the boundary so defaults follow the same
 coercion rules as supplied values.
+Host templates now decode JSON defaults and apply the same coercion rules as
+runtime-supplied values.
 
 ## Exceptions and guard allowlist
 Any exception must be explicit, documented, and limited:

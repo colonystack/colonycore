@@ -75,20 +75,6 @@
       ]
     },
     {
-      "path": "pkg/datasetapi/types.go",
-      "symbols": [
-        "Parameter"
-      ],
-      "category": "legacy-exception",
-      "public": true,
-      "rationale": "Parameter Example/Default still use any; migrate to json.RawMessage in typing hardening work. See TODO.md API changes section for Parameter json.RawMessage migration (target removal by 2026-03-31).",
-      "owner": "core maintainers",
-      "refs": [
-        "docs/annex/0004-typing-guidelines.md",
-        "TODO.md"
-      ]
-    },
-    {
       "path": "pkg/datasetapi/extensions.go",
       "category": "legacy-exception",
       "public": true,
@@ -137,7 +123,8 @@
       "symbols": [
         "validateParameters",
         "findParamValue",
-        "coerceParameter"
+        "coerceParameter",
+        "coerceDefaultParameter"
       ],
       "category": "internal-helper",
       "public": false,

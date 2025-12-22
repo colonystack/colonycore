@@ -4,6 +4,7 @@ package frog
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
@@ -96,7 +97,7 @@ WHERE species ILIKE 'frog%'`,
 				Name:        "include_retired",
 				Type:        "boolean",
 				Description: "Include retired frogs when no explicit stage filter is provided.",
-				Default:     false,
+				Default:     json.RawMessage("false"),
 			},
 		},
 		Columns: []datasetapi.Column{

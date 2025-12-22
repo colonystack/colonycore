@@ -35,7 +35,7 @@ colonycore.db
 
 # Editor/IDE
 # .idea/
-# .vscode/
+.vscode/
 .cache
 .gocache
 coverage.summary

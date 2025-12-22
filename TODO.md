@@ -40,7 +40,7 @@
 - pkg/pluginapi/plugin.go: RegisterSchema JSON boundary.
 - pkg/pluginapi/extensions.go: legacy-exception for ExtensionSet Get/Core any (migration).
 - pkg/pluginapi/domain_aliases.go: legacy-exception for Change/ChangeBuilder any (migration).
-- pkg/datasetapi/types.go: JSON boundary for RunRequest/Row/RunResult/TemplateRuntime; legacy-exception for Parameter Example/Default any.
+- pkg/datasetapi/types.go: JSON boundary for RunRequest/Row/RunResult/TemplateRuntime.
 - pkg/datasetapi/extensions.go: legacy-exception for ExtensionSet Get/Core any (migration).
 - pkg/datasetapi/payload.go: ExtensionPayload JSON boundary wrapper.
 - pkg/datasetapi/facade.go: JSON boundary for facade serialization.
@@ -56,7 +56,7 @@
 - [ ] For each disallowed any, choose a concrete type or narrow interface and document trade-offs.
 - [ ] Replace ExtensionSet Get/Core return types with ObjectPayload/ExtensionPayload; update Raw() to map[string]map[string]map[string]any. **Target removal by 2026-03-31.**
 - [ ] Replace Change Before/After any with ChangePayload wrapper; update internal/core adapter mapping from domain.Change to payload map without new imports. **Target removal by 2026-03-31.**
-- [ ] Replace datasetapi Parameter Example/Default any with json.RawMessage plus decode helpers; keep validation behavior intact. **Target removal by 2026-03-31.**
+- [x] Replace datasetapi Parameter Example/Default any with json.RawMessage plus decode helpers; keep validation behavior intact. **Target removal by 2026-03-31.**
 - [ ] Update call sites and tests; keep JSON/codec boundaries (map[string]any) for extension payloads per ADR-0003.
 - [ ] If exported API changes, update snapshots:
   - go test ./pkg/pluginapi -run TestGeneratePluginAPISnapshot -update
