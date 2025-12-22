@@ -30,11 +30,40 @@ This policy applies across the repo and is especially strict for public surfaces
 - `json.RawMessage` when a raw JSON payload must be passed through.
 - Typed payload wrappers that keep untyped maps at a single boundary.
 
+### Dataset parameter defaults
+For `pkg/datasetapi.Parameter` examples/defaults, prefer `json.RawMessage` to keep
+the public surface free of `any` while preserving JSON flexibility. Decode and
+validate against `Parameter.Type` at the boundary so defaults follow the same
+coercion rules as supplied values.
+
 ## Exceptions and guard allowlist
 Any exception must be explicit, documented, and limited:
 - Record the exception in the guard allowlist (file path + rationale + owner).
 - Prefer file-level or symbol-level exceptions; avoid line-level unless unavoidable.
 - Update this policy and the allowlist together to keep review transparent.
+
+### Allowlist format and location
+Store the allowlist in `internal/ci/any_allowlist.json` to keep it close to API
+snapshots and outside layered packages.
+
+Format (JSON, no new dependencies):
+- Top-level:
+  - `version`: integer schema version.
+  - `exclude_globs`: list of globs to ignore (for example `**/*_test.go`).
+  - `entries`: array of allowlist entries.
+- Entry fields:
+  - `path`: repo-relative file path.
+  - `symbols`: optional list of exported identifiers within the file.
+  - `category`: one of `json-boundary`, `third-party-shim`, `reflection`,
+    `generic-constraint`, `internal-helper`, `test-only`.
+  - `public`: boolean; public exceptions should be `json-boundary` only.
+  - `rationale`: short explanation tied to this policy.
+  - `owner`: maintainer group or area owner.
+  - `refs`: optional list of relevant docs (ADR/RFC/annex paths).
+
+Guard behavior:
+- Prefer file- or symbol-level entries; avoid line-level to reduce drift.
+- Exclude tests via `exclude_globs` rather than per-entry.
 
 ## Layering and contract constraints
 - Follow dependency direction in `ARCHITECTURE.md`; do not introduce imports that

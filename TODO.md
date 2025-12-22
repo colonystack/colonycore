@@ -21,29 +21,41 @@
 
 ## Inventory + classification
 - [x] Enumerate all public any usage in pkg/pluginapi and pkg/datasetapi.
-- [ ] Classify each use as allowed boundary vs disallowed; capture a whitelist of allowed locations for guard tooling.
-  - [ ] pkg/pluginapi/views.go: Attributes/CoreAttributes/EnvironmentBaselines/Data/ChainOfCustody return map[string]any or []map[string]any (JSON/extension payload boundary).
-  - [ ] pkg/pluginapi/extensions.go: ExtensionSet Get/Core return any; Raw is map[string]map[string]any (decision: replace with payload wrappers and map[string]map[string]map[string]any).
-  - [ ] pkg/pluginapi/domain_aliases.go: Change/ChangeBuilder before/after and Before()/After() use any (decision: replace with ChangePayload wrapper over map[string]any).
-  - [ ] pkg/pluginapi/plugin.go: RegisterSchema schema map[string]any (JSON schema boundary).
-  - [ ] pkg/pluginapi/payload.go: ObjectPayload map[string]any (JSON payload boundary).
-  - [ ] pkg/datasetapi/types.go: Parameter Example/Default any; RunRequest Parameters map[string]any; Row map[string]any; RunResult Metadata map[string]any; TemplateRuntime ValidateParameters/Run map[string]any (decision: replace Example/Default with ParameterValue or json.RawMessage; others remain JSON boundary).
-  - [ ] pkg/datasetapi/extensions.go: ExtensionSet Get/Core return any; Raw is map[string]map[string]any (decision: replace with payload wrappers and map[string]map[string]map[string]any).
-  - [ ] pkg/datasetapi/payload.go: ExtensionPayload map[string]any (JSON payload boundary).
-  - [ ] pkg/datasetapi/facade.go: Attributes/CoreAttributes/EnvironmentBaselines/PairingAttributes/Data/ChainOfCustody serialization uses map[string]any or []map[string]any (extension payload boundary).
-  - [ ] pkg/datasetapi/host_template.go: parameter helpers return any internally (should remain internal-only; confirm guard excludes).
-  - [ ] Confirm *_test.go any usage stays test-only or is explicitly excluded from guard scope.
+- [x] Classify each use as allowed boundary vs disallowed; capture a whitelist of allowed locations for guard tooling.
+  - [x] pkg/pluginapi/views.go: Attributes/CoreAttributes/EnvironmentBaselines/Data/ChainOfCustody return map[string]any or []map[string]any - allowed boundary (JSON/extension payload).
+  - [x] pkg/pluginapi/extensions.go: ExtensionSet Get/Core return any - disallowed; replace with payload wrappers. Raw map is an allowed JSON boundary (may become map[string]map[string]map[string]any).
+  - [x] pkg/pluginapi/domain_aliases.go: Change/ChangeBuilder before/after and Before()/After() use any - disallowed; replace with ChangePayload wrapper over map[string]any.
+  - [x] pkg/pluginapi/plugin.go: RegisterSchema schema map[string]any - allowed boundary (JSON schema).
+  - [x] pkg/pluginapi/payload.go: ObjectPayload map[string]any - allowed boundary (JSON payload).
+  - [x] pkg/datasetapi/types.go: Parameter Example/Default any - disallowed; replace with json.RawMessage. RunRequest Parameters map[string]any; Row map[string]any; RunResult Metadata map[string]any; TemplateRuntime ValidateParameters/Run map[string]any - allowed boundary (JSON/codec).
+  - [x] pkg/datasetapi/extensions.go: ExtensionSet Get/Core return any - disallowed; replace with payload wrappers. Raw map is an allowed JSON boundary (may become map[string]map[string]map[string]any).
+  - [x] pkg/datasetapi/payload.go: ExtensionPayload map[string]any - allowed boundary (JSON payload).
+  - [x] pkg/datasetapi/facade.go: Attributes/CoreAttributes/EnvironmentBaselines/PairingAttributes/Data/ChainOfCustody serialization uses map[string]any or []map[string]any - allowed boundary (extension payload).
+  - [x] pkg/datasetapi/host_template.go: parameter helpers return any internally - exception needed (internal helper); guard should exclude via symbol or file allowlist.
+  - [x] Confirm *_test.go any usage stays test-only or is explicitly excluded from guard scope (allowed by policy).
+
+### Guard allowlist (draft; encode in internal/ci/any_allowlist.json)
+- pkg/pluginapi/views.go: Attributes, CoreAttributes, EnvironmentBaselines, Data, ChainOfCustody (JSON/extension payload boundary; owner: core maintainers).
+- pkg/pluginapi/extensions.go: ExtensionSet Raw (JSON/extension payload boundary; owner: core maintainers).
+- pkg/pluginapi/plugin.go: RegisterSchema (JSON schema boundary; owner: core maintainers).
+- pkg/pluginapi/payload.go: ObjectPayload (JSON payload boundary; owner: core maintainers).
+- pkg/datasetapi/types.go: RunRequest.Parameters, RunResult.Metadata, Row, TemplateRuntime.ValidateParameters/Run (JSON/codec boundary; owner: core maintainers).
+- pkg/datasetapi/extensions.go: ExtensionSet Raw (JSON/extension payload boundary; owner: core maintainers).
+- pkg/datasetapi/payload.go: ExtensionPayload (JSON payload boundary; owner: core maintainers).
+- pkg/datasetapi/facade.go: Attributes, CoreAttributes, EnvironmentBaselines, PairingAttributes, Data, ChainOfCustody (extension payload boundary; owner: core maintainers).
+- pkg/datasetapi/host_template.go: unexported parameter helpers (internal-only helper exception; owner: core maintainers).
+- *_test.go: allow any per policy; guard excludes tests.
 
 ## Next steps
 - [ ] Adopt strict policy: remove public any except JSON/codec boundaries (map[string]any) or wrapper types; confirm alignment with ADR-0003.
 - [x] Convert the strict policy into docs/annex/0004-typing-guidelines.md with explicit exceptions and whitelist rules.
-- [ ] Define guard whitelist scope based on the policy (including how to exclude tests and internal-only helpers).
+- [x] Define guard whitelist scope based on the policy (including how to exclude tests and internal-only helpers).
 
 ## API changes (public surface)
 - [ ] For each disallowed any, choose a concrete type or narrow interface and document trade-offs.
 - [ ] Replace ExtensionSet Get/Core return types with ObjectPayload/ExtensionPayload; update Raw() to map[string]map[string]map[string]any.
 - [ ] Replace Change Before/After any with ChangePayload wrapper; update internal/core adapter mapping from domain.Change to payload map without new imports.
-- [ ] Replace datasetapi Parameter Example/Default any with ParameterValue or json.RawMessage plus decode helpers; keep validation behavior intact.
+- [ ] Replace datasetapi Parameter Example/Default any with json.RawMessage plus decode helpers; keep validation behavior intact.
 - [ ] Update call sites and tests; keep JSON/codec boundaries (map[string]any) for extension payloads per ADR-0003.
 - [ ] If exported API changes, update snapshots:
   - go test ./pkg/pluginapi -run TestGeneratePluginAPISnapshot -update
@@ -51,6 +63,7 @@
 
 ## Guard + linting
 - [ ] Add a CI guard to fail disallowed any usage (stdlib AST scan or go test guard; no new deps).
+- [ ] Add internal/ci/any_allowlist.json with file/symbol entries + exclude_globs for tests.
 - [ ] Wire the guard into make lint and CI required checks.
 - [ ] Ensure the whitelist mechanism is explicit and reviewed.
 
