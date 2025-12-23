@@ -4,8 +4,9 @@ FUNC ConvertAction(colonycore/pkg/pluginapi.Action) colonycore/pkg/pluginapi.Act
 FUNC ConvertEntityType(colonycore/pkg/pluginapi.EntityType) colonycore/pkg/pluginapi.EntityTypeRef
 FUNC GetVersionProvider() colonycore/pkg/pluginapi.VersionProvider
 FUNC NewActionContext() colonycore/pkg/pluginapi.ActionContext
-FUNC NewChange(colonycore/pkg/pluginapi.EntityTypeRef,colonycore/pkg/pluginapi.ActionRef,any,any) colonycore/pkg/pluginapi.Change
+FUNC NewChange(colonycore/pkg/pluginapi.EntityTypeRef,colonycore/pkg/pluginapi.ActionRef,colonycore/pkg/pluginapi.ChangePayload,colonycore/pkg/pluginapi.ChangePayload) colonycore/pkg/pluginapi.Change
 FUNC NewChangeBuilder() *colonycore/pkg/pluginapi.ChangeBuilder
+FUNC NewChangePayload(encoding/json.RawMessage) colonycore/pkg/pluginapi.ChangePayload
 FUNC NewEntityContext() colonycore/pkg/pluginapi.EntityContext
 FUNC NewExtensionContributorContext() colonycore/pkg/pluginapi.ExtensionContributorContext
 FUNC NewExtensionHookContext() colonycore/pkg/pluginapi.ExtensionHookContext
@@ -27,6 +28,7 @@ FUNC NewTreatmentContext() colonycore/pkg/pluginapi.TreatmentContext
 FUNC NewViolation(string,colonycore/pkg/pluginapi.SeverityRef,string,colonycore/pkg/pluginapi.EntityTypeRef,string) colonycore/pkg/pluginapi.Violation
 FUNC NewViolationBuilder() *colonycore/pkg/pluginapi.ViolationBuilder
 FUNC NewViolationWithEntityRef(string,colonycore/pkg/pluginapi.SeverityRef,string,colonycore/pkg/pluginapi.EntityTypeRef,string) colonycore/pkg/pluginapi.Violation
+FUNC UndefinedChangePayload() colonycore/pkg/pluginapi.ChangePayload
 FUNC UndefinedPayload() colonycore/pkg/pluginapi.ObjectPayload
 TYPE Action (string)
 TYPE ActionContext interface { Create() colonycore/pkg/pluginapi.ActionRef Delete() colonycore/pkg/pluginapi.ActionRef Update() colonycore/pkg/pluginapi.ActionRef }
@@ -34,6 +36,7 @@ TYPE ActionRef interface { Equals(colonycore/pkg/pluginapi.ActionRef) bool IsDes
 TYPE BaseView interface { CreatedAt() time.Time ID() string UpdatedAt() time.Time }
 TYPE Change struct { unexported }
 TYPE ChangeBuilder struct { unexported }
+TYPE ChangePayload struct { unexported }
 TYPE DefaultHousingContext struct { unexported }
 TYPE DefaultProtocolContext struct { unexported }
 TYPE DefaultVersionProvider struct { unexported }

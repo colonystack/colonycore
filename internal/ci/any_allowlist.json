@@ -46,17 +46,6 @@
       ]
     },
     {
-      "path": "pkg/pluginapi/domain_aliases.go",
-      "category": "legacy-exception",
-      "public": true,
-      "rationale": "Change/ChangeBuilder use any until ChangePayload refactor in typing hardening work. See TODO.md API changes section for Change/ChangePayload replacement (target removal by 2026-03-31).",
-      "owner": "core maintainers",
-      "refs": [
-        "docs/annex/0004-typing-guidelines.md",
-        "TODO.md"
-      ]
-    },
-    {
       "path": "pkg/datasetapi/types.go",
       "symbols": [
         "RunRequest",

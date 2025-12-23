@@ -30,6 +30,7 @@ This policy applies across the repo and is especially strict for public surfaces
 - `json.RawMessage` when a raw JSON payload must be passed through.
 - Typed payload wrappers that keep untyped maps at a single boundary.
 - `ObjectPayload`/`ExtensionPayload` for extension payload access (`ExtensionSet.Get/Core`).
+- `ChangePayload` for rule change snapshots (`Change.Before/After`).
 
 ### Dataset parameter defaults
 For `pkg/datasetapi.Parameter` examples/defaults, prefer `json.RawMessage` to keep
@@ -38,6 +39,11 @@ validate against `Parameter.Type` at the boundary so defaults follow the same
 coercion rules as supplied values.
 Host templates now decode JSON defaults and apply the same coercion rules as
 runtime-supplied values.
+
+### Change snapshots
+Rule change snapshots are exposed via `ChangePayload` and carry JSON bytes that
+should be decoded at the boundary (for example into `map[string]any` or a typed
+struct).
 
 ## Exceptions and guard allowlist
 Any exception must be explicit, documented, and limited:

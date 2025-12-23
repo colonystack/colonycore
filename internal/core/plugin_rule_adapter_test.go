@@ -2,6 +2,7 @@ package core
 
 import (
 	"context"
+	"encoding/json"
 	"testing"
 	"time"
 
@@ -341,6 +342,53 @@ func TestAdaptPluginRuleBridgesDomainInterfaces(t *testing.T) {
 	}
 	if rule.seenChanges != len(changes) {
 		t.Fatalf("expected plugin rule to observe %d changes, got %d", len(changes), rule.seenChanges)
+	}
+}
+
+func TestToPluginChangesEncodesPayloads(t *testing.T) {
+	changes := []domain.Change{{
+		Entity: domain.EntityOrganism,
+		Action: domain.ActionUpdate,
+		Before: map[string]any{"id": "o1"},
+		After:  map[string]any{"id": "o2"},
+	}}
+	converted := toPluginChanges(changes)
+	if len(converted) != 1 {
+		t.Fatalf("expected 1 converted change, got %d", len(converted))
+	}
+	before := converted[0].Before()
+	if !before.Defined() {
+		t.Fatalf("expected before payload to be defined")
+	}
+	var beforeData map[string]any
+	if err := json.Unmarshal(before.Raw(), &beforeData); err != nil {
+		t.Fatalf("unmarshal before payload: %v", err)
+	}
+	if beforeData["id"] != "o1" {
+		t.Fatalf("expected before id 'o1', got %v", beforeData["id"])
+	}
+	after := converted[0].After()
+	if !after.Defined() {
+		t.Fatalf("expected after payload to be defined")
+	}
+	var afterData map[string]any
+	if err := json.Unmarshal(after.Raw(), &afterData); err != nil {
+		t.Fatalf("unmarshal after payload: %v", err)
+	}
+	if afterData["id"] != "o2" {
+		t.Fatalf("expected after id 'o2', got %v", afterData["id"])
+	}
+}
+
+func TestEncodeChangePayloadFallbacks(t *testing.T) {
+	payload := encodeChangePayload(nil)
+	if payload.Defined() || payload.Raw() != nil {
+		t.Fatalf("expected nil payload to be undefined")
+	}
+
+	payload = encodeChangePayload(make(chan int))
+	if payload.Defined() || payload.Raw() != nil {
+		t.Fatalf("expected invalid payload to be undefined")
 	}
 }
 
