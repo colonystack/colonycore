@@ -9,19 +9,13 @@ new file mode 100644
 diff --git a/sweet/cmd/sweet/benchmark.go b/sweet/cmd/sweet/benchmark.go
 --- a/sweet/cmd/sweet/benchmark.go
 +++ b/sweet/cmd/sweet/benchmark.go
-@@ -90,6 +90,12 @@ var allBenchmarks = []benchmark{
- 		harness:     harnesses.Tile38{},
- 		generator:   generators.Tile38{},
- 	},
+@@ -434,0 +435,6 @@ func (b *benchmark) execute(cfgs []*common.Config, r *runCfg) error {
 +	{
 +		name:        "colonycore",
 +		description: "ColonyCore clone/extension payload microbenchmarks",
 +		harness:     harnesses.ColonyCore{},
 +		generator:   generators.None{},
 +	},
- }
- 
- var allBenchmarksMap = func() map[string]*benchmark {
 diff --git a/sweet/harnesses/colonycore.go b/sweet/harnesses/colonycore.go
 new file mode 100644
 --- /dev/null

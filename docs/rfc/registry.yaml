@@ -39,10 +39,10 @@ documents:
   - id: Annex-0004
     type: Annex
     title: Typing Guidelines (any usage)
-    status: Draft
+    status: Accepted
     owners:
       - Core Maintainers
-    last_updated: 2025-12-22
+    last_updated: 2025-12-26
     linked_rfcs:
       - RFC-0001
     path: docs/annex/0004-typing-guidelines.md

@@ -1,9 +1,9 @@
 # Annex 0004: Typing Guidelines (any usage)
 
-- Status: Draft
+- Status: Accepted
 - Linked RFCs: 0001-colonycore-base-module
 - Owners: Core Maintainers
-- Last Updated: 2025-12-22
+- Last Updated: 2025-12-26
 
 ## Purpose
 Use `any` only at explicit untyped boundaries to keep API contracts clear and refactor-safe.
@@ -85,6 +85,14 @@ The lint-time guard is implemented in `scripts/validate_any_usage/main.go` and r
 ```bash
 GOCACHE=$PWD/.cache/go-build go run ./scripts/validate_any_usage
 ```
+
+Default roots enforced by the guard:
+- `pkg/pluginapi`
+- `pkg/datasetapi`
+- `internal/core`
+- `internal/adapters/datasets`
+
+Override the defaults with `-roots` as needed for local checks.
 
 ## Layering and contract constraints
 - Follow dependency direction in `ARCHITECTURE.md`; do not introduce imports that

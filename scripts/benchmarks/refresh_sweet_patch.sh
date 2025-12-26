@@ -18,7 +18,7 @@ fi
 git -C "$SWEET_WORK_DIR" add -N sweet
 
 tmp_patch="$(mktemp "${PATCH_FILE}.XXXXXX")"
-git -C "$SWEET_WORK_DIR" diff --no-color | sed '/^index /d' > "$tmp_patch"
+git -C "$SWEET_WORK_DIR" diff --no-color -U0 | sed '/^index /d' > "$tmp_patch"
 
 if [ ! -s "$tmp_patch" ]; then
   echo "generated patch is empty; refusing to overwrite ${PATCH_FILE}" >&2

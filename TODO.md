@@ -10,7 +10,12 @@
 - docs/annex/0003-import-boss-runbook.md
 
 ## Scope + boundaries
-- [x] Confirm layers/packages in scope (expected: pkg/pluginapi, pkg/datasetapi, docs/).
+- [x] Confirm layers/packages in scope (expanded: pkg/pluginapi, pkg/datasetapi, internal/core, internal/adapters/datasets, internal/infra/**, plugins/*, docs/).
+- [ ] Map expanded touchpoints (core services, adapters, persistence, plugins) and confirm import direction stays aligned with ARCHITECTURE.md.
+- [ ] Guard expansion phases (recommended):
+  - [x] Phase 1: internal/core + internal/adapters/datasets (done).
+  - [ ] Phase 2: internal/infra/blob + internal/infra/persistence + plugins/*.
+  - [ ] Phase 3: pkg/domain (requires generated/extension payload allowlist strategy).
 - [x] Confirm no cross-layer import changes; update .import-restrictions only if new deps are required.
 - [x] Identify generated artifacts that may need refresh (internal/ci/pluginapi.snapshot, internal/ci/datasetapi.snapshot, entity-model outputs if touched).
 - [x] If Change payloads are narrowed, confirm internal/core adapter updates are in scope and keep import direction intact.
@@ -18,6 +23,7 @@
 ## Policy
 - [x] Create docs/annex/0004-typing-guidelines.md with allowed any usage and an exception/whitelist mechanism.
 - [x] Record trade-offs (tight interfaces vs extensibility) and note compatibility posture per ADR-0009.
+- [x] Mark Annex-0004 Accepted and update registry status/last_updated.
 
 ## Inventory + classification
   - [x] Enumerate all public any usage in pkg/pluginapi and pkg/datasetapi.
@@ -33,6 +39,11 @@
   - [x] pkg/datasetapi/facade.go: Attributes/CoreAttributes/EnvironmentBaselines/PairingAttributes/Data/ChainOfCustody serialization uses map[string]any or []map[string]any - allowed boundary (extension payload).
   - [x] pkg/datasetapi/host_template.go: parameter helpers return any internally - exception needed (internal helper); guard should exclude via symbol or file allowlist.
   - [x] Confirm *_test.go any usage stays test-only or is explicitly excluded from guard scope (allowed by policy).
+  - [x] Expand any-usage inventory (Phase 1) to internal/core and internal/adapters/datasets.
+  - [x] Phase 1 classification: allowlist JSON boundaries in internal/core + internal/adapters/datasets; record expvar shim and lifecycle transition legacy exception.
+  - [ ] Expand any-usage inventory (Phase 2) to internal/infra/blob, internal/infra/persistence, and plugins/*.
+  - [ ] Decide whether to include pkg/domain; if yes, define generated/extension payload allowlist approach up front.
+  - [ ] Classify any usage in those layers against Annex-0004; refactor or allowlist as needed.
 
 ### Guard allowlist (implemented in internal/ci/any_allowlist.json)
 - pkg/pluginapi/views.go: JSON boundary for view attributes/custody payloads.
@@ -44,6 +55,15 @@
 - pkg/datasetapi/payload.go: ExtensionPayload JSON boundary wrapper.
 - pkg/datasetapi/facade.go: JSON boundary for facade serialization.
 - pkg/datasetapi/host_template.go: HostTemplate JSON boundary + internal parameter helpers.
+- internal/core/extension_payload.go: JSON boundary for extension payload normalization.
+- internal/core/plugin.go: JSON boundary for plugin schema registry.
+- internal/core/service.go: JSON boundary for schema copies; internal-helper logger key/value args.
+- internal/core/dataset.go: JSON boundary for dataset parameters.
+- internal/core/plugin_rule_adapter.go: JSON boundary for attributes and change payloads.
+- internal/core/observability_exporters.go: expvar shim (third-party).
+- internal/core/rule_lifecycle_transition.go: legacy exception tied to domain.Change any.
+- internal/adapters/datasets/exporter.go: JSON boundary for export parameters/metadata.
+- internal/adapters/datasets/handler.go: JSON boundary for HTTP request/response payloads.
 - *_test.go: allow any per policy; guard excludes tests.
 
 ## Next steps
@@ -66,6 +86,13 @@
 - [x] Add internal/ci/any_allowlist.json with file/symbol entries + exclude_globs for tests.
 - [x] Wire the guard into make lint and CI required checks.
 - [x] Ensure the whitelist mechanism is explicit and reviewed.
+- [x] Expand validate-any-usage roots to Phase 1 (internal/core + internal/adapters/datasets) and document the default roots.
+- [x] Update internal/ci/any_allowlist.json entries for Phase 1 layers (including non-JSON exceptions).
+- [ ] Expand validate-any-usage roots to Phase 2 and Phase 3.
+- [ ] Update internal/ci/any_allowlist.json entries for Phase 2 and Phase 3 layers.
+
+## Legacy exceptions
+- [ ] Remove internal/core/rule_lifecycle_transition.go legacy any usage once domain.Change is typed; update allowlist accordingly.
 
 ## Tests + benchmarks
 - [x] Run make lint and make test; add targeted package tests if needed.
@@ -81,5 +108,5 @@
 - [x] Add an automatic re-diff script for refreshing `scripts/benchmarks/sweet_colonycore.patch` (see `scripts/benchmarks/refresh_sweet_patch.sh`).
 
 ## Review + docs
-- [ ] Prepare a review checklist for code owners to confirm no reverse dependency on any contracts.
-- [ ] Add a changelog entry with typing hardening and migration notes (confirm destination or create file if required).
+- [ ] Prepare a review checklist for code owners to confirm no reverse dependency on any contracts across expanded layers.
+- [ ] Add a changelog entry with typing hardening and migration notes (proposal: root CHANGELOG.md with an Unreleased section aligned to ADR-0009).

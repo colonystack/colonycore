@@ -120,6 +120,117 @@
       "refs": [
         "docs/annex/0004-typing-guidelines.md"
       ]
+    },
+    {
+      "path": "internal/core/extension_payload.go",
+      "category": "json-boundary",
+      "public": false,
+      "rationale": "Extension payload normalization retains JSON-like maps from plugins.",
+      "owner": "core maintainers",
+      "refs": [
+        "docs/annex/0004-typing-guidelines.md"
+      ]
+    },
+    {
+      "path": "internal/core/plugin.go",
+      "category": "json-boundary",
+      "public": false,
+      "rationale": "Plugin registry stores JSON schema payloads.",
+      "owner": "core maintainers",
+      "refs": [
+        "docs/annex/0004-typing-guidelines.md"
+      ]
+    },
+    {
+      "path": "internal/core/service.go",
+      "symbols": [
+        "Logger",
+        "noopLogger"
+      ],
+      "category": "internal-helper",
+      "public": false,
+      "rationale": "Internal structured logging accepts key/value fields for diagnostics.",
+      "owner": "core maintainers",
+      "refs": [
+        "docs/annex/0004-typing-guidelines.md"
+      ]
+    },
+    {
+      "path": "internal/core/service.go",
+      "symbols": [
+        "Service"
+      ],
+      "category": "json-boundary",
+      "public": false,
+      "rationale": "Clones plugin schema maps before returning metadata.",
+      "owner": "core maintainers",
+      "refs": [
+        "docs/annex/0004-typing-guidelines.md"
+      ]
+    },
+    {
+      "path": "internal/core/dataset.go",
+      "category": "json-boundary",
+      "public": false,
+      "rationale": "Dataset execution parameters are JSON-like maps at the runtime boundary.",
+      "owner": "core maintainers",
+      "refs": [
+        "docs/annex/0004-typing-guidelines.md"
+      ]
+    },
+    {
+      "path": "internal/core/plugin_rule_adapter.go",
+      "category": "json-boundary",
+      "public": false,
+      "rationale": "Rule adapter exposes extension attributes and change payloads as JSON-like maps.",
+      "owner": "core maintainers",
+      "refs": [
+        "docs/annex/0004-typing-guidelines.md"
+      ]
+    },
+    {
+      "path": "internal/core/observability_exporters.go",
+      "symbols": [
+        "NewExpvarMetricsRecorder"
+      ],
+      "category": "third-party-shim",
+      "public": false,
+      "rationale": "expvar.Func requires func() any; shim to the stdlib expvar API.",
+      "owner": "core maintainers",
+      "refs": [
+        "docs/annex/0004-typing-guidelines.md"
+      ]
+    },
+    {
+      "path": "internal/core/rule_lifecycle_transition.go",
+      "category": "legacy-exception",
+      "public": false,
+      "rationale": "Depends on domain.Change Before/After using any; TODO.md tracks removal once typed change payloads land.",
+      "owner": "core maintainers",
+      "refs": [
+        "docs/annex/0004-typing-guidelines.md",
+        "TODO.md"
+      ]
+    },
+    {
+      "path": "internal/adapters/datasets/exporter.go",
+      "category": "json-boundary",
+      "public": false,
+      "rationale": "Export records and artifact metadata carry JSON-like parameter maps.",
+      "owner": "core maintainers",
+      "refs": [
+        "docs/annex/0004-typing-guidelines.md"
+      ]
+    },
+    {
+      "path": "internal/adapters/datasets/handler.go",
+      "category": "json-boundary",
+      "public": false,
+      "rationale": "Dataset HTTP handlers exchange JSON payloads with untyped parameters.",
+      "owner": "core maintainers",
+      "refs": [
+        "docs/annex/0004-typing-guidelines.md"
+      ]
     }
   ]
 }

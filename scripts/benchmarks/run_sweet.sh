@@ -30,4 +30,3 @@ export COLONYCORE_REPO_ROOT="${COLONYCORE_REPO_ROOT:-$ROOT_DIR}"
   -count "$COUNT" \
   -run colonycore \
   "$CONFIG_FILE"
-

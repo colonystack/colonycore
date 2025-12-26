@@ -27,4 +27,3 @@ RUNNER_ID="${RUNNER_ID:-$(hostname)}"
   echo "runner: ${RUNNER_ID}"
   cat "$INPUT"
 } > "$OUTPUT"
-
