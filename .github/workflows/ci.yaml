@@ -83,3 +83,42 @@ jobs:
           PRE_COMMIT_HOME=$PWD/.cache/pre-commit \
           XDG_CACHE_HOME=$PWD/.cache \
           pre-commit run --all-files
+
+  benchmarks:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.25'
+
+      - name: Cache benchmarking artifacts
+        uses: actions/cache@v4
+        with:
+          path: .cache
+          key: cache-bench-${{ runner.os }}-${{ hashFiles('scripts/benchmarks/**', 'benchmarks/**', '.github/workflows/ci.yaml') }}
+          restore-keys: |
+            cache-bench-${{ runner.os }}-
+
+      - name: Run benchmarks
+        env:
+          CONF: pr
+          COUNT: 10
+          RUNNER_ID: ${{ runner.os }}-${{ runner.arch }}
+          GIT_SHA: ${{ github.sha }}
+          COLONYCORE_REPO_ROOT: ${{ github.workspace }}
+        run: scripts/benchmarks/ci.sh
+
+      - name: Upload benchmark artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-artifacts
+          path: |
+            benchmarks/artifacts/*.results
+            benchmarks/artifacts/*.withmeta.results
+            benchmarks/artifacts/benchstat.txt
+            benchmarks/results/**/pr.log

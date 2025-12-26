@@ -69,7 +69,16 @@
 
 ## Tests + benchmarks
 - [x] Run make lint and make test; add targeted package tests if needed.
-- [ ] Identify hot paths impacted (clone/serialization/extension handling) and run or add go test -bench baselines; record <=2% regression or waiver.
+- [x] Add microbenchmarks for clone/serialization hot paths in pkg/pluginapi and pkg/datasetapi.
+- [x] Replace ad-hoc benchmarking with sweet + benchstat artifacts:
+  - [x] Add a pinned Sweet suite (count >= 10) that runs the clone benchmarks.
+  - [x] Aggregate Sweet results into a single deterministic `*.results` artifact.
+  - [x] Add a `*.withmeta.results` artifact with file-level metadata (commit, Go version, sweet version, runner).
+  - [x] Generate a benchstat comparison report (baseline vs PR).
+  - [x] Store a single baseline artifact and define the update workflow.
+  - [x] Wire CI to publish `*.withmeta.results`, `benchstat.txt`, and Sweet logs as artifacts.
+- [x] Guard Sweet patch application with a clear failure message when upstream changes (see `scripts/benchmarks/prepare_sweet.sh`).
+- [x] Add an automatic re-diff script for refreshing `scripts/benchmarks/sweet_colonycore.patch` (see `scripts/benchmarks/refresh_sweet_patch.sh`).
 
 ## Review + docs
 - [ ] Prepare a review checklist for code owners to confirm no reverse dependency on any contracts.

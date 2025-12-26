@@ -1,0 +1,175 @@
+commit: ed66642183205a650df0dcbbd7c7c71a5a7ae8d7
+go: go version go1.25.2 linux/amd64
+sweet: v0.0.0-20251208221949-523919e4e4f2
+benchstat: v0.0.0-20251208221838-04cf7a2dca90
+runner: DESKTOP-AIE6MLS
+goos: linux
+goarch: amd64
+pkg: colonycore/pkg/pluginapi
+cpu: 11th Gen Intel(R) Core(TM) i9-11900H @ 2.50GHz
+BenchmarkCloneValueNested 	  774121	      1743 ns/op	    2080 B/op	      22 allocs/op
+BenchmarkObjectPayloadMap 	  656106	      1740 ns/op	    2080 B/op	      22 allocs/op
+BenchmarkExtensionSetRaw  	  462928	      2560 ns/op	    3184 B/op	      30 allocs/op
+PASS
+ok  	colonycore/pkg/pluginapi	3.751s
+goos: linux
+goarch: amd64
+pkg: colonycore/pkg/datasetapi
+cpu: 11th Gen Intel(R) Core(TM) i9-11900H @ 2.50GHz
+BenchmarkDeepCloneAttributes 	  807836	      1737 ns/op	    2080 B/op	      22 allocs/op
+BenchmarkExtensionPayloadMap 	  682261	      1705 ns/op	    2080 B/op	      22 allocs/op
+PASS
+ok  	colonycore/pkg/datasetapi	2.612s
+goos: linux
+goarch: amd64
+pkg: colonycore/pkg/pluginapi
+cpu: 11th Gen Intel(R) Core(TM) i9-11900H @ 2.50GHz
+BenchmarkCloneValueNested 	  778695	      1776 ns/op	    2080 B/op	      22 allocs/op
+BenchmarkObjectPayloadMap 	  679490	      1697 ns/op	    2080 B/op	      22 allocs/op
+BenchmarkExtensionSetRaw  	  487689	      2535 ns/op	    3184 B/op	      30 allocs/op
+PASS
+ok  	colonycore/pkg/pluginapi	3.845s
+goos: linux
+goarch: amd64
+pkg: colonycore/pkg/datasetapi
+cpu: 11th Gen Intel(R) Core(TM) i9-11900H @ 2.50GHz
+BenchmarkDeepCloneAttributes 	  757346	      1739 ns/op	    2080 B/op	      22 allocs/op
+BenchmarkExtensionPayloadMap 	  683888	      1706 ns/op	    2080 B/op	      22 allocs/op
+PASS
+ok  	colonycore/pkg/datasetapi	2.527s
+goos: linux
+goarch: amd64
+pkg: colonycore/pkg/pluginapi
+cpu: 11th Gen Intel(R) Core(TM) i9-11900H @ 2.50GHz
+BenchmarkCloneValueNested 	  762018	      1742 ns/op	    2080 B/op	      22 allocs/op
+BenchmarkObjectPayloadMap 	  707163	      1734 ns/op	    2080 B/op	      22 allocs/op
+BenchmarkExtensionSetRaw  	  462306	      2621 ns/op	    3184 B/op	      30 allocs/op
+PASS
+ok  	colonycore/pkg/pluginapi	3.838s
+goos: linux
+goarch: amd64
+pkg: colonycore/pkg/datasetapi
+cpu: 11th Gen Intel(R) Core(TM) i9-11900H @ 2.50GHz
+BenchmarkDeepCloneAttributes 	  727256	      1691 ns/op	    2080 B/op	      22 allocs/op
+BenchmarkExtensionPayloadMap 	  702128	      1687 ns/op	    2080 B/op	      22 allocs/op
+PASS
+ok  	colonycore/pkg/datasetapi	2.458s
+goos: linux
+goarch: amd64
+pkg: colonycore/pkg/pluginapi
+cpu: 11th Gen Intel(R) Core(TM) i9-11900H @ 2.50GHz
+BenchmarkCloneValueNested 	  753796	      1732 ns/op	    2080 B/op	      22 allocs/op
+BenchmarkObjectPayloadMap 	  713204	      1749 ns/op	    2080 B/op	      22 allocs/op
+BenchmarkExtensionSetRaw  	  487353	      2646 ns/op	    3184 B/op	      30 allocs/op
+PASS
+ok  	colonycore/pkg/pluginapi	3.916s
+goos: linux
+goarch: amd64
+pkg: colonycore/pkg/datasetapi
+cpu: 11th Gen Intel(R) Core(TM) i9-11900H @ 2.50GHz
+BenchmarkDeepCloneAttributes 	  746935	      1750 ns/op	    2080 B/op	      22 allocs/op
+BenchmarkExtensionPayloadMap 	  666948	      1879 ns/op	    2080 B/op	      22 allocs/op
+PASS
+ok  	colonycore/pkg/datasetapi	3.423s
+goos: linux
+goarch: amd64
+pkg: colonycore/pkg/pluginapi
+cpu: 11th Gen Intel(R) Core(TM) i9-11900H @ 2.50GHz
+BenchmarkCloneValueNested 	  755853	      1733 ns/op	    2080 B/op	      22 allocs/op
+BenchmarkObjectPayloadMap 	  700272	      1727 ns/op	    2080 B/op	      22 allocs/op
+BenchmarkExtensionSetRaw  	  444654	      2561 ns/op	    3184 B/op	      30 allocs/op
+PASS
+ok  	colonycore/pkg/pluginapi	3.734s
+goos: linux
+goarch: amd64
+pkg: colonycore/pkg/datasetapi
+cpu: 11th Gen Intel(R) Core(TM) i9-11900H @ 2.50GHz
+BenchmarkDeepCloneAttributes 	  772850	      1709 ns/op	    2080 B/op	      22 allocs/op
+BenchmarkExtensionPayloadMap 	  643306	      1727 ns/op	    2080 B/op	      22 allocs/op
+PASS
+ok  	colonycore/pkg/datasetapi	2.475s
+goos: linux
+goarch: amd64
+pkg: colonycore/pkg/pluginapi
+cpu: 11th Gen Intel(R) Core(TM) i9-11900H @ 2.50GHz
+BenchmarkCloneValueNested 	  651022	      1725 ns/op	    2080 B/op	      22 allocs/op
+BenchmarkObjectPayloadMap 	  593259	      1733 ns/op	    2080 B/op	      22 allocs/op
+BenchmarkExtensionSetRaw  	  459646	      2655 ns/op	    3184 B/op	      30 allocs/op
+PASS
+ok  	colonycore/pkg/pluginapi	3.450s
+goos: linux
+goarch: amd64
+pkg: colonycore/pkg/datasetapi
+cpu: 11th Gen Intel(R) Core(TM) i9-11900H @ 2.50GHz
+BenchmarkDeepCloneAttributes 	  804877	      1758 ns/op	    2080 B/op	      22 allocs/op
+BenchmarkExtensionPayloadMap 	  727828	      1788 ns/op	    2080 B/op	      22 allocs/op
+PASS
+ok  	colonycore/pkg/datasetapi	2.759s
+goos: linux
+goarch: amd64
+pkg: colonycore/pkg/pluginapi
+cpu: 11th Gen Intel(R) Core(TM) i9-11900H @ 2.50GHz
+BenchmarkCloneValueNested 	  634107	      1717 ns/op	    2080 B/op	      22 allocs/op
+BenchmarkObjectPayloadMap 	  716988	      1768 ns/op	    2080 B/op	      22 allocs/op
+BenchmarkExtensionSetRaw  	  470779	      2623 ns/op	    3184 B/op	      30 allocs/op
+PASS
+ok  	colonycore/pkg/pluginapi	3.669s
+goos: linux
+goarch: amd64
+pkg: colonycore/pkg/datasetapi
+cpu: 11th Gen Intel(R) Core(TM) i9-11900H @ 2.50GHz
+BenchmarkDeepCloneAttributes 	  783583	      1736 ns/op	    2080 B/op	      22 allocs/op
+BenchmarkExtensionPayloadMap 	  703198	      1736 ns/op	    2080 B/op	      22 allocs/op
+PASS
+ok  	colonycore/pkg/datasetapi	2.624s
+goos: linux
+goarch: amd64
+pkg: colonycore/pkg/pluginapi
+cpu: 11th Gen Intel(R) Core(TM) i9-11900H @ 2.50GHz
+BenchmarkCloneValueNested 	  805436	      1698 ns/op	    2080 B/op	      22 allocs/op
+BenchmarkObjectPayloadMap 	  742222	      1780 ns/op	    2080 B/op	      22 allocs/op
+BenchmarkExtensionSetRaw  	  444198	      2594 ns/op	    3184 B/op	      30 allocs/op
+PASS
+ok  	colonycore/pkg/pluginapi	3.912s
+goos: linux
+goarch: amd64
+pkg: colonycore/pkg/datasetapi
+cpu: 11th Gen Intel(R) Core(TM) i9-11900H @ 2.50GHz
+BenchmarkDeepCloneAttributes 	  783183	      1687 ns/op	    2080 B/op	      22 allocs/op
+BenchmarkExtensionPayloadMap 	  710149	      1743 ns/op	    2080 B/op	      22 allocs/op
+PASS
+ok  	colonycore/pkg/datasetapi	2.602s
+goos: linux
+goarch: amd64
+pkg: colonycore/pkg/pluginapi
+cpu: 11th Gen Intel(R) Core(TM) i9-11900H @ 2.50GHz
+BenchmarkCloneValueNested 	  751609	      1734 ns/op	    2080 B/op	      22 allocs/op
+BenchmarkObjectPayloadMap 	  751872	      1694 ns/op	    2080 B/op	      22 allocs/op
+BenchmarkExtensionSetRaw  	  465957	      2559 ns/op	    3184 B/op	      30 allocs/op
+PASS
+ok  	colonycore/pkg/pluginapi	3.841s
+goos: linux
+goarch: amd64
+pkg: colonycore/pkg/datasetapi
+cpu: 11th Gen Intel(R) Core(TM) i9-11900H @ 2.50GHz
+BenchmarkDeepCloneAttributes 	  731377	      1745 ns/op	    2080 B/op	      22 allocs/op
+BenchmarkExtensionPayloadMap 	  716853	      1706 ns/op	    2080 B/op	      22 allocs/op
+PASS
+ok  	colonycore/pkg/datasetapi	2.545s
+goos: linux
+goarch: amd64
+pkg: colonycore/pkg/pluginapi
+cpu: 11th Gen Intel(R) Core(TM) i9-11900H @ 2.50GHz
+BenchmarkCloneValueNested 	  751887	      1727 ns/op	    2080 B/op	      22 allocs/op
+BenchmarkObjectPayloadMap 	  682995	      1728 ns/op	    2080 B/op	      22 allocs/op
+BenchmarkExtensionSetRaw  	  491262	      2529 ns/op	    3184 B/op	      30 allocs/op
+PASS
+ok  	colonycore/pkg/pluginapi	3.797s
+goos: linux
+goarch: amd64
+pkg: colonycore/pkg/datasetapi
+cpu: 11th Gen Intel(R) Core(TM) i9-11900H @ 2.50GHz
+BenchmarkDeepCloneAttributes 	  666835	      1740 ns/op	    2080 B/op	      22 allocs/op
+BenchmarkExtensionPayloadMap 	  692672	      1753 ns/op	    2080 B/op	      22 allocs/op
+PASS
+ok  	colonycore/pkg/datasetapi	2.422s

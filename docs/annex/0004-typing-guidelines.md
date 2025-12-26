@@ -98,6 +98,14 @@ GOCACHE=$PWD/.cache/go-build go run ./scripts/validate_any_usage
 - Conversions at boundaries can add allocations; measure hot paths and document waivers
   if needed.
 
+## Benchmark tracking
+Baseline microbenchmarks cover JSON-boundary clone paths so regressions stay visible.
+
+- `pkg/datasetapi`: `BenchmarkDeepCloneAttributes`, `BenchmarkExtensionPayloadMap`
+- `pkg/pluginapi`: `BenchmarkCloneValueNested`, `BenchmarkObjectPayloadMap`, `BenchmarkExtensionSetRaw`
+- Baseline snapshot: `internal/ci/benchmarks/baseline.withmeta.results`
+- Runner: `scripts/benchmarks/ci.sh` (Sweet → aggregated results → benchstat)
+
 ## References
 - ARCHITECTURE.md
 - docs/adr/0003-core-domain-schema.md

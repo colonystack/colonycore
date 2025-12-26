@@ -5,6 +5,11 @@ GOLANGCI_VERSION ?= v2.5.0
 BIN_DIR ?= $(CURDIR)/.cache/bin
 GOLANGCI_CACHE ?= $(CURDIR)/.cache/golangci-lint
 COVER_THRESHOLD ?= 90.0
+SWEET_VERSION ?= v0.0.0-20251208221949-523919e4e4f2
+SWEET_COMMIT ?= 523919e4e4f284a0c060e6e5e5ff7f6f521fa2ed
+BENCHSTAT_VERSION ?= v0.0.0-20251208221838-04cf7a2dca90
+BENCH_CONF ?= pr
+BENCH_COUNT ?= 10
 GOPATH_BIN := $(shell go env GOPATH)/bin
 GOLANGCI_BIN := $(GOPATH_BIN)/golangci-lint
 GOLANGCI_VERSION_PLAIN := $(patsubst v%,%,$(GOLANGCI_VERSION))
@@ -23,7 +28,7 @@ SCHEMASPY_PG_USER ?= postgres
 SCHEMASPY_PG_PASSWORD ?= postgres
 SCHEMASPY_PG_TIMEOUT ?= 60
 
-.PHONY: all build lint go-test test registry-check fmt-check vet registry-lint golangci golangci-install python-lint r-lint go-lint import-boss import-boss-install entity-model-validate entity-model-generate entity-model-verify entity-model-erd entity-model-diff entity-model-diff-update api-snapshots list-docker-images validate-any-usage
+.PHONY: all build lint go-test test registry-check fmt-check vet registry-lint golangci golangci-install python-lint r-lint go-lint import-boss import-boss-install entity-model-validate entity-model-generate entity-model-verify entity-model-erd entity-model-diff entity-model-diff-update api-snapshots list-docker-images validate-any-usage benchmarks-run benchmarks-aggregate benchmarks-compare benchmarks-ci
 
 all: build
 
@@ -62,6 +67,19 @@ validate-any-usage:
 	@echo "==> Validating any usage"
 	@GOCACHE=$(GOCACHE) go run ./scripts/validate_any_usage
 	@echo "validate-any-usage: OK"
+
+benchmarks-run:
+	@CONF=$(BENCH_CONF) COUNT=$(BENCH_COUNT) SWEET_VERSION=$(SWEET_VERSION) SWEET_COMMIT=$(SWEET_COMMIT) BENCHSTAT_VERSION=$(BENCHSTAT_VERSION) scripts/benchmarks/run_sweet.sh
+
+benchmarks-aggregate:
+	@CONF=$(BENCH_CONF) SWEET_VERSION=$(SWEET_VERSION) SWEET_COMMIT=$(SWEET_COMMIT) BENCHSTAT_VERSION=$(BENCHSTAT_VERSION) scripts/benchmarks/aggregate_results.sh
+	@CONF=$(BENCH_CONF) SWEET_VERSION=$(SWEET_VERSION) SWEET_COMMIT=$(SWEET_COMMIT) BENCHSTAT_VERSION=$(BENCHSTAT_VERSION) scripts/benchmarks/withmeta.sh
+
+benchmarks-compare:
+	@PR_RESULTS=$(CURDIR)/benchmarks/artifacts/$(BENCH_CONF).withmeta.results SWEET_VERSION=$(SWEET_VERSION) SWEET_COMMIT=$(SWEET_COMMIT) BENCHSTAT_VERSION=$(BENCHSTAT_VERSION) scripts/benchmarks/benchstat.sh
+
+benchmarks-ci:
+	@CONF=$(BENCH_CONF) COUNT=$(BENCH_COUNT) SWEET_VERSION=$(SWEET_VERSION) SWEET_COMMIT=$(SWEET_COMMIT) BENCHSTAT_VERSION=$(BENCHSTAT_VERSION) scripts/benchmarks/ci.sh
 
 api-snapshots:
 	@echo "==> api snapshots"

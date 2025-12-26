@@ -1,0 +1,109 @@
+diff --git a/sweet/benchmarks/colonycore/README.md b/sweet/benchmarks/colonycore/README.md
+new file mode 100644
+--- /dev/null
++++ b/sweet/benchmarks/colonycore/README.md
+@@ -0,0 +1,3 @@
++# ColonyCore benchmarks
++
++This directory is a placeholder so `sweet run` can locate the benchmark entry.
+diff --git a/sweet/cmd/sweet/benchmark.go b/sweet/cmd/sweet/benchmark.go
+--- a/sweet/cmd/sweet/benchmark.go
++++ b/sweet/cmd/sweet/benchmark.go
+@@ -90,6 +90,12 @@ var allBenchmarks = []benchmark{
+ 		harness:     harnesses.Tile38{},
+ 		generator:   generators.Tile38{},
+ 	},
++	{
++		name:        "colonycore",
++		description: "ColonyCore clone/extension payload microbenchmarks",
++		harness:     harnesses.ColonyCore{},
++		generator:   generators.None{},
++	},
+ }
+ 
+ var allBenchmarksMap = func() map[string]*benchmark {
+diff --git a/sweet/harnesses/colonycore.go b/sweet/harnesses/colonycore.go
+new file mode 100644
+--- /dev/null
++++ b/sweet/harnesses/colonycore.go
+@@ -0,0 +1,80 @@
++package harnesses
++
++import (
++	"context"
++	"fmt"
++	"os"
++	"os/exec"
++	"path/filepath"
++	"time"
++
++	"golang.org/x/benchmarks/sweet/common"
++	"golang.org/x/benchmarks/sweet/common/log"
++)
++
++const colonycoreBenchRegex = "^(BenchmarkDeepCloneAttributes|BenchmarkExtensionPayloadMap|BenchmarkCloneValueNested|BenchmarkObjectPayloadMap|BenchmarkExtensionSetRaw)$"
++
++type ColonyCore struct{}
++
++func (ColonyCore) CheckPrerequisites() error {
++	return nil
++}
++
++func (ColonyCore) Get(_ *common.GetConfig) error {
++	return nil
++}
++
++func (ColonyCore) Build(_ *common.Config, _ *common.BuildConfig) error {
++	return nil
++}
++
++func (ColonyCore) Run(cfg *common.Config, rcfg *common.RunConfig) error {
++	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
++	defer cancel()
++
++	repoRoot := os.Getenv("COLONYCORE_REPO_ROOT")
++	if repoRoot == "" {
++		return fmt.Errorf("COLONYCORE_REPO_ROOT is not set")
++	}
++
++	goTool := filepath.Join(cfg.GoRoot, "bin", "go")
++	if cfg.GoRoot == "" {
++		var err error
++		goTool, err = exec.LookPath("go")
++		if err != nil {
++			return fmt.Errorf("go binary not found on PATH: %w", err)
++		}
++	} else {
++		info, err := os.Stat(goTool)
++		if err != nil {
++			pathTool, lookErr := exec.LookPath("go")
++			if lookErr != nil {
++				return fmt.Errorf("go binary not found at %s or on PATH: %w", goTool, err)
++			}
++			goTool = pathTool
++		} else if info.Mode()&0111 == 0 {
++			return fmt.Errorf("go binary at %s is not executable", goTool)
++		}
++	}
++
++	cmd := exec.CommandContext(
++		ctx,
++		goTool,
++		"test",
++		"./pkg/pluginapi",
++		"./pkg/datasetapi",
++		"-run", "^$",
++		"-bench", colonycoreBenchRegex,
++		"-benchmem",
++		"-count", "1",
++	)
++	cmd.Dir = repoRoot
++	cmd.Env = cfg.ExecEnv.MustSet(
++		"GOROOT="+cfg.GoRoot,
++		"GOCACHE="+filepath.Join(rcfg.BinDir, "gocache"),
++	).Collapse()
++	cmd.Stdout = rcfg.Results
++	cmd.Stderr = rcfg.Log
++	log.TraceCommand(cmd, false)
++	return cmd.Run()
++}

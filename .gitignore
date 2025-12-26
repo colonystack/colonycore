@@ -42,3 +42,5 @@ coverage.summary
 coverage.summary
 .RData
 .Rhistory
+benchmarks/results
+benchmarks/artifacts
