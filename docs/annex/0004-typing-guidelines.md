@@ -3,7 +3,7 @@
 - Status: Accepted
 - Linked RFCs: 0001-colonycore-base-module
 - Owners: Core Maintainers
-- Last Updated: 2025-12-26
+- Last Updated: 2025-12-27
 
 ## Purpose
 Use `any` only at explicit untyped boundaries to keep API contracts clear and refactor-safe.
@@ -91,6 +91,9 @@ Default roots enforced by the guard:
 - `pkg/datasetapi`
 - `internal/core`
 - `internal/adapters/datasets`
+- `internal/infra/blob`
+- `internal/infra/persistence`
+- `plugins`
 
 Override the defaults with `-roots` as needed for local checks.
 

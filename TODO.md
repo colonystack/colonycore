@@ -14,7 +14,7 @@
 - [ ] Map expanded touchpoints (core services, adapters, persistence, plugins) and confirm import direction stays aligned with ARCHITECTURE.md.
 - [ ] Guard expansion phases (recommended):
   - [x] Phase 1: internal/core + internal/adapters/datasets (done).
-  - [ ] Phase 2: internal/infra/blob + internal/infra/persistence + plugins/*.
+  - [x] Phase 2: internal/infra/blob + internal/infra/persistence + plugins/*.
   - [ ] Phase 3: pkg/domain (requires generated/extension payload allowlist strategy).
 - [x] Confirm no cross-layer import changes; update .import-restrictions only if new deps are required.
 - [x] Identify generated artifacts that may need refresh (internal/ci/pluginapi.snapshot, internal/ci/datasetapi.snapshot, entity-model outputs if touched).
@@ -41,9 +41,9 @@
   - [x] Confirm *_test.go any usage stays test-only or is explicitly excluded from guard scope (allowed by policy).
   - [x] Expand any-usage inventory (Phase 1) to internal/core and internal/adapters/datasets.
   - [x] Phase 1 classification: allowlist JSON boundaries in internal/core + internal/adapters/datasets; record expvar shim and lifecycle transition legacy exception.
-  - [ ] Expand any-usage inventory (Phase 2) to internal/infra/blob, internal/infra/persistence, and plugins/*.
+  - [x] Expand any-usage inventory (Phase 2) to internal/infra/blob, internal/infra/persistence, and plugins/*.
   - [ ] Decide whether to include pkg/domain; if yes, define generated/extension payload allowlist approach up front.
-  - [ ] Classify any usage in those layers against Annex-0004; refactor or allowlist as needed.
+  - [x] Classify any usage in those layers against Annex-0004; refactor or allowlist as needed.
 
 ### Guard allowlist (implemented in internal/ci/any_allowlist.json)
 - pkg/pluginapi/views.go: JSON boundary for view attributes/custody payloads.
@@ -64,6 +64,14 @@
 - internal/core/rule_lifecycle_transition.go: legacy exception tied to domain.Change any.
 - internal/adapters/datasets/exporter.go: JSON boundary for export parameters/metadata.
 - internal/adapters/datasets/handler.go: JSON boundary for HTTP request/response payloads.
+- internal/infra/blob/fs/store.go: JSON boundary for blob metadata sidecars.
+- internal/infra/persistence/memory/store.go: JSON boundary for snapshot extension/baseline payloads.
+- internal/infra/persistence/sqlite/memstore.go: JSON boundary for snapshot extension/baseline payloads.
+- internal/infra/persistence/sqlite/store.go: database/sql exec shim.
+- internal/infra/persistence/postgres/store.go: JSON boundary for attributes/custody payloads; execQuerier shim.
+- internal/infra/persistence/postgres/testutil/stub.go: test-only stub maps.
+- plugins/frog/plugin.go: JSON boundary for schema + dataset metadata payloads.
+- plugins/testhelper/dataset.go: test-only fixture payloads.
 - *_test.go: allow any per policy; guard excludes tests.
 
 ## Next steps
@@ -88,8 +96,10 @@
 - [x] Ensure the whitelist mechanism is explicit and reviewed.
 - [x] Expand validate-any-usage roots to Phase 1 (internal/core + internal/adapters/datasets) and document the default roots.
 - [x] Update internal/ci/any_allowlist.json entries for Phase 1 layers (including non-JSON exceptions).
-- [ ] Expand validate-any-usage roots to Phase 2 and Phase 3.
-- [ ] Update internal/ci/any_allowlist.json entries for Phase 2 and Phase 3 layers.
+- [x] Expand validate-any-usage roots to Phase 2 (internal/infra/blob, internal/infra/persistence, plugins/*).
+- [ ] Expand validate-any-usage roots to Phase 3 (pkg/domain).
+- [x] Update internal/ci/any_allowlist.json entries for Phase 2 layers.
+- [ ] Update internal/ci/any_allowlist.json entries for Phase 3 layers.
 
 ## Legacy exceptions
 - [ ] Remove internal/core/rule_lifecycle_transition.go legacy any usage once domain.Change is typed; update allowlist accordingly.

@@ -1779,6 +1779,20 @@ func TestRunInTransactionPersistsErrorWhenExecFails(t *testing.T) {
 	}
 }
 
+func TestRunInTransactionCommitError(t *testing.T) {
+	db, conn := pgtu.NewStubDB()
+	restore := OverrideSQLOpen(func(_, _ string) (*sql.DB, error) { return db, nil })
+	defer restore()
+	store, err := NewStore("ignored", domain.NewRulesEngine())
+	if err != nil {
+		t.Fatalf("NewStore: %v", err)
+	}
+	conn.FailCommit = true
+	if _, err := store.RunInTransaction(context.Background(), func(domain.Transaction) error { return nil }); err == nil || !strings.Contains(err.Error(), "commit") {
+		t.Fatalf("expected commit error, got %v", err)
+	}
+}
+
 func TestRunInTransactionStopsOnUserError(t *testing.T) {
 	var conn *pgtu.StubConn
 	restore := OverrideSQLOpen(func(_, _ string) (*sql.DB, error) {

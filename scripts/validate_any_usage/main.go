@@ -13,7 +13,7 @@ import (
 
 const (
 	defaultAllowlistPath = "internal/ci/any_allowlist.json"
-	defaultRoots         = "pkg/pluginapi,pkg/datasetapi,internal/core,internal/adapters/datasets"
+	defaultRoots         = "pkg/pluginapi,pkg/datasetapi,internal/core,internal/adapters/datasets,internal/infra/blob,internal/infra/persistence,plugins"
 )
 
 var (

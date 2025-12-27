@@ -205,11 +205,10 @@
       "path": "internal/core/rule_lifecycle_transition.go",
       "category": "legacy-exception",
       "public": false,
-      "rationale": "Depends on domain.Change Before/After using any; TODO.md tracks removal once typed change payloads land.",
+      "rationale": "Depends on domain.Change Before/After using any; removal tracked in the migration backlog once typed change payloads land.",
       "owner": "core maintainers",
       "refs": [
-        "docs/annex/0004-typing-guidelines.md",
-        "TODO.md"
+        "docs/annex/0004-typing-guidelines.md"
       ]
     },
     {
@@ -227,6 +226,123 @@
       "category": "json-boundary",
       "public": false,
       "rationale": "Dataset HTTP handlers exchange JSON payloads with untyped parameters.",
+      "owner": "core maintainers",
+      "refs": [
+        "docs/annex/0004-typing-guidelines.md"
+      ]
+    },
+    {
+      "path": "internal/infra/blob/fs/store.go",
+      "symbols": [
+        "writeJSON",
+        "jsonMarshal",
+        "jsonUnmarshal"
+      ],
+      "category": "json-boundary",
+      "public": false,
+      "rationale": "Filesystem blob metadata sidecars are serialized as JSON payloads.",
+      "owner": "core maintainers",
+      "refs": [
+        "docs/annex/0004-typing-guidelines.md",
+        "docs/adr/0008-object-storage-contract.md"
+      ]
+    },
+    {
+      "path": "internal/infra/persistence/memory/store.go",
+      "category": "json-boundary",
+      "public": false,
+      "rationale": "Snapshot stores seed extension and baseline attributes using JSON payload maps.",
+      "owner": "core maintainers",
+      "refs": [
+        "docs/annex/0004-typing-guidelines.md",
+        "docs/adr/0003-core-domain-schema.md",
+        "docs/adr/0007-storage-baseline.md"
+      ]
+    },
+    {
+      "path": "internal/infra/persistence/sqlite/memstore.go",
+      "category": "json-boundary",
+      "public": false,
+      "rationale": "Snapshot stores seed extension and baseline attributes using JSON payload maps.",
+      "owner": "core maintainers",
+      "refs": [
+        "docs/annex/0004-typing-guidelines.md",
+        "docs/adr/0003-core-domain-schema.md",
+        "docs/adr/0007-storage-baseline.md"
+      ]
+    },
+    {
+      "path": "internal/infra/persistence/sqlite/store.go",
+      "symbols": [
+        "ddlExec"
+      ],
+      "category": "third-party-shim",
+      "public": false,
+      "rationale": "DDL execution mirrors database/sql Exec signatures.",
+      "owner": "core maintainers",
+      "refs": [
+        "docs/annex/0004-typing-guidelines.md",
+        "docs/adr/0007-storage-baseline.md"
+      ]
+    },
+    {
+      "path": "internal/infra/persistence/postgres/store.go",
+      "symbols": [
+        "execQuerier"
+      ],
+      "category": "third-party-shim",
+      "public": false,
+      "rationale": "Postgres persistence uses database/sql Exec/Query signatures.",
+      "owner": "core maintainers",
+      "refs": [
+        "docs/annex/0004-typing-guidelines.md",
+        "docs/adr/0007-storage-baseline.md"
+      ]
+    },
+    {
+      "path": "internal/infra/persistence/postgres/store.go",
+      "symbols": [
+        "marshalJSONNullable",
+        "marshalJSONRequired",
+        "sliceEmpty",
+        "decodeMap"
+      ],
+      "category": "json-boundary",
+      "public": false,
+      "rationale": "Postgres persistence marshals extension attributes and custody payloads as JSON.",
+      "owner": "core maintainers",
+      "refs": [
+        "docs/annex/0004-typing-guidelines.md",
+        "docs/adr/0003-core-domain-schema.md",
+        "docs/adr/0007-storage-baseline.md"
+      ]
+    },
+    {
+      "path": "internal/infra/persistence/postgres/testutil/stub.go",
+      "category": "test-only",
+      "public": false,
+      "rationale": "Postgres stub stores row payloads as JSON-like maps for test assertions.",
+      "owner": "core maintainers",
+      "refs": [
+        "docs/annex/0004-typing-guidelines.md"
+      ]
+    },
+    {
+      "path": "plugins/frog/plugin.go",
+      "category": "json-boundary",
+      "public": false,
+      "rationale": "Reference plugin registers JSON Schema extensions and dataset metadata payloads.",
+      "owner": "core maintainers",
+      "refs": [
+        "docs/annex/0004-typing-guidelines.md",
+        "docs/adr/0009-plugin-interface-stability-and-versioning.md"
+      ]
+    },
+    {
+      "path": "plugins/testhelper/dataset.go",
+      "category": "test-only",
+      "public": false,
+      "rationale": "Plugin fixture builders clone JSON-like attribute payloads for tests.",
       "owner": "core maintainers",
       "refs": [
         "docs/annex/0004-typing-guidelines.md"

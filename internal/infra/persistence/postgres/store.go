@@ -1018,12 +1018,8 @@ func insertLines(ctx context.Context, exec execQuerier, lines map[string]domain.
 		if err != nil {
 			return fmt.Errorf("marshal line extension_overrides: %w", err)
 		}
-		var deprecatedAt any
-		if line.DeprecatedAt != nil {
-			deprecatedAt = *line.DeprecatedAt
-		}
 		if _, err := exec.ExecContext(ctx, insertLineSQL,
-			line.ID, line.Code, line.Name, line.Origin, line.Description, defaultAttrs, overrides, deprecatedAt, line.DeprecationReason, line.CreatedAt, line.UpdatedAt,
+			line.ID, line.Code, line.Name, line.Origin, line.Description, defaultAttrs, overrides, line.DeprecatedAt, line.DeprecationReason, line.CreatedAt, line.UpdatedAt,
 		); err != nil {
 			return fmt.Errorf("insert line %s: %w", line.ID, err)
 		}
@@ -1046,20 +1042,8 @@ func insertStrains(ctx context.Context, exec execQuerier, strains map[string]dom
 		if _, err := exec.ExecContext(ctx, deleteStrainMarkersSQL, strain.ID); err != nil {
 			return fmt.Errorf("clear strain %s markers: %w", strain.ID, err)
 		}
-		var description any
-		if strain.Description != nil {
-			description = *strain.Description
-		}
-		var generation any
-		if strain.Generation != nil {
-			generation = *strain.Generation
-		}
-		var retiredAt any
-		if strain.RetiredAt != nil {
-			retiredAt = *strain.RetiredAt
-		}
 		if _, err := exec.ExecContext(ctx, insertStrainSQL,
-			strain.ID, strain.Code, strain.Name, strain.LineID, description, generation, retiredAt, strain.RetirementReason, strain.CreatedAt, strain.UpdatedAt,
+			strain.ID, strain.Code, strain.Name, strain.LineID, strain.Description, strain.Generation, strain.RetiredAt, strain.RetirementReason, strain.CreatedAt, strain.UpdatedAt,
 		); err != nil {
 			return fmt.Errorf("insert strain %s: %w", strain.ID, err)
 		}
@@ -1339,12 +1323,8 @@ func insertSupplyItems(ctx context.Context, exec execQuerier, supplies map[strin
 		if err != nil {
 			return fmt.Errorf("marshal supply_item attributes: %w", err)
 		}
-		var expiresAt any
-		if s.ExpiresAt != nil {
-			expiresAt = *s.ExpiresAt
-		}
 		if _, err := exec.ExecContext(ctx, insertSupplySQL,
-			s.ID, s.SKU, s.Name, s.QuantityOnHand, s.Unit, s.ReorderLevel, s.Description, s.LotNumber, expiresAt, attrs, s.CreatedAt, s.UpdatedAt,
+			s.ID, s.SKU, s.Name, s.QuantityOnHand, s.Unit, s.ReorderLevel, s.Description, s.LotNumber, s.ExpiresAt, attrs, s.CreatedAt, s.UpdatedAt,
 		); err != nil {
 			return fmt.Errorf("insert supply_item %s: %w", s.ID, err)
 		}
