@@ -137,6 +137,19 @@ Baseline microbenchmarks cover JSON-boundary clone paths so regressions stay vis
 - Baseline snapshot: `internal/ci/benchmarks/baseline.withmeta.results`
 - Runner: `scripts/benchmarks/ci.sh` (Sweet → aggregated results → benchstat)
 
+## Changelog
+### Added
+- `validate-any-usage` lint guard with allowlist enforcement (`internal/ci/any_allowlist.json`).
+
+### Changed
+- Public API surfaces restrict `any` to explicit JSON/codec boundaries per this annex.
+- `pkg/pluginapi.Change` before/after snapshots now use `ChangePayload` (`json.RawMessage`).
+- `pkg/datasetapi.Parameter` `Example` and `Default` values are now `json.RawMessage`.
+
+### Migration notes
+- Plugins and dataset templates must decode `ChangePayload.Raw()` and parameter `Example`/`Default` as JSON bytes.
+- Extension payload access should use `ObjectPayload`/`ExtensionPayload` wrappers and contextual helpers; raw maps remain JSON-boundary only.
+
 ## References
 - ARCHITECTURE.md
 - docs/adr/0003-core-domain-schema.md

@@ -130,4 +130,4 @@
 
 ## Review + docs
 - [x] Prepare a review checklist for code owners to confirm no reverse dependency on any contracts across expanded layers (added to docs/annex/0004-typing-guidelines.md).
-- [ ] Add a changelog entry with typing hardening and migration notes (proposal: root CHANGELOG.md with an Unreleased section aligned to ADR-0009).
+- [x] Add a changelog entry with typing hardening and migration notes (added to docs/annex/0004-typing-guidelines.md, aligned to ADR-0009).
