@@ -1,7 +1,7 @@
 GOCACHE ?= $(CURDIR)/.cache/go-build
 COVERFILE ?= coverage.out
 COVERMODE ?= atomic
-GOLANGCI_VERSION ?= v2.5.0
+GOLANGCI_VERSION ?= v2.7.2
 BIN_DIR ?= $(CURDIR)/.cache/bin
 GOLANGCI_CACHE ?= $(CURDIR)/.cache/golangci-lint
 COVER_THRESHOLD ?= 90.0

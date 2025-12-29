@@ -9,7 +9,9 @@ import (
 
 // TestCLIValid exercises happy path for cli/run parsing a minimal registry.
 func TestCLIValid(t *testing.T) {
-	content := "documents:\n  - id: RFC-1\n    type: RFC\n    title: Test\n    status: Draft\n    path: docs/rfc/rfc-0001.md\n"
+	docPath := "test_registry_valid_doc.md"
+	writeTestFile(t, docPath, "# Test\n- Status: Draft\n")
+	content := "documents:\n  - id: RFC-1\n    type: RFC\n    title: Test\n    status: Draft\n    path: " + docPath + "\n"
 	// create relative file inside current working directory (test executes in module root)
 	rel := "test_registry_valid.yaml"
 	if err := os.WriteFile(rel, []byte(content), 0o600); err != nil {
@@ -108,6 +110,8 @@ func TestUnsupportedListField(t *testing.T) {
 }
 
 func TestRunAllScalarFields(t *testing.T) {
+	docPath := "test_registry_full_doc.md"
+	writeTestFile(t, docPath, "# Test\n- Status: Draft\n")
 	content := strings.Join([]string{
 		"documents:",
 		"  - id: RFC-4",
@@ -119,7 +123,7 @@ func TestRunAllScalarFields(t *testing.T) {
 		"    last_updated: 2025-01-02",
 		"    quorum: simple",
 		"    target_release: v1",
-		"    path: docs/rfc/rfc-0004.md",
+		"    path: " + docPath,
 		"    authors:",
 		"      - Alice",
 		"    stakeholders:",

@@ -50,6 +50,9 @@ func TestCloneValueBranches(t *testing.T) {
 	// Array should be deep-copied.
 	array := [2]int{1, 2}
 	clonedArray := cloneValue(array).([2]int)
+	if len(clonedArray) < 1 || len(array) < 1 {
+		t.Fatalf("expected non-empty arrays for clone test")
+	}
 	clonedArray[0] = 99
 	if array[0] != 1 {
 		t.Fatalf("expected array clone to be independent")

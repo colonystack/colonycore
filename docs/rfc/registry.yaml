@@ -69,7 +69,7 @@ documents:
   - id: ADR-0003
     type: ADR
     title: Core Domain Schema Normalization
-    status: Planned
+    status: Accepted
     deciders:
       - Tobias Harnickell
       - SDK Maintainers

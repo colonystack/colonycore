@@ -42,6 +42,7 @@ type Registry struct {
 var (
 	allowedTypes  = map[string]struct{}{"RFC": {}, "Annex": {}, "ADR": {}}
 	allowedStatus = map[string]struct{}{"Draft": {}, "Planned": {}, "Accepted": {}, "Superseded": {}, "Archived": {}}
+	statusMap     = map[string]string{"draft": "Draft", "planned": "Planned", "accepted": "Accepted", "superseded": "Superseded", "archived": "Archived"}
 	exitFunc      = os.Exit
 )
 
@@ -113,6 +114,9 @@ func run(registryPath string) (err error) {
 
 	for i, doc := range registry.Documents {
 		if err := validateDocument(doc); err != nil {
+			return fmt.Errorf("documents[%d]: %w", i, err)
+		}
+		if err := validateDocumentStatus(doc); err != nil {
 			return fmt.Errorf("documents[%d]: %w", i, err)
 		}
 	}
@@ -343,6 +347,111 @@ func validateDocument(doc Document) error {
 	}
 
 	return nil
+}
+
+func validateDocumentStatus(doc Document) error {
+	status, err := readDocumentStatus(doc.Path)
+	if err != nil {
+		return fmt.Errorf("status check for %s: %w", doc.ID, err)
+	}
+	if status != doc.Status {
+		return fmt.Errorf("status mismatch for %s (%s): registry %q, doc %q", doc.ID, doc.Path, doc.Status, status)
+	}
+	return nil
+}
+
+func readDocumentStatus(path string) (status string, err error) {
+	const statusScanLimit = 120
+
+	safePath, err := validatePath(path)
+	if err != nil {
+		return "", err
+	}
+	file, err := os.Open(safePath) // #nosec G304: path validated by validatePath
+	if err != nil {
+		return "", fmt.Errorf("read document %q: %w", safePath, err)
+	}
+	defer func() {
+		if cerr := file.Close(); cerr != nil && err == nil {
+			err = fmt.Errorf("close document: %w", cerr)
+		}
+	}()
+
+	scanner := bufio.NewScanner(file)
+	expectStatusLine := false
+	for lineNum := 1; scanner.Scan(); lineNum++ {
+		if lineNum > statusScanLimit {
+			break
+		}
+		line := strings.TrimSpace(scanner.Text())
+		if line == "" {
+			continue
+		}
+		if expectStatusLine {
+			docStatus, statusErr := canonicalizeStatus(line)
+			if statusErr != nil {
+				return "", statusErr
+			}
+			return docStatus, nil
+		}
+		if line == "## Status" {
+			expectStatusLine = true
+			continue
+		}
+		docStatus, ok, statusErr := parseInlineStatus(line)
+		if statusErr != nil {
+			return "", statusErr
+		}
+		if ok {
+			return docStatus, nil
+		}
+	}
+
+	if scanErr := scanner.Err(); scanErr != nil {
+		return "", scanErr
+	}
+	if expectStatusLine {
+		return "", fmt.Errorf("status header without value in %s", path)
+	}
+	return "", fmt.Errorf("status not found in %s", path)
+}
+
+func parseInlineStatus(line string) (string, bool, error) {
+	trimmed := strings.TrimSpace(line)
+	trimmed = strings.TrimPrefix(trimmed, "-")
+	trimmed = strings.TrimPrefix(trimmed, "*")
+	trimmed = strings.TrimSpace(trimmed)
+	if !strings.HasPrefix(trimmed, "Status:") {
+		return "", false, nil
+	}
+	raw := strings.TrimSpace(strings.TrimPrefix(trimmed, "Status:"))
+	status, err := canonicalizeStatus(raw)
+	if err != nil {
+		return "", true, err
+	}
+	return status, true, nil
+}
+
+func canonicalizeStatus(value string) (string, error) {
+	token := extractStatusToken(value)
+	if token == "" {
+		return "", fmt.Errorf("status value missing")
+	}
+	canonical, ok := statusMap[strings.ToLower(token)]
+	if !ok {
+		return "", fmt.Errorf("invalid status %q", token)
+	}
+	return canonical, nil
+}
+
+func extractStatusToken(value string) string {
+	fields := strings.Fields(value)
+	if len(fields) == 0 {
+		return ""
+	}
+	token := strings.Trim(fields[0], "().,;:")
+	token = strings.TrimSuffix(token, ".")
+	return strings.Trim(token, "-")
 }
 
 func validateDate(value string) error {

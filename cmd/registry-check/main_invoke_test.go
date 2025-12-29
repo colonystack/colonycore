@@ -9,7 +9,9 @@ import (
 func TestMainFunctionCoversSuccessAndFailure(t *testing.T) {
 	// success registry file
 	reg := "test_registry_main.yaml"
-	content := "documents:\n  - id: RFC-10\n    type: RFC\n    title: Main\n    status: Draft\n    path: docs/rfc/rfc-0010.md\n"
+	docPath := "test_registry_main_doc.md"
+	writeTestFile(t, docPath, "# Test\n- Status: Draft\n")
+	content := "documents:\n  - id: RFC-10\n    type: RFC\n    title: Main\n    status: Draft\n    path: " + docPath + "\n"
 	if err := os.WriteFile(reg, []byte(content), 0o600); err != nil {
 		t.Fatalf("write: %v", err)
 	}

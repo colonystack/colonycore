@@ -401,6 +401,9 @@ func TestProtocolProjectCohortFacades(t *testing.T) {
 	if len(project.FacilityIDs()) != 1 || len(project.ProtocolIDs()) != 1 || len(project.OrganismIDs()) != 1 || len(project.ProcedureIDs()) != 1 || len(project.SupplyItemIDs()) != 1 {
 		t.Fatalf("expected project relationships to round-trip")
 	}
+	if len(projectProtocolIDs) == 0 || len(projectOrganismIDs) == 0 || len(projectProcedureIDs) == 0 || len(projectSupplyIDs) == 0 {
+		t.Fatalf("expected project relationship fixtures to be non-empty")
+	}
 	projectProtocolIDs[0] = mutatedLiteral
 	projectOrganismIDs[0] = mutatedLiteral
 	projectProcedureIDs[0] = mutatedLiteral
