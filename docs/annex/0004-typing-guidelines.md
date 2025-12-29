@@ -112,6 +112,17 @@ The audit scope matches the guard roots and `.import-restrictions` for:
 `pkg/pluginapi`, `pkg/datasetapi`, and `plugins/*`. Validate dependency
 direction against `ARCHITECTURE.md` before changing imports.
 
+## Code-owner review checklist
+- `make lint` passes, including `validate-any-usage` and import-boss guards.
+- Any `any` usage is limited to JSON/codec boundaries or documented allowlist
+  entries in `internal/ci/any_allowlist.json`.
+- Public API changes (if any) update `internal/ci/{pluginapi,datasetapi}.snapshot`
+  and keep `pkg/pluginapi`/`pkg/datasetapi` free of `internal/**` or `pkg/domain`
+  imports.
+- No manual edits to ADR-0003 generated artifacts (use `make entity-model-*`).
+- Dependency direction remains aligned with `ARCHITECTURE.md` across touched
+  layers.
+
 ## Trade-offs
 - Tighter typing improves refactoring safety but can reduce extensibility. Prefer small
   stable interfaces and JSON/codec boundaries for extension data.
