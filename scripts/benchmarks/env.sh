@@ -22,6 +22,7 @@ ASSETS_DIR="${ASSETS_DIR:-$ROOT_DIR/benchmarks/assets-empty}"
 BASELINE_FILE="${BASELINE_FILE:-$ROOT_DIR/internal/ci/benchmarks/baseline.withmeta.results}"
 
 PATCH_FILE="${PATCH_FILE:-$ROOT_DIR/scripts/benchmarks/sweet_colonycore.patch}"
+SWEET_PATCH_TARGET="${SWEET_PATCH_TARGET:-sweet}"
 
 ensure_sweet_repo_exists_and_checkout() {
   local repo_dir="$1"
@@ -41,5 +42,8 @@ ensure_sweet_repo_exists_and_checkout() {
       exit 1
     }
   fi
-  git -C "$repo_dir" checkout "$commit"
+  git -C "$repo_dir" checkout "$commit" || {
+    echo "Error: failed to checkout $commit in $repo_dir" >&2
+    exit 1
+  }
 }

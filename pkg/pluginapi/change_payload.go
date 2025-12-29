@@ -25,12 +25,15 @@ func UndefinedChangePayload() ChangePayload {
 	return ChangePayload{}
 }
 
-// Defined reports whether the payload has been initialized.
+// Defined reports whether the payload was provided, including a defined-but-empty
+// payload. Use this to distinguish "undefined" from "defined but empty".
 func (p ChangePayload) Defined() bool {
 	return p.defined
 }
 
-// IsEmpty reports whether the payload contains no bytes.
+// IsEmpty reports whether the payload contains no bytes. This returns true for
+// both undefined payloads and defined-but-empty payloads; use Defined to check
+// whether a payload was provided.
 func (p ChangePayload) IsEmpty() bool {
 	if !p.defined {
 		return true
@@ -39,7 +42,9 @@ func (p ChangePayload) IsEmpty() bool {
 }
 
 // Raw returns a cloned copy of the underlying JSON bytes. Nil is returned when
-// the payload is undefined or empty.
+// the payload is undefined or empty. Callers that need to distinguish undefined
+// from defined-but-empty should check Defined first; internal callers that need a
+// clone even when empty should use cloneRawMessage directly.
 func (p ChangePayload) Raw() json.RawMessage {
 	if !p.defined || len(p.raw) == 0 {
 		return nil

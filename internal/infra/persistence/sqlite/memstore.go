@@ -1373,15 +1373,12 @@ func (s *memStore) View(_ context.Context, fn func(TransactionView) error) error
 	return fn(view)
 }
 func (tx *transaction) recordChange(change Change) { tx.changes = append(tx.changes, change) }
-func changePayloadFromValue[T any](tx *transaction, value T) domain.ChangePayload {
+func changePayloadFromValue[T any](value T) (domain.ChangePayload, error) {
 	payload, err := domain.NewChangePayloadFromValue(value)
 	if err != nil {
-		if tx.err == nil {
-			tx.err = fmt.Errorf("encode change payload: %w", err)
-		}
-		return domain.UndefinedChangePayload()
+		return domain.UndefinedChangePayload(), fmt.Errorf("encode change payload: %w", err)
 	}
-	return payload
+	return payload, nil
 }
 func (tx *transaction) Snapshot() TransactionView { return newTransactionView(&tx.state) }
 func (tx *transaction) FindHousingUnit(id string) (HousingUnit, bool) {
@@ -1491,7 +1488,11 @@ func (tx *transaction) CreateOrganism(o Organism) (Organism, error) {
 		mustApply("apply organism attributes", o.SetCoreAttributes(attrs))
 	}
 	tx.state.organisms[o.ID] = cloneOrganism(o)
-	tx.recordChange(Change{Entity: domain.EntityOrganism, Action: domain.ActionCreate, After: changePayloadFromValue(tx, cloneOrganism(o))})
+	after, err := changePayloadFromValue(cloneOrganism(o))
+	if err != nil {
+		return Organism{Organism: entitymodel.Organism{}}, err
+	}
+	tx.recordChange(Change{Entity: domain.EntityOrganism, Action: domain.ActionCreate, After: after})
 	return cloneOrganism(o), nil
 }
 func (tx *transaction) UpdateOrganism(id string, mutator func(*Organism) error) (Organism, error) {
@@ -1506,7 +1507,15 @@ func (tx *transaction) UpdateOrganism(id string, mutator func(*Organism) error) 
 	current.ID = id
 	current.UpdatedAt = tx.now
 	tx.state.organisms[id] = cloneOrganism(current)
-	tx.recordChange(Change{Entity: domain.EntityOrganism, Action: domain.ActionUpdate, Before: changePayloadFromValue(tx, before), After: changePayloadFromValue(tx, cloneOrganism(current))})
+	beforePayload, err := changePayloadFromValue(before)
+	if err != nil {
+		return Organism{Organism: entitymodel.Organism{}}, err
+	}
+	afterPayload, err := changePayloadFromValue(cloneOrganism(current))
+	if err != nil {
+		return Organism{Organism: entitymodel.Organism{}}, err
+	}
+	tx.recordChange(Change{Entity: domain.EntityOrganism, Action: domain.ActionUpdate, Before: beforePayload, After: afterPayload})
 	return cloneOrganism(current), nil
 }
 func (tx *transaction) DeleteOrganism(id string) error {
@@ -1520,7 +1529,11 @@ func (tx *transaction) DeleteOrganism(id string) error {
 		}
 	}
 	delete(tx.state.organisms, id)
-	tx.recordChange(Change{Entity: domain.EntityOrganism, Action: domain.ActionDelete, Before: changePayloadFromValue(tx, cloneOrganism(current))})
+	beforePayload, err := changePayloadFromValue(cloneOrganism(current))
+	if err != nil {
+		return err
+	}
+	tx.recordChange(Change{Entity: domain.EntityOrganism, Action: domain.ActionDelete, Before: beforePayload})
 	return nil
 }
 func (tx *transaction) CreateCohort(c Cohort) (Cohort, error) {
@@ -1533,7 +1546,11 @@ func (tx *transaction) CreateCohort(c Cohort) (Cohort, error) {
 	c.CreatedAt = tx.now
 	c.UpdatedAt = tx.now
 	tx.state.cohorts[c.ID] = cloneCohort(c)
-	tx.recordChange(Change{Entity: domain.EntityCohort, Action: domain.ActionCreate, After: changePayloadFromValue(tx, cloneCohort(c))})
+	after, err := changePayloadFromValue(cloneCohort(c))
+	if err != nil {
+		return Cohort{Cohort: entitymodel.Cohort{}}, err
+	}
+	tx.recordChange(Change{Entity: domain.EntityCohort, Action: domain.ActionCreate, After: after})
 	return cloneCohort(c), nil
 }
 func (tx *transaction) UpdateCohort(id string, mutator func(*Cohort) error) (Cohort, error) {
@@ -1548,7 +1565,15 @@ func (tx *transaction) UpdateCohort(id string, mutator func(*Cohort) error) (Coh
 	current.ID = id
 	current.UpdatedAt = tx.now
 	tx.state.cohorts[id] = cloneCohort(current)
-	tx.recordChange(Change{Entity: domain.EntityCohort, Action: domain.ActionUpdate, Before: changePayloadFromValue(tx, before), After: changePayloadFromValue(tx, cloneCohort(current))})
+	beforePayload, err := changePayloadFromValue(before)
+	if err != nil {
+		return Cohort{Cohort: entitymodel.Cohort{}}, err
+	}
+	afterPayload, err := changePayloadFromValue(cloneCohort(current))
+	if err != nil {
+		return Cohort{Cohort: entitymodel.Cohort{}}, err
+	}
+	tx.recordChange(Change{Entity: domain.EntityCohort, Action: domain.ActionUpdate, Before: beforePayload, After: afterPayload})
 	return cloneCohort(current), nil
 }
 func (tx *transaction) DeleteCohort(id string) error {
@@ -1562,7 +1587,11 @@ func (tx *transaction) DeleteCohort(id string) error {
 		}
 	}
 	delete(tx.state.cohorts, id)
-	tx.recordChange(Change{Entity: domain.EntityCohort, Action: domain.ActionDelete, Before: changePayloadFromValue(tx, cloneCohort(current))})
+	beforePayload, err := changePayloadFromValue(cloneCohort(current))
+	if err != nil {
+		return err
+	}
+	tx.recordChange(Change{Entity: domain.EntityCohort, Action: domain.ActionDelete, Before: beforePayload})
 	return nil
 }
 func (tx *transaction) CreateHousingUnit(h HousingUnit) (HousingUnit, error) {
@@ -1587,7 +1616,11 @@ func (tx *transaction) CreateHousingUnit(h HousingUnit) (HousingUnit, error) {
 	h.CreatedAt = tx.now
 	h.UpdatedAt = tx.now
 	tx.state.housing[h.ID] = cloneHousing(h)
-	tx.recordChange(Change{Entity: domain.EntityHousingUnit, Action: domain.ActionCreate, After: changePayloadFromValue(tx, cloneHousing(h))})
+	after, err := changePayloadFromValue(cloneHousing(h))
+	if err != nil {
+		return HousingUnit{HousingUnit: entitymodel.HousingUnit{}}, err
+	}
+	tx.recordChange(Change{Entity: domain.EntityHousingUnit, Action: domain.ActionCreate, After: after})
 	return cloneHousing(h), nil
 }
 func (tx *transaction) UpdateHousingUnit(id string, mutator func(*HousingUnit) error) (HousingUnit, error) {
@@ -1614,7 +1647,15 @@ func (tx *transaction) UpdateHousingUnit(id string, mutator func(*HousingUnit) e
 	current.ID = id
 	current.UpdatedAt = tx.now
 	tx.state.housing[id] = cloneHousing(current)
-	tx.recordChange(Change{Entity: domain.EntityHousingUnit, Action: domain.ActionUpdate, Before: changePayloadFromValue(tx, before), After: changePayloadFromValue(tx, cloneHousing(current))})
+	beforePayload, err := changePayloadFromValue(before)
+	if err != nil {
+		return HousingUnit{HousingUnit: entitymodel.HousingUnit{}}, err
+	}
+	afterPayload, err := changePayloadFromValue(cloneHousing(current))
+	if err != nil {
+		return HousingUnit{HousingUnit: entitymodel.HousingUnit{}}, err
+	}
+	tx.recordChange(Change{Entity: domain.EntityHousingUnit, Action: domain.ActionUpdate, Before: beforePayload, After: afterPayload})
 	return cloneHousing(current), nil
 }
 func (tx *transaction) DeleteHousingUnit(id string) error {
@@ -1623,7 +1664,11 @@ func (tx *transaction) DeleteHousingUnit(id string) error {
 		return fmt.Errorf("housing unit %q not found", id)
 	}
 	delete(tx.state.housing, id)
-	tx.recordChange(Change{Entity: domain.EntityHousingUnit, Action: domain.ActionDelete, Before: changePayloadFromValue(tx, cloneHousing(current))})
+	beforePayload, err := changePayloadFromValue(cloneHousing(current))
+	if err != nil {
+		return err
+	}
+	tx.recordChange(Change{Entity: domain.EntityHousingUnit, Action: domain.ActionDelete, Before: beforePayload})
 	return nil
 }
 func (tx *transaction) CreateFacility(f Facility) (Facility, error) {
@@ -1644,7 +1689,11 @@ func (tx *transaction) CreateFacility(f Facility) (Facility, error) {
 	}
 	tx.state.facilities[f.ID] = cloneFacility(f)
 	created := decorateFacility(&tx.state, f)
-	tx.recordChange(Change{Entity: domain.EntityFacility, Action: domain.ActionCreate, After: changePayloadFromValue(tx, cloneFacility(created))})
+	after, err := changePayloadFromValue(cloneFacility(created))
+	if err != nil {
+		return Facility{Facility: entitymodel.Facility{}}, err
+	}
+	tx.recordChange(Change{Entity: domain.EntityFacility, Action: domain.ActionCreate, After: after})
 	return cloneFacility(created), nil
 }
 func (tx *transaction) UpdateFacility(id string, mutator func(*Facility) error) (Facility, error) {
@@ -1668,7 +1717,15 @@ func (tx *transaction) UpdateFacility(id string, mutator func(*Facility) error) 
 	current.UpdatedAt = tx.now
 	tx.state.facilities[id] = cloneFacility(current)
 	afterDecorated := decorateFacility(&tx.state, current)
-	tx.recordChange(Change{Entity: domain.EntityFacility, Action: domain.ActionUpdate, Before: changePayloadFromValue(tx, before), After: changePayloadFromValue(tx, cloneFacility(afterDecorated))})
+	beforePayload, err := changePayloadFromValue(before)
+	if err != nil {
+		return Facility{Facility: entitymodel.Facility{}}, err
+	}
+	afterPayload, err := changePayloadFromValue(cloneFacility(afterDecorated))
+	if err != nil {
+		return Facility{Facility: entitymodel.Facility{}}, err
+	}
+	tx.recordChange(Change{Entity: domain.EntityFacility, Action: domain.ActionUpdate, Before: beforePayload, After: afterPayload})
 	return cloneFacility(afterDecorated), nil
 }
 func (tx *transaction) DeleteFacility(id string) error {
@@ -1706,7 +1763,11 @@ func (tx *transaction) DeleteFacility(id string) error {
 		}
 	}
 	delete(tx.state.facilities, id)
-	tx.recordChange(Change{Entity: domain.EntityFacility, Action: domain.ActionDelete, Before: changePayloadFromValue(tx, cloneFacility(decoratedCurrent))})
+	beforePayload, err := changePayloadFromValue(cloneFacility(decoratedCurrent))
+	if err != nil {
+		return err
+	}
+	tx.recordChange(Change{Entity: domain.EntityFacility, Action: domain.ActionDelete, Before: beforePayload})
 	return nil
 }
 func (tx *transaction) CreateBreedingUnit(b BreedingUnit) (BreedingUnit, error) {
@@ -1719,7 +1780,11 @@ func (tx *transaction) CreateBreedingUnit(b BreedingUnit) (BreedingUnit, error) 
 	b.CreatedAt = tx.now
 	b.UpdatedAt = tx.now
 	tx.state.breeding[b.ID] = cloneBreeding(b)
-	tx.recordChange(Change{Entity: domain.EntityBreeding, Action: domain.ActionCreate, After: changePayloadFromValue(tx, cloneBreeding(b))})
+	after, err := changePayloadFromValue(cloneBreeding(b))
+	if err != nil {
+		return BreedingUnit{BreedingUnit: entitymodel.BreedingUnit{}}, err
+	}
+	tx.recordChange(Change{Entity: domain.EntityBreeding, Action: domain.ActionCreate, After: after})
 	return cloneBreeding(b), nil
 }
 func (tx *transaction) UpdateBreedingUnit(id string, mutator func(*BreedingUnit) error) (BreedingUnit, error) {
@@ -1734,7 +1799,15 @@ func (tx *transaction) UpdateBreedingUnit(id string, mutator func(*BreedingUnit)
 	current.ID = id
 	current.UpdatedAt = tx.now
 	tx.state.breeding[id] = cloneBreeding(current)
-	tx.recordChange(Change{Entity: domain.EntityBreeding, Action: domain.ActionUpdate, Before: changePayloadFromValue(tx, before), After: changePayloadFromValue(tx, cloneBreeding(current))})
+	beforePayload, err := changePayloadFromValue(before)
+	if err != nil {
+		return BreedingUnit{BreedingUnit: entitymodel.BreedingUnit{}}, err
+	}
+	afterPayload, err := changePayloadFromValue(cloneBreeding(current))
+	if err != nil {
+		return BreedingUnit{BreedingUnit: entitymodel.BreedingUnit{}}, err
+	}
+	tx.recordChange(Change{Entity: domain.EntityBreeding, Action: domain.ActionUpdate, Before: beforePayload, After: afterPayload})
 	return cloneBreeding(current), nil
 }
 func (tx *transaction) DeleteBreedingUnit(id string) error {
@@ -1743,7 +1816,11 @@ func (tx *transaction) DeleteBreedingUnit(id string) error {
 		return fmt.Errorf("breeding unit %q not found", id)
 	}
 	delete(tx.state.breeding, id)
-	tx.recordChange(Change{Entity: domain.EntityBreeding, Action: domain.ActionDelete, Before: changePayloadFromValue(tx, cloneBreeding(current))})
+	beforePayload, err := changePayloadFromValue(cloneBreeding(current))
+	if err != nil {
+		return err
+	}
+	tx.recordChange(Change{Entity: domain.EntityBreeding, Action: domain.ActionDelete, Before: beforePayload})
 	return nil
 }
 
@@ -1773,7 +1850,11 @@ func (tx *transaction) CreateLine(l Line) (Line, error) {
 	l.CreatedAt = tx.now
 	l.UpdatedAt = tx.now
 	tx.state.lines[l.ID] = cloneLine(l)
-	tx.recordChange(Change{Entity: domain.EntityLine, Action: domain.ActionCreate, After: changePayloadFromValue(tx, cloneLine(l))})
+	after, err := changePayloadFromValue(cloneLine(l))
+	if err != nil {
+		return Line{Line: entitymodel.Line{}}, err
+	}
+	tx.recordChange(Change{Entity: domain.EntityLine, Action: domain.ActionCreate, After: after})
 	return cloneLine(l), nil
 }
 
@@ -1805,7 +1886,15 @@ func (tx *transaction) UpdateLine(id string, mutator func(*Line) error) (Line, e
 	current.ID = id
 	current.UpdatedAt = tx.now
 	tx.state.lines[id] = cloneLine(current)
-	tx.recordChange(Change{Entity: domain.EntityLine, Action: domain.ActionUpdate, Before: changePayloadFromValue(tx, before), After: changePayloadFromValue(tx, cloneLine(current))})
+	beforePayload, err := changePayloadFromValue(before)
+	if err != nil {
+		return Line{Line: entitymodel.Line{}}, err
+	}
+	afterPayload, err := changePayloadFromValue(cloneLine(current))
+	if err != nil {
+		return Line{Line: entitymodel.Line{}}, err
+	}
+	tx.recordChange(Change{Entity: domain.EntityLine, Action: domain.ActionUpdate, Before: beforePayload, After: afterPayload})
 	return cloneLine(current), nil
 }
 
@@ -1833,7 +1922,11 @@ func (tx *transaction) DeleteLine(id string) error {
 		}
 	}
 	delete(tx.state.lines, id)
-	tx.recordChange(Change{Entity: domain.EntityLine, Action: domain.ActionDelete, Before: changePayloadFromValue(tx, cloneLine(current))})
+	beforePayload, err := changePayloadFromValue(cloneLine(current))
+	if err != nil {
+		return err
+	}
+	tx.recordChange(Change{Entity: domain.EntityLine, Action: domain.ActionDelete, Before: beforePayload})
 	return nil
 }
 
@@ -1861,7 +1954,11 @@ func (tx *transaction) CreateStrain(s Strain) (Strain, error) {
 	s.CreatedAt = tx.now
 	s.UpdatedAt = tx.now
 	tx.state.strains[s.ID] = cloneStrain(s)
-	tx.recordChange(Change{Entity: domain.EntityStrain, Action: domain.ActionCreate, After: changePayloadFromValue(tx, cloneStrain(s))})
+	after, err := changePayloadFromValue(cloneStrain(s))
+	if err != nil {
+		return Strain{Strain: entitymodel.Strain{}}, err
+	}
+	tx.recordChange(Change{Entity: domain.EntityStrain, Action: domain.ActionCreate, After: after})
 	return cloneStrain(s), nil
 }
 
@@ -1891,7 +1988,15 @@ func (tx *transaction) UpdateStrain(id string, mutator func(*Strain) error) (Str
 	current.ID = id
 	current.UpdatedAt = tx.now
 	tx.state.strains[id] = cloneStrain(current)
-	tx.recordChange(Change{Entity: domain.EntityStrain, Action: domain.ActionUpdate, Before: changePayloadFromValue(tx, before), After: changePayloadFromValue(tx, cloneStrain(current))})
+	beforePayload, err := changePayloadFromValue(before)
+	if err != nil {
+		return Strain{Strain: entitymodel.Strain{}}, err
+	}
+	afterPayload, err := changePayloadFromValue(cloneStrain(current))
+	if err != nil {
+		return Strain{Strain: entitymodel.Strain{}}, err
+	}
+	tx.recordChange(Change{Entity: domain.EntityStrain, Action: domain.ActionUpdate, Before: beforePayload, After: afterPayload})
 	return cloneStrain(current), nil
 }
 
@@ -1914,7 +2019,11 @@ func (tx *transaction) DeleteStrain(id string) error {
 		}
 	}
 	delete(tx.state.strains, id)
-	tx.recordChange(Change{Entity: domain.EntityStrain, Action: domain.ActionDelete, Before: changePayloadFromValue(tx, cloneStrain(current))})
+	beforePayload, err := changePayloadFromValue(cloneStrain(current))
+	if err != nil {
+		return err
+	}
+	tx.recordChange(Change{Entity: domain.EntityStrain, Action: domain.ActionDelete, Before: beforePayload})
 	return nil
 }
 
@@ -1936,7 +2045,11 @@ func (tx *transaction) CreateGenotypeMarker(g GenotypeMarker) (GenotypeMarker, e
 	g.CreatedAt = tx.now
 	g.UpdatedAt = tx.now
 	tx.state.markers[g.ID] = cloneGenotypeMarker(g)
-	tx.recordChange(Change{Entity: domain.EntityGenotypeMarker, Action: domain.ActionCreate, After: changePayloadFromValue(tx, cloneGenotypeMarker(g))})
+	after, err := changePayloadFromValue(cloneGenotypeMarker(g))
+	if err != nil {
+		return GenotypeMarker{GenotypeMarker: entitymodel.GenotypeMarker{}}, err
+	}
+	tx.recordChange(Change{Entity: domain.EntityGenotypeMarker, Action: domain.ActionCreate, After: after})
 	return cloneGenotypeMarker(g), nil
 }
 
@@ -1960,7 +2073,15 @@ func (tx *transaction) UpdateGenotypeMarker(id string, mutator func(*GenotypeMar
 	current.ID = id
 	current.UpdatedAt = tx.now
 	tx.state.markers[id] = cloneGenotypeMarker(current)
-	tx.recordChange(Change{Entity: domain.EntityGenotypeMarker, Action: domain.ActionUpdate, Before: changePayloadFromValue(tx, before), After: changePayloadFromValue(tx, cloneGenotypeMarker(current))})
+	beforePayload, err := changePayloadFromValue(before)
+	if err != nil {
+		return GenotypeMarker{GenotypeMarker: entitymodel.GenotypeMarker{}}, err
+	}
+	afterPayload, err := changePayloadFromValue(cloneGenotypeMarker(current))
+	if err != nil {
+		return GenotypeMarker{GenotypeMarker: entitymodel.GenotypeMarker{}}, err
+	}
+	tx.recordChange(Change{Entity: domain.EntityGenotypeMarker, Action: domain.ActionUpdate, Before: beforePayload, After: afterPayload})
 	return cloneGenotypeMarker(current), nil
 }
 
@@ -1980,7 +2101,11 @@ func (tx *transaction) DeleteGenotypeMarker(id string) error {
 		}
 	}
 	delete(tx.state.markers, id)
-	tx.recordChange(Change{Entity: domain.EntityGenotypeMarker, Action: domain.ActionDelete, Before: changePayloadFromValue(tx, cloneGenotypeMarker(current))})
+	beforePayload, err := changePayloadFromValue(cloneGenotypeMarker(current))
+	if err != nil {
+		return err
+	}
+	tx.recordChange(Change{Entity: domain.EntityGenotypeMarker, Action: domain.ActionDelete, Before: beforePayload})
 	return nil
 }
 
@@ -2000,7 +2125,11 @@ func (tx *transaction) CreateProcedure(p Procedure) (Procedure, error) {
 	p.UpdatedAt = tx.now
 	tx.state.procedures[p.ID] = cloneProcedure(p)
 	created := decorateProcedure(&tx.state, p)
-	tx.recordChange(Change{Entity: domain.EntityProcedure, Action: domain.ActionCreate, After: changePayloadFromValue(tx, cloneProcedure(created))})
+	after, err := changePayloadFromValue(cloneProcedure(created))
+	if err != nil {
+		return Procedure{Procedure: entitymodel.Procedure{}}, err
+	}
+	tx.recordChange(Change{Entity: domain.EntityProcedure, Action: domain.ActionCreate, After: after})
 	return cloneProcedure(created), nil
 }
 func (tx *transaction) UpdateProcedure(id string, mutator func(*Procedure) error) (Procedure, error) {
@@ -2022,7 +2151,15 @@ func (tx *transaction) UpdateProcedure(id string, mutator func(*Procedure) error
 	current.UpdatedAt = tx.now
 	tx.state.procedures[id] = cloneProcedure(current)
 	afterDecorated := decorateProcedure(&tx.state, current)
-	tx.recordChange(Change{Entity: domain.EntityProcedure, Action: domain.ActionUpdate, Before: changePayloadFromValue(tx, before), After: changePayloadFromValue(tx, cloneProcedure(afterDecorated))})
+	beforePayload, err := changePayloadFromValue(before)
+	if err != nil {
+		return Procedure{Procedure: entitymodel.Procedure{}}, err
+	}
+	afterPayload, err := changePayloadFromValue(cloneProcedure(afterDecorated))
+	if err != nil {
+		return Procedure{Procedure: entitymodel.Procedure{}}, err
+	}
+	tx.recordChange(Change{Entity: domain.EntityProcedure, Action: domain.ActionUpdate, Before: beforePayload, After: afterPayload})
 	return cloneProcedure(afterDecorated), nil
 }
 func (tx *transaction) DeleteProcedure(id string) error {
@@ -2042,7 +2179,11 @@ func (tx *transaction) DeleteProcedure(id string) error {
 		}
 	}
 	delete(tx.state.procedures, id)
-	tx.recordChange(Change{Entity: domain.EntityProcedure, Action: domain.ActionDelete, Before: changePayloadFromValue(tx, cloneProcedure(decoratedCurrent))})
+	beforePayload, err := changePayloadFromValue(cloneProcedure(decoratedCurrent))
+	if err != nil {
+		return err
+	}
+	tx.recordChange(Change{Entity: domain.EntityProcedure, Action: domain.ActionDelete, Before: beforePayload})
 	return nil
 }
 func (tx *transaction) CreateTreatment(t Treatment) (Treatment, error) {
@@ -2076,7 +2217,11 @@ func (tx *transaction) CreateTreatment(t Treatment) (Treatment, error) {
 	t.CreatedAt = tx.now
 	t.UpdatedAt = tx.now
 	tx.state.treatments[t.ID] = cloneTreatment(t)
-	tx.recordChange(Change{Entity: domain.EntityTreatment, Action: domain.ActionCreate, After: changePayloadFromValue(tx, cloneTreatment(t))})
+	after, err := changePayloadFromValue(cloneTreatment(t))
+	if err != nil {
+		return Treatment{Treatment: entitymodel.Treatment{}}, err
+	}
+	tx.recordChange(Change{Entity: domain.EntityTreatment, Action: domain.ActionCreate, After: after})
 	return cloneTreatment(t), nil
 }
 func (tx *transaction) UpdateTreatment(id string, mutator func(*Treatment) error) (Treatment, error) {
@@ -2112,7 +2257,15 @@ func (tx *transaction) UpdateTreatment(id string, mutator func(*Treatment) error
 	current.ID = id
 	current.UpdatedAt = tx.now
 	tx.state.treatments[id] = cloneTreatment(current)
-	tx.recordChange(Change{Entity: domain.EntityTreatment, Action: domain.ActionUpdate, Before: changePayloadFromValue(tx, before), After: changePayloadFromValue(tx, cloneTreatment(current))})
+	beforePayload, err := changePayloadFromValue(before)
+	if err != nil {
+		return Treatment{Treatment: entitymodel.Treatment{}}, err
+	}
+	afterPayload, err := changePayloadFromValue(cloneTreatment(current))
+	if err != nil {
+		return Treatment{Treatment: entitymodel.Treatment{}}, err
+	}
+	tx.recordChange(Change{Entity: domain.EntityTreatment, Action: domain.ActionUpdate, Before: beforePayload, After: afterPayload})
 	return cloneTreatment(current), nil
 }
 func (tx *transaction) DeleteTreatment(id string) error {
@@ -2121,7 +2274,11 @@ func (tx *transaction) DeleteTreatment(id string) error {
 		return fmt.Errorf("treatment %q not found", id)
 	}
 	delete(tx.state.treatments, id)
-	tx.recordChange(Change{Entity: domain.EntityTreatment, Action: domain.ActionDelete, Before: changePayloadFromValue(tx, cloneTreatment(current))})
+	beforePayload, err := changePayloadFromValue(cloneTreatment(current))
+	if err != nil {
+		return err
+	}
+	tx.recordChange(Change{Entity: domain.EntityTreatment, Action: domain.ActionDelete, Before: beforePayload})
 	return nil
 }
 func (tx *transaction) CreateObservation(o Observation) (Observation, error) {
@@ -2157,7 +2314,11 @@ func (tx *transaction) CreateObservation(o Observation) (Observation, error) {
 		mustApply("apply observation data", o.ApplyObservationData(data))
 	}
 	tx.state.observations[o.ID] = cloneObservation(o)
-	tx.recordChange(Change{Entity: domain.EntityObservation, Action: domain.ActionCreate, After: changePayloadFromValue(tx, cloneObservation(o))})
+	after, err := changePayloadFromValue(cloneObservation(o))
+	if err != nil {
+		return Observation{Observation: entitymodel.Observation{}}, err
+	}
+	tx.recordChange(Change{Entity: domain.EntityObservation, Action: domain.ActionCreate, After: after})
 	return cloneObservation(o), nil
 }
 func (tx *transaction) UpdateObservation(id string, mutator func(*Observation) error) (Observation, error) {
@@ -2195,7 +2356,15 @@ func (tx *transaction) UpdateObservation(id string, mutator func(*Observation) e
 	current.ID = id
 	current.UpdatedAt = tx.now
 	tx.state.observations[id] = cloneObservation(current)
-	tx.recordChange(Change{Entity: domain.EntityObservation, Action: domain.ActionUpdate, Before: changePayloadFromValue(tx, before), After: changePayloadFromValue(tx, cloneObservation(current))})
+	beforePayload, err := changePayloadFromValue(before)
+	if err != nil {
+		return Observation{Observation: entitymodel.Observation{}}, err
+	}
+	afterPayload, err := changePayloadFromValue(cloneObservation(current))
+	if err != nil {
+		return Observation{Observation: entitymodel.Observation{}}, err
+	}
+	tx.recordChange(Change{Entity: domain.EntityObservation, Action: domain.ActionUpdate, Before: beforePayload, After: afterPayload})
 	return cloneObservation(current), nil
 }
 func (tx *transaction) DeleteObservation(id string) error {
@@ -2204,7 +2373,11 @@ func (tx *transaction) DeleteObservation(id string) error {
 		return fmt.Errorf("observation %q not found", id)
 	}
 	delete(tx.state.observations, id)
-	tx.recordChange(Change{Entity: domain.EntityObservation, Action: domain.ActionDelete, Before: changePayloadFromValue(tx, cloneObservation(current))})
+	beforePayload, err := changePayloadFromValue(cloneObservation(current))
+	if err != nil {
+		return err
+	}
+	tx.recordChange(Change{Entity: domain.EntityObservation, Action: domain.ActionDelete, Before: beforePayload})
 	return nil
 }
 func (tx *transaction) CreateSample(s Sample) (Sample, error) {
@@ -2247,7 +2420,11 @@ func (tx *transaction) CreateSample(s Sample) (Sample, error) {
 		mustApply("apply sample attributes", s.ApplySampleAttributes(attrs))
 	}
 	tx.state.samples[s.ID] = cloneSample(s)
-	tx.recordChange(Change{Entity: domain.EntitySample, Action: domain.ActionCreate, After: changePayloadFromValue(tx, cloneSample(s))})
+	after, err := changePayloadFromValue(cloneSample(s))
+	if err != nil {
+		return Sample{Sample: entitymodel.Sample{}}, err
+	}
+	tx.recordChange(Change{Entity: domain.EntitySample, Action: domain.ActionCreate, After: after})
 	return cloneSample(s), nil
 }
 func (tx *transaction) UpdateSample(id string, mutator func(*Sample) error) (Sample, error) {
@@ -2292,7 +2469,15 @@ func (tx *transaction) UpdateSample(id string, mutator func(*Sample) error) (Sam
 	current.ID = id
 	current.UpdatedAt = tx.now
 	tx.state.samples[id] = cloneSample(current)
-	tx.recordChange(Change{Entity: domain.EntitySample, Action: domain.ActionUpdate, Before: changePayloadFromValue(tx, before), After: changePayloadFromValue(tx, cloneSample(current))})
+	beforePayload, err := changePayloadFromValue(before)
+	if err != nil {
+		return Sample{Sample: entitymodel.Sample{}}, err
+	}
+	afterPayload, err := changePayloadFromValue(cloneSample(current))
+	if err != nil {
+		return Sample{Sample: entitymodel.Sample{}}, err
+	}
+	tx.recordChange(Change{Entity: domain.EntitySample, Action: domain.ActionUpdate, Before: beforePayload, After: afterPayload})
 	return cloneSample(current), nil
 }
 func (tx *transaction) DeleteSample(id string) error {
@@ -2301,7 +2486,11 @@ func (tx *transaction) DeleteSample(id string) error {
 		return fmt.Errorf("sample %q not found", id)
 	}
 	delete(tx.state.samples, id)
-	tx.recordChange(Change{Entity: domain.EntitySample, Action: domain.ActionDelete, Before: changePayloadFromValue(tx, cloneSample(current))})
+	beforePayload, err := changePayloadFromValue(cloneSample(current))
+	if err != nil {
+		return err
+	}
+	tx.recordChange(Change{Entity: domain.EntitySample, Action: domain.ActionDelete, Before: beforePayload})
 	return nil
 }
 func (tx *transaction) CreateProtocol(p Protocol) (Protocol, error) {
@@ -2317,7 +2506,11 @@ func (tx *transaction) CreateProtocol(p Protocol) (Protocol, error) {
 	p.CreatedAt = tx.now
 	p.UpdatedAt = tx.now
 	tx.state.protocols[p.ID] = cloneProtocol(p)
-	tx.recordChange(Change{Entity: domain.EntityProtocol, Action: domain.ActionCreate, After: changePayloadFromValue(tx, cloneProtocol(p))})
+	after, err := changePayloadFromValue(cloneProtocol(p))
+	if err != nil {
+		return Protocol{Protocol: entitymodel.Protocol{}}, err
+	}
+	tx.recordChange(Change{Entity: domain.EntityProtocol, Action: domain.ActionCreate, After: after})
 	return cloneProtocol(p), nil
 }
 func (tx *transaction) UpdateProtocol(id string, mutator func(*Protocol) error) (Protocol, error) {
@@ -2335,7 +2528,15 @@ func (tx *transaction) UpdateProtocol(id string, mutator func(*Protocol) error) 
 	current.ID = id
 	current.UpdatedAt = tx.now
 	tx.state.protocols[id] = cloneProtocol(current)
-	tx.recordChange(Change{Entity: domain.EntityProtocol, Action: domain.ActionUpdate, Before: changePayloadFromValue(tx, before), After: changePayloadFromValue(tx, cloneProtocol(current))})
+	beforePayload, err := changePayloadFromValue(before)
+	if err != nil {
+		return Protocol{Protocol: entitymodel.Protocol{}}, err
+	}
+	afterPayload, err := changePayloadFromValue(cloneProtocol(current))
+	if err != nil {
+		return Protocol{Protocol: entitymodel.Protocol{}}, err
+	}
+	tx.recordChange(Change{Entity: domain.EntityProtocol, Action: domain.ActionUpdate, Before: beforePayload, After: afterPayload})
 	return cloneProtocol(current), nil
 }
 func (tx *transaction) DeleteProtocol(id string) error {
@@ -2349,7 +2550,11 @@ func (tx *transaction) DeleteProtocol(id string) error {
 		}
 	}
 	delete(tx.state.protocols, id)
-	tx.recordChange(Change{Entity: domain.EntityProtocol, Action: domain.ActionDelete, Before: changePayloadFromValue(tx, cloneProtocol(current))})
+	beforePayload, err := changePayloadFromValue(cloneProtocol(current))
+	if err != nil {
+		return err
+	}
+	tx.recordChange(Change{Entity: domain.EntityProtocol, Action: domain.ActionDelete, Before: beforePayload})
 	return nil
 }
 func (tx *transaction) CreatePermit(p Permit) (Permit, error) {
@@ -2386,7 +2591,11 @@ func (tx *transaction) CreatePermit(p Permit) (Permit, error) {
 	p.CreatedAt = tx.now
 	p.UpdatedAt = tx.now
 	tx.state.permits[p.ID] = clonePermit(p)
-	tx.recordChange(Change{Entity: domain.EntityPermit, Action: domain.ActionCreate, After: changePayloadFromValue(tx, clonePermit(p))})
+	after, err := changePayloadFromValue(clonePermit(p))
+	if err != nil {
+		return Permit{Permit: entitymodel.Permit{}}, err
+	}
+	tx.recordChange(Change{Entity: domain.EntityPermit, Action: domain.ActionCreate, After: after})
 	return clonePermit(p), nil
 }
 func (tx *transaction) UpdatePermit(id string, mutator func(*Permit) error) (Permit, error) {
@@ -2425,7 +2634,15 @@ func (tx *transaction) UpdatePermit(id string, mutator func(*Permit) error) (Per
 	current.ID = id
 	current.UpdatedAt = tx.now
 	tx.state.permits[id] = clonePermit(current)
-	tx.recordChange(Change{Entity: domain.EntityPermit, Action: domain.ActionUpdate, Before: changePayloadFromValue(tx, before), After: changePayloadFromValue(tx, clonePermit(current))})
+	beforePayload, err := changePayloadFromValue(before)
+	if err != nil {
+		return Permit{Permit: entitymodel.Permit{}}, err
+	}
+	afterPayload, err := changePayloadFromValue(clonePermit(current))
+	if err != nil {
+		return Permit{Permit: entitymodel.Permit{}}, err
+	}
+	tx.recordChange(Change{Entity: domain.EntityPermit, Action: domain.ActionUpdate, Before: beforePayload, After: afterPayload})
 	return clonePermit(current), nil
 }
 func (tx *transaction) DeletePermit(id string) error {
@@ -2434,7 +2651,11 @@ func (tx *transaction) DeletePermit(id string) error {
 		return fmt.Errorf("permit %q not found", id)
 	}
 	delete(tx.state.permits, id)
-	tx.recordChange(Change{Entity: domain.EntityPermit, Action: domain.ActionDelete, Before: changePayloadFromValue(tx, clonePermit(current))})
+	beforePayload, err := changePayloadFromValue(clonePermit(current))
+	if err != nil {
+		return err
+	}
+	tx.recordChange(Change{Entity: domain.EntityPermit, Action: domain.ActionDelete, Before: beforePayload})
 	return nil
 }
 func (tx *transaction) CreateProject(p Project) (Project, error) {
@@ -2460,7 +2681,11 @@ func (tx *transaction) CreateProject(p Project) (Project, error) {
 	p.UpdatedAt = tx.now
 	tx.state.projects[p.ID] = cloneProject(p)
 	created := decorateProject(&tx.state, p)
-	tx.recordChange(Change{Entity: domain.EntityProject, Action: domain.ActionCreate, After: changePayloadFromValue(tx, cloneProject(created))})
+	after, err := changePayloadFromValue(cloneProject(created))
+	if err != nil {
+		return Project{Project: entitymodel.Project{}}, err
+	}
+	tx.recordChange(Change{Entity: domain.EntityProject, Action: domain.ActionCreate, After: after})
 	return cloneProject(created), nil
 }
 func (tx *transaction) UpdateProject(id string, mutator func(*Project) error) (Project, error) {
@@ -2489,7 +2714,15 @@ func (tx *transaction) UpdateProject(id string, mutator func(*Project) error) (P
 	current.UpdatedAt = tx.now
 	tx.state.projects[id] = cloneProject(current)
 	afterDecorated := decorateProject(&tx.state, current)
-	tx.recordChange(Change{Entity: domain.EntityProject, Action: domain.ActionUpdate, Before: changePayloadFromValue(tx, before), After: changePayloadFromValue(tx, cloneProject(afterDecorated))})
+	beforePayload, err := changePayloadFromValue(before)
+	if err != nil {
+		return Project{Project: entitymodel.Project{}}, err
+	}
+	afterPayload, err := changePayloadFromValue(cloneProject(afterDecorated))
+	if err != nil {
+		return Project{Project: entitymodel.Project{}}, err
+	}
+	tx.recordChange(Change{Entity: domain.EntityProject, Action: domain.ActionUpdate, Before: beforePayload, After: afterPayload})
 	return cloneProject(afterDecorated), nil
 }
 func (tx *transaction) DeleteProject(id string) error {
@@ -2504,7 +2737,11 @@ func (tx *transaction) DeleteProject(id string) error {
 		}
 	}
 	delete(tx.state.projects, id)
-	tx.recordChange(Change{Entity: domain.EntityProject, Action: domain.ActionDelete, Before: changePayloadFromValue(tx, cloneProject(decoratedCurrent))})
+	beforePayload, err := changePayloadFromValue(cloneProject(decoratedCurrent))
+	if err != nil {
+		return err
+	}
+	tx.recordChange(Change{Entity: domain.EntityProject, Action: domain.ActionDelete, Before: beforePayload})
 	return nil
 }
 func (tx *transaction) CreateSupplyItem(s SupplyItem) (SupplyItem, error) {
@@ -2540,7 +2777,11 @@ func (tx *transaction) CreateSupplyItem(s SupplyItem) (SupplyItem, error) {
 		mustApply("apply supply attributes", s.ApplySupplyAttributes(attrs))
 	}
 	tx.state.supplies[s.ID] = cloneSupplyItem(s)
-	tx.recordChange(Change{Entity: domain.EntitySupplyItem, Action: domain.ActionCreate, After: changePayloadFromValue(tx, cloneSupplyItem(s))})
+	after, err := changePayloadFromValue(cloneSupplyItem(s))
+	if err != nil {
+		return SupplyItem{SupplyItem: entitymodel.SupplyItem{}}, err
+	}
+	tx.recordChange(Change{Entity: domain.EntitySupplyItem, Action: domain.ActionCreate, After: after})
 	return cloneSupplyItem(s), nil
 }
 func (tx *transaction) UpdateSupplyItem(id string, mutator func(*SupplyItem) error) (SupplyItem, error) {
@@ -2582,7 +2823,15 @@ func (tx *transaction) UpdateSupplyItem(id string, mutator func(*SupplyItem) err
 	current.ID = id
 	current.UpdatedAt = tx.now
 	tx.state.supplies[id] = cloneSupplyItem(current)
-	tx.recordChange(Change{Entity: domain.EntitySupplyItem, Action: domain.ActionUpdate, Before: changePayloadFromValue(tx, before), After: changePayloadFromValue(tx, cloneSupplyItem(current))})
+	beforePayload, err := changePayloadFromValue(before)
+	if err != nil {
+		return SupplyItem{SupplyItem: entitymodel.SupplyItem{}}, err
+	}
+	afterPayload, err := changePayloadFromValue(cloneSupplyItem(current))
+	if err != nil {
+		return SupplyItem{SupplyItem: entitymodel.SupplyItem{}}, err
+	}
+	tx.recordChange(Change{Entity: domain.EntitySupplyItem, Action: domain.ActionUpdate, Before: beforePayload, After: afterPayload})
 	return cloneSupplyItem(current), nil
 }
 func (tx *transaction) DeleteSupplyItem(id string) error {
@@ -2591,7 +2840,11 @@ func (tx *transaction) DeleteSupplyItem(id string) error {
 		return fmt.Errorf("supply item %q not found", id)
 	}
 	delete(tx.state.supplies, id)
-	tx.recordChange(Change{Entity: domain.EntitySupplyItem, Action: domain.ActionDelete, Before: changePayloadFromValue(tx, cloneSupplyItem(current))})
+	beforePayload, err := changePayloadFromValue(cloneSupplyItem(current))
+	if err != nil {
+		return err
+	}
+	tx.recordChange(Change{Entity: domain.EntitySupplyItem, Action: domain.ActionDelete, Before: beforePayload})
 	return nil
 }
 func (s *memStore) GetOrganism(id string) (Organism, bool) {

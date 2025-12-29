@@ -5,6 +5,8 @@ import (
 	"time"
 )
 
+const facilityID = "facility-1"
+
 // TestBreedingContextRefChecker tests the isBreedingStrategyRef function
 func TestBreedingContextRefChecker(_ *testing.T) {
 	ctx := NewBreedingContext()
@@ -168,7 +170,7 @@ func TestFacadeMethods(t *testing.T) {
 		Base:            baseData,
 		Identifier:      "sample-123",
 		SourceType:      "blood",
-		FacilityID:      "facility-1",
+		FacilityID:      facilityID,
 		CollectedAt:     time.Now(),
 		Status:          datasetSampleStatusStored,
 		StorageLocation: "freezer-A",
@@ -307,11 +309,11 @@ func TestSampleFacilityID(t *testing.T) {
 			ID: "sample-1",
 		},
 		Identifier: "S-001",
-		FacilityID: "facility-1",
+		FacilityID: facilityID,
 	}
 	sample := NewSample(sampleData)
-	if sample.FacilityID() != "facility-1" {
-		t.Errorf("Expected FacilityID 'facility-1', got %v", sample.FacilityID())
+	if sample.FacilityID() != facilityID {
+		t.Errorf("Expected FacilityID %q, got %v", facilityID, sample.FacilityID())
 	}
 }
 

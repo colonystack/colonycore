@@ -71,7 +71,9 @@ Use the issue forms:
   2. Install R ≥ 4.0 (`sudo apt install r-base` on Debian/Ubuntu). `scripts/run_lintr.py` pins `lintr==3.1.2` and `xml2==1.3.6` into `.cache/R-lintr` automatically unless `LINTR_SKIP_AUTO_INSTALL=1` is set.
 - Troubleshooting:
   - Ruff missing/mismatched → reinstall using the requirements file; if you manage multiple environments, keep one aligned with 0.5.7 for this repo.
-  - R package install errors → install `libcurl4-openssl-dev libxml2-dev libxslt1-dev` and retry, or pre-install the pinned packages with `Rscript -e "remotes::install_version('lintr', version = '3.1.2')"`.
+  - Package install errors in R → install `libcurl4-openssl-dev libxml2-dev libxslt1-dev` and retry, or pre-install the pinned packages with `make r-lint-setup`.
+  - Shared library errors (for example `shared object 'rlang.so' not found`) → run `make r-lint-reset` then `make r-lint-setup`, and rerun `make r-lint`.
+  - Version mismatch after install (for example `xml2: 1.3.3 (expected 1.3.6)`) → run `make r-lint-reset`, then `make r-lint-setup`, then rerun `make r-lint`. Opening a fresh shell can also help pick up updated packages.
 - Auto-fix shortcuts:
   - Python: `python -m ruff check --fix clients/python`; rerun `make python-lint` afterwards.
   - R: `Rscript -e "styler::style_dir('clients/R')"` handles formatting; rerun `make r-lint` afterwards.

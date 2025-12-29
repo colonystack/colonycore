@@ -15,10 +15,11 @@ if ! git -C "$SWEET_WORK_DIR" apply "$PATCH_FILE"; then
   exit 1
 fi
 
-git -C "$SWEET_WORK_DIR" add -N sweet
+git -C "$SWEET_WORK_DIR" add -N "$SWEET_PATCH_TARGET"
 
 tmp_patch="$(mktemp "${PATCH_FILE}.XXXXXX")"
-git -C "$SWEET_WORK_DIR" diff --no-color -U1 | sed '/^index /d' > "$tmp_patch"
+trap 'test -n "$tmp_patch" && rm -f "$tmp_patch"' EXIT INT TERM
+git -C "$SWEET_WORK_DIR" diff --no-color -U3 | sed -e '/^index /d' -e 's/[[:space:]]*$//' > "$tmp_patch"
 
 if [ ! -s "$tmp_patch" ]; then
   echo "generated patch is empty; refusing to overwrite ${PATCH_FILE}" >&2
@@ -27,4 +28,5 @@ if [ ! -s "$tmp_patch" ]; then
 fi
 
 mv "$tmp_patch" "$PATCH_FILE"
+trap - EXIT INT TERM
 echo "refreshed ${PATCH_FILE} for ${SWEET_COMMIT}"

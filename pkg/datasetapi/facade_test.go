@@ -401,15 +401,22 @@ func TestProtocolProjectCohortFacades(t *testing.T) {
 	if len(project.FacilityIDs()) != 1 || len(project.ProtocolIDs()) != 1 || len(project.OrganismIDs()) != 1 || len(project.ProcedureIDs()) != 1 || len(project.SupplyItemIDs()) != 1 {
 		t.Fatalf("expected project relationships to round-trip")
 	}
-	if len(projectProtocolIDs) == 0 || len(projectOrganismIDs) == 0 || len(projectProcedureIDs) == 0 || len(projectSupplyIDs) == 0 {
-		t.Fatalf("expected project relationship fixtures to be non-empty")
+
+	for i := range projectProtocolIDs {
+		projectProtocolIDs[i] = mutatedLiteral
 	}
-	projectProtocolIDs[0] = mutatedLiteral
-	projectOrganismIDs[0] = mutatedLiteral
-	projectProcedureIDs[0] = mutatedLiteral
-	projectSupplyIDs[0] = mutatedLiteral
-	if project.ProtocolIDs()[0] != "protocol-1" || project.OrganismIDs()[0] != "organism-1" || project.ProcedureIDs()[0] != "procedure-1" || project.SupplyItemIDs()[0] != "supply-1" {
-		t.Fatalf("expected project relationship slices to be cloned")
+	projectFacilityIDs[0] = mutatedLiteral
+	for i := range projectOrganismIDs {
+		projectOrganismIDs[i] = mutatedLiteral
+	}
+	for i := range projectProcedureIDs {
+		projectProcedureIDs[i] = mutatedLiteral
+	}
+	for i := range projectSupplyIDs {
+		projectSupplyIDs[i] = mutatedLiteral
+	}
+	if project.FacilityIDs()[0] != "facility-1" || project.ProtocolIDs()[0] != "protocol-1" || project.OrganismIDs()[0] != "organism-1" || project.ProcedureIDs()[0] != "procedure-1" || project.SupplyItemIDs()[0] != "supply-1" {
+		t.Fatalf("expected project relationship slices to be cloned, including facilities")
 	}
 
 	housing := NewHousingUnit(HousingUnitData{

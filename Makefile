@@ -5,6 +5,11 @@ GOLANGCI_VERSION ?= v2.7.2
 BIN_DIR ?= $(CURDIR)/.cache/bin
 GOLANGCI_CACHE ?= $(CURDIR)/.cache/golangci-lint
 COVER_THRESHOLD ?= 90.0
+R_LINTR_CACHE ?= $(CURDIR)/.cache/R-lintr
+LINTR_REPO ?= https://cloud.r-project.org
+# Keep these in sync with scripts/run_lintr.py.
+LINTR_VERSION ?= 3.1.2
+XML2_VERSION ?= 1.3.6
 SWEET_VERSION ?= v0.0.0-20251208221949-523919e4e4f2
 SWEET_COMMIT ?= 523919e4e4f284a0c060e6e5e5ff7f6f521fa2ed
 BENCHSTAT_VERSION ?= v0.0.0-20251208221838-04cf7a2dca90
@@ -28,7 +33,7 @@ SCHEMASPY_PG_USER ?= postgres
 SCHEMASPY_PG_PASSWORD ?= postgres
 SCHEMASPY_PG_TIMEOUT ?= 60
 
-.PHONY: all build lint go-test test registry-check fmt-check vet registry-lint golangci golangci-install python-lint r-lint go-lint import-boss import-boss-install entity-model-validate entity-model-generate entity-model-verify entity-model-erd entity-model-diff entity-model-diff-update api-snapshots list-docker-images validate-any-usage benchmarks-run benchmarks-aggregate benchmarks-compare benchmarks-ci
+.PHONY: all build clean lint go-test test registry-check fmt-check vet registry-lint golangci golangci-install python-lint r-lint r-lint-setup r-lint-reset go-lint import-boss import-boss-install entity-model-validate entity-model-generate entity-model-verify entity-model-erd entity-model-diff entity-model-diff-update api-snapshots list-docker-images validate-any-usage benchmarks-run benchmarks-aggregate benchmarks-compare benchmarks-ci
 
 all: build
 
@@ -38,6 +43,9 @@ list-docker-images:
 
 build:
 	GOCACHE=$(GOCACHE) go build ./...
+
+clean:
+	rm -rf $(COVERFILE) coverage.summary $(CURDIR)/.cache $(CURDIR)/benchmarks/results $(CURDIR)/benchmarks/artifacts $(CURDIR)/cmd/registry-check/registry-check $(CURDIR)/dist $(CURDIR)/build $(CURDIR)/test_*.yaml $(CURDIR)/test_*.md
 
 registry-check:
 	GOCACHE=$(GOCACHE) go build -o cmd/registry-check/registry-check ./cmd/registry-check
@@ -195,9 +203,17 @@ python-lint:
 		exit 1 )
 	@echo "Python lint: OK"
 
-r-lint:
+r-lint: r-lint-setup
 	@echo "==> R lint"
 	@python scripts/run_lintr.py && echo "R lint: OK" || (status=$$?; if [ $$status -eq 0 ]; then echo "R lint: OK"; else exit $$status; fi)
+
+r-lint-setup:
+	@echo "==> R lint setup"
+	@R_LIBS_USER=$(R_LINTR_CACHE) R_INSTALL_STAGED=false LINTR_REPO=$(LINTR_REPO) LINTR_VERSION=$(LINTR_VERSION) XML2_VERSION=$(XML2_VERSION) Rscript --vanilla scripts/setup_r_lintr.R
+
+r-lint-reset:
+	@echo "==> R lint reset"
+	@rm -rf $(R_LINTR_CACHE)
 
 entity-model-validate:
 	@echo "==> entity-model validate"

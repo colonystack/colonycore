@@ -115,8 +115,11 @@ func cloneRaw(raw map[string]map[string]map[string]any) map[string]map[string]ma
 				cloned[plugin] = nil
 				continue
 			}
-			clone, _ := cloneValue(value).(map[string]any)
-			cloned[plugin] = clone
+			if clone, ok := cloneValue(value).(map[string]any); ok {
+				cloned[plugin] = clone
+			} else {
+				panic("cloneValue returned unexpected type for map[string]any input")
+			}
 		}
 		out[hook] = cloned
 	}

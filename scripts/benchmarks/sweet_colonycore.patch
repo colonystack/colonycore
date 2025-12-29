@@ -9,7 +9,9 @@ new file mode 100644
 diff --git a/sweet/cmd/sweet/benchmark.go b/sweet/cmd/sweet/benchmark.go
 --- a/sweet/cmd/sweet/benchmark.go
 +++ b/sweet/cmd/sweet/benchmark.go
-@@ -92,2 +92,8 @@ var allBenchmarks = []benchmark{
+@@ -90,6 +90,12 @@ var allBenchmarks = []benchmark{
+ 		harness:     harnesses.Tile38{},
+ 		generator:   generators.Tile38{},
  	},
 +	{
 +		name:        "colonycore",
@@ -18,6 +20,8 @@ diff --git a/sweet/cmd/sweet/benchmark.go b/sweet/cmd/sweet/benchmark.go
 +		generator:   generators.None{},
 +	},
  }
+
+ var allBenchmarksMap = func() map[string]*benchmark {
 diff --git a/sweet/harnesses/colonycore.go b/sweet/harnesses/colonycore.go
 new file mode 100644
 --- /dev/null
@@ -76,6 +80,7 @@ new file mode 100644
 +			if lookErr != nil {
 +				return fmt.Errorf("go binary not found at %s or on PATH: %w", goTool, err)
 +			}
++			log.Printf("warning: failed to use go tool at %s: %v; using go from PATH", goTool, err)
 +			goTool = pathTool
 +		} else if info.Mode()&0111 == 0 {
 +			return fmt.Errorf("go binary at %s is not executable", goTool)
@@ -102,4 +107,3 @@ new file mode 100644
 +	cmd.Stderr = rcfg.Log
 +	log.TraceCommand(cmd, false)
 +	return cmd.Run()
-+}

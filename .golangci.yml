@@ -59,6 +59,7 @@ linters:
             - github.com/jackc/pgx/v5/stdlib
             - image
             - io
+            - math
             - modernc.org/sqlite
             - net/http
             - net/url
@@ -124,6 +125,7 @@ linters:
             - net/http/httptest
             - os
             - path/filepath
+            - math
             - modernc.org/sqlite
             - sort
             - strconv

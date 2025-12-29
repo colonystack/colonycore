@@ -41,10 +41,18 @@ type Registry struct {
 
 var (
 	allowedTypes  = map[string]struct{}{"RFC": {}, "Annex": {}, "ADR": {}}
-	allowedStatus = map[string]struct{}{"Draft": {}, "Planned": {}, "Accepted": {}, "Superseded": {}, "Archived": {}}
 	statusMap     = map[string]string{"draft": "Draft", "planned": "Planned", "accepted": "Accepted", "superseded": "Superseded", "archived": "Archived"}
+	allowedStatus = buildAllowedStatus()
 	exitFunc      = os.Exit
 )
+
+func buildAllowedStatus() map[string]struct{} {
+	m := make(map[string]struct{}, len(statusMap))
+	for _, canonical := range statusMap {
+		m[canonical] = struct{}{}
+	}
+	return m
+}
 
 func main() {
 	code := cli(os.Args[1:], os.Stdout, os.Stderr)
@@ -415,12 +423,9 @@ func readDocumentStatus(path string) (status string, err error) {
 	}
 	return "", fmt.Errorf("status not found in %s", path)
 }
-
 func parseInlineStatus(line string) (string, bool, error) {
 	trimmed := strings.TrimSpace(line)
-	trimmed = strings.TrimPrefix(trimmed, "-")
-	trimmed = strings.TrimPrefix(trimmed, "*")
-	trimmed = strings.TrimSpace(trimmed)
+	trimmed = strings.TrimLeft(trimmed, "-* ")
 	if !strings.HasPrefix(trimmed, "Status:") {
 		return "", false, nil
 	}
@@ -431,7 +436,6 @@ func parseInlineStatus(line string) (string, bool, error) {
 	}
 	return status, true, nil
 }
-
 func canonicalizeStatus(value string) (string, error) {
 	token := extractStatusToken(value)
 	if token == "" {
@@ -449,9 +453,7 @@ func extractStatusToken(value string) string {
 	if len(fields) == 0 {
 		return ""
 	}
-	token := strings.Trim(fields[0], "().,;:")
-	token = strings.TrimSuffix(token, ".")
-	return strings.Trim(token, "-")
+	return strings.Trim(fields[0], "().,;:-")
 }
 
 func validateDate(value string) error {

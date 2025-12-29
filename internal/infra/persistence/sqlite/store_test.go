@@ -69,6 +69,13 @@ func TestApplyEntityModelDDLUsesGeneratedSQLiteBundle(t *testing.T) {
 	}
 }
 
+func TestApplyEntityModelDDLError(t *testing.T) {
+	exec := &recordingSQLiteExec{fail: true}
+	if err := applyEntityModelDDL(exec); err == nil {
+		t.Fatalf("expected ddl exec error")
+	}
+}
+
 type recordingSQLiteExec struct {
 	execs []string
 	fail  bool

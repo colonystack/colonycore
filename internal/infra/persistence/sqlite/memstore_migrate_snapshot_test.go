@@ -81,3 +81,66 @@ func TestMigrateSnapshotInitialisesAndFilters(t *testing.T) {
 		t.Fatalf("expected markers to be retained")
 	}
 }
+
+func TestMigrateSnapshotDropsInvalidEntities(t *testing.T) {
+	orgID := "org-1"
+	facilityID := "fac-1"
+	validProtocol := Protocol{Protocol: entitymodel.Protocol{ID: "prot-ok", Status: domain.ProtocolStatusDraft}}
+	validProcedure := Procedure{Procedure: entitymodel.Procedure{ID: "proc-ok", Status: domain.ProcedureStatusScheduled, ProtocolID: validProtocol.ID}}
+
+	snapshot := Snapshot{
+		Facilities: map[string]Facility{
+			facilityID: {Facility: entitymodel.Facility{ID: facilityID}},
+		},
+		Organisms: map[string]Organism{
+			orgID: {Organism: entitymodel.Organism{ID: orgID, Name: "Org", Species: "species"}},
+		},
+		Protocols: map[string]Protocol{
+			validProtocol.ID: validProtocol,
+			"prot-bad":       {Protocol: entitymodel.Protocol{ID: "prot-bad", Status: domain.ProtocolStatus("invalid")}},
+		},
+		Procedures: map[string]Procedure{
+			validProcedure.ID: validProcedure,
+			"proc-bad":        {Procedure: entitymodel.Procedure{ID: "proc-bad", Status: domain.ProcedureStatus("invalid")}},
+		},
+		Housing: map[string]HousingUnit{
+			"house-bad": {HousingUnit: entitymodel.HousingUnit{ID: "house-bad", FacilityID: facilityID, Capacity: 1, Environment: "invalid"}},
+		},
+		Treatments: map[string]Treatment{
+			"treat-bad": {Treatment: entitymodel.Treatment{ID: "treat-bad", Name: "Treat", Status: domain.TreatmentStatus("invalid"), ProcedureID: validProcedure.ID}},
+		},
+		Samples: map[string]Sample{
+			"sample-bad": {Sample: entitymodel.Sample{ID: "sample-bad", FacilityID: facilityID, Status: domain.SampleStatus("invalid"), OrganismID: &orgID}},
+		},
+		Permits: map[string]Permit{
+			"permit-bad": {Permit: entitymodel.Permit{ID: "permit-bad", Status: domain.PermitStatus("invalid"), FacilityIDs: []string{facilityID}, ProtocolIDs: []string{validProtocol.ID}}},
+		},
+	}
+
+	migrated := migrateSnapshot(snapshot)
+
+	if _, ok := migrated.Protocols["prot-bad"]; ok {
+		t.Fatalf("expected invalid protocol to be dropped")
+	}
+	if _, ok := migrated.Procedures["proc-bad"]; ok {
+		t.Fatalf("expected invalid procedure to be dropped")
+	}
+	if _, ok := migrated.Housing["house-bad"]; ok {
+		t.Fatalf("expected invalid housing to be dropped")
+	}
+	if _, ok := migrated.Treatments["treat-bad"]; ok {
+		t.Fatalf("expected invalid treatment to be dropped")
+	}
+	if _, ok := migrated.Samples["sample-bad"]; ok {
+		t.Fatalf("expected invalid sample to be dropped")
+	}
+	if _, ok := migrated.Permits["permit-bad"]; ok {
+		t.Fatalf("expected invalid permit to be dropped")
+	}
+	if _, ok := migrated.Protocols[validProtocol.ID]; !ok {
+		t.Fatalf("expected valid protocol to be retained")
+	}
+	if _, ok := migrated.Procedures[validProcedure.ID]; !ok {
+		t.Fatalf("expected valid procedure to be retained")
+	}
+}
