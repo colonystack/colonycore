@@ -105,6 +105,13 @@ Override the defaults with `-roots` as needed for local checks.
 - When public APIs change, update the snapshots under `internal/ci/` per ADR-0009.
 - Keep entity-model derived types aligned with ADR-0003; avoid manual drift.
 
+## Touchpoint scope (typing hardening audit)
+The audit scope matches the guard roots and `.import-restrictions` for:
+`pkg/domain`, `internal/core`, `internal/adapters/datasets`,
+`internal/infra/blob`, `internal/infra/persistence`,
+`pkg/pluginapi`, `pkg/datasetapi`, and `plugins/*`. Validate dependency
+direction against `ARCHITECTURE.md` before changing imports.
+
 ## Trade-offs
 - Tighter typing improves refactoring safety but can reduce extensibility. Prefer small
   stable interfaces and JSON/codec boundaries for extension data.

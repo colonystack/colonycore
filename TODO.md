@@ -11,7 +11,12 @@
 
 ## Scope + boundaries
 - [x] Confirm layers/packages in scope (expanded: pkg/pluginapi, pkg/datasetapi, internal/core, internal/adapters/datasets, internal/infra/**, plugins/*, docs/).
-- [ ] Map expanded touchpoints (core services, adapters, persistence, plugins) and confirm import direction stays aligned with ARCHITECTURE.md.
+- [x] Map expanded touchpoints (core services, adapters, persistence, plugins) and confirm import direction stays aligned with ARCHITECTURE.md.
+  - pkg/domain: imports only pkg/domain subpackages + stdlib; no internal/plugin deps.
+  - internal/core: depends on pkg/domain, pkg/{pluginapi,datasetapi}, internal/infra/*, internal/entitymodel.
+  - internal/adapters/datasets: depends on internal/core, pkg/{datasetapi,pluginapi,domain}, internal/entitymodel.
+  - internal/infra/blob + internal/infra/persistence: depend on pkg/domain (blob also on internal/blob); no reverse deps.
+  - pkg/{pluginapi,datasetapi}: no internal/domain imports; plugins/* only depend on public APIs.
 - [ ] Guard expansion phases (recommended):
   - [x] Phase 1: internal/core + internal/adapters/datasets (done).
   - [x] Phase 2: internal/infra/blob + internal/infra/persistence + plugins/*.
