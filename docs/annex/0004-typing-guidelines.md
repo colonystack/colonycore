@@ -89,6 +89,7 @@ GOCACHE=$PWD/.cache/go-build go run ./scripts/validate_any_usage
 Default roots enforced by the guard:
 - `pkg/pluginapi`
 - `pkg/datasetapi`
+- `pkg/domain`
 - `internal/core`
 - `internal/adapters/datasets`
 - `internal/infra/blob`

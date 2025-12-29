@@ -15,7 +15,7 @@
 - [ ] Guard expansion phases (recommended):
   - [x] Phase 1: internal/core + internal/adapters/datasets (done).
   - [x] Phase 2: internal/infra/blob + internal/infra/persistence + plugins/*.
-  - [ ] Phase 3: pkg/domain (requires generated/extension payload allowlist strategy).
+  - [x] Phase 3: pkg/domain (allowlist JSON boundary payloads; keep Change legacy exception).
 - [x] Confirm no cross-layer import changes; update .import-restrictions only if new deps are required.
 - [x] Identify generated artifacts that may need refresh (internal/ci/pluginapi.snapshot, internal/ci/datasetapi.snapshot, entity-model outputs if touched).
 - [x] If Change payloads are narrowed, confirm internal/core adapter updates are in scope and keep import direction intact.
@@ -42,7 +42,7 @@
   - [x] Expand any-usage inventory (Phase 1) to internal/core and internal/adapters/datasets.
   - [x] Phase 1 classification: allowlist JSON boundaries in internal/core + internal/adapters/datasets; record expvar shim and lifecycle transition legacy exception.
   - [x] Expand any-usage inventory (Phase 2) to internal/infra/blob, internal/infra/persistence, and plugins/*.
-  - [ ] Decide whether to include pkg/domain; if yes, define generated/extension payload allowlist approach up front.
+  - [x] Decide whether to include pkg/domain; if yes, define generated/extension payload allowlist approach up front (json-boundary + legacy Change).
   - [x] Classify any usage in those layers against Annex-0004; refactor or allowlist as needed.
 
 ### Guard allowlist (implemented in internal/ci/any_allowlist.json)
@@ -55,6 +55,11 @@
 - pkg/datasetapi/payload.go: ExtensionPayload JSON boundary wrapper.
 - pkg/datasetapi/facade.go: JSON boundary for facade serialization.
 - pkg/datasetapi/host_template.go: HostTemplate JSON boundary + internal parameter helpers.
+- pkg/datasetapi/host_template.go: HostTemplate JSON boundary + internal parameter helpers.
+- pkg/domain entries:
+  - entities.go: JSON boundary for extension payloads; legacy exception for Change snapshots.
+  - entitymodel/model_gen.go: JSON boundary for generated extension payload fields.
+  - extension/** + extension_accessors.go: JSON boundary for extension containers, slots, and payload wrappers.
 - internal/core/extension_payload.go: JSON boundary for extension payload normalization.
 - internal/core/plugin.go: JSON boundary for plugin schema registry.
 - internal/core/service.go: JSON boundary for schema copies; internal-helper logger key/value args.
@@ -97,9 +102,9 @@
 - [x] Expand validate-any-usage roots to Phase 1 (internal/core + internal/adapters/datasets) and document the default roots.
 - [x] Update internal/ci/any_allowlist.json entries for Phase 1 layers (including non-JSON exceptions).
 - [x] Expand validate-any-usage roots to Phase 2 (internal/infra/blob, internal/infra/persistence, plugins/*).
-- [ ] Expand validate-any-usage roots to Phase 3 (pkg/domain).
+- [x] Expand validate-any-usage roots to Phase 3 (pkg/domain).
 - [x] Update internal/ci/any_allowlist.json entries for Phase 2 layers.
-- [ ] Update internal/ci/any_allowlist.json entries for Phase 3 layers.
+- [x] Update internal/ci/any_allowlist.json entries for Phase 3 layers.
 
 ## Legacy exceptions
 - [ ] Remove internal/core/rule_lifecycle_transition.go legacy any usage once domain.Change is typed; update allowlist accordingly.

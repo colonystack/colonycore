@@ -122,6 +122,120 @@
       ]
     },
     {
+      "path": "pkg/domain/entities.go",
+      "symbols": [
+        "Organism",
+        "Facility",
+        "BreedingUnit",
+        "Observation",
+        "Sample",
+        "SupplyItem",
+        "Line",
+        "Strain",
+        "GenotypeMarker"
+      ],
+      "category": "json-boundary",
+      "public": false,
+      "rationale": "Domain entities marshal/unmarshal extension attributes and hook payloads as JSON boundary maps.",
+      "owner": "core maintainers",
+      "refs": [
+        "docs/annex/0004-typing-guidelines.md",
+        "docs/adr/0003-core-domain-schema.md"
+      ]
+    },
+    {
+      "path": "pkg/domain/entities.go",
+      "symbols": [
+        "Change"
+      ],
+      "category": "legacy-exception",
+      "public": false,
+      "rationale": "Change snapshots still use any pending typed ChangePayload; removal tracked in TODO.",
+      "owner": "core maintainers",
+      "refs": [
+        "docs/annex/0004-typing-guidelines.md"
+      ]
+    },
+    {
+      "path": "pkg/domain/entitymodel/model_gen.go",
+      "category": "json-boundary",
+      "public": false,
+      "rationale": "Generated entity model includes extension payload fields as JSON maps per ADR-0003.",
+      "owner": "core maintainers",
+      "refs": [
+        "docs/annex/0004-typing-guidelines.md",
+        "docs/adr/0003-core-domain-schema.md"
+      ]
+    },
+    {
+      "path": "pkg/domain/extension/container.go",
+      "category": "json-boundary",
+      "public": false,
+      "rationale": "Extension containers store hook payloads as JSON-like maps at the domain boundary.",
+      "owner": "core maintainers",
+      "refs": [
+        "docs/annex/0004-typing-guidelines.md",
+        "docs/adr/0003-core-domain-schema.md"
+      ]
+    },
+    {
+      "path": "pkg/domain/extension/object_payload.go",
+      "category": "json-boundary",
+      "public": false,
+      "rationale": "ObjectPayload wraps JSON-like extension data in the domain layer.",
+      "owner": "core maintainers",
+      "refs": [
+        "docs/annex/0004-typing-guidelines.md"
+      ]
+    },
+    {
+      "path": "pkg/domain/extension/slot.go",
+      "category": "json-boundary",
+      "public": false,
+      "rationale": "Extension slots carry JSON-like payloads keyed by plugin.",
+      "owner": "core maintainers",
+      "refs": [
+        "docs/annex/0004-typing-guidelines.md"
+      ]
+    },
+    {
+      "path": "pkg/domain/extension_accessors.go",
+      "category": "json-boundary",
+      "public": false,
+      "rationale": "Domain accessors expose extension attributes as JSON boundary maps.",
+      "owner": "core maintainers",
+      "refs": [
+        "docs/annex/0004-typing-guidelines.md",
+        "docs/adr/0003-core-domain-schema.md"
+      ]
+    },
+    {
+      "path": "pkg/domain/extension_slots_helpers.go",
+      "symbols": [
+        "slotFromPluginPayloads"
+      ],
+      "category": "json-boundary",
+      "public": false,
+      "rationale": "Extension slot helpers accept JSON-like payload maps from plugin hooks.",
+      "owner": "core maintainers",
+      "refs": [
+        "docs/annex/0004-typing-guidelines.md"
+      ]
+    },
+    {
+      "path": "pkg/domain/extension_slots_helpers.go",
+      "symbols": [
+        "panicOnExtension"
+      ],
+      "category": "internal-helper",
+      "public": false,
+      "rationale": "Helper forwards variadic arguments into fmt for consistent panic formatting.",
+      "owner": "core maintainers",
+      "refs": [
+        "docs/annex/0004-typing-guidelines.md"
+      ]
+    },
+    {
       "path": "internal/core/extension_payload.go",
       "category": "json-boundary",
       "public": false,
