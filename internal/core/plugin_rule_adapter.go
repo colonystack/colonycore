@@ -2,7 +2,6 @@ package core
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
@@ -1118,18 +1117,11 @@ func toPluginChanges(changes []domain.Change) []pluginapi.Change {
 	return converted
 }
 
-func encodeChangePayload(value any) pluginapi.ChangePayload {
-	if value == nil {
+func encodeChangePayload(payload domain.ChangePayload) pluginapi.ChangePayload {
+	if !payload.Defined() {
 		return pluginapi.UndefinedChangePayload()
 	}
-	if raw, ok := value.(json.RawMessage); ok {
-		return pluginapi.NewChangePayload(raw)
-	}
-	encoded, err := json.Marshal(value)
-	if err != nil {
-		return pluginapi.UndefinedChangePayload()
-	}
-	return pluginapi.NewChangePayload(encoded)
+	return pluginapi.NewChangePayload(payload.Raw())
 }
 
 func toDomainResult(res pluginapi.Result) domain.Result {

@@ -3,7 +3,7 @@
 - Status: Accepted
 - Linked RFCs: 0001-colonycore-base-module
 - Owners: Core Maintainers
-- Last Updated: 2025-12-27
+- Last Updated: 2025-12-29
 
 ## Purpose
 Use `any` only at explicit untyped boundaries to keep API contracts clear and refactor-safe.
@@ -43,7 +43,8 @@ runtime-supplied values.
 ### Change snapshots
 Rule change snapshots are exposed via `ChangePayload` and carry JSON bytes that
 should be decoded at the boundary (for example into `map[string]any` or a typed
-struct).
+struct). Domain `Change.Before`/`Change.After` use `ChangePayload`, and core
+rules should decode per entity type before evaluation.
 
 ## Exceptions and guard allowlist
 Any exception must be explicit, documented, and limited:

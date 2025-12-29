@@ -15,7 +15,7 @@
 - [ ] Guard expansion phases (recommended):
   - [x] Phase 1: internal/core + internal/adapters/datasets (done).
   - [x] Phase 2: internal/infra/blob + internal/infra/persistence + plugins/*.
-  - [x] Phase 3: pkg/domain (allowlist JSON boundary payloads; keep Change legacy exception).
+  - [x] Phase 3: pkg/domain (allowlist JSON boundary payloads; ChangePayload migration complete).
 - [x] Confirm no cross-layer import changes; update .import-restrictions only if new deps are required.
 - [x] Identify generated artifacts that may need refresh (internal/ci/pluginapi.snapshot, internal/ci/datasetapi.snapshot, entity-model outputs if touched).
 - [x] If Change payloads are narrowed, confirm internal/core adapter updates are in scope and keep import direction intact.
@@ -40,9 +40,9 @@
   - [x] pkg/datasetapi/host_template.go: parameter helpers return any internally - exception needed (internal helper); guard should exclude via symbol or file allowlist.
   - [x] Confirm *_test.go any usage stays test-only or is explicitly excluded from guard scope (allowed by policy).
   - [x] Expand any-usage inventory (Phase 1) to internal/core and internal/adapters/datasets.
-  - [x] Phase 1 classification: allowlist JSON boundaries in internal/core + internal/adapters/datasets; record expvar shim and lifecycle transition legacy exception.
+  - [x] Phase 1 classification: allowlist JSON boundaries in internal/core + internal/adapters/datasets; record expvar shim.
   - [x] Expand any-usage inventory (Phase 2) to internal/infra/blob, internal/infra/persistence, and plugins/*.
-  - [x] Decide whether to include pkg/domain; if yes, define generated/extension payload allowlist approach up front (json-boundary + legacy Change).
+  - [x] Decide whether to include pkg/domain; if yes, define generated/extension payload allowlist approach up front (json-boundary + ChangePayload).
   - [x] Classify any usage in those layers against Annex-0004; refactor or allowlist as needed.
 
 ### Guard allowlist (implemented in internal/ci/any_allowlist.json)
@@ -54,10 +54,12 @@
 - pkg/datasetapi/extensions.go: JSON boundary for ExtensionSet payloads.
 - pkg/datasetapi/payload.go: ExtensionPayload JSON boundary wrapper.
 - pkg/datasetapi/facade.go: JSON boundary for facade serialization.
-- pkg/datasetapi/host_template.go: HostTemplate JSON boundary + internal parameter helpers.
+- pkg/datasetapi/facade.go: JSON boundary for facade serialization.
 - pkg/datasetapi/host_template.go: HostTemplate JSON boundary + internal parameter helpers.
 - pkg/domain entries:
-  - entities.go: JSON boundary for extension payloads; legacy exception for Change snapshots.
+- pkg/datasetapi/host_template.go: HostTemplate JSON boundary + internal parameter helpers.
+- pkg/domain entries:
+  - entities.go: JSON boundary for extension payloads.
   - entitymodel/model_gen.go: JSON boundary for generated extension payload fields.
   - extension/** + extension_accessors.go: JSON boundary for extension containers, slots, and payload wrappers.
 - internal/core/extension_payload.go: JSON boundary for extension payload normalization.
@@ -66,7 +68,6 @@
 - internal/core/dataset.go: JSON boundary for dataset parameters.
 - internal/core/plugin_rule_adapter.go: JSON boundary for attributes and change payloads.
 - internal/core/observability_exporters.go: expvar shim (third-party).
-- internal/core/rule_lifecycle_transition.go: legacy exception tied to domain.Change any.
 - internal/adapters/datasets/exporter.go: JSON boundary for export parameters/metadata.
 - internal/adapters/datasets/handler.go: JSON boundary for HTTP request/response payloads.
 - internal/infra/blob/fs/store.go: JSON boundary for blob metadata sidecars.
@@ -107,7 +108,7 @@
 - [x] Update internal/ci/any_allowlist.json entries for Phase 3 layers.
 
 ## Legacy exceptions
-- [ ] Remove internal/core/rule_lifecycle_transition.go legacy any usage once domain.Change is typed; update allowlist accordingly.
+- [x] Remove internal/core/rule_lifecycle_transition.go legacy any usage once domain.Change is typed; update allowlist accordingly.
 
 ## Tests + benchmarks
 - [x] Run make lint and make test; add targeted package tests if needed.

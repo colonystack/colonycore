@@ -647,8 +647,8 @@ func (g *GenotypeMarker) UnmarshalJSON(data []byte) error {
 type Change struct {
 	Entity EntityType
 	Action Action
-	Before any
-	After  any
+	Before ChangePayload
+	After  ChangePayload
 }
 
 // Action indicates the type of modification performed.

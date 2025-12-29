@@ -349,8 +349,8 @@ func TestToPluginChangesEncodesPayloads(t *testing.T) {
 	changes := []domain.Change{{
 		Entity: domain.EntityOrganism,
 		Action: domain.ActionUpdate,
-		Before: map[string]any{"id": "o1"},
-		After:  map[string]any{"id": "o2"},
+		Before: mustChangePayload(t, map[string]any{"id": "o1"}),
+		After:  mustChangePayload(t, map[string]any{"id": "o2"}),
 	}}
 	converted := toPluginChanges(changes)
 	if len(converted) != 1 {
@@ -380,15 +380,18 @@ func TestToPluginChangesEncodesPayloads(t *testing.T) {
 	}
 }
 
-func TestEncodeChangePayloadFallbacks(t *testing.T) {
-	payload := encodeChangePayload(nil)
+func TestEncodeChangePayload(t *testing.T) {
+	payload := encodeChangePayload(domain.UndefinedChangePayload())
 	if payload.Defined() || payload.Raw() != nil {
 		t.Fatalf("expected nil payload to be undefined")
 	}
 
-	payload = encodeChangePayload(make(chan int))
-	if payload.Defined() || payload.Raw() != nil {
-		t.Fatalf("expected invalid payload to be undefined")
+	payload = encodeChangePayload(domain.NewChangePayload(nil))
+	if !payload.Defined() {
+		t.Fatalf("expected empty payload to be defined")
+	}
+	if payload.Raw() != nil {
+		t.Fatalf("expected empty payload to have nil raw bytes")
 	}
 }
 

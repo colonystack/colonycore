@@ -144,19 +144,6 @@
       ]
     },
     {
-      "path": "pkg/domain/entities.go",
-      "symbols": [
-        "Change"
-      ],
-      "category": "legacy-exception",
-      "public": false,
-      "rationale": "Change snapshots still use any pending typed ChangePayload; removal tracked in TODO.",
-      "owner": "core maintainers",
-      "refs": [
-        "docs/annex/0004-typing-guidelines.md"
-      ]
-    },
-    {
       "path": "pkg/domain/entitymodel/model_gen.go",
       "category": "json-boundary",
       "public": false,
@@ -310,16 +297,6 @@
       "category": "third-party-shim",
       "public": false,
       "rationale": "expvar.Func requires func() any; shim to the stdlib expvar API.",
-      "owner": "core maintainers",
-      "refs": [
-        "docs/annex/0004-typing-guidelines.md"
-      ]
-    },
-    {
-      "path": "internal/core/rule_lifecycle_transition.go",
-      "category": "legacy-exception",
-      "public": false,
-      "rationale": "Depends on domain.Change Before/After using any; removal tracked in the migration backlog once typed change payloads land.",
       "owner": "core maintainers",
       "refs": [
         "docs/annex/0004-typing-guidelines.md"

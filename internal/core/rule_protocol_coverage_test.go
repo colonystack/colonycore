@@ -54,7 +54,7 @@ func TestProtocolCoverageOrganismMismatch(t *testing.T) {
 	}}
 
 	_ = store.View(ctx, func(v domain.TransactionView) error {
-		res, evalErr := rule.Evaluate(ctx, v, []domain.Change{{Entity: domain.EntityProcedure, After: procedure}})
+		res, evalErr := rule.Evaluate(ctx, v, []domain.Change{{Entity: domain.EntityProcedure, After: mustChangePayload(t, procedure)}})
 		if evalErr != nil {
 			t.Fatalf("evaluate protocol coverage: %v", evalErr)
 		}
@@ -120,7 +120,7 @@ func TestProtocolCoverageTreatmentBlocksPendingProtocol(t *testing.T) {
 	}}
 
 	_ = store.View(ctx, func(v domain.TransactionView) error {
-		res, evalErr := rule.Evaluate(ctx, v, []domain.Change{{Entity: domain.EntityTreatment, After: treatment}})
+		res, evalErr := rule.Evaluate(ctx, v, []domain.Change{{Entity: domain.EntityTreatment, After: mustChangePayload(t, treatment)}})
 		if evalErr != nil {
 			t.Fatalf("evaluate protocol coverage: %v", evalErr)
 		}
@@ -144,7 +144,7 @@ func TestProtocolCoverageProcedureMissingProtocol(t *testing.T) {
 	}}
 
 	_ = store.View(ctx, func(v domain.TransactionView) error {
-		res, err := rule.Evaluate(ctx, v, []domain.Change{{Entity: domain.EntityProcedure, After: procedure}})
+		res, err := rule.Evaluate(ctx, v, []domain.Change{{Entity: domain.EntityProcedure, After: mustChangePayload(t, procedure)}})
 		if err != nil {
 			t.Fatalf("evaluate protocol coverage: %v", err)
 		}
@@ -169,7 +169,7 @@ func TestProtocolCoverageProcedureUnknownProtocol(t *testing.T) {
 	}}
 
 	_ = store.View(ctx, func(v domain.TransactionView) error {
-		res, err := rule.Evaluate(ctx, v, []domain.Change{{Entity: domain.EntityProcedure, After: procedure}})
+		res, err := rule.Evaluate(ctx, v, []domain.Change{{Entity: domain.EntityProcedure, After: mustChangePayload(t, procedure)}})
 		if err != nil {
 			t.Fatalf("evaluate protocol coverage: %v", err)
 		}
@@ -214,7 +214,7 @@ func TestProtocolCoverageProcedureUnknownOrganism(t *testing.T) {
 	}}
 
 	_ = store.View(ctx, func(v domain.TransactionView) error {
-		res, evalErr := rule.Evaluate(ctx, v, []domain.Change{{Entity: domain.EntityProcedure, After: procedure}})
+		res, evalErr := rule.Evaluate(ctx, v, []domain.Change{{Entity: domain.EntityProcedure, After: mustChangePayload(t, procedure)}})
 		if evalErr != nil {
 			t.Fatalf("evaluate protocol coverage: %v", evalErr)
 		}
@@ -237,7 +237,7 @@ func TestProtocolCoverageTreatmentMissingProcedure(t *testing.T) {
 	}}
 
 	_ = store.View(ctx, func(v domain.TransactionView) error {
-		res, err := rule.Evaluate(ctx, v, []domain.Change{{Entity: domain.EntityTreatment, After: treatment}})
+		res, err := rule.Evaluate(ctx, v, []domain.Change{{Entity: domain.EntityTreatment, After: mustChangePayload(t, treatment)}})
 		if err != nil {
 			t.Fatalf("evaluate protocol coverage: %v", err)
 		}
@@ -261,7 +261,7 @@ func TestProtocolCoverageTreatmentUnknownProcedure(t *testing.T) {
 	}}
 
 	_ = store.View(ctx, func(v domain.TransactionView) error {
-		res, err := rule.Evaluate(ctx, v, []domain.Change{{Entity: domain.EntityTreatment, After: treatment}})
+		res, err := rule.Evaluate(ctx, v, []domain.Change{{Entity: domain.EntityTreatment, After: mustChangePayload(t, treatment)}})
 		if err != nil {
 			t.Fatalf("evaluate protocol coverage: %v", err)
 		}
@@ -298,7 +298,7 @@ func TestProtocolCoverageTreatmentProcedureMissingProtocol(t *testing.T) {
 	}}
 
 	_ = store.View(ctx, func(v domain.TransactionView) error {
-		res, err := rule.Evaluate(ctx, v, []domain.Change{{Entity: domain.EntityTreatment, After: treatment}})
+		res, err := rule.Evaluate(ctx, v, []domain.Change{{Entity: domain.EntityTreatment, After: mustChangePayload(t, treatment)}})
 		if err != nil {
 			t.Fatalf("evaluate protocol coverage: %v", err)
 		}
@@ -352,7 +352,7 @@ func TestProtocolCoverageTreatmentUnknownOrganism(t *testing.T) {
 	}}
 
 	_ = store.View(ctx, func(v domain.TransactionView) error {
-		res, evalErr := rule.Evaluate(ctx, v, []domain.Change{{Entity: domain.EntityTreatment, After: treatment}})
+		res, evalErr := rule.Evaluate(ctx, v, []domain.Change{{Entity: domain.EntityTreatment, After: mustChangePayload(t, treatment)}})
 		if evalErr != nil {
 			t.Fatalf("evaluate protocol coverage: %v", evalErr)
 		}
@@ -430,7 +430,7 @@ func TestProtocolCoverageTreatmentOrganismProtocolMismatch(t *testing.T) {
 	}}
 
 	_ = store.View(ctx, func(v domain.TransactionView) error {
-		res, evalErr := rule.Evaluate(ctx, v, []domain.Change{{Entity: domain.EntityTreatment, After: treatment}})
+		res, evalErr := rule.Evaluate(ctx, v, []domain.Change{{Entity: domain.EntityTreatment, After: mustChangePayload(t, treatment)}})
 		if evalErr != nil {
 			t.Fatalf("evaluate protocol coverage: %v", evalErr)
 		}
@@ -465,14 +465,14 @@ func TestProtocolCoverageIgnoresNilChanges(t *testing.T) {
 	})
 }
 
-func TestProtocolCoverageSkipsInvalidTypes(t *testing.T) {
+func TestProtocolCoverageSkipsInvalidPayload(t *testing.T) {
 	ctx := context.Background()
 	store := NewMemoryStore(NewRulesEngine())
 	rule := ProtocolCoverageRule()
 
 	changeSet := []domain.Change{
-		{Entity: domain.EntityProcedure, After: domain.Treatment{}},
-		{Entity: domain.EntityTreatment, After: domain.Procedure{}},
+		{Entity: domain.EntityProcedure, After: domain.NewChangePayload([]byte("{"))},
+		{Entity: domain.EntityTreatment, After: domain.NewChangePayload([]byte("{"))},
 	}
 
 	_ = store.View(ctx, func(v domain.TransactionView) error {

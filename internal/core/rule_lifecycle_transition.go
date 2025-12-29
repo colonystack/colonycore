@@ -18,7 +18,7 @@ type lifecycleMachine struct {
 	label     string
 	terminal  map[string]struct{}
 	valid     map[string]struct{}
-	extractor func(model any) (id string, state string, ok bool)
+	extractor func(payload domain.ChangePayload) (id string, state string, ok bool)
 }
 
 var lifecycleMachines = map[domain.EntityType]lifecycleMachine{
@@ -34,12 +34,12 @@ var lifecycleMachines = map[domain.EntityType]lifecycleMachine{
 			string(domain.StageRetired),
 			string(domain.StageDeceased),
 		),
-		extractor: func(model any) (string, string, bool) {
-			cast, ok := model.(domain.Organism)
+		extractor: func(payload domain.ChangePayload) (string, string, bool) {
+			organism, ok := decodeChangePayload[domain.Organism](payload)
 			if !ok {
 				return "", "", false
 			}
-			return cast.ID, string(cast.Stage), true
+			return organism.ID, string(organism.Stage), true
 		},
 	},
 	domain.EntityHousingUnit: {
@@ -52,12 +52,12 @@ var lifecycleMachines = map[domain.EntityType]lifecycleMachine{
 			string(domain.HousingStateCleaning),
 			string(domain.HousingStateDecommissioned),
 		),
-		extractor: func(model any) (string, string, bool) {
-			cast, ok := model.(domain.HousingUnit)
+		extractor: func(payload domain.ChangePayload) (string, string, bool) {
+			housing, ok := decodeChangePayload[domain.HousingUnit](payload)
 			if !ok {
 				return "", "", false
 			}
-			return cast.ID, string(cast.State), true
+			return housing.ID, string(housing.State), true
 		},
 	},
 	domain.EntityProcedure: {
@@ -71,12 +71,12 @@ var lifecycleMachines = map[domain.EntityType]lifecycleMachine{
 			string(domain.ProcedureStatusCancelled),
 			string(domain.ProcedureStatusFailed),
 		),
-		extractor: func(model any) (string, string, bool) {
-			cast, ok := model.(domain.Procedure)
+		extractor: func(payload domain.ChangePayload) (string, string, bool) {
+			procedure, ok := decodeChangePayload[domain.Procedure](payload)
 			if !ok {
 				return "", "", false
 			}
-			return cast.ID, string(cast.Status), true
+			return procedure.ID, string(procedure.Status), true
 		},
 	},
 	domain.EntityTreatment: {
@@ -89,12 +89,12 @@ var lifecycleMachines = map[domain.EntityType]lifecycleMachine{
 			string(domain.TreatmentStatusCompleted),
 			string(domain.TreatmentStatusFlagged),
 		),
-		extractor: func(model any) (string, string, bool) {
-			cast, ok := model.(domain.Treatment)
+		extractor: func(payload domain.ChangePayload) (string, string, bool) {
+			treatment, ok := decodeChangePayload[domain.Treatment](payload)
 			if !ok {
 				return "", "", false
 			}
-			return cast.ID, string(cast.Status), true
+			return treatment.ID, string(treatment.Status), true
 		},
 	},
 	domain.EntityProtocol: {
@@ -109,12 +109,12 @@ var lifecycleMachines = map[domain.EntityType]lifecycleMachine{
 			string(domain.ProtocolStatusExpired),
 			string(domain.ProtocolStatusArchived),
 		),
-		extractor: func(model any) (string, string, bool) {
-			cast, ok := model.(domain.Protocol)
+		extractor: func(payload domain.ChangePayload) (string, string, bool) {
+			protocol, ok := decodeChangePayload[domain.Protocol](payload)
 			if !ok {
 				return "", "", false
 			}
-			return cast.ID, string(cast.Status), true
+			return protocol.ID, string(protocol.Status), true
 		},
 	},
 	domain.EntityPermit: {
@@ -129,12 +129,12 @@ var lifecycleMachines = map[domain.EntityType]lifecycleMachine{
 			string(domain.PermitStatusExpired),
 			string(domain.PermitStatusArchived),
 		),
-		extractor: func(model any) (string, string, bool) {
-			cast, ok := model.(domain.Permit)
+		extractor: func(payload domain.ChangePayload) (string, string, bool) {
+			permit, ok := decodeChangePayload[domain.Permit](payload)
 			if !ok {
 				return "", "", false
 			}
-			return cast.ID, string(cast.Status), true
+			return permit.ID, string(permit.Status), true
 		},
 	},
 	domain.EntitySample: {
@@ -147,12 +147,12 @@ var lifecycleMachines = map[domain.EntityType]lifecycleMachine{
 			string(domain.SampleStatusConsumed),
 			string(domain.SampleStatusDisposed),
 		),
-		extractor: func(model any) (string, string, bool) {
-			cast, ok := model.(domain.Sample)
+		extractor: func(payload domain.ChangePayload) (string, string, bool) {
+			sample, ok := decodeChangePayload[domain.Sample](payload)
 			if !ok {
 				return "", "", false
 			}
-			return cast.ID, string(cast.Status), true
+			return sample.ID, string(sample.Status), true
 		},
 	},
 }
@@ -168,25 +168,20 @@ func (lifecycleTransitionRule) Evaluate(_ context.Context, view domain.RuleView,
 			continue
 		}
 
-		if change.After != nil {
-			if _, newState, ok := machine.extractor(change.After); ok {
-				if _, valid := machine.valid[newState]; !valid {
-					id := entityID(change.After)
-					res.Violations = append(res.Violations, domain.Violation{
-						Rule:     "lifecycle_transition",
-						Severity: domain.SeverityBlock,
-						Message:  fmt.Sprintf("%s %s is set to invalid state %s", machine.label, id, newState),
-						Entity:   machine.entity,
-						EntityID: id,
-					})
-					continue
-				}
+		afterID, newState, ok := machine.extractor(change.After)
+		if ok {
+			if _, valid := machine.valid[newState]; !valid {
+				res.Violations = append(res.Violations, domain.Violation{
+					Rule:     "lifecycle_transition",
+					Severity: domain.SeverityBlock,
+					Message:  fmt.Sprintf("%s %s is set to invalid state %s", machine.label, afterID, newState),
+					Entity:   machine.entity,
+					EntityID: afterID,
+				})
+				continue
 			}
 		}
 
-		if change.Before == nil || change.After == nil {
-			continue
-		}
 		beforeID, beforeState, ok := machine.extractor(change.Before)
 		if !ok {
 			continue
@@ -217,25 +212,4 @@ func toSet(values ...string) map[string]struct{} {
 		set[v] = struct{}{}
 	}
 	return set
-}
-
-func entityID(model any) string {
-	switch v := model.(type) {
-	case domain.Organism:
-		return v.ID
-	case domain.HousingUnit:
-		return v.ID
-	case domain.Procedure:
-		return v.ID
-	case domain.Treatment:
-		return v.ID
-	case domain.Protocol:
-		return v.ID
-	case domain.Permit:
-		return v.ID
-	case domain.Sample:
-		return v.ID
-	default:
-		return ""
-	}
 }
