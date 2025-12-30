@@ -44,7 +44,7 @@ jobs:
       - name: Install APT packages
         uses: awalsh128/cache-apt-pkgs-action@v1
         with:
-          packages: r-base libblas3 libcurl4-openssl-dev libxml2-dev libxslt1-dev pkg-config
+          packages: r-base libblas3 libopenblas0-pthread libcurl4-openssl-dev libxml2-dev libxslt1-dev pkg-config
           version: 1
 
       - name: Install tooling
