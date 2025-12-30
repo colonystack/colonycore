@@ -11,6 +11,10 @@ if [ ! -f "$BASELINE" ]; then
   echo "missing baseline file: $BASELINE" >&2
   exit 1
 fi
+if [ ! -f "$PR_RESULTS" ]; then
+  echo "missing PR results file: $PR_RESULTS" >&2
+  exit 1
+fi
 
 mkdir -p "$(dirname "$OUTPUT")"
 

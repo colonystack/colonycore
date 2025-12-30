@@ -11,7 +11,7 @@ type ChangePayload struct {
 
 // NewChangePayload builds a payload wrapper from raw JSON. The bytes are cloned
 // to prevent callers from mutating shared state. Passing a nil slice yields a
-// undefined/uninitialized payload).
+// undefined/uninitialized payload.
 func NewChangePayload(raw json.RawMessage) ChangePayload {
 	payload := ChangePayload{defined: true}
 	if raw != nil {
@@ -49,7 +49,8 @@ func (p ChangePayload) IsEmpty() bool {
 }
 
 // Raw returns a cloned copy of the underlying JSON bytes. Nil is returned when
-// the payload is undefined or empty.
+// the payload is undefined or explicitly set to empty JSON; use Defined() and
+// IsEmpty() to distinguish those cases.
 func (p ChangePayload) Raw() json.RawMessage {
 	if !p.defined || len(p.raw) == 0 {
 		return nil

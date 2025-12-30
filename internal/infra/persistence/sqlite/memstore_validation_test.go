@@ -10,6 +10,8 @@ import (
 	entitymodel "colonycore/pkg/domain/entitymodel"
 )
 
+const changedValue = "changed"
+
 func TestMemStoreCloneOptionalFields(t *testing.T) {
 	now := time.Now().UTC()
 	const (

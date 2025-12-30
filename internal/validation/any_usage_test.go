@@ -292,7 +292,7 @@ func TestValidateAnyUsageRejectsNonDirectoryRoot(t *testing.T) {
 	}
 }
 
-func TestValidateAnyUsageSkipsEmptyRoot(t *testing.T) {
+func TestValidateAnyUsageSkipsEmptyStringRoot(t *testing.T) {
 	allowlist := AnyAllowlist{Version: 1}
 	violations, err := ValidateAnyUsage(allowlist, t.TempDir(), []string{""})
 	if err != nil {

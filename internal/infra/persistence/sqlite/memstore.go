@@ -1157,7 +1157,6 @@ type transaction struct {
 	state   memoryState
 	changes []Change
 	now     time.Time
-	err     error
 }
 type transactionView struct{ state *memoryState }
 
@@ -1345,9 +1344,6 @@ func (s *memStore) RunInTransaction(ctx context.Context, fn func(tx Transaction)
 	tx := &transaction{store: s, state: s.state.clone(), now: s.nowFn()}
 	if err := fn(tx); err != nil {
 		return Result{}, err
-	}
-	if tx.err != nil {
-		return Result{}, tx.err
 	}
 	var result Result
 	if s.engine != nil {

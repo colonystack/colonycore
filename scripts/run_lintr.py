@@ -53,7 +53,13 @@ def main() -> int:
     """
     Run R dependency setup and optionally execute lintr for the repository's R clients.
     
-    Performs these actions: locates Rscript, prepares a user R library, ensures required R packages and versions are present (installing them if allowed), and when not run in setup-only mode, runs lintr::lint_dir on clients/R. Behavior can be influenced via environment variables:
+    Performs these actions:
+    - Locates Rscript
+    - Prepares a user R library
+    - Ensures required R packages and versions are present (installing them if allowed)
+    - When not run in setup-only mode, runs lintr::lint_dir on clients/R
+    
+    Behavior can be influenced via environment variables:
     - LINTR_REPO: R repository URL hint (default: https://cloud.r-project.org)
     - LINTR_SKIP_AUTO_INSTALL: when truthy, skip automatic installation of missing/mismatched packages
     - R_LIBS_USER: user R library directory (defaults to .cache/R-lintr under the repo root)
@@ -100,6 +106,11 @@ def main() -> int:
         f'required <- c({required_assignments})',
         'check_required <- function(required, lib_dir) {',
         '  vapply(names(required), function(pkg) {',
+        '    # If pkg is already loaded from a previous run, ensure it comes from lib_dir.',
+        '    # We compare pkg_path against lib_dir (via startsWith) and, if it is outside,',
+        '    # attempt unloadNamespace(pkg) so requireNamespace reloads from the intended lib_dir.',
+        '    # On unload_error, we log and warn if reloaded_path still points elsewhere; we continue',
+        '    # so later requireNamespace calls may still use the wrong library path.',
         '    if (pkg %in% loadedNamespaces()) {',
         '      pkg_path <- tryCatch(getNamespaceInfo(pkg, "path"), error = function(err) "")',
         '      if (nzchar(lib_dir) && nzchar(pkg_path) && !startsWith(pkg_path, lib_dir)) {',

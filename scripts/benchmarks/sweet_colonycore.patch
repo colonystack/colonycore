@@ -26,7 +26,7 @@ diff --git a/sweet/harnesses/colonycore.go b/sweet/harnesses/colonycore.go
 new file mode 100644
 --- /dev/null
 +++ b/sweet/harnesses/colonycore.go
-@@ -0,0 +1,96 @@
+@@ -0,0 +1,117 @@
 +package harnesses
 +
 +import (
@@ -41,18 +41,42 @@ new file mode 100644
 +	"golang.org/x/benchmarks/sweet/common/log"
 +)
 +
-+const colonycoreBenchRegex = "^(BenchmarkDeepCloneAttributes|BenchmarkExtensionPayloadMap|BenchmarkCloneValueNested|BenchmarkObjectPayloadMap|BenchmarkExtensionSetRaw)$"
++// Keep this broad so new benchmarks are captured if they follow the naming convention.
++// If you add a benchmark without Clone/Payload/Extension in its name, update this regex.
++const colonycoreBenchRegex = "^Benchmark.*(Clone|Payload|Extension).*"
 +
 +type ColonyCore struct{}
 +
++// CheckPrerequisites is intentionally minimal because the harness runs against an existing
++// checkout referenced by COLONYCORE_REPO_ROOT; we only validate the required inputs.
 +func (ColonyCore) CheckPrerequisites() error {
++	repoRoot := os.Getenv("COLONYCORE_REPO_ROOT")
++	if repoRoot == "" {
++		return fmt.Errorf("COLONYCORE_REPO_ROOT is not set")
++	}
++	absRoot, err := filepath.Abs(repoRoot)
++	if err != nil {
++		return fmt.Errorf("COLONYCORE_REPO_ROOT %q could not be resolved: %w", repoRoot, err)
++	}
++	info, err := os.Stat(absRoot)
++	if err != nil {
++		return fmt.Errorf("COLONYCORE_REPO_ROOT %q is not accessible: %w", absRoot, err)
++	}
++	if !info.IsDir() {
++		return fmt.Errorf("COLONYCORE_REPO_ROOT %q is not a directory", absRoot)
++	}
++	if _, err := exec.LookPath("go"); err != nil {
++		return fmt.Errorf("go binary not found on PATH: %w", err)
++	}
 +	return nil
 +}
 +
++// Get is a no-op because the harness expects an already-cloned repo via COLONYCORE_REPO_ROOT.
 +func (ColonyCore) Get(_ *common.GetConfig) error {
 +	return nil
 +}
 +
++// Build is a no-op because the harness runs benchmarks directly via `go test`.
 +func (ColonyCore) Build(_ *common.Config, _ *common.BuildConfig) error {
 +	return nil
 +}
@@ -62,9 +86,6 @@ new file mode 100644
 +	defer cancel()
 +
 +	repoRoot := os.Getenv("COLONYCORE_REPO_ROOT")
-+	if repoRoot == "" {
-+		return fmt.Errorf("COLONYCORE_REPO_ROOT is not set")
-+	}
 +
 +	goTool := "go"
 +	if cfg.GoRoot != "" {

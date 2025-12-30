@@ -1,6 +1,9 @@
 package datasetapi
 
-import "slices"
+import (
+	"fmt"
+	"slices"
+)
 
 // ExtensionSet exposes read-only extension payloads grouped by hook and plugin.
 // Use the contextual helper interfaces (ExtensionHookContext, ExtensionContributorContext)
@@ -126,7 +129,11 @@ func cloneRaw(raw map[string]map[string]map[string]any) map[string]map[string]ma
 				cloned[plugin] = nil
 				continue
 			}
-			clone, _ := cloneValue(value).(map[string]any)
+			clonedValue := cloneValue(value)
+			clone, ok := clonedValue.(map[string]any)
+			if !ok {
+				panic(fmt.Sprintf("extension payload for hook %q plugin %q must be map[string]any, got %T", hook, plugin, clonedValue))
+			}
 			cloned[plugin] = clone
 		}
 		out[hook] = cloned

@@ -368,7 +368,9 @@ func collectAnyUsages(file *ast.File, constraints []typeParamRange) []anyUsage {
 	var stack []ast.Node
 	ast.Inspect(file, func(n ast.Node) bool {
 		if n == nil {
-			stack = stack[:len(stack)-1]
+			if len(stack) > 0 {
+				stack = stack[:len(stack)-1]
+			}
 			return true
 		}
 		stack = append(stack, n)
