@@ -20,7 +20,7 @@ diff --git a/sweet/cmd/sweet/benchmark.go b/sweet/cmd/sweet/benchmark.go
 +		generator:   generators.None{},
 +	},
  }
-
+ 
  var allBenchmarksMap = func() map[string]*benchmark {
 diff --git a/sweet/harnesses/colonycore.go b/sweet/harnesses/colonycore.go
 new file mode 100644

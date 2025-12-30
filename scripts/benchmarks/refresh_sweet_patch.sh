@@ -19,7 +19,7 @@ git -C "$SWEET_WORK_DIR" add -N "$SWEET_PATCH_TARGET"
 
 tmp_patch="$(mktemp "${PATCH_FILE}.XXXXXX")"
 trap 'test -n "$tmp_patch" && rm -f "$tmp_patch"' EXIT INT TERM
-git -C "$SWEET_WORK_DIR" diff --no-color -U3 | sed -e '/^index /d' -e 's/[[:space:]]*$//' > "$tmp_patch"
+git -C "$SWEET_WORK_DIR" diff --no-color -U3 | sed '/^index /d' > "$tmp_patch"
 
 if [ ! -s "$tmp_patch" ]; then
   echo "generated patch is empty; refusing to overwrite ${PATCH_FILE}" >&2

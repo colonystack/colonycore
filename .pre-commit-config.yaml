@@ -13,7 +13,11 @@ repos:
       - id: end-of-file-fixer
         exclude: .*(\.md|\.MD)$
       - id: trailing-whitespace
-        exclude: .*(\.md|\.MD)$
+        exclude: |
+          (?x)(
+            (\.md|\.MD)$|
+            \.patch$
+          )
       - id: check-yaml
 
   - repo: https://github.com/gitleaks/gitleaks
