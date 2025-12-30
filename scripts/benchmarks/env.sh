@@ -25,6 +25,7 @@ PATCH_FILE="${PATCH_FILE:-$ROOT_DIR/scripts/benchmarks/sweet_colonycore.patch}"
 SWEET_PATCH_TARGET="${SWEET_PATCH_TARGET:-sweet}"
 SWEET_OVERLAY_DIR="${SWEET_OVERLAY_DIR:-$ROOT_DIR/scripts/benchmarks/sweet_overlays}"
 
+# ensure_sweet_repo_exists_and_checkout ensures a local copy of the benchmarks repository exists at `repo_dir`, fetches the specified `commit` if necessary, and checks out that commit (optional `repo_url` defaults to `BENCHMARKS_REPO`).
 ensure_sweet_repo_exists_and_checkout() {
   local repo_dir="$1"
   local commit="$2"
@@ -49,6 +50,7 @@ ensure_sweet_repo_exists_and_checkout() {
   }
 }
 
+# apply_sweet_overlays copies files from overlay_dir into work_dir, creating parent directories as needed and writing files that end with `.tmpl` with the `.tmpl` suffix removed; if overlay_dir does not exist the function does nothing and returns success.
 apply_sweet_overlays() {
   local work_dir="$1"
   local overlay_dir="${2:-$SWEET_OVERLAY_DIR}"
@@ -69,6 +71,8 @@ apply_sweet_overlays() {
   done < <(find "$overlay_dir" -type f -print0)
 }
 
+# verify_sweet_overlay_matches_patch compares overlay files in overlay_dir to the files in work_dir to ensure the patched Sweet tree matches the overlays.
+# Takes work_dir and an optional overlay_dir (defaults to SWEET_OVERLAY_DIR). Prints errors to stderr for any missing or differing files and returns non-zero if any mismatches are found.
 verify_sweet_overlay_matches_patch() {
   local work_dir="$1"
   local overlay_dir="${2:-$SWEET_OVERLAY_DIR}"

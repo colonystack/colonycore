@@ -63,7 +63,8 @@ type Change struct {
 }
 
 // NewChange constructs an immutable Change for use by the host when adapting
-// domain transactions for plugin rule evaluation.
+// NewChange constructs an immutable Change representing a mutation to an entity for plugin rule evaluation.
+// It uses the raw values of the provided entity and action refs and clones the before and after ChangePayloads.
 func NewChange(entity EntityTypeRef, action ActionRef, before, after ChangePayload) Change {
 	return Change{
 		entity: entity.Value(),

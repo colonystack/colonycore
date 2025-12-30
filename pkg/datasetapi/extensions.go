@@ -13,7 +13,11 @@ type ExtensionSet interface {
 	Raw() map[string]map[string]map[string]any
 }
 
-// NewExtensionSet constructs a defensive copy of the provided raw payload.
+// NewExtensionSet creates an ExtensionSet backed by a defensive deep copy of the supplied raw payload.
+// The `raw` map is expected to be a three-level map keyed by hook, then plugin, then payload data.
+// The returned ExtensionSet is immutable from the caller's perspective: subsequent modifications to
+// the original `raw` map do not affect the created set. If `raw` is nil or empty, the returned set
+// contains no payloads.
 func NewExtensionSet(raw map[string]map[string]map[string]any) ExtensionSet {
 	payload := cloneRaw(raw)
 	return &extensionSet{payload: payload}
@@ -100,6 +104,12 @@ func (s *extensionSet) Raw() map[string]map[string]map[string]any {
 	return cloneRaw(s.payload)
 }
 
+// cloneRaw returns a deep copy of the provided three-level payload map.
+//
+// cloneRaw returns nil if the input is empty. It preserves nil entries for hooks
+// or plugins: a hook with no plugins becomes a nil map, and a plugin with a nil
+// value remains nil. Non-nil plugin values are deep-cloned via cloneValue and
+// asserted to map[string]any in the result.
 func cloneRaw(raw map[string]map[string]map[string]any) map[string]map[string]map[string]any {
 	if len(raw) == 0 {
 		return nil

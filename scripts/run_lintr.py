@@ -29,6 +29,16 @@ REQUIRED_R_PACKAGES: dict[str, str] = {
 
 
 def _parse_args() -> argparse.Namespace:
+    """
+    Parse command-line arguments for the lintr runner.
+    
+    The returned namespace contains the parsed CLI options:
+    - `setup_only`: `True` when dependencies should be installed/verified without running linters.
+    - `paths`: list of positional path arguments provided by the user.
+    
+    Returns:
+        argparse.Namespace: Namespace with `setup_only` (bool) and `paths` (list[str]).
+    """
     parser = argparse.ArgumentParser(description="Run lintr against the R client helpers.")
     parser.add_argument(
         "--setup-only",
@@ -40,6 +50,18 @@ def _parse_args() -> argparse.Namespace:
 
 
 def main() -> int:
+    """
+    Run R dependency setup and optionally execute lintr for the repository's R clients.
+    
+    Performs these actions: locates Rscript, prepares a user R library, ensures required R packages and versions are present (installing them if allowed), and when not run in setup-only mode, runs lintr::lint_dir on clients/R. Behavior can be influenced via environment variables:
+    - LINTR_REPO: R repository URL hint (default: https://cloud.r-project.org)
+    - LINTR_SKIP_AUTO_INSTALL: when truthy, skip automatic installation of missing/mismatched packages
+    - R_LIBS_USER: user R library directory (defaults to .cache/R-lintr under the repo root)
+    - REQUIRE_R_LINT: when truthy, treat R runtime/shared-library detection errors as fatal
+    
+    Returns:
+        int: Exit code suitable for use as a process return value (0 on success; non-zero on failure).
+    """
     args = _parse_args()
     lint_enabled = not args.setup_only
     action_label = "R lint" if lint_enabled else "R lint setup"
