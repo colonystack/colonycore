@@ -2,6 +2,7 @@ package sqlite
 
 import (
 	"context"
+	"math"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -63,57 +64,76 @@ func TestSQLiteStorePersistMarshalError(t *testing.T) {
 }
 
 func TestSQLiteStoreLoadInvalidJSON(t *testing.T) {
+	for _, bucket := range sqliteBuckets {
+		t.Run(bucket, func(t *testing.T) {
+			dir := t.TempDir()
+			path := filepath.Join(dir, "load.db")
+			store, err := NewStore(path, domain.NewRulesEngine())
+			if err != nil {
+				t.Skipf("sqlite unavailable: %v", err)
+			}
+
+			if _, err := store.DB().Exec(`INSERT OR REPLACE INTO state(bucket,payload) VALUES(?,?)`, bucket, []byte("not-json")); err != nil {
+				t.Fatalf("inject invalid state: %v", err)
+			}
+			if err := store.DB().Close(); err != nil {
+				t.Fatalf("close db: %v", err)
+			}
+
+			_, err = NewStore(path, domain.NewRulesEngine())
+			if err == nil {
+				t.Fatalf("expected load error due to invalid json")
+			}
+			if !strings.Contains(err.Error(), "decode "+bucket) {
+				t.Fatalf("expected decode %s error, got %v", bucket, err)
+			}
+		})
+	}
+}
+
+func TestSQLiteStoreLoadAllBuckets(t *testing.T) {
 	dir := t.TempDir()
-	path := filepath.Join(dir, "load.db")
+	path := filepath.Join(dir, "load-all.db")
 	store, err := NewStore(path, domain.NewRulesEngine())
 	if err != nil {
 		t.Skipf("sqlite unavailable: %v", err)
 	}
+	t.Cleanup(func() { _ = store.DB().Close() })
 
-	ctx := context.Background()
-	now := time.Now().UTC()
-	_, err = store.RunInTransaction(ctx, func(tx domain.Transaction) error {
-		facility, err := tx.CreateFacility(domain.Facility{Facility: entitymodel.Facility{Name: "Lab"}})
-		if err != nil {
-			return err
+	for _, bucket := range sqliteBuckets {
+		if _, err := store.DB().Exec(`INSERT INTO state(bucket,payload) VALUES(?,?)`, bucket, []byte(`{}`)); err != nil {
+			t.Fatalf("insert %s: %v", bucket, err)
 		}
-		organism, err := tx.CreateOrganism(domain.Organism{Organism: entitymodel.Organism{Name: "Specimen", Species: "test"}})
-		if err != nil {
-			return err
-		}
-		_, err = tx.CreateSample(domain.Sample{Sample: entitymodel.Sample{Identifier: "S-1",
-			SourceType:      "organism",
-			OrganismID:      &organism.ID,
-			FacilityID:      facility.ID,
-			CollectedAt:     now,
-			Status:          domain.SampleStatusStored,
-			StorageLocation: "cold",
-			AssayType:       "chromatography",
-			ChainOfCustody: []domain.SampleCustodyEvent{{
-				Actor:     "tech",
-				Location:  "cold",
-				Timestamp: now,
-			}}},
-		})
-		return err
-	})
+	}
+
+	if err := store.load(); err != nil {
+		t.Fatalf("load all buckets: %v", err)
+	}
+}
+
+func TestSQLiteStorePersistMarshalErrorImportThenPersist(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "persist-state.db")
+	store, err := NewStore(path, domain.NewRulesEngine())
 	if err != nil {
-		t.Fatalf("seed transaction failed: %v", err)
+		t.Skipf("sqlite unavailable: %v", err)
 	}
+	t.Cleanup(func() { _ = store.DB().Close() })
 
-	if _, err := store.DB().Exec(`INSERT OR REPLACE INTO state(bucket,payload) VALUES(?,?)`, "samples", []byte("not-json")); err != nil {
-		t.Fatalf("inject invalid state: %v", err)
+	organism := domain.Organism{Organism: entitymodel.Organism{
+		ID:      "org-bad",
+		Name:    "Bad",
+		Species: "species",
+	}}
+	if err := organism.SetCoreAttributes(map[string]any{"score": math.NaN()}); err != nil {
+		t.Fatalf("set core attributes: %v", err)
 	}
-	if err := store.DB().Close(); err != nil {
-		t.Fatalf("close db: %v", err)
-	}
+	store.ImportState(Snapshot{Organisms: map[string]Organism{organism.ID: organism}})
 
-	_, err = NewStore(path, domain.NewRulesEngine())
-	if err == nil {
-		t.Fatalf("expected load error due to invalid json")
-	}
-	if !strings.Contains(err.Error(), "decode samples") {
-		t.Fatalf("expected decode samples error, got %v", err)
+	if err := store.persist(); err == nil {
+		t.Fatalf("expected persist marshal error")
+	} else if !strings.Contains(err.Error(), "unsupported value") {
+		t.Fatalf("expected unsupported value error, got %v", err)
 	}
 }
 

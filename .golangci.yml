@@ -59,6 +59,7 @@ linters:
             - github.com/jackc/pgx/v5/stdlib
             - image
             - io
+            - math
             - modernc.org/sqlite
             - net/http
             - net/url
@@ -115,12 +116,16 @@ linters:
             - github.com/aws/aws-sdk-go-v2/credentials
             - github.com/aws/aws-sdk-go-v2/service/s3
             - go/build
+            - go/ast
+            - go/parser
+            - go/token
             - runtime
             - io
             - net/http
             - net/http/httptest
             - os
             - path/filepath
+            - math
             - modernc.org/sqlite
             - sort
             - strconv

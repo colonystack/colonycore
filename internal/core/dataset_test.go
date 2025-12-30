@@ -2,6 +2,7 @@ package core
 
 import (
 	"context"
+	"encoding/json"
 	"strings"
 	"testing"
 	"time"
@@ -158,7 +159,7 @@ func TestDatasetValidateParametersCoercion(t *testing.T) {
 				{Name: "ratio", Type: "number"},
 				{Name: "flag", Type: "boolean"},
 				{Name: "as_of", Type: "timestamp"},
-				{Name: "note", Type: "string", Default: "n/a"},
+				{Name: "note", Type: "string", Default: json.RawMessage(`"n/a"`)},
 			},
 			Columns:       []datasetapi.Column{{Name: "value", Type: "string"}},
 			OutputFormats: []datasetapi.Format{formatProvider.JSON()},

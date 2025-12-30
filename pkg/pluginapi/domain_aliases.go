@@ -3,10 +3,7 @@
 // domain package.
 package pluginapi
 
-import (
-	"encoding/json"
-	"errors"
-)
+import "errors"
 
 // Severity captures rule outcomes exposed to plugins.
 type Severity string
@@ -57,22 +54,23 @@ const (
 // Change describes a mutation applied to an entity during a transaction. It is
 // immutable to plugin authors (fields unexported) and accessed via getter
 // methods to prevent accidental mutation of underlying state. Before/After are
-// snapshots (shallow copies) of the prior and new values.
+// JSON snapshots of the prior and new values.
 type Change struct {
 	entity EntityType
 	action Action
-	before any
-	after  any
+	before ChangePayload
+	after  ChangePayload
 }
 
 // NewChange constructs an immutable Change for use by the host when adapting
-// domain transactions for plugin rule evaluation.
-func NewChange(entity EntityTypeRef, action ActionRef, before, after any) Change {
+// NewChange constructs an immutable Change representing a mutation to an entity for plugin rule evaluation.
+// It uses the raw values of the provided entity and action refs and clones the before and after ChangePayloads.
+func NewChange(entity EntityTypeRef, action ActionRef, before, after ChangePayload) Change {
 	return Change{
 		entity: entity.Value(),
 		action: action.Value(),
-		before: snapshotValue(before),
-		after:  snapshotValue(after),
+		before: cloneChangePayload(before),
+		after:  cloneChangePayload(after),
 	}
 }
 
@@ -83,17 +81,17 @@ func (c Change) Entity() EntityType { return c.entity }
 func (c Change) Action() Action { return c.action }
 
 // Before returns the previous value (if any) of the entity. Treat as read-only.
-func (c Change) Before() any { return snapshotValue(c.before) }
+func (c Change) Before() ChangePayload { return cloneChangePayload(c.before) }
 
 // After returns the new value (if any) of the entity. Treat as read-only.
-func (c Change) After() any { return snapshotValue(c.after) }
+func (c Change) After() ChangePayload { return cloneChangePayload(c.after) }
 
 // ChangeBuilder provides a fluent interface for building changes.
 type ChangeBuilder struct {
 	entity EntityTypeRef
 	action ActionRef
-	before any
-	after  any
+	before ChangePayload
+	after  ChangePayload
 	built  bool
 }
 
@@ -121,7 +119,7 @@ func (cb *ChangeBuilder) WithAction(action ActionRef) *ChangeBuilder {
 }
 
 // WithBefore sets the before state.
-func (cb *ChangeBuilder) WithBefore(before any) *ChangeBuilder {
+func (cb *ChangeBuilder) WithBefore(before ChangePayload) *ChangeBuilder {
 	if cb.built {
 		panic("cannot modify builder after Build() is called")
 	}
@@ -130,7 +128,7 @@ func (cb *ChangeBuilder) WithBefore(before any) *ChangeBuilder {
 }
 
 // WithAfter sets the after state.
-func (cb *ChangeBuilder) WithAfter(after any) *ChangeBuilder {
+func (cb *ChangeBuilder) WithAfter(after ChangePayload) *ChangeBuilder {
 	if cb.built {
 		panic("cannot modify builder after Build() is called")
 	}
@@ -157,62 +155,9 @@ func (cb *ChangeBuilder) Build() (Change, error) {
 	return Change{
 		entity: cb.entity.Value(),
 		action: cb.action.Value(),
-		before: snapshotValue(cb.before),
-		after:  snapshotValue(cb.after),
+		before: cloneChangePayload(cb.before),
+		after:  cloneChangePayload(cb.after),
 	}, nil
-}
-
-// snapshotValue performs a best-effort defensive copy of common container types
-// to prevent plugin authors from mutating internal state through Change.Before/After.
-// It shallow-copies maps and slices and JSON round-trips other JSON-serializable
-// values (structs, basic types). Fallback returns the original value when copy
-// would be lossy or unsupported.
-func snapshotValue(v any) any {
-	if v == nil {
-		return nil
-	}
-	switch val := v.(type) {
-	case map[string]any:
-		cp := make(map[string]any, len(val))
-		for k, vv := range val {
-			cp[k] = snapshotValue(vv)
-		}
-		return cp
-	case []string:
-		cp := make([]string, len(val))
-		copy(cp, val)
-		return cp
-	case []any:
-		cp := make([]any, len(val))
-		for i, vv := range val {
-			cp[i] = snapshotValue(vv)
-		}
-		return cp
-	case []map[string]any:
-		cp := make([]map[string]any, len(val))
-		for i, m := range val {
-			if m == nil {
-				continue
-			}
-			cp[i] = snapshotValue(m).(map[string]any)
-		}
-		return cp
-	// Primitive scalars are safe to return directly (they are immutable values).
-	case string, bool,
-		int, int8, int16, int32, int64,
-		uint, uint8, uint16, uint32, uint64, uintptr,
-		float32, float64:
-		return val
-	}
-	b, err := json.Marshal(v)
-	if err != nil {
-		return v
-	}
-	var out any
-	if err := json.Unmarshal(b, &out); err != nil {
-		return v
-	}
-	return out
 }
 
 // Violation reports a failed rule evaluation.
@@ -548,11 +493,11 @@ func newViolationForTest(rule string, severity Severity, message string, entity 
 	}
 }
 
-func newChangeForTest(entity EntityType, action Action, before, after any) Change {
+func newChangeForTest(entity EntityType, action Action, before, after ChangePayload) Change {
 	return Change{
 		entity: entity,
 		action: action,
-		before: snapshotValue(before),
-		after:  snapshotValue(after),
+		before: cloneChangePayload(before),
+		after:  cloneChangePayload(after),
 	}
 }

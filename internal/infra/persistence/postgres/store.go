@@ -1000,6 +1000,14 @@ func insertGenotypeMarkers(ctx context.Context, exec execQuerier, markers map[st
 	return nil
 }
 
+// insertLines inserts or updates the provided lines and their associated genotype marker links.
+//
+// For each line it verifies that `GenotypeMarkerIDs` is not empty, deletes any existing
+// marker links for that line, marshals `DefaultAttributes` and `ExtensionOverrides` to JSON
+// (allowing null), upserts the line record, and then inserts the line→marker link rows.
+//
+// It returns an error if a line is missing required marker IDs, JSON marshaling fails, or any
+// database operation fails.
 func insertLines(ctx context.Context, exec execQuerier, lines map[string]domain.Line) error {
 	keys := sortedKeys(lines)
 	for _, id := range keys {
@@ -1018,12 +1026,8 @@ func insertLines(ctx context.Context, exec execQuerier, lines map[string]domain.
 		if err != nil {
 			return fmt.Errorf("marshal line extension_overrides: %w", err)
 		}
-		var deprecatedAt any
-		if line.DeprecatedAt != nil {
-			deprecatedAt = *line.DeprecatedAt
-		}
 		if _, err := exec.ExecContext(ctx, insertLineSQL,
-			line.ID, line.Code, line.Name, line.Origin, line.Description, defaultAttrs, overrides, deprecatedAt, line.DeprecationReason, line.CreatedAt, line.UpdatedAt,
+			line.ID, line.Code, line.Name, line.Origin, line.Description, defaultAttrs, overrides, line.DeprecatedAt, line.DeprecationReason, line.CreatedAt, line.UpdatedAt,
 		); err != nil {
 			return fmt.Errorf("insert line %s: %w", line.ID, err)
 		}
@@ -1036,6 +1040,11 @@ func insertLines(ctx context.Context, exec execQuerier, lines map[string]domain.
 	return nil
 }
 
+// insertStrains inserts or updates the given strains and their genotype marker links in the database.
+//
+// For each strain it validates that LineID is present, deletes any existing strain-marker links,
+// upserts the strain record, and then inserts links for each GenotypeMarkerID.
+// It returns an error if validation fails or any database operation returns an error.
 func insertStrains(ctx context.Context, exec execQuerier, strains map[string]domain.Strain) error {
 	keys := sortedKeys(strains)
 	for _, id := range keys {
@@ -1046,20 +1055,8 @@ func insertStrains(ctx context.Context, exec execQuerier, strains map[string]dom
 		if _, err := exec.ExecContext(ctx, deleteStrainMarkersSQL, strain.ID); err != nil {
 			return fmt.Errorf("clear strain %s markers: %w", strain.ID, err)
 		}
-		var description any
-		if strain.Description != nil {
-			description = *strain.Description
-		}
-		var generation any
-		if strain.Generation != nil {
-			generation = *strain.Generation
-		}
-		var retiredAt any
-		if strain.RetiredAt != nil {
-			retiredAt = *strain.RetiredAt
-		}
 		if _, err := exec.ExecContext(ctx, insertStrainSQL,
-			strain.ID, strain.Code, strain.Name, strain.LineID, description, generation, retiredAt, strain.RetirementReason, strain.CreatedAt, strain.UpdatedAt,
+			strain.ID, strain.Code, strain.Name, strain.LineID, strain.Description, strain.Generation, strain.RetiredAt, strain.RetirementReason, strain.CreatedAt, strain.UpdatedAt,
 		); err != nil {
 			return fmt.Errorf("insert strain %s: %w", strain.ID, err)
 		}
@@ -1319,6 +1316,10 @@ func insertSamples(ctx context.Context, exec execQuerier, samples map[string]dom
 	return nil
 }
 
+// insertSupplyItems inserts supply items and their facility and project associations into the database.
+// It validates each supply has at least one facility and one project, marshals nullable attributes,
+// clears existing supply->facility and supply->project links, and writes the supply row and new links.
+// Returns an error if validation fails or any exec operation (clear/insert) fails.
 func insertSupplyItems(ctx context.Context, exec execQuerier, supplies map[string]domain.SupplyItem) error {
 	keys := sortedKeys(supplies)
 	for _, id := range keys {
@@ -1339,12 +1340,8 @@ func insertSupplyItems(ctx context.Context, exec execQuerier, supplies map[strin
 		if err != nil {
 			return fmt.Errorf("marshal supply_item attributes: %w", err)
 		}
-		var expiresAt any
-		if s.ExpiresAt != nil {
-			expiresAt = *s.ExpiresAt
-		}
 		if _, err := exec.ExecContext(ctx, insertSupplySQL,
-			s.ID, s.SKU, s.Name, s.QuantityOnHand, s.Unit, s.ReorderLevel, s.Description, s.LotNumber, expiresAt, attrs, s.CreatedAt, s.UpdatedAt,
+			s.ID, s.SKU, s.Name, s.QuantityOnHand, s.Unit, s.ReorderLevel, s.Description, s.LotNumber, s.ExpiresAt, attrs, s.CreatedAt, s.UpdatedAt,
 		); err != nil {
 			return fmt.Errorf("insert supply_item %s: %w", s.ID, err)
 		}

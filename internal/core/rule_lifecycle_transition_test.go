@@ -17,7 +17,11 @@ func TestLifecycleTransitionBlocksTerminalExit(t *testing.T) {
 	after := domain.Organism{Organism: entitymodel.Organism{ID: "o1", Name: "Retired", Species: "frog", Line: "L1", Stage: entitymodel.LifecycleStageAdult}}
 
 	_ = store.View(ctx, func(v domain.TransactionView) error {
-		res, err := rule.Evaluate(ctx, v, []domain.Change{{Entity: domain.EntityOrganism, Before: before, After: after}})
+		res, err := rule.Evaluate(ctx, v, []domain.Change{{
+			Entity: domain.EntityOrganism,
+			Before: mustChangePayload(t, before),
+			After:  mustChangePayload(t, after),
+		}})
 		if err != nil {
 			t.Fatalf("evaluate lifecycle rule: %v", err)
 		}
@@ -42,7 +46,10 @@ func TestLifecycleTransitionInvalidState(t *testing.T) {
 	}}
 
 	_ = store.View(ctx, func(v domain.TransactionView) error {
-		res, err := rule.Evaluate(ctx, v, []domain.Change{{Entity: domain.EntityProcedure, After: invalid}})
+		res, err := rule.Evaluate(ctx, v, []domain.Change{{
+			Entity: domain.EntityProcedure,
+			After:  mustChangePayload(t, invalid),
+		}})
 		if err != nil {
 			t.Fatalf("evaluate lifecycle rule: %v", err)
 		}
@@ -53,35 +60,25 @@ func TestLifecycleTransitionInvalidState(t *testing.T) {
 	})
 }
 
-func TestLifecycleEntityIDHelperCoversTypes(t *testing.T) {
-	organismID := "org"
-	housingID := "house"
-	procedureID := "proc"
-	treatmentID := "treat"
-	protocolID := "proto"
-	permitID := "permit"
-	sampleID := "sample"
-	cases := []struct {
-		name  string
-		model any
-		want  string
-	}{
-		{"organism", domain.Organism{Organism: entitymodel.Organism{ID: organismID}}, organismID},
-		{"housing", domain.HousingUnit{HousingUnit: entitymodel.HousingUnit{ID: housingID}}, housingID},
-		{"procedure", domain.Procedure{Procedure: entitymodel.Procedure{ID: procedureID}}, procedureID},
-		{"treatment", domain.Treatment{Treatment: entitymodel.Treatment{ID: treatmentID}}, treatmentID},
-		{"protocol", domain.Protocol{Protocol: entitymodel.Protocol{ID: protocolID}}, protocolID},
-		{"permit", domain.Permit{Permit: entitymodel.Permit{ID: permitID}}, permitID},
-		{"sample", domain.Sample{Sample: entitymodel.Sample{ID: sampleID}}, sampleID},
-		{"unknown", struct{ ref string }{ref: "ignored"}, ""},
-	}
-	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			if got := entityID(tc.model); got != tc.want {
-				t.Fatalf("entityID(%s) = %s, want %s", tc.name, got, tc.want)
-			}
-		})
-	}
+func TestLifecycleTransitionSkipsInvalidPayload(t *testing.T) {
+	ctx := context.Background()
+	store := NewMemoryStore(NewRulesEngine())
+	rule := LifecycleTransitionRule()
+
+	invalid := domain.NewChangePayload([]byte("{"))
+	_ = store.View(ctx, func(v domain.TransactionView) error {
+		res, err := rule.Evaluate(ctx, v, []domain.Change{{
+			Entity: domain.EntityProcedure,
+			After:  invalid,
+		}})
+		if err != nil {
+			t.Fatalf("evaluate lifecycle rule: %v", err)
+		}
+		if len(res.Violations) != 0 {
+			t.Fatalf("expected invalid payload to be skipped, got %v", res.Violations)
+		}
+		return nil
+	})
 }
 
 func TestLifecycleTransitionRuleName(t *testing.T) {

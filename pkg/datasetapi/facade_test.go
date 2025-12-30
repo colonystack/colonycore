@@ -114,8 +114,8 @@ func TestOrganismFacadeReadOnly(t *testing.T) {
 	if !ok {
 		t.Fatal("expected organism extension payload")
 	}
-	corePayload.(map[string]any)["flag"] = false
-	if fresh, _ := extSet.Core(orgHook); fresh.(map[string]any)["flag"] != true {
+	corePayload.Map()["flag"] = false
+	if fresh, _ := extSet.Core(orgHook); fresh.Map()["flag"] != true {
 		t.Fatalf("expected extension payload clone to remain stable, got %+v", fresh)
 	}
 	payloadView := organism.CoreAttributesPayload()
@@ -131,8 +131,8 @@ func TestOrganismFacadeReadOnly(t *testing.T) {
 		t.Fatal("expected payload map clone to remain stable after mutation")
 	}
 	raw := extSet.Raw()
-	raw[orgHook.value()][corePlugin.value()].(map[string]any)["flag"] = false
-	if fresh, _ := extSet.Core(orgHook); fresh.(map[string]any)["flag"] != true {
+	raw[orgHook.value()][corePlugin.value()]["flag"] = false
+	if fresh, _ := extSet.Core(orgHook); fresh.Map()["flag"] != true {
 		t.Fatalf("expected raw mutation not to leak into stored payload")
 	}
 	if organism.ParentIDs()[0] != "p1" {
@@ -247,8 +247,8 @@ func TestBreedingProcedureFacadesCloneCollections(t *testing.T) {
 	if payload, ok := ext.Core(breedingHook); !ok {
 		t.Fatal("expected breeding unit extension payload")
 	} else {
-		payload.(map[string]any)["purpose"] = mutatedLiteral
-		if fresh, _ := ext.Core(breedingHook); fresh.(map[string]any)["purpose"] != pairingPurposeLineage {
+		payload.Map()["purpose"] = mutatedLiteral
+		if fresh, _ := ext.Core(breedingHook); fresh.Map()["purpose"] != pairingPurposeLineage {
 			t.Fatalf("expected breeding unit extension payload to be cloned, got %+v", fresh)
 		}
 	}
@@ -401,12 +401,22 @@ func TestProtocolProjectCohortFacades(t *testing.T) {
 	if len(project.FacilityIDs()) != 1 || len(project.ProtocolIDs()) != 1 || len(project.OrganismIDs()) != 1 || len(project.ProcedureIDs()) != 1 || len(project.SupplyItemIDs()) != 1 {
 		t.Fatalf("expected project relationships to round-trip")
 	}
-	projectProtocolIDs[0] = mutatedLiteral
-	projectOrganismIDs[0] = mutatedLiteral
-	projectProcedureIDs[0] = mutatedLiteral
-	projectSupplyIDs[0] = mutatedLiteral
-	if project.ProtocolIDs()[0] != "protocol-1" || project.OrganismIDs()[0] != "organism-1" || project.ProcedureIDs()[0] != "procedure-1" || project.SupplyItemIDs()[0] != "supply-1" {
-		t.Fatalf("expected project relationship slices to be cloned")
+
+	for i := range projectProtocolIDs {
+		projectProtocolIDs[i] = mutatedLiteral
+	}
+	projectFacilityIDs[0] = mutatedLiteral
+	for i := range projectOrganismIDs {
+		projectOrganismIDs[i] = mutatedLiteral
+	}
+	for i := range projectProcedureIDs {
+		projectProcedureIDs[i] = mutatedLiteral
+	}
+	for i := range projectSupplyIDs {
+		projectSupplyIDs[i] = mutatedLiteral
+	}
+	if project.FacilityIDs()[0] != "facility-1" || project.ProtocolIDs()[0] != "protocol-1" || project.OrganismIDs()[0] != "organism-1" || project.ProcedureIDs()[0] != "procedure-1" || project.SupplyItemIDs()[0] != "supply-1" {
+		t.Fatalf("expected project relationship slices to be cloned, including facilities")
 	}
 
 	housing := NewHousingUnit(HousingUnitData{
@@ -528,7 +538,7 @@ func TestExtendedFacades(t *testing.T) {
 	if payload, ok := facilityExt.Core(facilityHook); !ok {
 		t.Fatal("expected facility extension payload")
 	} else {
-		payload.(map[string]any)["temp"] = 30
+		payload.Map()["temp"] = 30
 		if facility.EnvironmentBaselines()["temp"] != 21 {
 			t.Fatal("expected facility baselines clone to remain stable after extension mutation")
 		}
@@ -624,7 +634,7 @@ func TestExtendedFacades(t *testing.T) {
 	if payload, ok := observation.Extensions().Core(hooks.ObservationData()); !ok {
 		t.Fatal("expected observation extension payload")
 	} else {
-		payload.(map[string]any)["score"] = 99
+		payload.Map()["score"] = 99
 		if observation.Data()["score"] != 1 {
 			t.Fatal("expected observation data clone to remain stable after extension mutation")
 		}
@@ -691,7 +701,7 @@ func TestExtendedFacades(t *testing.T) {
 	if payload, ok := sample.Extensions().Core(hooks.SampleAttributes()); !ok {
 		t.Fatal("expected sample extension payload")
 	} else {
-		payload.(map[string]any)["key"] = mutatedLiteral
+		payload.Map()["key"] = mutatedLiteral
 		if sample.Attributes()["key"] != coreAttributeValue {
 			t.Fatal("expected sample attribute clone to remain stable after extension mutation")
 		}
@@ -775,7 +785,7 @@ func TestExtendedFacades(t *testing.T) {
 	if payload, ok := supply.Extensions().Core(hooks.SupplyItemAttributes()); !ok {
 		t.Fatal("expected supply extension payload")
 	} else {
-		payload.(map[string]any)["key"] = mutatedLiteral
+		payload.Map()["key"] = mutatedLiteral
 		if supply.Attributes()["key"] != coreAttributeValue {
 			t.Fatal("expected supply attribute clone to remain stable after extension mutation")
 		}

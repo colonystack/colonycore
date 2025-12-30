@@ -4,6 +4,7 @@ package datasetapi
 
 import (
 	"context"
+	"encoding/json"
 	"time"
 )
 
@@ -96,14 +97,14 @@ type Scope struct {
 
 // Parameter declares a runtime-supplied template parameter.
 type Parameter struct {
-	Name        string   `json:"name"`
-	Type        string   `json:"type"`
-	Required    bool     `json:"required"`
-	Description string   `json:"description,omitempty"`
-	Unit        string   `json:"unit,omitempty"`
-	Enum        []string `json:"enum,omitempty"`
-	Example     any      `json:"example,omitempty"`
-	Default     any      `json:"default,omitempty"`
+	Name        string          `json:"name"`
+	Type        string          `json:"type"`
+	Required    bool            `json:"required"`
+	Description string          `json:"description,omitempty"`
+	Unit        string          `json:"unit,omitempty"`
+	Enum        []string        `json:"enum,omitempty"`
+	Example     json.RawMessage `json:"example,omitempty"`
+	Default     json.RawMessage `json:"default,omitempty"`
 }
 
 // Column describes a column returned by a dataset query.

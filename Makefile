@@ -1,10 +1,20 @@
 GOCACHE ?= $(CURDIR)/.cache/go-build
 COVERFILE ?= coverage.out
 COVERMODE ?= atomic
-GOLANGCI_VERSION ?= v2.5.0
+GOLANGCI_VERSION ?= v2.7.2
 BIN_DIR ?= $(CURDIR)/.cache/bin
 GOLANGCI_CACHE ?= $(CURDIR)/.cache/golangci-lint
 COVER_THRESHOLD ?= 90.0
+R_LINTR_CACHE ?= $(CURDIR)/.cache/R-lintr
+LINTR_REPO ?= https://cloud.r-project.org
+# Keep these in sync with scripts/run_lintr.py.
+LINTR_VERSION ?= 3.1.2
+XML2_VERSION ?= 1.3.6
+SWEET_VERSION ?= v0.0.0-20251208221949-523919e4e4f2
+SWEET_COMMIT ?= 523919e4e4f284a0c060e6e5e5ff7f6f521fa2ed
+BENCHSTAT_VERSION ?= v0.0.0-20251208221838-04cf7a2dca90
+BENCH_CONF ?= pr
+BENCH_COUNT ?= 10
 GOPATH_BIN := $(shell go env GOPATH)/bin
 GOLANGCI_BIN := $(GOPATH_BIN)/golangci-lint
 GOLANGCI_VERSION_PLAIN := $(patsubst v%,%,$(GOLANGCI_VERSION))
@@ -23,7 +33,7 @@ SCHEMASPY_PG_USER ?= postgres
 SCHEMASPY_PG_PASSWORD ?= postgres
 SCHEMASPY_PG_TIMEOUT ?= 60
 
-.PHONY: all build lint go-test test registry-check fmt-check vet registry-lint golangci golangci-install python-lint r-lint go-lint import-boss import-boss-install entity-model-validate entity-model-generate entity-model-verify entity-model-erd entity-model-diff entity-model-diff-update api-snapshots list-docker-images
+.PHONY: all build clean lint go-test test registry-check fmt-check vet registry-lint golangci golangci-install python-lint r-lint r-lint-setup r-lint-reset go-lint import-boss import-boss-install entity-model-validate entity-model-generate entity-model-verify entity-model-erd entity-model-diff entity-model-diff-update api-snapshots list-docker-images validate-any-usage benchmarks-run benchmarks-aggregate benchmarks-compare benchmarks-ci
 
 all: build
 
@@ -34,6 +44,9 @@ list-docker-images:
 build:
 	GOCACHE=$(GOCACHE) go build ./...
 
+clean:
+	rm -rf $(COVERFILE) coverage.summary $(CURDIR)/.cache $(CURDIR)/benchmarks/results $(CURDIR)/benchmarks/artifacts $(CURDIR)/cmd/registry-check/registry-check $(CURDIR)/dist $(CURDIR)/build $(CURDIR)/test_*.yaml $(CURDIR)/test_*.md
+
 registry-check:
 	GOCACHE=$(GOCACHE) go build -o cmd/registry-check/registry-check ./cmd/registry-check
 
@@ -43,6 +56,7 @@ lint:
 	@$(MAKE) --no-print-directory api-snapshots
 	@$(MAKE) --no-print-directory go-lint
 	@$(MAKE) --no-print-directory validate-plugin-patterns
+	@$(MAKE) --no-print-directory validate-any-usage
 	@$(MAKE) --no-print-directory python-lint
 	@$(MAKE) --no-print-directory r-lint
 	@echo "Lint suite finished successfully"
@@ -56,6 +70,24 @@ validate-plugin-patterns:
 		fi; \
 	done
 	@echo "validate-plugin-patterns: OK"
+
+validate-any-usage:
+	@echo "==> Validating any usage"
+	@GOCACHE=$(GOCACHE) go run ./scripts/validate_any_usage
+	@echo "validate-any-usage: OK"
+
+benchmarks-run:
+	@CONF=$(BENCH_CONF) COUNT=$(BENCH_COUNT) SWEET_VERSION=$(SWEET_VERSION) SWEET_COMMIT=$(SWEET_COMMIT) BENCHSTAT_VERSION=$(BENCHSTAT_VERSION) scripts/benchmarks/run_sweet.sh
+
+benchmarks-aggregate:
+	@CONF=$(BENCH_CONF) SWEET_VERSION=$(SWEET_VERSION) SWEET_COMMIT=$(SWEET_COMMIT) BENCHSTAT_VERSION=$(BENCHSTAT_VERSION) scripts/benchmarks/aggregate_results.sh
+	@CONF=$(BENCH_CONF) SWEET_VERSION=$(SWEET_VERSION) SWEET_COMMIT=$(SWEET_COMMIT) BENCHSTAT_VERSION=$(BENCHSTAT_VERSION) scripts/benchmarks/withmeta.sh
+
+benchmarks-compare:
+	@PR_RESULTS=$(CURDIR)/benchmarks/artifacts/$(BENCH_CONF).withmeta.results SWEET_VERSION=$(SWEET_VERSION) SWEET_COMMIT=$(SWEET_COMMIT) BENCHSTAT_VERSION=$(BENCHSTAT_VERSION) scripts/benchmarks/benchstat.sh
+
+benchmarks-ci:
+	@CONF=$(BENCH_CONF) COUNT=$(BENCH_COUNT) SWEET_VERSION=$(SWEET_VERSION) SWEET_COMMIT=$(SWEET_COMMIT) BENCHSTAT_VERSION=$(BENCHSTAT_VERSION) scripts/benchmarks/ci.sh
 
 api-snapshots:
 	@echo "==> api snapshots"
@@ -171,9 +203,17 @@ python-lint:
 		exit 1 )
 	@echo "Python lint: OK"
 
-r-lint:
+r-lint: r-lint-setup
 	@echo "==> R lint"
 	@python scripts/run_lintr.py && echo "R lint: OK" || (status=$$?; if [ $$status -eq 0 ]; then echo "R lint: OK"; else exit $$status; fi)
+
+r-lint-setup:
+	@echo "==> R lint setup"
+	@R_LIBS_USER=$(R_LINTR_CACHE) R_INSTALL_STAGED=false LINTR_REPO=$(LINTR_REPO) LINTR_VERSION=$(LINTR_VERSION) XML2_VERSION=$(XML2_VERSION) python scripts/run_lintr.py --setup-only
+
+r-lint-reset:
+	@echo "==> R lint reset"
+	@rm -rf $(R_LINTR_CACHE)
 
 entity-model-validate:
 	@echo "==> entity-model validate"

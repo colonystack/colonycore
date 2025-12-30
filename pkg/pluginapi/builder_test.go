@@ -155,8 +155,8 @@ func TestChangeBuilder(t *testing.T) {
 		change, err := NewChangeBuilder().
 			WithEntity(entityCtx.Organism()).
 			WithAction(actionCtx.Update()).
-			WithBefore(before).
-			WithAfter(after).
+			WithBefore(newPayload(t, before)).
+			WithAfter(newPayload(t, after)).
 			Build()
 
 		if err != nil {
@@ -463,7 +463,7 @@ func TestChangeBuilderPanicPaths(t *testing.T) {
 				t.Error("expected panic when modifying used builder")
 			}
 		}()
-		builder.WithBefore(map[string]any{})
+		builder.WithBefore(newPayload(t, map[string]any{}))
 	})
 
 	t.Run("WithAfter after build panics", func(t *testing.T) {
@@ -478,7 +478,7 @@ func TestChangeBuilderPanicPaths(t *testing.T) {
 				t.Error("expected panic when modifying used builder")
 			}
 		}()
-		builder.WithAfter(map[string]any{})
+		builder.WithAfter(newPayload(t, map[string]any{}))
 	})
 }
 
@@ -564,7 +564,7 @@ func TestNewChange(t *testing.T) {
 		before := map[string]any{"name": "old"}
 		after := map[string]any{"name": "new"}
 
-		change := NewChange(entityCtx.Organism(), actionCtx.Update(), before, after)
+		change := NewChange(entityCtx.Organism(), actionCtx.Update(), newPayload(t, before), newPayload(t, after))
 
 		if change.Entity() != entityOrganism {
 			t.Errorf("expected entity %s, got %s", entityOrganism, change.Entity())

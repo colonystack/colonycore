@@ -8,12 +8,13 @@ import (
 
 // TestRegistryAllListFields exercises appendList/resetList branches for every supported list key.
 func TestRegistryAllListFields(t *testing.T) {
+	docPath := writeTestFile(t, "test_registry_full_lists_doc.md", "# Test\n- Status: Draft\n")
 	content := "documents:\n" +
 		"  - id: RFC-ALL\n" +
 		"    type: RFC\n" +
 		"    title: Lists\n" +
 		"    status: Draft\n" +
-		"    path: docs/rfc/rfc-all.md\n" +
+		"    path: " + docPath + "\n" +
 		"    authors:\n" +
 		"      - A1\n" +
 		"    stakeholders:\n" +

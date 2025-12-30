@@ -26,7 +26,7 @@ func TestEntityModelFixturesSatisfyRules(t *testing.T) {
 	memStore.ImportState(memSnapshot)
 	memSnapshot = memStore.ExportState()
 
-	memChanges := changesFromMemorySnapshot(memSnapshot)
+	memChanges := changesFromMemorySnapshot(t, memSnapshot)
 	if len(memChanges) == 0 {
 		t.Fatalf("expected fixture changes for memory store")
 	}
@@ -49,7 +49,7 @@ func TestEntityModelFixturesSatisfyRules(t *testing.T) {
 	sqliteStore.ImportState(sqliteSnapshot)
 	sqliteSnapshot = sqliteStore.ExportState()
 
-	sqliteChanges := changesFromSQLiteSnapshot(sqliteSnapshot)
+	sqliteChanges := changesFromSQLiteSnapshot(t, sqliteSnapshot)
 	if len(sqliteChanges) == 0 {
 		t.Fatalf("expected fixture changes for sqlite store")
 	}
@@ -70,7 +70,7 @@ func TestEntityModelFixturesSatisfyRules(t *testing.T) {
 	pgStore.ImportState(memSnapshot)
 	pgSnapshot := pgStore.ExportState()
 
-	pgChanges := changesFromMemorySnapshot(pgSnapshot)
+	pgChanges := changesFromMemorySnapshot(t, pgSnapshot)
 	if len(pgChanges) == 0 {
 		t.Fatalf("expected fixture changes for postgres store")
 	}
@@ -114,54 +114,57 @@ func evaluateFixture(t *testing.T, engine *domain.RulesEngine, view domain.RuleV
 	return res
 }
 
-func changesFromMemorySnapshot(snapshot memory.Snapshot) []domain.Change {
+func changesFromMemorySnapshot(t *testing.T, snapshot memory.Snapshot) []domain.Change {
+	t.Helper()
 	var changes []domain.Change
-	changes = appendChanges(changes, domain.EntityOrganism, snapshot.Organisms)
-	changes = appendChanges(changes, domain.EntityCohort, snapshot.Cohorts)
-	changes = appendChanges(changes, domain.EntityHousingUnit, snapshot.Housing)
-	changes = appendChanges(changes, domain.EntityFacility, snapshot.Facilities)
-	changes = appendChanges(changes, domain.EntityBreeding, snapshot.Breeding)
-	changes = appendChanges(changes, domain.EntityLine, snapshot.Lines)
-	changes = appendChanges(changes, domain.EntityStrain, snapshot.Strains)
-	changes = appendChanges(changes, domain.EntityGenotypeMarker, snapshot.Markers)
-	changes = appendChanges(changes, domain.EntityProcedure, snapshot.Procedures)
-	changes = appendChanges(changes, domain.EntityTreatment, snapshot.Treatments)
-	changes = appendChanges(changes, domain.EntityObservation, snapshot.Observations)
-	changes = appendChanges(changes, domain.EntitySample, snapshot.Samples)
-	changes = appendChanges(changes, domain.EntityProtocol, snapshot.Protocols)
-	changes = appendChanges(changes, domain.EntityPermit, snapshot.Permits)
-	changes = appendChanges(changes, domain.EntityProject, snapshot.Projects)
-	changes = appendChanges(changes, domain.EntitySupplyItem, snapshot.Supplies)
+	changes = appendChanges(t, changes, domain.EntityOrganism, snapshot.Organisms)
+	changes = appendChanges(t, changes, domain.EntityCohort, snapshot.Cohorts)
+	changes = appendChanges(t, changes, domain.EntityHousingUnit, snapshot.Housing)
+	changes = appendChanges(t, changes, domain.EntityFacility, snapshot.Facilities)
+	changes = appendChanges(t, changes, domain.EntityBreeding, snapshot.Breeding)
+	changes = appendChanges(t, changes, domain.EntityLine, snapshot.Lines)
+	changes = appendChanges(t, changes, domain.EntityStrain, snapshot.Strains)
+	changes = appendChanges(t, changes, domain.EntityGenotypeMarker, snapshot.Markers)
+	changes = appendChanges(t, changes, domain.EntityProcedure, snapshot.Procedures)
+	changes = appendChanges(t, changes, domain.EntityTreatment, snapshot.Treatments)
+	changes = appendChanges(t, changes, domain.EntityObservation, snapshot.Observations)
+	changes = appendChanges(t, changes, domain.EntitySample, snapshot.Samples)
+	changes = appendChanges(t, changes, domain.EntityProtocol, snapshot.Protocols)
+	changes = appendChanges(t, changes, domain.EntityPermit, snapshot.Permits)
+	changes = appendChanges(t, changes, domain.EntityProject, snapshot.Projects)
+	changes = appendChanges(t, changes, domain.EntitySupplyItem, snapshot.Supplies)
 	return changes
 }
 
-func changesFromSQLiteSnapshot(snapshot sqlite.Snapshot) []domain.Change {
+func changesFromSQLiteSnapshot(t *testing.T, snapshot sqlite.Snapshot) []domain.Change {
+	t.Helper()
 	var changes []domain.Change
-	changes = appendChanges(changes, domain.EntityOrganism, snapshot.Organisms)
-	changes = appendChanges(changes, domain.EntityCohort, snapshot.Cohorts)
-	changes = appendChanges(changes, domain.EntityHousingUnit, snapshot.Housing)
-	changes = appendChanges(changes, domain.EntityFacility, snapshot.Facilities)
-	changes = appendChanges(changes, domain.EntityBreeding, snapshot.Breeding)
-	changes = appendChanges(changes, domain.EntityLine, snapshot.Lines)
-	changes = appendChanges(changes, domain.EntityStrain, snapshot.Strains)
-	changes = appendChanges(changes, domain.EntityGenotypeMarker, snapshot.Markers)
-	changes = appendChanges(changes, domain.EntityProcedure, snapshot.Procedures)
-	changes = appendChanges(changes, domain.EntityTreatment, snapshot.Treatments)
-	changes = appendChanges(changes, domain.EntityObservation, snapshot.Observations)
-	changes = appendChanges(changes, domain.EntitySample, snapshot.Samples)
-	changes = appendChanges(changes, domain.EntityProtocol, snapshot.Protocols)
-	changes = appendChanges(changes, domain.EntityPermit, snapshot.Permits)
-	changes = appendChanges(changes, domain.EntityProject, snapshot.Projects)
-	changes = appendChanges(changes, domain.EntitySupplyItem, snapshot.Supplies)
+	changes = appendChanges(t, changes, domain.EntityOrganism, snapshot.Organisms)
+	changes = appendChanges(t, changes, domain.EntityCohort, snapshot.Cohorts)
+	changes = appendChanges(t, changes, domain.EntityHousingUnit, snapshot.Housing)
+	changes = appendChanges(t, changes, domain.EntityFacility, snapshot.Facilities)
+	changes = appendChanges(t, changes, domain.EntityBreeding, snapshot.Breeding)
+	changes = appendChanges(t, changes, domain.EntityLine, snapshot.Lines)
+	changes = appendChanges(t, changes, domain.EntityStrain, snapshot.Strains)
+	changes = appendChanges(t, changes, domain.EntityGenotypeMarker, snapshot.Markers)
+	changes = appendChanges(t, changes, domain.EntityProcedure, snapshot.Procedures)
+	changes = appendChanges(t, changes, domain.EntityTreatment, snapshot.Treatments)
+	changes = appendChanges(t, changes, domain.EntityObservation, snapshot.Observations)
+	changes = appendChanges(t, changes, domain.EntitySample, snapshot.Samples)
+	changes = appendChanges(t, changes, domain.EntityProtocol, snapshot.Protocols)
+	changes = appendChanges(t, changes, domain.EntityPermit, snapshot.Permits)
+	changes = appendChanges(t, changes, domain.EntityProject, snapshot.Projects)
+	changes = appendChanges(t, changes, domain.EntitySupplyItem, snapshot.Supplies)
 	return changes
 }
 
-func appendChanges[T any](changes []domain.Change, entity domain.EntityType, records map[string]T) []domain.Change {
+func appendChanges[T any](t *testing.T, changes []domain.Change, entity domain.EntityType, records map[string]T) []domain.Change {
+	t.Helper()
 	for _, record := range records {
 		changes = append(changes, domain.Change{
 			Entity: entity,
 			Action: domain.ActionCreate,
-			After:  record,
+			After:  mustChangePayload(t, record),
 		})
 	}
 	return changes

@@ -83,7 +83,7 @@ func TestLineageIntegrityBreedingSpeciesMismatch(t *testing.T) {
 	}}
 
 	_ = store.View(ctx, func(v domain.TransactionView) error {
-		res, evalErr := rule.Evaluate(ctx, v, []domain.Change{{Entity: domain.EntityBreeding, After: breeding}})
+		res, evalErr := rule.Evaluate(ctx, v, []domain.Change{{Entity: domain.EntityBreeding, After: mustChangePayload(t, breeding)}})
 		if evalErr != nil {
 			t.Fatalf("evaluate lineage rule: %v", evalErr)
 		}
@@ -211,7 +211,7 @@ func TestLineageIntegrityBreedingLineAndStrainMismatch(t *testing.T) {
 	}}
 
 	_ = store.View(ctx, func(v domain.TransactionView) error {
-		res, evalErr := rule.Evaluate(ctx, v, []domain.Change{{Entity: domain.EntityBreeding, After: breeding}})
+		res, evalErr := rule.Evaluate(ctx, v, []domain.Change{{Entity: domain.EntityBreeding, After: mustChangePayload(t, breeding)}})
 		if evalErr != nil {
 			t.Fatalf("evaluate lineage rule: %v", evalErr)
 		}
@@ -255,7 +255,7 @@ func TestLineageIntegrityBreedingDuplicateOrganism(t *testing.T) {
 	}}
 
 	_ = store.View(ctx, func(v domain.TransactionView) error {
-		res, evalErr := rule.Evaluate(ctx, v, []domain.Change{{Entity: domain.EntityBreeding, After: breeding}})
+		res, evalErr := rule.Evaluate(ctx, v, []domain.Change{{Entity: domain.EntityBreeding, After: mustChangePayload(t, breeding)}})
 		if evalErr != nil {
 			t.Fatalf("evaluate lineage rule: %v", evalErr)
 		}
@@ -279,7 +279,7 @@ func TestLineageIntegrityBreedingMissingOrganism(t *testing.T) {
 	}}
 
 	_ = store.View(ctx, func(v domain.TransactionView) error {
-		res, evalErr := rule.Evaluate(ctx, v, []domain.Change{{Entity: domain.EntityBreeding, After: breeding}})
+		res, evalErr := rule.Evaluate(ctx, v, []domain.Change{{Entity: domain.EntityBreeding, After: mustChangePayload(t, breeding)}})
 		if evalErr != nil {
 			t.Fatalf("evaluate lineage rule: %v", evalErr)
 		}

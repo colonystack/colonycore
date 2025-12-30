@@ -19,7 +19,10 @@ The dataset client under `clients/R` is linted with [lintr](https://lintr.r-lib.
 
 ## Troubleshooting
 - `Rscript` missing: install R ≥ 4.0 (`sudo apt install r-base` on Debian/Ubuntu) and ensure it's on `PATH`.
-- Package install failures: install system deps (`libcurl4-openssl-dev libxml2-dev libxslt1-dev`) and rerun. As a fallback, run `Rscript -e "remotes::install_version('lintr', version = '3.1.2', repos = 'https://cloud.r-project.org')"` (and the same for `xml2`).
+- R fails to start with `libblas.so.3` (or other shared library) errors: install a BLAS runtime (`libblas3` on Debian/Ubuntu) and rerun. Set `REQUIRE_R_LINT=1` if you want missing runtime deps to fail the lint step.
+- Package install failures: install system deps (`libcurl4-openssl-dev libxml2-dev libxslt1-dev`) and rerun. As a fallback, run `make r-lint-setup` to preinstall the pinned packages.
+- `shared object 'rlang.so' not found`: the rlang native library failed to build. Run `make r-lint-reset` then `make r-lint-setup`, and rerun `make r-lint`.
+- Version mismatch after install (for example `xml2: 1.3.3 (expected 1.3.6)`): run `make r-lint-reset`, then `make r-lint-setup`, then rerun `make r-lint`. Opening a fresh shell can also help pick up updated packages.
 - Respect `LINTR_SKIP_AUTO_INSTALL=1` if you manage packages yourself; the script will then fail fast with a list of mismatched versions.
 
 ## Auto-fix guidance

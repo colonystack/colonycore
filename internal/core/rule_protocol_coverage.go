@@ -25,19 +25,13 @@ func (protocolCoverageRule) Evaluate(_ context.Context, view domain.RuleView, ch
 	for _, change := range changes {
 		switch change.Entity {
 		case domain.EntityProcedure:
-			if change.After == nil {
-				continue
-			}
-			proc, ok := change.After.(domain.Procedure)
+			proc, ok := decodeChangePayload[domain.Procedure](change.After)
 			if !ok {
 				continue
 			}
 			validateProcedureCoverage(&res, proc, protocols, view)
 		case domain.EntityTreatment:
-			if change.After == nil {
-				continue
-			}
-			treatment, ok := change.After.(domain.Treatment)
+			treatment, ok := decodeChangePayload[domain.Treatment](change.After)
 			if !ok {
 				continue
 			}

@@ -9,7 +9,7 @@ FUNC NewCohortContext() colonycore/pkg/datasetapi.CohortContext
 FUNC NewExtensionContributorContext() colonycore/pkg/datasetapi.ExtensionContributorContext
 FUNC NewExtensionHookContext() colonycore/pkg/datasetapi.ExtensionHookContext
 FUNC NewExtensionPayload(map[string]any) colonycore/pkg/datasetapi.ExtensionPayload
-FUNC NewExtensionSet(map[string]map[string]any) colonycore/pkg/datasetapi.ExtensionSet
+FUNC NewExtensionSet(map[string]map[string]map[string]any) colonycore/pkg/datasetapi.ExtensionSet
 FUNC NewFacility(colonycore/pkg/datasetapi.FacilityData) colonycore/pkg/datasetapi.Facility
 FUNC NewFacilityContext() colonycore/pkg/datasetapi.FacilityContext
 FUNC NewHostTemplate(string,colonycore/pkg/datasetapi.Template) (colonycore/pkg/datasetapi.HostTemplate,error)
@@ -61,7 +61,7 @@ TYPE EnvironmentTypeRef interface { Equals(colonycore/pkg/datasetapi.Environment
 TYPE ExtensionContributorContext interface { Core() colonycore/pkg/datasetapi.PluginRef Custom(string) colonycore/pkg/datasetapi.PluginRef }
 TYPE ExtensionHookContext interface { BreedingUnitPairingAttributes() colonycore/pkg/datasetapi.HookRef FacilityEnvironmentBaselines() colonycore/pkg/datasetapi.HookRef ObservationData() colonycore/pkg/datasetapi.HookRef OrganismAttributes() colonycore/pkg/datasetapi.HookRef SampleAttributes() colonycore/pkg/datasetapi.HookRef SupplyItemAttributes() colonycore/pkg/datasetapi.HookRef }
 TYPE ExtensionPayload struct { unexported }
-TYPE ExtensionSet interface { Core(colonycore/pkg/datasetapi.HookRef) (any,bool) Get(colonycore/pkg/datasetapi.HookRef,colonycore/pkg/datasetapi.PluginRef) (any,bool) Hooks() []colonycore/pkg/datasetapi.HookRef Plugins(colonycore/pkg/datasetapi.HookRef) []colonycore/pkg/datasetapi.PluginRef Raw() map[string]map[string]any }
+TYPE ExtensionSet interface { Core(colonycore/pkg/datasetapi.HookRef) (colonycore/pkg/datasetapi.ExtensionPayload,bool) Get(colonycore/pkg/datasetapi.HookRef,colonycore/pkg/datasetapi.PluginRef) (colonycore/pkg/datasetapi.ExtensionPayload,bool) Hooks() []colonycore/pkg/datasetapi.HookRef Plugins(colonycore/pkg/datasetapi.HookRef) []colonycore/pkg/datasetapi.PluginRef Raw() map[string]map[string]map[string]any }
 TYPE Facility interface { AccessPolicy() string Code() string CoreEnvironmentBaselines() map[string]any CoreEnvironmentBaselinesPayload() colonycore/pkg/datasetapi.ExtensionPayload CreatedAt() time.Time EnvironmentBaselines() map[string]any Extensions() colonycore/pkg/datasetapi.ExtensionSet GetAccessPolicy() colonycore/pkg/datasetapi.FacilityAccessPolicyRef GetZone() colonycore/pkg/datasetapi.FacilityZoneRef HousingUnitIDs() []string ID() string Name() string ProjectIDs() []string SupportsHousingUnit(string) bool UpdatedAt() time.Time Zone() string }
 TYPE FacilityAccessPolicyProvider interface { Open() colonycore/pkg/datasetapi.FacilityAccessPolicyRef Restricted() colonycore/pkg/datasetapi.FacilityAccessPolicyRef StaffOnly() colonycore/pkg/datasetapi.FacilityAccessPolicyRef }
 TYPE FacilityAccessPolicyRef interface { AllowsVisitors() bool Equals(colonycore/pkg/datasetapi.FacilityAccessPolicyRef) bool IsRestricted() bool String() string }

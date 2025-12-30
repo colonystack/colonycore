@@ -1,6 +1,9 @@
 package datasetapi
 
-import "slices"
+import (
+	"fmt"
+	"slices"
+)
 
 // ExtensionSet exposes read-only extension payloads grouped by hook and plugin.
 // Use the contextual helper interfaces (ExtensionHookContext, ExtensionContributorContext)
@@ -8,19 +11,23 @@ import "slices"
 type ExtensionSet interface {
 	Hooks() []HookRef
 	Plugins(h HookRef) []PluginRef
-	Get(h HookRef, plugin PluginRef) (any, bool)
-	Core(h HookRef) (any, bool)
-	Raw() map[string]map[string]any
+	Get(h HookRef, plugin PluginRef) (ExtensionPayload, bool)
+	Core(h HookRef) (ExtensionPayload, bool)
+	Raw() map[string]map[string]map[string]any
 }
 
-// NewExtensionSet constructs a defensive copy of the provided raw payload.
-func NewExtensionSet(raw map[string]map[string]any) ExtensionSet {
+// NewExtensionSet creates an ExtensionSet backed by a defensive deep copy of the supplied raw payload.
+// The `raw` map is expected to be a three-level map keyed by hook, then plugin, then payload data.
+// The returned ExtensionSet is immutable from the caller's perspective: subsequent modifications to
+// the original `raw` map do not affect the created set. If `raw` is nil or empty, the returned set
+// contains no payloads.
+func NewExtensionSet(raw map[string]map[string]map[string]any) ExtensionSet {
 	payload := cloneRaw(raw)
 	return &extensionSet{payload: payload}
 }
 
 type extensionSet struct {
-	payload map[string]map[string]any
+	payload map[string]map[string]map[string]any
 }
 
 func (s *extensionSet) Hooks() []HookRef {
@@ -77,42 +84,57 @@ func (s *extensionSet) Plugins(h HookRef) []PluginRef {
 	return result
 }
 
-func (s *extensionSet) Get(h HookRef, plugin PluginRef) (any, bool) {
+func (s *extensionSet) Get(h HookRef, plugin PluginRef) (ExtensionPayload, bool) {
 	if len(s.payload) == 0 {
-		return nil, false
+		return UndefinedExtensionPayload(), false
 	}
 	entries, ok := s.payload[h.value()]
 	if !ok {
-		return nil, false
+		return UndefinedExtensionPayload(), false
 	}
 	value, ok := entries[plugin.value()]
 	if !ok {
-		return nil, false
+		return UndefinedExtensionPayload(), false
 	}
-	return cloneValue(value), true
+	return NewExtensionPayload(value), true
 }
 
-func (s *extensionSet) Core(h HookRef) (any, bool) {
+func (s *extensionSet) Core(h HookRef) (ExtensionPayload, bool) {
 	return s.Get(h, extensionContributorContext{}.Core())
 }
 
-func (s *extensionSet) Raw() map[string]map[string]any {
+func (s *extensionSet) Raw() map[string]map[string]map[string]any {
 	return cloneRaw(s.payload)
 }
 
-func cloneRaw(raw map[string]map[string]any) map[string]map[string]any {
+// cloneRaw returns a deep copy of the provided three-level payload map.
+//
+// cloneRaw returns nil if the input is empty. It preserves nil entries for hooks
+// or plugins: a hook with no plugins becomes a nil map, and a plugin with a nil
+// value remains nil. Non-nil plugin values are deep-cloned via cloneValue and
+// asserted to map[string]any in the result.
+func cloneRaw(raw map[string]map[string]map[string]any) map[string]map[string]map[string]any {
 	if len(raw) == 0 {
 		return nil
 	}
-	out := make(map[string]map[string]any, len(raw))
+	out := make(map[string]map[string]map[string]any, len(raw))
 	for hook, plugins := range raw {
 		if len(plugins) == 0 {
 			out[hook] = nil
 			continue
 		}
-		cloned := make(map[string]any, len(plugins))
+		cloned := make(map[string]map[string]any, len(plugins))
 		for plugin, value := range plugins {
-			cloned[plugin] = cloneValue(value)
+			if value == nil {
+				cloned[plugin] = nil
+				continue
+			}
+			clonedValue := cloneValue(value)
+			clone, ok := clonedValue.(map[string]any)
+			if !ok {
+				panic(fmt.Sprintf("extension payload for hook %q plugin %q must be map[string]any, got %T", hook, plugin, clonedValue))
+			}
+			cloned[plugin] = clone
 		}
 		out[hook] = cloned
 	}

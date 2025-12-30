@@ -16,12 +16,14 @@ func baseDataFromDomain(id string, createdAt, updatedAt time.Time) datasetapi.Ba
 	}
 }
 
+// facadeOrganismFromDomain converts a domain.Organism into a datasetapi.Organism.
+// It populates base metadata, core organism fields (Name, Species, Line, LineID, StrainID, ParentIDs, Stage, CohortID, HousingID, ProtocolID, ProjectID) and builds an ExtensionSet from the organism's extension container; it will panic if retrieving extensions returns an error.
 func facadeOrganismFromDomain(org domain.Organism) datasetapi.Organism {
 	container, err := org.OrganismExtensions()
 	if err != nil {
 		panic(fmt.Errorf("core: organism extensions: %w", err))
 	}
-	extSet := datasetapi.NewExtensionSet(container.Raw())
+	extSet := datasetapi.NewExtensionSet(mapExtensionPayloads(container.Raw()))
 	return datasetapi.NewOrganism(datasetapi.OrganismData{
 		Base:       baseDataFromDomain(org.ID, org.CreatedAt, org.UpdatedAt),
 		Name:       org.Name,
@@ -141,12 +143,15 @@ func facadeCohortsFromDomain(cohorts []domain.Cohort) []datasetapi.Cohort {
 	return out
 }
 
+// facadeBreedingUnitFromDomain converts a domain.BreedingUnit into a datasetapi.BreedingUnit.
+// It copies base metadata and fields (name, strategy, housing/protocol/line/strain IDs, pairing details, and member IDs)
+// and constructs the Extensions set from the unit's extension payloads. It panics if retrieving the unit's extensions fails.
 func facadeBreedingUnitFromDomain(unit domain.BreedingUnit) datasetapi.BreedingUnit {
 	container, err := unit.BreedingUnitExtensions()
 	if err != nil {
 		panic(fmt.Errorf("core: breeding unit extensions: %w", err))
 	}
-	extSet := datasetapi.NewExtensionSet(container.Raw())
+	extSet := datasetapi.NewExtensionSet(mapExtensionPayloads(container.Raw()))
 	return datasetapi.NewBreedingUnit(datasetapi.BreedingUnitData{
 		Base:           baseDataFromDomain(unit.ID, unit.CreatedAt, unit.UpdatedAt),
 		Name:           unit.Name,
@@ -202,12 +207,18 @@ func facadeProceduresFromDomain(procs []domain.Procedure) []datasetapi.Procedure
 	return out
 }
 
+// facadeFacilityFromDomain converts a domain.Facility into a datasetapi.Facility.
+//
+// The returned Facility contains base metadata (ID, CreatedAt, UpdatedAt), code,
+// name, zone, access policy, housing unit and project references, and an
+// extension set built from the facility's extension payloads. This function
+// panics if retrieving the facility's extensions fails.
 func facadeFacilityFromDomain(facility domain.Facility) datasetapi.Facility {
 	container, err := facility.FacilityExtensions()
 	if err != nil {
 		panic(fmt.Errorf("core: facility extensions: %w", err))
 	}
-	extSet := datasetapi.NewExtensionSet(container.Raw())
+	extSet := datasetapi.NewExtensionSet(mapExtensionPayloads(container.Raw()))
 	return datasetapi.NewFacility(datasetapi.FacilityData{
 		Base:           baseDataFromDomain(facility.ID, facility.CreatedAt, facility.UpdatedAt),
 		Code:           facility.Code,
@@ -255,12 +266,15 @@ func facadeTreatmentsFromDomain(treatments []domain.Treatment) []datasetapi.Trea
 	return out
 }
 
+// facadeObservationFromDomain converts a domain.Observation into a datasetapi.Observation.
+// It maps base metadata and observation fields and attaches an ExtensionSet built from the observation's extension payloads.
+// The function panics if retrieving the observation's extensions fails.
 func facadeObservationFromDomain(observation domain.Observation) datasetapi.Observation {
 	container, err := observation.ObservationExtensions()
 	if err != nil {
 		panic(fmt.Errorf("core: observation extensions: %w", err))
 	}
-	extSet := datasetapi.NewExtensionSet(container.Raw())
+	extSet := datasetapi.NewExtensionSet(mapExtensionPayloads(container.Raw()))
 	return datasetapi.NewObservation(datasetapi.ObservationData{
 		Base:        baseDataFromDomain(observation.ID, observation.CreatedAt, observation.UpdatedAt),
 		ProcedureID: observation.ProcedureID,
@@ -284,12 +298,15 @@ func facadeObservationsFromDomain(observations []domain.Observation) []datasetap
 	return out
 }
 
+// facadeSampleFromDomain converts a domain.Sample into a datasetapi.Sample, mapping its base data,
+// identifiers, timestamps, custody events, and building an ExtensionSet from the sample's extension payloads.
+// It panics if retrieving the sample's extensions returns an error.
 func facadeSampleFromDomain(sample domain.Sample) datasetapi.Sample {
 	container, err := sample.SampleExtensions()
 	if err != nil {
 		panic(fmt.Errorf("core: sample extensions: %w", err))
 	}
-	extSet := datasetapi.NewExtensionSet(container.Raw())
+	extSet := datasetapi.NewExtensionSet(mapExtensionPayloads(container.Raw()))
 	return datasetapi.NewSample(datasetapi.SampleData{
 		Base:            baseDataFromDomain(sample.ID, sample.CreatedAt, sample.UpdatedAt),
 		Identifier:      sample.Identifier,
@@ -343,12 +360,17 @@ func facadePermitsFromDomain(permits []domain.Permit) []datasetapi.Permit {
 	return out
 }
 
+// facadeSupplyItemFromDomain converts a domain.SupplyItem into a datasetapi.SupplyItem.
+// The returned value contains the item's base metadata and fields (SKU, name, description,
+// quantity, unit, lot number, expiration, facility/project associations, reorder level)
+// and an Extensions set built from the domain item's extension payloads.
+// It panics if retrieving the supply item extensions fails.
 func facadeSupplyItemFromDomain(item domain.SupplyItem) datasetapi.SupplyItem {
 	container, err := item.SupplyItemExtensions()
 	if err != nil {
 		panic(fmt.Errorf("core: supply item extensions: %w", err))
 	}
-	extSet := datasetapi.NewExtensionSet(container.Raw())
+	extSet := datasetapi.NewExtensionSet(mapExtensionPayloads(container.Raw()))
 	return datasetapi.NewSupplyItem(datasetapi.SupplyItemData{
 		Base:           baseDataFromDomain(item.ID, item.CreatedAt, item.UpdatedAt),
 		SKU:            item.SKU,

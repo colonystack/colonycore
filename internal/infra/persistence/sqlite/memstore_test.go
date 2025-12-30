@@ -9,8 +9,6 @@ import (
 	"time"
 )
 
-const changedValue = "changed"
-
 // Migrated minimal representative tests; original exhaustive tests remain at old path until cleanup.
 
 func TestMustApplyNoPanicSQLite(t *testing.T) {

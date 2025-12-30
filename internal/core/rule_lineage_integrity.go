@@ -61,10 +61,10 @@ func (lineageIntegrityRule) Evaluate(_ context.Context, view domain.RuleView, ch
 	}
 
 	for _, change := range changes {
-		if change.Entity != domain.EntityBreeding || change.After == nil {
+		if change.Entity != domain.EntityBreeding {
 			continue
 		}
-		breeding, ok := change.After.(domain.BreedingUnit)
+		breeding, ok := decodeChangePayload[domain.BreedingUnit](change.After)
 		if !ok {
 			continue
 		}

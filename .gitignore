@@ -35,10 +35,12 @@ colonycore.db
 
 # Editor/IDE
 # .idea/
-# .vscode/
+.vscode/
 .cache
 .gocache
 coverage.summary
 coverage.summary
 .RData
 .Rhistory
+benchmarks/results
+benchmarks/artifacts

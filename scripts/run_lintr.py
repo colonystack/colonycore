@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
-"""Run lintr against the R client helpers."""
+"""Run lintr against the R client helpers (or install deps with --setup-only)."""
 
 from __future__ import annotations
 
+import argparse
 import os
 import shutil
 import subprocess
@@ -27,7 +28,50 @@ REQUIRED_R_PACKAGES: dict[str, str] = {
 }
 
 
+def _parse_args() -> argparse.Namespace:
+    """
+    Parse command-line arguments for the lintr runner.
+
+    The returned namespace contains the parsed CLI options:
+    - `setup_only`: `True` when dependencies should be installed/verified without running linters.
+    - `paths`: list of positional path arguments provided by the user.
+
+    Returns:
+        argparse.Namespace: Namespace with `setup_only` (bool) and `paths` (list[str]).
+    """
+    parser = argparse.ArgumentParser(description="Run lintr against the R client helpers.")
+    parser.add_argument(
+        "--setup-only",
+        action="store_true",
+        help="Install or verify lintr dependencies without running lint.",
+    )
+    parser.add_argument("paths", nargs="*", help=argparse.SUPPRESS)
+    return parser.parse_args()
+
+
 def main() -> int:
+    """
+    Run R dependency setup and optionally execute lintr for the repository's R clients.
+
+    Performs these actions:
+    - Locates Rscript
+    - Prepares a user R library
+    - Ensures required R packages and versions are present (installing them if allowed)
+    - When not run in setup-only mode, runs lintr::lint_dir on clients/R
+
+    Behavior can be influenced via environment variables:
+    - LINTR_REPO: R repository URL hint (default: https://cloud.r-project.org)
+    - LINTR_SKIP_AUTO_INSTALL: when truthy, skip automatic installation of missing/mismatched packages
+    - R_LIBS_USER: user R library directory (defaults to .cache/R-lintr under the repo root)
+    - REQUIRE_R_LINT: when truthy, treat R runtime/shared-library detection errors as fatal
+
+    Returns:
+        int: Exit code suitable for use as a process return value (0 on success; non-zero on failure).
+    """
+    args = _parse_args()
+    lint_enabled = not args.setup_only
+    action_label = "R lint" if lint_enabled else "R lint setup"
+
     rscript = shutil.which("Rscript")
     if not rscript:
         sys.stderr.write(
@@ -57,13 +101,39 @@ def main() -> int:
         f'repos <- Sys.getenv("LINTR_REPO", unset="{repo_r}")',
         f'if (!nzchar(repos)) repos <- "{repo_r}"',
         f'skip_install <- {skip_literal}',
+        'lib_dir <- Sys.getenv("R_LIBS_USER")',
+        'if (nzchar(lib_dir)) { .libPaths(c(lib_dir, .Library)) }',
         f'required <- c({required_assignments})',
-        'check_required <- function(required) {',
+        'check_required <- function(required, lib_dir) {',
         '  vapply(names(required), function(pkg) {',
-        '    if (!requireNamespace(pkg, quietly = TRUE)) {',
+        '    # If pkg is already loaded from a previous run, ensure it comes from lib_dir.',
+        '    # We compare pkg_path against lib_dir (via startsWith) and, if it is outside,',
+        '    # attempt unloadNamespace(pkg) so requireNamespace reloads from the intended lib_dir.',
+        '    # On unload_error, we log and warn if reloaded_path still points elsewhere; we continue',
+        '    # so later requireNamespace calls may still use the wrong library path.',
+        '    if (pkg %in% loadedNamespaces()) {',
+        '      pkg_path <- tryCatch(getNamespaceInfo(pkg, "path"), error = function(err) "")',
+        '      if (nzchar(lib_dir) && nzchar(pkg_path) && !startsWith(pkg_path, lib_dir)) {',
+        '        unload_error <- NULL',
+        '        tryCatch(',
+        '          unloadNamespace(pkg),',
+        '          error = function(err) { unload_error <<- err }',
+        '        )',
+        '        if (!is.null(unload_error)) {',
+        '          message(sprintf("Failed to unload namespace %s from %s: %s", pkg, pkg_path, conditionMessage(unload_error)))',
+        '        }',
+        '        if (pkg %in% loadedNamespaces()) {',
+        '          reloaded_path <- tryCatch(getNamespaceInfo(pkg, "path"), error = function(err) "")',
+        '          if (nzchar(reloaded_path) && !startsWith(reloaded_path, lib_dir)) {',
+        '            warning(sprintf("Namespace %s remains loaded from %s; expected path under %s. Subsequent requireNamespace calls may use the wrong library.", pkg, reloaded_path, lib_dir), call. = FALSE)',
+        '          }',
+        '        }',
+        '      }',
+        '    }',
+        '    if (!requireNamespace(pkg, quietly = TRUE, lib.loc = lib_dir)) {',
         '      return("missing")',
         '    }',
-        '    installed <- as.character(utils::packageVersion(pkg))',
+        '    installed <- as.character(utils::packageVersion(pkg, lib.loc = lib_dir))',
         '    if (installed != required[[pkg]]) {',
         '      return(installed)',
         '    }',
@@ -79,7 +149,7 @@ def main() -> int:
         '    }',
         '  }, character(1))',
         '}',
-        'status <- check_required(required)',
+        'status <- check_required(required, lib_dir)',
         'needs_install <- status != ""',
         'if (any(needs_install)) {',
         '  details <- report_status(names(required)[needs_install], status, required)',
@@ -100,24 +170,29 @@ def main() -> int:
         '    message(sprintf("Installing %s (version %s)", pkg, target_version))',
         '    remotes::install_version(pkg, version = target_version, repos = repos, dependencies = TRUE, upgrade = FALSE)',
         '  }',
-        '  status <- check_required(required)',
+        '  status <- check_required(required, lib_dir)',
         '  needs_install <- status != ""',
         '  if (any(needs_install)) {',
         '    details <- report_status(names(required)[needs_install], status, required)',
         '    stop(paste0("Unable to install required R packages -> ", paste(details, collapse = ", ")))',
         '  }',
         '}',
-        'invisible(lapply(names(required), function(pkg) requireNamespace(pkg, quietly = TRUE)))',
-        'results <- lintr::lint_dir("clients/R", relative_path = TRUE, show_progress = FALSE)',
-        'if (length(results)) {',
-        '  lintr::print.lints(results)',
-        '  quit(save = "no", status = 1)',
-        '}',
+        'invisible(lapply(names(required), function(pkg) requireNamespace(pkg, quietly = TRUE, lib.loc = lib_dir)))',
     ]
+    if lint_enabled:
+        r_lines.extend(
+            [
+                'results <- lintr::lint_dir("clients/R", relative_path = TRUE, show_progress = FALSE)',
+                'if (length(results)) {',
+                '  lintr::print.lints(results)',
+                '  quit(save = "no", status = 1)',
+                '}',
+            ]
+        )
 
     command = [rscript, "--vanilla", "-e", "\n".join(r_lines)]
 
-    # Run R lint; capture output to detect environment (shared library) issues distinctly
+    # Run R command; capture output to detect environment (shared library) issues distinctly
     result = subprocess.run(command, env=env, check=False, capture_output=True, text=True)
 
     if result.returncode == 0:
@@ -129,7 +204,7 @@ def main() -> int:
         require = _normalize_bool(os.environ.get("REQUIRE_R_LINT"))
         msg = (
             "R runtime dependency issue detected (likely missing BLAS/lib dependencies). "
-            "Skipping R lint. Set REQUIRE_R_LINT=1 to enforce failure."
+            f"Skipping {action_label}. Set REQUIRE_R_LINT=1 to enforce failure."
         )
         if require:
             sys.stderr.write(combined)

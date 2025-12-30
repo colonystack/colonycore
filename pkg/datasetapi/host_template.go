@@ -2,6 +2,7 @@ package datasetapi
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"sort"
@@ -171,6 +172,7 @@ func validateTemplate(tpl Template) error {
 	return nil
 }
 
+// - a slice of ParameterError describing missing, undeclared, or coercion errors (empty if validation succeeded).
 func validateParameters(definitions []Parameter, supplied map[string]any) (map[string]any, []ParameterError) {
 	cleaned := make(map[string]any)
 	var errs []ParameterError
@@ -186,8 +188,13 @@ func validateParameters(definitions []Parameter, supplied map[string]any) (map[s
 				errs = append(errs, ParameterError{Name: param.Name, Message: "required parameter missing"})
 				continue
 			}
-			if param.Default != nil {
-				cleaned[param.Name] = param.Default
+			if len(param.Default) > 0 {
+				coerced, err := coerceDefaultParameter(param)
+				if err != nil {
+					errs = append(errs, ParameterError{Name: param.Name, Message: err.Error()})
+					continue
+				}
+				cleaned[param.Name] = coerced
 			}
 			continue
 		}
@@ -208,6 +215,24 @@ func validateParameters(definitions []Parameter, supplied map[string]any) (map[s
 	return cleaned, errs
 }
 
+// coerceDefaultParameter unmarshals a parameter's Default JSON and coerces it to the
+// type declared by the Parameter.
+//
+// It returns the coerced value, or an error if the Default contains invalid JSON
+// or cannot be coerced to the parameter's declared type.
+func coerceDefaultParameter(param Parameter) (any, error) {
+	var raw any
+	if err := json.Unmarshal(param.Default, &raw); err != nil {
+		return nil, fmt.Errorf("parameter %s default is invalid JSON: %w", param.Name, err)
+	}
+	return coerceParameter(param, raw)
+}
+
+// findParamValue returns the value for the parameter `name` from `supplied`.
+// It first attempts a case-sensitive lookup and, if not found, performs a
+// case-insensitive search over the map keys. If `supplied` is nil or no match
+// is found, it returns (nil, false). If multiple keys match case-insensitively,
+// the specific match returned is unspecified.
 func findParamValue(name string, supplied map[string]any) (any, bool) {
 	if supplied == nil {
 		return nil, false
@@ -349,6 +374,13 @@ func cloneTemplate(t Template) Template {
 	return cloned
 }
 
+// cloneParameters creates a shallow copy of the provided Parameter slice and
+// deep-copies internal slice fields so the returned slice can be mutated
+// independently of the input.
+//
+// For each parameter the function clones the Example and Default byte slices
+// and the Enum string slice when present. If the input slice is empty, it
+// returns nil.
 func cloneParameters(params []Parameter) []Parameter {
 	if len(params) == 0 {
 		return nil
@@ -356,6 +388,12 @@ func cloneParameters(params []Parameter) []Parameter {
 	cloned := make([]Parameter, len(params))
 	copy(cloned, params)
 	for i := range cloned {
+		if len(cloned[i].Example) > 0 {
+			cloned[i].Example = append([]byte(nil), cloned[i].Example...)
+		}
+		if len(cloned[i].Default) > 0 {
+			cloned[i].Default = append([]byte(nil), cloned[i].Default...)
+		}
 		if len(cloned[i].Enum) > 0 {
 			cloned[i].Enum = append([]string(nil), cloned[i].Enum...)
 		}
