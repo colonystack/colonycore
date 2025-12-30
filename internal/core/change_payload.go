@@ -5,6 +5,9 @@ import (
 	"encoding/json"
 )
 
+// decodeChangePayload decodes a domain.ChangePayload's JSON contents into a value of type T.
+// It returns the decoded value and true on success. It returns the zero value and false if
+// the payload is not defined, contains no data, or cannot be unmarshaled into T.
 func decodeChangePayload[T any](payload domain.ChangePayload) (T, bool) {
 	var out T
 	if !payload.Defined() {

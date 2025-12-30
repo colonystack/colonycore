@@ -187,6 +187,9 @@ type organismView struct {
 	coreAttributes map[string]any
 }
 
+// newOrganismView constructs an organismView populated from the given domain.Organism.
+// It builds the view's base fields, extension set, cloned core attributes and slices, and returns the populated view.
+// The function panics if retrieving the organism's extensions fails.
 func newOrganismView(org domain.Organism) organismView {
 	container, err := org.OrganismExtensions()
 	if err != nil {
@@ -394,6 +397,9 @@ type facilityView struct {
 	projectIDs     []string
 }
 
+// newFacilityView constructs a facilityView populated from the provided domain.Facility.
+// It clones mutable fields and builds the plugin extension set from the facility's extension payloads.
+// It panics if retrieving facility extensions returns an error.
 func newFacilityView(facility domain.Facility) facilityView {
 	container, err := facility.FacilityExtensions()
 	if err != nil {
@@ -538,6 +544,9 @@ type observationView struct {
 	notes       *string
 }
 
+// newObservationView constructs an observationView from the supplied domain.Observation.
+// The resulting view mirrors the domain observation with copied optional IDs, timestamps, observer, extensions, a deep-cloned core data map, and notes.
+// It panics if the observation's extensions cannot be retrieved.
 func newObservationView(observation domain.Observation) observationView {
 	container, err := observation.ObservationExtensions()
 	if err != nil {
@@ -627,6 +636,11 @@ type sampleView struct {
 	coreAttributes  map[string]any
 }
 
+// newSampleView creates a sampleView from the provided domain.Sample.
+// It copies the sample's identifying fields, timestamps, optional IDs, custody events,
+// attributes, and extensions into a plugin-facing view, building an ExtensionSet from
+// the sample's extension payloads and deep-cloning attribute and custody data.
+// Panics if retrieving the sample's extensions fails.
 func newSampleView(sample domain.Sample) sampleView {
 	container, err := sample.SampleExtensions()
 	if err != nil {
@@ -908,6 +922,9 @@ type supplyItemView struct {
 	coreAttributes map[string]any
 }
 
+// newSupplyItemView constructs a supplyItemView populated from the provided domain.SupplyItem.
+// It copies identifiers, metadata, optional fields, collections, extensions, and core attributes.
+// It panics if retrieving the supply item extensions fails.
 func newSupplyItemView(item domain.SupplyItem) supplyItemView {
 	container, err := item.SupplyItemExtensions()
 	if err != nil {
@@ -1101,6 +1118,9 @@ func newSupplyItemViews(items []domain.SupplyItem) []pluginapi.SupplyItemView {
 	return views
 }
 
+// toPluginChanges converts a slice of domain.Change into a slice of pluginapi.Change.
+// If the input slice is empty, it returns nil. The returned changes preserve each
+// change's entity type, action, and before/after payloads as represented in the domain changes.
 func toPluginChanges(changes []domain.Change) []pluginapi.Change {
 	if len(changes) == 0 {
 		return nil
@@ -1117,6 +1137,9 @@ func toPluginChanges(changes []domain.Change) []pluginapi.Change {
 	return converted
 }
 
+// encodeChangePayload converts a domain.ChangePayload into a pluginapi.ChangePayload.
+// If the domain payload is not defined, it returns pluginapi.UndefinedChangePayload();
+// otherwise it returns a ChangePayload constructed from the payload's raw value.
 func encodeChangePayload(payload domain.ChangePayload) pluginapi.ChangePayload {
 	if !payload.Defined() {
 		return pluginapi.UndefinedChangePayload()
@@ -1124,6 +1147,9 @@ func encodeChangePayload(payload domain.ChangePayload) pluginapi.ChangePayload {
 	return pluginapi.NewChangePayload(payload.Raw())
 }
 
+// toDomainResult converts a pluginapi.Result into a domain.Result by mapping each
+// plugin violation to a domain.Violation. If the plugin result contains no
+// violations, an empty domain.Result is returned.
 func toDomainResult(res pluginapi.Result) domain.Result {
 	pvs := res.Violations()
 	if len(pvs) == 0 {

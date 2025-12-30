@@ -2258,6 +2258,8 @@ func serializeCustodyEvents(events []custodyEvent) []map[string]any {
 	return out
 }
 
+// extractCoreMap returns the core attributes payload map for the given hook from an ExtensionSet.
+// It returns the payload's map[string]any if present, or nil when the set is nil or the hook has no core payload.
 func extractCoreMap(set ExtensionSet, hook HookRef) map[string]any {
 	if set == nil {
 		return nil
@@ -2269,6 +2271,7 @@ func extractCoreMap(set ExtensionSet, hook HookRef) map[string]any {
 	return payload.Map()
 }
 
+// If attrs is empty, it returns nil.
 func cloneAttributes(attrs map[string]any) map[string]any {
 	if len(attrs) == 0 {
 		return nil

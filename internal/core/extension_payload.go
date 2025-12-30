@@ -6,7 +6,7 @@ package core
 //   - explicit nil values are preserved as nil
 //   - non-map values are converted to nil
 //   - map[string]any values are retained as payload maps
-//   - empty plugin maps result in nil for that hook
+//   - a value that is a map[string]any is retained as the payload.
 func mapExtensionPayloads(raw map[string]map[string]any) map[string]map[string]map[string]any {
 	if len(raw) == 0 {
 		return nil

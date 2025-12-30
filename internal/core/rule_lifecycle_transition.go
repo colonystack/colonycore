@@ -206,6 +206,8 @@ func (lifecycleTransitionRule) Evaluate(_ context.Context, view domain.RuleView,
 	return res, nil
 }
 
+// toSet returns a set containing the provided strings.
+// The set is represented as a map[string]struct{} with each input string as a key.
 func toSet(values ...string) map[string]struct{} {
 	set := make(map[string]struct{}, len(values))
 	for _, v := range values {

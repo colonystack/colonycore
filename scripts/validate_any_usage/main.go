@@ -22,10 +22,18 @@ var (
 	validateFunc = validation.ValidateAnyUsageFromFile
 )
 
+// main is the program entry point; it invokes run with command-line arguments and the configured validation function, then exits with the returned status code.
 func main() {
 	exitFunc(run(os.Args, os.Stderr, validateFunc))
 }
 
+// run parses command-line flags, invokes the any-usage validator, writes any errors
+// or violations to stderr, and returns an exit code.
+//
+// The args slice should contain the program name followed by flags. The validate
+// function is invoked with the allowlist path, the current working directory, and
+// the list of root packages to scan. The function returns 0 on success (no
+// violations) and 1 on any error, invalid input, or when violations are found.
 func run(args []string, stderr io.Writer, validate func(string, string, []string) ([]validation.Error, error)) int {
 	if len(args) == 0 {
 		return 1
@@ -79,6 +87,8 @@ func run(args []string, stderr io.Writer, validate func(string, string, []string
 	return 0
 }
 
+// splitRoots parses a comma-separated list of roots and returns a slice of non-empty, trimmed entries.
+// It trims surrounding whitespace from the input and each entry; if the input is empty or contains only whitespace, it returns nil.
 func splitRoots(value string) []string {
 	value = strings.TrimSpace(value)
 	if value == "" {

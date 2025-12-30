@@ -1522,6 +1522,9 @@ func (tx *transaction) recordChange(change Change) {
 	tx.changes = append(tx.changes, change)
 }
 
+// changePayloadFromValue converts value into a domain.ChangePayload.
+// If encoding fails, it sets tx.err (if not already set) with the encoding error
+// and returns domain.UndefinedChangePayload().
 func changePayloadFromValue[T any](tx *transaction, value T) domain.ChangePayload {
 	payload, err := domain.NewChangePayloadFromValue(value)
 	if err != nil {

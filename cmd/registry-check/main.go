@@ -46,6 +46,8 @@ var (
 	exitFunc      = os.Exit
 )
 
+// buildAllowedStatus builds a set of canonical document status strings derived from statusMap.
+// The returned map has canonical status values as keys and empty structs as values for efficient membership checks.
 func buildAllowedStatus() map[string]struct{} {
 	m := make(map[string]struct{}, len(statusMap))
 	for _, canonical := range statusMap {
@@ -54,6 +56,8 @@ func buildAllowedStatus() map[string]struct{} {
 	return m
 }
 
+// main runs the command-line interface using the program arguments and exits
+// the process with the status code returned by cli.
 func main() {
 	code := cli(os.Args[1:], os.Stdout, os.Stderr)
 	exitFunc(code)
@@ -96,6 +100,12 @@ func validatePath(p string) (string, error) {
 	return clean, nil
 }
 
+// run validates the given registry path, parses the registry file, and verifies each document and its recorded status.
+// 
+// It validates the registry path, opens and parses the registry file, and ensures the registry contains at least one document.
+// For each document it performs structural validation and verifies the document's declared status against the document file.
+// Returns an error if path validation, file I/O, parsing, structural validation, status verification, or an empty documents entry occur;
+// document-level errors are annotated with the document index (e.g., "documents[0]: ...").
 func run(registryPath string) (err error) {
 	safePath, vErr := validatePath(registryPath)
 	if vErr != nil {
@@ -315,6 +325,10 @@ func appendList(doc *Document, key, value string) error {
 	return nil
 }
 
+// validateDocument checks that a Document has all required fields and that any
+// provided date fields are valid (YYYY-MM-DD). It returns an error describing
+// the first problem found, such as a missing or invalid id, type, title, status,
+// path, or a malformed created/date/last_updated value.
 func validateDocument(doc Document) error {
 	if doc.ID == "" {
 		return errors.New("missing id")
@@ -357,6 +371,10 @@ func validateDocument(doc Document) error {
 	return nil
 }
 
+// validateDocumentStatus verifies that the status recorded in the registry for the given Document
+// matches the canonical status read from the document file.
+// It reads the document's status from the file at doc.Path and returns an error if reading fails
+// or if the canonical status extracted from the file differs from doc.Status.
 func validateDocumentStatus(doc Document) error {
 	status, err := readDocumentStatus(doc.Path)
 	if err != nil {
@@ -368,6 +386,15 @@ func validateDocumentStatus(doc Document) error {
 	return nil
 }
 
+// readDocumentStatus reads the document file at the given path and returns the document's canonical status.
+//
+// It validates the provided path, opens the file, and scans up to the first 120 non-empty lines to discover a status.
+// Two discovery modes are supported:
+// - A "## Status" header where the next non-empty line supplies the status value.
+// - An inline "Status:" line anywhere that supplies the status value.
+// The returned status is normalized to the registry's canonical form. If the file cannot be opened or scanned,
+// if the status token is missing or invalid, or if a "## Status" header is present without a following value,
+// an error is returned.
 func readDocumentStatus(path string) (status string, err error) {
 	const statusScanLimit = 120
 
@@ -423,6 +450,8 @@ func readDocumentStatus(path string) (status string, err error) {
 	}
 	return "", fmt.Errorf("status not found in %s", path)
 }
+// parseInlineStatus examines a single line for an inline "Status:" token and, if present, returns the canonical status.
+// If the line contains a status token the second return value is `true`; the first return is the canonical status and the third is a canonicalization error, if any.
 func parseInlineStatus(line string) (string, bool, error) {
 	trimmed := strings.TrimSpace(line)
 	trimmed = strings.TrimLeft(trimmed, "-* ")
@@ -436,6 +465,8 @@ func parseInlineStatus(line string) (string, bool, error) {
 	}
 	return status, true, nil
 }
+// canonicalizeStatus extracts the leading status token from value and returns the corresponding canonical status string.
+// It returns an error if no token can be extracted or if the token is not recognized by the package's status mapping.
 func canonicalizeStatus(value string) (string, error) {
 	token := extractStatusToken(value)
 	if token == "" {
@@ -448,6 +479,9 @@ func canonicalizeStatus(value string) (string, error) {
 	return canonical, nil
 }
 
+// extractStatusToken extracts the first whitespace-separated token from value and trims surrounding punctuation.
+// If value is empty or contains no fields, it returns the empty string. The trimming removes common punctuation
+// characters such as '(', ')', '.', ',', ';', ':' and '-'.
 func extractStatusToken(value string) string {
 	fields := strings.Fields(value)
 	if len(fields) == 0 {
@@ -456,6 +490,8 @@ func extractStatusToken(value string) string {
 	return strings.Trim(fields[0], "().,;:-")
 }
 
+// validateDate checks that value is a date in YYYY-MM-DD format.
+// It returns an error describing the invalid input when parsing fails.
 func validateDate(value string) error {
 	if _, err := time.Parse("2006-01-02", value); err != nil {
 		return fmt.Errorf("invalid date %q", value)

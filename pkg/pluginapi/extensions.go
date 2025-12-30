@@ -12,7 +12,10 @@ type ExtensionSet interface {
 	Raw() map[string]map[string]map[string]any
 }
 
-// NewExtensionSet constructs a defensive copy of the provided raw payload.
+// NewExtensionSet creates an ExtensionSet backed by a defensive copy of the
+// provided nested payload (hook -> plugin -> values). The returned set is
+// safe to share with callers because the input map is cloned; passing nil or
+// an empty map yields an empty ExtensionSet.
 func NewExtensionSet(raw map[string]map[string]map[string]any) ExtensionSet {
 	payload := cloneRaw(raw)
 	return &extensionSet{payload: payload}
@@ -99,6 +102,7 @@ func (s *extensionSet) Raw() map[string]map[string]map[string]any {
 	return cloneRaw(s.payload)
 }
 
+// that type this function panics.
 func cloneRaw(raw map[string]map[string]map[string]any) map[string]map[string]map[string]any {
 	if len(raw) == 0 {
 		return nil
