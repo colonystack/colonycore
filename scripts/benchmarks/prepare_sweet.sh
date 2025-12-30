@@ -16,6 +16,8 @@ if ! git -C "$SWEET_WORK_DIR" apply --check "$PATCH_FILE"; then
 fi
 
 git -C "$SWEET_WORK_DIR" apply "$PATCH_FILE"
+verify_sweet_overlay_matches_patch "$SWEET_WORK_DIR"
+apply_sweet_overlays "$SWEET_WORK_DIR"
 
 (
   cd "$SWEET_WORK_DIR"

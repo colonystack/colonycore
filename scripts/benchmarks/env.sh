@@ -23,6 +23,7 @@ BASELINE_FILE="${BASELINE_FILE:-$ROOT_DIR/internal/ci/benchmarks/baseline.withme
 
 PATCH_FILE="${PATCH_FILE:-$ROOT_DIR/scripts/benchmarks/sweet_colonycore.patch}"
 SWEET_PATCH_TARGET="${SWEET_PATCH_TARGET:-sweet}"
+SWEET_OVERLAY_DIR="${SWEET_OVERLAY_DIR:-$ROOT_DIR/scripts/benchmarks/sweet_overlays}"
 
 ensure_sweet_repo_exists_and_checkout() {
   local repo_dir="$1"
@@ -46,4 +47,56 @@ ensure_sweet_repo_exists_and_checkout() {
     echo "Error: failed to checkout $commit in $repo_dir" >&2
     exit 1
   }
+}
+
+apply_sweet_overlays() {
+  local work_dir="$1"
+  local overlay_dir="${2:-$SWEET_OVERLAY_DIR}"
+
+  if [ ! -d "$overlay_dir" ]; then
+    return 0
+  fi
+
+  while IFS= read -r -d '' overlay_file; do
+    local rel="${overlay_file#"$overlay_dir"/}"
+    local target_rel="$rel"
+    if [[ "$rel" == *.tmpl ]]; then
+      target_rel="${rel%.tmpl}"
+    fi
+    local target="$work_dir/$target_rel"
+    mkdir -p "$(dirname "$target")"
+    cp -p "$overlay_file" "$target"
+  done < <(find "$overlay_dir" -type f -print0)
+}
+
+verify_sweet_overlay_matches_patch() {
+  local work_dir="$1"
+  local overlay_dir="${2:-$SWEET_OVERLAY_DIR}"
+
+  if [ ! -d "$overlay_dir" ]; then
+    return 0
+  fi
+
+  local mismatch=0
+  while IFS= read -r -d '' overlay_file; do
+    local rel="${overlay_file#"$overlay_dir"/}"
+    local target_rel="$rel"
+    if [[ "$rel" == *.tmpl ]]; then
+      target_rel="${rel%.tmpl}"
+    fi
+    local target="$work_dir/$target_rel"
+    if [ ! -f "$target" ]; then
+      echo "Error: overlay file ${target_rel} is missing in patched sweet tree; refresh ${PATCH_FILE}" >&2
+      mismatch=1
+      continue
+    fi
+    if ! cmp -s "$overlay_file" "$target"; then
+      echo "Error: overlay file ${target_rel} differs from patched sweet tree; refresh ${PATCH_FILE}" >&2
+      mismatch=1
+    fi
+  done < <(find "$overlay_dir" -type f -print0)
+
+  if [ "$mismatch" -ne 0 ]; then
+    return 1
+  fi
 }

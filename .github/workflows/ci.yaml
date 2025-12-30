@@ -44,7 +44,7 @@ jobs:
       - name: Install APT packages
         uses: awalsh128/cache-apt-pkgs-action@v1
         with:
-          packages: r-base libcurl4-openssl-dev libxml2-dev libxslt1-dev pkg-config
+          packages: r-base libblas3 libcurl4-openssl-dev libxml2-dev libxslt1-dev pkg-config
           version: 1
 
       - name: Install tooling
@@ -79,6 +79,8 @@ jobs:
           done
 
       - name: Run pre-commit
+        env:
+          REQUIRE_R_LINT: "1"
         run: |
           PRE_COMMIT_HOME=$PWD/.cache/pre-commit \
           XDG_CACHE_HOME=$PWD/.cache \

@@ -209,7 +209,7 @@ r-lint: r-lint-setup
 
 r-lint-setup:
 	@echo "==> R lint setup"
-	@R_LIBS_USER=$(R_LINTR_CACHE) R_INSTALL_STAGED=false LINTR_REPO=$(LINTR_REPO) LINTR_VERSION=$(LINTR_VERSION) XML2_VERSION=$(XML2_VERSION) Rscript --vanilla scripts/setup_r_lintr.R
+	@R_LIBS_USER=$(R_LINTR_CACHE) R_INSTALL_STAGED=false LINTR_REPO=$(LINTR_REPO) LINTR_VERSION=$(LINTR_VERSION) XML2_VERSION=$(XML2_VERSION) python scripts/run_lintr.py --setup-only
 
 r-lint-reset:
 	@echo "==> R lint reset"

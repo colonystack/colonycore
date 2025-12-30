@@ -26,7 +26,7 @@ diff --git a/sweet/harnesses/colonycore.go b/sweet/harnesses/colonycore.go
 new file mode 100644
 --- /dev/null
 +++ b/sweet/harnesses/colonycore.go
-@@ -0,0 +1,80 @@
+@@ -0,0 +1,96 @@
 +package harnesses
 +
 +import (
@@ -66,24 +66,33 @@ new file mode 100644
 +		return fmt.Errorf("COLONYCORE_REPO_ROOT is not set")
 +	}
 +
-+	goTool := filepath.Join(cfg.GoRoot, "bin", "go")
-+	if cfg.GoRoot == "" {
++	goTool := "go"
++	if cfg.GoRoot != "" {
++		configured := filepath.Join(cfg.GoRoot, "bin", "go")
++		var configuredErr error
++		if info, err := os.Stat(configured); err != nil {
++			configuredErr = err
++		} else if !info.Mode().IsRegular() {
++			configuredErr = fmt.Errorf("not a regular file")
++		} else if info.Mode()&0111 == 0 {
++			configuredErr = fmt.Errorf("not executable (mode %s)", info.Mode())
++		} else {
++			goTool = configured
++		}
++		if configuredErr != nil {
++			pathTool, lookErr := exec.LookPath("go")
++			if lookErr != nil {
++				return fmt.Errorf("go binary not usable at %s (%v) or on PATH (%v)", configured, configuredErr, lookErr)
++			}
++			log.Printf("warning: configured go tool at %s is unusable (%v); using go from PATH", configured, configuredErr)
++			goTool = pathTool
++			cfg.GoRoot = ""
++		}
++	} else {
 +		var err error
 +		goTool, err = exec.LookPath("go")
 +		if err != nil {
 +			return fmt.Errorf("go binary not found on PATH: %w", err)
-+		}
-+	} else {
-+		info, err := os.Stat(goTool)
-+		if err != nil {
-+			pathTool, lookErr := exec.LookPath("go")
-+			if lookErr != nil {
-+				return fmt.Errorf("go binary not found at %s or on PATH: %w", goTool, err)
-+			}
-+			log.Printf("warning: failed to use go tool at %s: %v; using go from PATH", goTool, err)
-+			goTool = pathTool
-+		} else if info.Mode()&0111 == 0 {
-+			return fmt.Errorf("go binary at %s is not executable", goTool)
 +		}
 +	}
 +
@@ -99,11 +108,18 @@ new file mode 100644
 +		"-count", "1",
 +	)
 +	cmd.Dir = repoRoot
-+	cmd.Env = cfg.ExecEnv.MustSet(
-+		"GOROOT="+cfg.GoRoot,
++	env := cfg.ExecEnv.MustSet(
 +		"GOCACHE="+filepath.Join(rcfg.BinDir, "gocache"),
-+	).Collapse()
++	)
++	if cfg.GoRoot != "" {
++		env = env.MustSet("GOROOT=" + cfg.GoRoot)
++	}
++	cmd.Env = env.Collapse()
 +	cmd.Stdout = rcfg.Results
 +	cmd.Stderr = rcfg.Log
 +	log.TraceCommand(cmd, false)
-+	return cmd.Run()
++	if err := cmd.Run(); err != nil {
++		return fmt.Errorf("failed to run go tool at %s: %w", goTool, err)
++	}
++	return nil
++}

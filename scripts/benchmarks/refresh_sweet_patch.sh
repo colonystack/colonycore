@@ -15,6 +15,8 @@ if ! git -C "$SWEET_WORK_DIR" apply "$PATCH_FILE"; then
   exit 1
 fi
 
+apply_sweet_overlays "$SWEET_WORK_DIR"
+
 git -C "$SWEET_WORK_DIR" add -N "$SWEET_PATCH_TARGET"
 
 tmp_patch="$(mktemp "${PATCH_FILE}.XXXXXX")"

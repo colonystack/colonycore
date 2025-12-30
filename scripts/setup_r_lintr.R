@@ -20,6 +20,7 @@ if (!nzchar(lib_dir)) {
   stop("R_LIBS_USER must be set for lintr setup", call. = FALSE)
 }
 dir.create(lib_dir, recursive = TRUE, showWarnings = FALSE)
+.libPaths(c(lib_dir, .Library))
 
 lock_dirs <- list.files(lib_dir, pattern = "^00LOCK", full.names = TRUE)
 if (length(lock_dirs) > 0) {

@@ -1,0 +1,96 @@
+package harnesses
+
+import (
+	"context"
+	"fmt"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"time"
+
+	"golang.org/x/benchmarks/sweet/common"
+	"golang.org/x/benchmarks/sweet/common/log"
+)
+
+const colonycoreBenchRegex = "^(BenchmarkDeepCloneAttributes|BenchmarkExtensionPayloadMap|BenchmarkCloneValueNested|BenchmarkObjectPayloadMap|BenchmarkExtensionSetRaw)$"
+
+type ColonyCore struct{}
+
+func (ColonyCore) CheckPrerequisites() error {
+	return nil
+}
+
+func (ColonyCore) Get(_ *common.GetConfig) error {
+	return nil
+}
+
+func (ColonyCore) Build(_ *common.Config, _ *common.BuildConfig) error {
+	return nil
+}
+
+func (ColonyCore) Run(cfg *common.Config, rcfg *common.RunConfig) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
+	defer cancel()
+
+	repoRoot := os.Getenv("COLONYCORE_REPO_ROOT")
+	if repoRoot == "" {
+		return fmt.Errorf("COLONYCORE_REPO_ROOT is not set")
+	}
+
+	goTool := "go"
+	if cfg.GoRoot != "" {
+		configured := filepath.Join(cfg.GoRoot, "bin", "go")
+		var configuredErr error
+		if info, err := os.Stat(configured); err != nil {
+			configuredErr = err
+		} else if !info.Mode().IsRegular() {
+			configuredErr = fmt.Errorf("not a regular file")
+		} else if info.Mode()&0111 == 0 {
+			configuredErr = fmt.Errorf("not executable (mode %s)", info.Mode())
+		} else {
+			goTool = configured
+		}
+		if configuredErr != nil {
+			pathTool, lookErr := exec.LookPath("go")
+			if lookErr != nil {
+				return fmt.Errorf("go binary not usable at %s (%v) or on PATH (%v)", configured, configuredErr, lookErr)
+			}
+			log.Printf("warning: configured go tool at %s is unusable (%v); using go from PATH", configured, configuredErr)
+			goTool = pathTool
+			cfg.GoRoot = ""
+		}
+	} else {
+		var err error
+		goTool, err = exec.LookPath("go")
+		if err != nil {
+			return fmt.Errorf("go binary not found on PATH: %w", err)
+		}
+	}
+
+	cmd := exec.CommandContext(
+		ctx,
+		goTool,
+		"test",
+		"./pkg/pluginapi",
+		"./pkg/datasetapi",
+		"-run", "^$",
+		"-bench", colonycoreBenchRegex,
+		"-benchmem",
+		"-count", "1",
+	)
+	cmd.Dir = repoRoot
+	env := cfg.ExecEnv.MustSet(
+		"GOCACHE="+filepath.Join(rcfg.BinDir, "gocache"),
+	)
+	if cfg.GoRoot != "" {
+		env = env.MustSet("GOROOT=" + cfg.GoRoot)
+	}
+	cmd.Env = env.Collapse()
+	cmd.Stdout = rcfg.Results
+	cmd.Stderr = rcfg.Log
+	log.TraceCommand(cmd, false)
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("failed to run go tool at %s: %w", goTool, err)
+	}
+	return nil
+}

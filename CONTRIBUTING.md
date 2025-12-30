@@ -72,6 +72,7 @@ Use the issue forms:
 - Troubleshooting:
   - Ruff missing/mismatched → reinstall using the requirements file; if you manage multiple environments, keep one aligned with 0.5.7 for this repo.
   - Package install errors in R → install `libcurl4-openssl-dev libxml2-dev libxslt1-dev` and retry, or pre-install the pinned packages with `make r-lint-setup`.
+  - R runtime shared library errors (for example `libblas.so.3` missing) → install a BLAS runtime (`libblas3` on Debian/Ubuntu) and rerun; set `REQUIRE_R_LINT=1` to make missing runtime deps fail the lint step.
   - Shared library errors (for example `shared object 'rlang.so' not found`) → run `make r-lint-reset` then `make r-lint-setup`, and rerun `make r-lint`.
   - Version mismatch after install (for example `xml2: 1.3.3 (expected 1.3.6)`) → run `make r-lint-reset`, then `make r-lint-setup`, then rerun `make r-lint`. Opening a fresh shell can also help pick up updated packages.
 - Auto-fix shortcuts:
