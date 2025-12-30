@@ -172,7 +172,7 @@ func validateTemplate(tpl Template) error {
 	return nil
 }
 
-//   - a slice of ParameterError describing missing, undeclared, or coercion errors (empty if validation succeeded).
+// - a slice of ParameterError describing missing, undeclared, or coercion errors (empty if validation succeeded).
 func validateParameters(definitions []Parameter, supplied map[string]any) (map[string]any, []ParameterError) {
 	cleaned := make(map[string]any)
 	var errs []ParameterError
@@ -377,7 +377,7 @@ func cloneTemplate(t Template) Template {
 // cloneParameters creates a shallow copy of the provided Parameter slice and
 // deep-copies internal slice fields so the returned slice can be mutated
 // independently of the input.
-// 
+//
 // For each parameter the function clones the Example and Default byte slices
 // and the Enum string slice when present. If the input slice is empty, it
 // returns nil.

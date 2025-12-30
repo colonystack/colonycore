@@ -101,7 +101,7 @@ func validatePath(p string) (string, error) {
 }
 
 // run validates the given registry path, parses the registry file, and verifies each document and its recorded status.
-// 
+//
 // It validates the registry path, opens and parses the registry file, and ensures the registry contains at least one document.
 // For each document it performs structural validation and verifies the document's declared status against the document file.
 // Returns an error if path validation, file I/O, parsing, structural validation, status verification, or an empty documents entry occur;
@@ -450,6 +450,7 @@ func readDocumentStatus(path string) (status string, err error) {
 	}
 	return "", fmt.Errorf("status not found in %s", path)
 }
+
 // parseInlineStatus examines a single line for an inline "Status:" token and, if present, returns the canonical status.
 // If the line contains a status token the second return value is `true`; the first return is the canonical status and the third is a canonicalization error, if any.
 func parseInlineStatus(line string) (string, bool, error) {
@@ -465,6 +466,7 @@ func parseInlineStatus(line string) (string, bool, error) {
 	}
 	return status, true, nil
 }
+
 // canonicalizeStatus extracts the leading status token from value and returns the corresponding canonical status string.
 // It returns an error if no token can be extracted or if the token is not recognized by the package's status mapping.
 func canonicalizeStatus(value string) (string, error) {

@@ -1001,11 +1001,11 @@ func insertGenotypeMarkers(ctx context.Context, exec execQuerier, markers map[st
 }
 
 // insertLines inserts or updates the provided lines and their associated genotype marker links.
-// 
+//
 // For each line it verifies that `GenotypeMarkerIDs` is not empty, deletes any existing
 // marker links for that line, marshals `DefaultAttributes` and `ExtensionOverrides` to JSON
 // (allowing null), upserts the line record, and then inserts the line→marker link rows.
-// 
+//
 // It returns an error if a line is missing required marker IDs, JSON marshaling fails, or any
 // database operation fails.
 func insertLines(ctx context.Context, exec execQuerier, lines map[string]domain.Line) error {
@@ -1041,7 +1041,7 @@ func insertLines(ctx context.Context, exec execQuerier, lines map[string]domain.
 }
 
 // insertStrains inserts or updates the given strains and their genotype marker links in the database.
-// 
+//
 // For each strain it validates that LineID is present, deletes any existing strain-marker links,
 // upserts the strain record, and then inserts links for each GenotypeMarkerID.
 // It returns an error if validation fails or any database operation returns an error.

@@ -71,7 +71,7 @@ type HousingUnitFixtureConfig struct {
 
 // Organism constructs a datasetapi.Organism using domain conversion helpers to avoid
 // Organism builds a datasetapi.Organism from the provided OrganismFixtureConfig for use in tests.
-// 
+//
 // The returned organism includes base metadata (ID, CreatedAt, UpdatedAt), standard fields
 // (Name, Species, Line, LineID, StrainID, ParentIDs, Stage, CohortID, HousingID, ProtocolID, ProjectID)
 // and an ExtensionSet containing core attributes when present. Panics if assigning core attributes fails.

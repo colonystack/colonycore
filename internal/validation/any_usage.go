@@ -143,13 +143,13 @@ func ValidateAnyUsage(allowlist AnyAllowlist, baseDir string, roots []string) ([
 }
 
 // validateAllowlist validates and normalizes an AnyAllowlist in place.
-// 
+//
 // It enforces that Version is >= 1 and that each entry contains a non-empty
 // Path, a known Category, a non-empty Owner, and a non-empty Rationale.
 // If an entry is marked Public, its Category must be either "json-boundary"
 // or "legacy-exception". Symbol lists, entry paths, and exclude globs are
 // trimmed and normalized according to package normalization rules.
-// 
+//
 // Returns an error describing the first validation failure encountered.
 func validateAllowlist(allowlist *AnyAllowlist) error {
 	if allowlist.Version <= 0 {
@@ -222,7 +222,7 @@ type anyAllowlistIndex struct {
 }
 
 // buildAllowlistIndex constructs an anyAllowlistIndex from the provided AnyAllowlist.
-// 
+//
 // For each entry, a path with no Symbols is recorded as allowing all usages for that path.
 // Entries that specify Symbols populate a per-path set of allowed symbol names.
 func buildAllowlistIndex(allowlist AnyAllowlist) anyAllowlistIndex {
@@ -268,17 +268,17 @@ type anyUsage struct {
 
 // validateAnyFile checks a single Go source file for disallowed uses of the identifier "any"
 // according to the provided allowlist index.
- // 
- // The function returns a slice of validation Errors describing each violation found in the
- // file (using relPath for Error.File and the source line for Error.Code), or a non-nil error
- // if the file could not be read or parsed.
- // 
- // Parameters:
- //   - path: filesystem path to the Go source file to inspect.
- //   - relPath: path relative to the repository or base directory used in reported errors.
- //   - index: allowlist index used to determine whether a given "any" usage is permitted.
- //
- // The function does not modify the file system.
+//
+// The function returns a slice of validation Errors describing each violation found in the
+// file (using relPath for Error.File and the source line for Error.Code), or a non-nil error
+// if the file could not be read or parsed.
+//
+// Parameters:
+//   - path: filesystem path to the Go source file to inspect.
+//   - relPath: path relative to the repository or base directory used in reported errors.
+//   - index: allowlist index used to determine whether a given "any" usage is permitted.
+//
+// The function does not modify the file system.
 func validateAnyFile(path, relPath string, index anyAllowlistIndex) ([]Error, error) {
 	// #nosec G304 -- path is derived from repo walk and validated roots
 	content, err := os.ReadFile(path)
@@ -325,7 +325,7 @@ type typeParamRange struct {
 
 // collectTypeParamRanges returns the token position ranges of type parameter type expressions
 // for all function and type declarations found in the provided AST file.
- // The returned slice contains start/end positions covering each type parameter's type expression.
+// The returned slice contains start/end positions covering each type parameter's type expression.
 func collectTypeParamRanges(file *ast.File) []typeParamRange {
 	var ranges []typeParamRange
 	ast.Inspect(file, func(n ast.Node) bool {

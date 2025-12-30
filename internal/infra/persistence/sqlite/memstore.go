@@ -1373,6 +1373,7 @@ func (s *memStore) View(_ context.Context, fn func(TransactionView) error) error
 	return fn(view)
 }
 func (tx *transaction) recordChange(change Change) { tx.changes = append(tx.changes, change) }
+
 // changePayloadFromValue encodes value into a domain.ChangePayload.
 // On success it returns the encoded payload. If encoding fails it returns
 // domain.UndefinedChangePayload() and an error that wraps the underlying encoding error.
