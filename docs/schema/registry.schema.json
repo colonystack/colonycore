@@ -110,7 +110,9 @@
           },
           "path": {
             "type": "string",
-            "minLength": 1
+            "minLength": 1,
+            "pattern": "^[^/\\s][^\\s]*$",
+            "description": "Repo-relative path without leading slash or whitespace."
           }
         }
       }

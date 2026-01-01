@@ -11,7 +11,7 @@ R_LINTR_CACHE ?= $(CURDIR)/.cache/R-lintr
 LINTR_REPO ?= https://cloud.r-project.org
 # Keep these in sync with scripts/run_lintr.py.
 LINTR_VERSION ?= 3.1.2
-XML2_VERSION ?= 1.3.6
+XML2_VERSION ?= 1.5.0
 SWEET_VERSION ?= v0.0.0-20251208221949-523919e4e4f2
 SWEET_COMMIT ?= 523919e4e4f284a0c060e6e5e5ff7f6f521fa2ed
 BENCHSTAT_VERSION ?= v0.0.0-20251208221838-04cf7a2dca90

@@ -69,7 +69,7 @@ def _sanitize_r_environ_files(env: dict[str, str]) -> None:
         try:
             if not Path(value).expanduser().exists():
                 env.pop(key, None)
-        except Exception:
+        except (OSError, ValueError):
             env.pop(key, None)
 
 
@@ -98,7 +98,7 @@ def _guess_r_home(rscript_path: str) -> Path | None:
     """
     try:
         resolved = Path(rscript_path).resolve()
-    except Exception:
+    except (OSError, RuntimeError, ValueError):
         return None
     candidates = [
         resolved.parent.parent,
@@ -108,7 +108,7 @@ def _guess_r_home(rscript_path: str) -> Path | None:
         try:
             if _looks_like_r_home(candidate):
                 return candidate
-        except Exception:
+        except (OSError, RuntimeError, ValueError):
             continue
     for candidate in (
         Path("/usr/lib/R"),
@@ -119,7 +119,7 @@ def _guess_r_home(rscript_path: str) -> Path | None:
         try:
             if _looks_like_r_home(candidate):
                 return candidate
-        except Exception:
+        except (OSError, RuntimeError, ValueError):
             continue
     return None
 
@@ -149,13 +149,13 @@ def _sanitize_r_env(env: dict[str, str], rscript_path: str) -> None:
         return
     try:
         r_home_path = Path(r_home)
-    except Exception:
+    except (OSError, RuntimeError, ValueError):
         r_home_path = None
     if r_home_path is not None:
         try:
             if _looks_like_r_home(r_home_path):
                 return
-        except Exception:
+        except (OSError, RuntimeError, ValueError):
             pass
     _clear_r_env(env)
     guessed = _guess_r_home(rscript_path)
@@ -166,7 +166,7 @@ def _sanitize_r_env(env: dict[str, str], rscript_path: str) -> None:
 REPO_ROOT = Path(__file__).resolve().parent.parent
 REQUIRED_R_PACKAGES: dict[str, str] = {
     "lintr": "3.1.2",
-    "xml2": "1.3.6",
+    "xml2": "1.5.0",
 }
 
 

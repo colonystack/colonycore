@@ -11,6 +11,6 @@ Structure:
 
 Notes:
 
-- Paths in fixture registries are repo-root relative and avoid `..` to satisfy `validatePath`.
+- Paths in fixture registries are repo-root relative, avoid `..` to satisfy `validatePath`, and contain no whitespace or leading slashes to satisfy the schema pattern.
 - The registry parser is intentionally minimal: 2-space indentation, list items via `-` (empty lists may use `[]`), and no inline YAML objects.
 - Status checks accept either `- Status: Draft` lines or a `## Status` header followed by the status line.

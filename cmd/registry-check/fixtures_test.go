@@ -20,6 +20,7 @@ func TestRegistryFixtures(t *testing.T) {
 		{"invalid-type", "testutil/fixtures/registry/invalid/registry-bad-type.yaml", true, "schema validation"},
 		{"invalid-status", "testutil/fixtures/registry/invalid/registry-bad-status.yaml", true, "schema validation"},
 		{"invalid-missing-title", "testutil/fixtures/registry/invalid/registry-missing-title.yaml", true, "schema validation"},
+		{"invalid-path", "testutil/fixtures/registry/invalid/registry-bad-path.yaml", true, "schema validation"},
 	}
 
 	for _, tc := range cases {
