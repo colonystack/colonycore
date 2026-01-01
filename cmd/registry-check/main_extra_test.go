@@ -100,6 +100,17 @@ func TestRegistryHelperFunctions(t *testing.T) {
 		t.Fatalf("expected error for missing colon")
 	}
 
+	testValue := "TestValue"
+	if got := normalizeScalar("\"" + testValue + "\""); got != testValue {
+		t.Fatalf("expected %s, got %q", testValue, got)
+	}
+	if got := normalizeScalar("'" + testValue + "'"); got != testValue {
+		t.Fatalf("expected %s, got %q", testValue, got)
+	}
+	if got := normalizeScalar("'Don''t'"); got != "Don't" {
+		t.Fatalf("expected Don't, got %q", got)
+	}
+
 	var d Document
 	if err := assignScalar(&d, "id", "DOC-1"); err != nil || d.ID != "DOC-1" {
 		t.Fatalf("assignScalar id failed: %+v %v", d, err)
@@ -141,7 +152,7 @@ func TestRegistryHelperFunctions(t *testing.T) {
 	if err := validateDocument(Document{}); err == nil {
 		t.Fatalf("expected error for missing fields")
 	}
-	badType := Document{ID: "X", Type: "ZZ", Title: "T", Status: "Draft", Path: "p"}
+	badType := Document{ID: "X", Type: "ZZ", Title: "T", Status: statusMap[statusDraftKey], Path: "p"}
 	if err := validateDocument(badType); err == nil {
 		t.Fatalf("expected invalid type error")
 	}
@@ -150,7 +161,7 @@ func TestRegistryHelperFunctions(t *testing.T) {
 		t.Fatalf("expected invalid status error")
 	}
 	// valid minimal document
-	good := Document{ID: "X", Type: "RFC", Title: "T", Status: "Draft", Path: "p"}
+	good := Document{ID: "X", Type: "RFC", Title: "T", Status: statusMap[statusDraftKey], Path: "p"}
 	if err := validateDocument(good); err != nil {
 		t.Fatalf("unexpected validate error: %v", err)
 	}

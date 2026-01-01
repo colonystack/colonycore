@@ -2,6 +2,10 @@
 
 This directory holds machine-readable contracts. `entity-model.json` is the seed for Entity Model v0 per ADR-0003 and drives generated Go types, OpenAPI, DDL, fixtures, and ERDs.
 
+## Governance registry schema
+
+`docs/schema/registry.schema.json` defines the JSON Schema for `docs/rfc/registry.yaml`. The `cmd/registry-check` CLI loads this schema during `make registry-lint`, and registry fixtures live under `testutil/fixtures/registry`.
+
 Conventions:
 - IDs are opaque UUIDv7 strings for all entities.
 - `id`, `created_at`, and `updated_at` are required on every entity.

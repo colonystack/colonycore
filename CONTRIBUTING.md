@@ -63,6 +63,7 @@ Use the issue forms:
   - Test: `make test`
   - Lint/format: `make lint` (runs gofmt/vet/registry/golangci plus Ruff and the R lintr)
 - Import guardrails rely on `import-boss`; the runbook in `docs/annex/0003-import-boss-runbook.md` covers command syntax and troubleshooting.
+- Container runtime: Makefile targets that spin up containers (for example `make entity-model-erd`) use `DOCKER` (default `docker`). Override with `DOCKER=podman` or `DOCKER=nerdctl` if needed, and ensure the runtime supports `docker`-compatible CLI behavior including `--network container:` semantics.
 
 ## Client Linting
 - `make lint` (or `pre-commit run --all-files`) exercises the Go, Python, and R linters exactly as CI does; run it before pushing if you touch `clients/python` or `clients/R`.

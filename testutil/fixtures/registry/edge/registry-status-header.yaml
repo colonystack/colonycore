@@ -1,0 +1,6 @@
+documents:
+  - id: ADR-EDGE-0001
+    type: ADR
+    title: Edge Status Header
+    status: Accepted
+    path: testutil/fixtures/registry/docs/adr-status-header.md
