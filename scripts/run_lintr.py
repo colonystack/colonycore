@@ -22,6 +22,7 @@ def _escape_for_r(value: str) -> str:
 
 
 _R_ENV_KEYS = ("R_HOME", "R_ENVIRON", "R_ENVIRON_USER")
+_R_HOME_UTILS_DESC = ("library", "utils", "DESCRIPTION")
 
 
 def _clear_r_env(env: dict[str, str]) -> None:
@@ -29,20 +30,52 @@ def _clear_r_env(env: dict[str, str]) -> None:
         env.pop(key, None)
 
 
-def _sanitize_r_env(env: dict[str, str]) -> None:
+def _looks_like_r_home(r_home: Path) -> bool:
+    return (r_home / "etc" / "Renviron").exists() and (r_home / Path(*_R_HOME_UTILS_DESC)).exists()
+
+
+def _guess_r_home(rscript_path: str) -> Path | None:
+    try:
+        resolved = Path(rscript_path).resolve()
+    except Exception:
+        return None
+    candidates = [
+        resolved.parent.parent,
+        resolved.parent.parent / "lib" / "R",
+    ]
+    for candidate in candidates:
+        try:
+            if _looks_like_r_home(candidate):
+                return candidate
+        except Exception:
+            continue
+    return None
+
+
+def _sanitize_r_env(env: dict[str, str], rscript_path: str) -> None:
     r_home = env.get("R_HOME")
     if r_home is None:
         return
     if not r_home.strip():
         _clear_r_env(env)
+        guessed = _guess_r_home(rscript_path)
+        if guessed is not None:
+            env["R_HOME"] = str(guessed)
         return
     try:
         r_home_path = Path(r_home)
-        if (r_home_path / "etc" / "Renviron").exists():
-            return
     except Exception:
-        return
+        r_home_path = None
+    if r_home_path is not None:
+        try:
+            if _looks_like_r_home(r_home_path):
+                return
+        except Exception:
+            pass
     _clear_r_env(env)
+    guessed = _guess_r_home(rscript_path)
+    if guessed is not None:
+        env["R_HOME"] = str(guessed)
 
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -104,7 +137,7 @@ def main() -> int:
         return 1
 
     env = os.environ.copy()
-    _sanitize_r_env(env)
+    _sanitize_r_env(env, rscript)
     env.setdefault("R_LIBS_USER", str(REPO_ROOT / ".cache" / "R-lintr"))
     env.setdefault("R_INSTALL_STAGED", "false")
 
