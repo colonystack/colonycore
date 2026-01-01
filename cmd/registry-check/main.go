@@ -228,7 +228,7 @@ func loadJSONSchema(path string) (*jsonSchema, error) {
 }
 
 // validateSchema validates a jsonSchema and its nested schemas, returning an error for any schema rule violation.
-// 
+//
 // validateSchema performs recursive structural checks including:
 // - schema is non-nil;
 // - numeric constraints (minItems, minLength) are >= 0 and only used with appropriate types;
@@ -238,7 +238,7 @@ func loadJSONSchema(path string) (*jsonSchema, error) {
 // - object schemas have Properties defined, Required entries reference existing properties, and each property schema is non-nil and valid;
 // - array schemas have an Items schema which is validated recursively;
 // - only the supported top-level types (object, array, string) are accepted.
-// 
+//
 // The provided path is used to produce contextual error messages describing the location of the violation.
 func validateSchema(schema *jsonSchema, path string) error {
 	if schema == nil {
@@ -464,7 +464,7 @@ func stringInSlice(value string, values []string) bool {
 }
 
 // parseRegistry parses a registry file in the repository's simple YAML-like format and returns the resulting Registry.
-// 
+//
 // The parser reads the file line-by-line, ignores blank lines and comments, and expects a top-level "documents:" section.
 // Documents are introduced by entries at indent level 2 beginning with "- " and may contain scalar fields at indent level 4
 // and list fields whose items appear at indent level 6 as "- item". On encountering a new document the previous document is
