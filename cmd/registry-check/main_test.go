@@ -95,7 +95,7 @@ func TestRunAllScalarFields(t *testing.T) {
 		"    created: 2025-01-01",
 		"    date: 2025-01-01",
 		"    last_updated: 2025-01-02",
-		"    quorum: simple",
+		"    quorum: majority",
 		"    target_release: v1",
 		"    path: " + docPath,
 		"    authors:",
@@ -130,7 +130,7 @@ func TestValidateDocumentErrors(t *testing.T) {
 		ID:     "RFC-100",
 		Type:   "RFC",
 		Title:  "Title",
-		Status: "Draft",
+		Status: statusMap[statusDraftKey],
 		Path:   "docs/rfc/rfc-0100.md",
 	}
 	cases := []struct {

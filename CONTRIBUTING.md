@@ -63,18 +63,19 @@ Use the issue forms:
   - Test: `make test`
   - Lint/format: `make lint` (runs gofmt/vet/registry/golangci plus Ruff and the R lintr)
 - Import guardrails rely on `import-boss`; the runbook in `docs/annex/0003-import-boss-runbook.md` covers command syntax and troubleshooting.
+- Container runtime: Makefile targets that spin up containers (for example `make entity-model-erd`) use `DOCKER` (default `docker`). Override with `DOCKER=podman` or `DOCKER=nerdctl` if needed, and ensure the runtime supports `docker`-compatible CLI behavior including `--network container:` semantics.
 
 ## Client Linting
 - `make lint` (or `pre-commit run --all-files`) exercises the Go, Python, and R linters exactly as CI does; run it before pushing if you touch `clients/python` or `clients/R`.
 - Quick setup:
   1. Install Ruff with `python -m pip install --require-virtualenv -r clients/python/requirements-lint.txt` to match the pinned `0.5.7` version.
-  2. Install R ≥ 4.0 (`sudo apt install r-base` on Debian/Ubuntu). `scripts/run_lintr.py` pins `lintr==3.1.2` and `xml2==1.3.6` into `.cache/R-lintr` automatically unless `LINTR_SKIP_AUTO_INSTALL=1` is set.
+  2. Install R ≥ 4.0 (`sudo apt install r-base` on Debian/Ubuntu). `scripts/run_lintr.py` pins `lintr==3.1.2` and `xml2==1.5.0` into `.cache/R-lintr` automatically unless `LINTR_SKIP_AUTO_INSTALL=1` is set.
 - Troubleshooting:
   - Ruff missing/mismatched → reinstall using the requirements file; if you manage multiple environments, keep one aligned with 0.5.7 for this repo.
   - Package install errors in R → install `libcurl4-openssl-dev libxml2-dev libxslt1-dev` and retry, or pre-install the pinned packages with `make r-lint-setup`.
   - R runtime shared library errors (for example `libblas.so.3` missing) → install a BLAS runtime (`libblas3` on Debian/Ubuntu) and rerun; set `REQUIRE_R_LINT=1` to make missing runtime deps fail the lint step.
   - Shared library errors (for example `shared object 'rlang.so' not found`) → run `make r-lint-reset` then `make r-lint-setup`, and rerun `make r-lint`.
-  - Version mismatch after install (for example `xml2: 1.3.3 (expected 1.3.6)`) → run `make r-lint-reset`, then `make r-lint-setup`, then rerun `make r-lint`. Opening a fresh shell can also help pick up updated packages.
+  - Version mismatch after install (for example `xml2: 1.3.3 (expected 1.5.0)`) → run `make r-lint-reset`, then `make r-lint-setup`, then rerun `make r-lint`. Opening a fresh shell can also help pick up updated packages.
 - Auto-fix shortcuts:
   - Python: `python -m ruff check --fix clients/python`; rerun `make python-lint` afterwards.
   - R: `Rscript -e "styler::style_dir('clients/R')"` handles formatting; rerun `make r-lint` afterwards.
@@ -86,7 +87,7 @@ Use the issue forms:
 - **Install hooks**: `pipx install pre-commit` (or `python -m pip install --user pre-commit`) once, then run `pre-commit install --install-hooks`. Re-run the install command after pulling updates to `.pre-commit-config.yaml`.
 - **What runs**: `pre-commit run --all-files` matches CI and ensures gofmt/go vet/golangci-lint, Ruff for Python, Prettier 3.3.3 (via `pnpm dlx`) for JS/TS/YAML/Markdown, a local `go mod tidy` guard, R `lintr`, gitleaks secret scanning, the RFC registry check, and OpenAPI validation for `docs/schema/dataset-service.openapi.yaml` using `openapi-spec-validator`.
 - **Troubleshooting**: wipe environments with `pre-commit clean`, ensure `golangci-lint`/`Rscript` stay on `PATH`, and let the R hook auto-install `lintr`/`xml2` into `.cache/R-lintr` (`LINTR_SKIP_AUTO_INSTALL=1` if you prefer manual installs). If the install step fails, install the system dependencies (`libcurl4-openssl-dev`, `libxml2-dev`, `libxslt1-dev` on Debian/Ubuntu) or pre-install the R packages yourself. Allow `pnpm` to fetch Prettier the first time it runs, and for OpenAPI lint failures inspect the YAML under `docs/schema/`. Override `PRE_COMMIT_HOME` if you need to share caches across clones.
-- **CI**: GitHub Actions runs `make lint` before `pre-commit run --all-files` (skipping the duplicate lint hook) after provisioning Node/pnpm and R, so you get the same checks server-side.
+- **CI**: GitHub Actions runs `pre-commit run --all-files` after provisioning Node/pnpm and R; the `lint-via-make` hook invokes `make lint` when Go/Python files are present, so you get the same checks server-side.
 - **Emergency bypass**: prefer `SKIP=<hook id> pre-commit run --all-files` (for example `SKIP=check-jsonschema-openapi`); use `git commit --no-verify` only when absolutely necessary and follow up with a fix before merging.
 ## Style and Tooling
 - Follow existing code style and run formatters/linters where available.

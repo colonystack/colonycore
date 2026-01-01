@@ -1,0 +1,5 @@
+documents:
+  - id: RFC-INVALID-0003
+    type: RFC
+    status: Draft
+    path: testutil/fixtures/registry/docs/fixture-for-missing-title.md

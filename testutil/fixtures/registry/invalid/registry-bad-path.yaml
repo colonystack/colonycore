@@ -1,0 +1,6 @@
+documents:
+  - id: RFC-INVALID-0004
+    type: RFC
+    title: Invalid Path
+    status: Draft
+    path: "docs/rfc/invalid path.md"

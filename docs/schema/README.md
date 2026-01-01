@@ -2,7 +2,12 @@
 
 This directory holds machine-readable contracts. `entity-model.json` is the seed for Entity Model v0 per ADR-0003 and drives generated Go types, OpenAPI, DDL, fixtures, and ERDs.
 
+## Governance registry schema
+
+`docs/schema/registry.schema.json` defines the JSON Schema for `docs/rfc/registry.yaml`. The `cmd/registry-check` CLI loads this schema during `make registry-lint`, and registry fixtures live under `testutil/fixtures/registry`.
+
 Conventions:
+
 - IDs are opaque UUIDv7 strings for all entities.
 - `id`, `created_at`, and `updated_at` are required on every entity.
 - Enums capture lifecycle/status sets; `states.enum` references the enum name declared under `enums`. Housing lifecycle uses `housing_state` (quarantine → active → cleaning → decommissioned), and protocol/permit compliance states follow RFC-0001 §5.3. Enum values must be non-empty and deduplicated.
@@ -13,6 +18,7 @@ Conventions:
 - Dataset and plugin facades normalize lifecycle/status/environment values to the generated enums before exposing them to plugins; unknown inputs fall back to canonical defaults (planned/scheduled/stored/active/terrestrial) to avoid drifting from `entity-model.json`.
 
 Validation & targets:
+
 - Run `make entity-model-verify` (also executed by `make lint`) to sanity-check the JSON: semver version, required base fields, relationship cardinalities/targets, non-empty enums, allowlisted invariants, property enum references, and type/$ref presence. This target keeps domain layering intact by only reading `docs/schema/entity-model.json`.
 - `make entity-model-generate` emits:
   - Go enums and struct projections into `pkg/domain/entitymodel`.

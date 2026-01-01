@@ -49,10 +49,27 @@ func TestRunEmptyDocuments(t *testing.T) {
 
 // TestParseRegistryDeepErrors exercises additional structural parse branches not yet covered.
 func TestParseRegistryDeepErrors(t *testing.T) {
+	draftStatus := statusMap[statusDraftKey]
 	cases := []struct{ name, content, wantSubstr string }{
 		{"top-level-token", "bad:\n  - something\n", "expected 'documents:'"},
-		{"list-item-without-field", "documents:\n  - id: RFC-9\n    type: RFC\n    title: T\n    status: Draft\n    path: docs/rfc/rfc-0009.md\n      - stray\n", "list item without active list field"},
-		{"unsupported-indent", "documents:\n  - id: RFC-10\n    type: RFC\n    title: T\n    status: Draft\n    path: docs/rfc/rfc-0010.md\n   badindent: value\n", "unsupported structure"},
+		{"list-item-without-field", strings.Join([]string{
+			"documents:",
+			"  - id: RFC-9",
+			"    type: RFC",
+			"    title: T",
+			"    status: " + draftStatus,
+			"    path: docs/rfc/rfc-0009.md",
+			"      - stray",
+		}, "\n") + "\n", "list item without active list field"},
+		{"unsupported-indent", strings.Join([]string{
+			"documents:",
+			"  - id: RFC-10",
+			"    type: RFC",
+			"    title: T",
+			"    status: " + draftStatus,
+			"    path: docs/rfc/rfc-0010.md",
+			"   badindent: value",
+		}, "\n") + "\n", "unsupported structure"},
 	}
 	for _, tc := range cases {
 		tmp, err := os.CreateTemp(t.TempDir(), tc.name+"-*.yaml")
@@ -98,7 +115,7 @@ func TestAssignScalarAndValidateDocumentBranches(t *testing.T) {
 	if err := validateDocument(doc); err == nil || !strings.Contains(err.Error(), "missing status") {
 		t.Fatalf("expected missing status: %v", err)
 	}
-	doc.Status = "Draft"
+	doc.Status = statusMap[statusDraftKey]
 	if err := validateDocument(doc); err == nil || !strings.Contains(err.Error(), "missing path") {
 		t.Fatalf("expected missing path: %v", err)
 	}

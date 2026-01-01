@@ -1,0 +1,27 @@
+documents:
+  - id: ADR-TEST-0001
+    type: ADR
+    title: Registry Full Fixture
+    status: Accepted
+    created: 2025-01-01
+    date: 2025-01-02
+    last_updated: 2025-01-03
+    authors:
+      - Ada Lovelace
+    stakeholders:
+      - Core Maintainers
+    reviewers:
+      - Core Maintainers
+    quorum: "2"
+    target_release: v0.4.0
+    owners:
+      - Platform Team
+    deciders:
+      - Core Maintainers
+    linked_annexes:
+      - Annex-0001
+    linked_adrs:
+      - ADR-0002
+    linked_rfcs:
+      - RFC-0001
+    path: testutil/fixtures/registry/docs/adr-full.md

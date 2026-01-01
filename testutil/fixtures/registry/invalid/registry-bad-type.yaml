@@ -1,0 +1,6 @@
+documents:
+  - id: RFC-INVALID-0001
+    type: Spec
+    title: Invalid Type Fixture
+    status: Draft
+    path: testutil/fixtures/registry/docs/invalid-type.md

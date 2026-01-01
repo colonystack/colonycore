@@ -1,0 +1,6 @@
+documents:
+  - id: RFC-INVALID-0002
+    type: RFC
+    title: Invalid Status Fixture
+    status: Unknown
+    path: testutil/fixtures/registry/docs/invalid-status.md

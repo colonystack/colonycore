@@ -11,8 +11,8 @@ func TestReadDocumentStatusInline(t *testing.T) {
 	if err != nil {
 		t.Fatalf("read status: %v", err)
 	}
-	if status != "Draft" {
-		t.Fatalf("expected Draft, got %q", status)
+	if status != statusMap[statusDraftKey] {
+		t.Fatalf("expected %s, got %q", statusMap[statusDraftKey], status)
 	}
 }
 
@@ -22,8 +22,9 @@ func TestReadDocumentStatusHeader(t *testing.T) {
 	if err != nil {
 		t.Fatalf("read status: %v", err)
 	}
-	if status != "Accepted" {
-		t.Fatalf("expected Accepted, got %q", status)
+	expected := statusMap[statusAcceptedKey]
+	if status != expected {
+		t.Fatalf("expected %s, got %q", expected, status)
 	}
 }
 
@@ -71,7 +72,7 @@ func TestCanonicalizeStatusErrors(t *testing.T) {
 func TestValidateDocumentStatusReadError(t *testing.T) {
 	doc := Document{
 		ID:     "RFC-404",
-		Status: "Draft",
+		Status: statusMap[statusDraftKey],
 		Path:   "missing-status-doc.md",
 	}
 	if err := validateDocumentStatus(doc); err == nil || !strings.Contains(err.Error(), "status check for RFC-404") {

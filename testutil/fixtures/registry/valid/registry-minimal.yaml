@@ -1,0 +1,6 @@
+documents:
+  - id: RFC-TEST-0001
+    type: RFC
+    title: Minimal Registry Fixture
+    status: Draft
+    path: testutil/fixtures/registry/docs/rfc-minimal.md

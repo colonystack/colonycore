@@ -42,6 +42,7 @@ If any of these references conflict with a user request, seek clarification befo
 - Highlight persistence implications from ADR-0007: changes should align memory/sqlite/postgres drivers and keep env-based driver selection intact.
 - Flag contextual accessor and architecture guards in `pkg/pluginapi`/`pkg/datasetapi` plus import-boss rules that will fail if boundaries drift.
 - Set expectations on commands to run (`make lint`, `make test`, relevant generator or adapter suites) so the user understands the effort and runtime.
+- If Docker-backed tasks fail, verify required images are available and consider whether elevated privileges are needed before choosing a path forward.
 
 ## Allowed Changes by Agents
 - Localized bug fixes in one package or bounded context with tests

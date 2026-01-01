@@ -4,12 +4,14 @@ COVERMODE ?= atomic
 GOLANGCI_VERSION ?= v2.7.2
 BIN_DIR ?= $(CURDIR)/.cache/bin
 GOLANGCI_CACHE ?= $(CURDIR)/.cache/golangci-lint
+# Override DOCKER to use a compatible container runtime (e.g., podman, nerdctl).
+DOCKER ?= docker
 COVER_THRESHOLD ?= 90.0
 R_LINTR_CACHE ?= $(CURDIR)/.cache/R-lintr
 LINTR_REPO ?= https://cloud.r-project.org
 # Keep these in sync with scripts/run_lintr.py.
 LINTR_VERSION ?= 3.1.2
-XML2_VERSION ?= 1.3.6
+XML2_VERSION ?= 1.5.0
 SWEET_VERSION ?= v0.0.0-20251208221949-523919e4e4f2
 SWEET_COMMIT ?= 523919e4e4f284a0c060e6e5e5ff7f6f521fa2ed
 BENCHSTAT_VERSION ?= v0.0.0-20251208221838-04cf7a2dca90
@@ -240,26 +242,27 @@ entity-model-erd:
 	@rm -rf $(SCHEMASPY_TMP)
 	@mkdir -p $(SCHEMASPY_TMP) $(dir $(SCHEMASPY_SVG_OUT))
 	@chmod 777 $(SCHEMASPY_TMP)
-	@docker rm -f $(SCHEMASPY_PG_CONTAINER) >/dev/null 2>&1 || true
-	@docker run --rm -d --name $(SCHEMASPY_PG_CONTAINER) --platform $(SCHEMASPY_PG_PLATFORM) -e POSTGRES_PASSWORD=$(SCHEMASPY_PG_PASSWORD) -e POSTGRES_DB=$(SCHEMASPY_PG_DB) $(SCHEMASPY_PG_IMAGE) >/dev/null 2>&1 || { echo "Failed to start postgres container"; exit 1; }
+	@$(DOCKER) info >/dev/null 2>&1 || { echo "Container runtime ($(DOCKER)) is required for entity-model-erd. Ensure the daemon is running and your user can access it (or set DOCKER to an alternative runtime/command)."; exit 1; }
+	@$(DOCKER) rm -f $(SCHEMASPY_PG_CONTAINER) >/dev/null 2>&1 || true
+	@$(DOCKER) run --rm -d --name $(SCHEMASPY_PG_CONTAINER) --platform $(SCHEMASPY_PG_PLATFORM) -e POSTGRES_PASSWORD=$(SCHEMASPY_PG_PASSWORD) -e POSTGRES_DB=$(SCHEMASPY_PG_DB) $(SCHEMASPY_PG_IMAGE) >/dev/null 2>&1 || { echo "Failed to start postgres container"; exit 1; }
 	@printf "waiting for postgres"
 	@timeout=$(SCHEMASPY_PG_TIMEOUT); elapsed=0; \
-	until docker exec $(SCHEMASPY_PG_CONTAINER) pg_isready -U $(SCHEMASPY_PG_USER) -d $(SCHEMASPY_PG_DB) >/dev/null 2>&1; do \
-		docker ps --filter "name=$(SCHEMASPY_PG_CONTAINER)" --filter "status=running" --format '{{.Names}}' | grep -q "^$(SCHEMASPY_PG_CONTAINER)$$" || { echo " FAILED (container stopped)"; docker logs $(SCHEMASPY_PG_CONTAINER) 2>&1; docker rm -f $(SCHEMASPY_PG_CONTAINER) >/dev/null 2>&1; exit 1; }; \
-		[ $$elapsed -lt $$timeout ] || { echo " TIMEOUT"; docker logs $(SCHEMASPY_PG_CONTAINER) 2>&1; docker rm -f $(SCHEMASPY_PG_CONTAINER) >/dev/null 2>&1; exit 1; }; \
+	until $(DOCKER) exec $(SCHEMASPY_PG_CONTAINER) pg_isready -U $(SCHEMASPY_PG_USER) -d $(SCHEMASPY_PG_DB) >/dev/null 2>&1; do \
+		$(DOCKER) ps --filter "name=$(SCHEMASPY_PG_CONTAINER)" --filter "status=running" --format '{{.Names}}' | grep -q "^$(SCHEMASPY_PG_CONTAINER)$$" || { echo " FAILED (container stopped)"; $(DOCKER) logs $(SCHEMASPY_PG_CONTAINER) 2>&1; $(DOCKER) rm -f $(SCHEMASPY_PG_CONTAINER) >/dev/null 2>&1; exit 1; }; \
+		[ $$elapsed -lt $$timeout ] || { echo " TIMEOUT"; $(DOCKER) logs $(SCHEMASPY_PG_CONTAINER) 2>&1; $(DOCKER) rm -f $(SCHEMASPY_PG_CONTAINER) >/dev/null 2>&1; exit 1; }; \
 		printf "."; sleep 1; elapsed=$$((elapsed + 1)); \
 	done
 	@timeout=$(SCHEMASPY_PG_TIMEOUT); elapsed=0; \
-	until docker exec $(SCHEMASPY_PG_CONTAINER) sh -c "psql -X -U $(SCHEMASPY_PG_USER) -d postgres -tc \"SELECT 1 FROM pg_database WHERE datname='$(SCHEMASPY_PG_DB)';\" | grep -q 1 || createdb -U $(SCHEMASPY_PG_USER) $(SCHEMASPY_PG_DB)" >/dev/null 2>&1; do \
-		docker ps --filter "name=$(SCHEMASPY_PG_CONTAINER)" --filter "status=running" --format '{{.Names}}' | grep -q "^$(SCHEMASPY_PG_CONTAINER)$$" || { echo " FAILED (container stopped)"; docker logs $(SCHEMASPY_PG_CONTAINER) 2>&1; docker rm -f $(SCHEMASPY_PG_CONTAINER) >/dev/null 2>&1; exit 1; }; \
-		[ $$elapsed -lt $$timeout ] || { echo " TIMEOUT"; docker logs $(SCHEMASPY_PG_CONTAINER) 2>&1; docker rm -f $(SCHEMASPY_PG_CONTAINER) >/dev/null 2>&1; exit 1; }; \
+	until $(DOCKER) exec $(SCHEMASPY_PG_CONTAINER) sh -c "psql -X -U $(SCHEMASPY_PG_USER) -d postgres -tc \"SELECT 1 FROM pg_database WHERE datname='$(SCHEMASPY_PG_DB)';\" | grep -q 1 || createdb -U $(SCHEMASPY_PG_USER) $(SCHEMASPY_PG_DB)" >/dev/null 2>&1; do \
+		$(DOCKER) ps --filter "name=$(SCHEMASPY_PG_CONTAINER)" --filter "status=running" --format '{{.Names}}' | grep -q "^$(SCHEMASPY_PG_CONTAINER)$$" || { echo " FAILED (container stopped)"; $(DOCKER) logs $(SCHEMASPY_PG_CONTAINER) 2>&1; $(DOCKER) rm -f $(SCHEMASPY_PG_CONTAINER) >/dev/null 2>&1; exit 1; }; \
+		[ $$elapsed -lt $$timeout ] || { echo " TIMEOUT"; $(DOCKER) logs $(SCHEMASPY_PG_CONTAINER) 2>&1; $(DOCKER) rm -f $(SCHEMASPY_PG_CONTAINER) >/dev/null 2>&1; exit 1; }; \
 		printf "."; sleep 3; elapsed=$$((elapsed + 3)); \
 	done; echo "OK"
-	@docker exec -i $(SCHEMASPY_PG_CONTAINER) psql -X -v ON_ERROR_STOP=1 -1 -U $(SCHEMASPY_PG_USER) -d $(SCHEMASPY_PG_DB) < docs/schema/sql/postgres.sql >/dev/null 2>&1 || { echo "Schema load failed"; docker rm -f $(SCHEMASPY_PG_CONTAINER) >/dev/null 2>&1; exit 1; }
-	@docker run --rm $(if $(SCHEMASPY_PLATFORM),--platform $(SCHEMASPY_PLATFORM),) -v "$(SCHEMASPY_TMP)":/output --network container:$(SCHEMASPY_PG_CONTAINER) $(SCHEMASPY_IMAGE) -t pgsql11 -db $(SCHEMASPY_PG_DB) -host localhost -port 5432 -s public -u $(SCHEMASPY_PG_USER) -p $(SCHEMASPY_PG_PASSWORD) -dbthreads 1 -hq -imageformat svg >/dev/null 2>&1 || { echo "SchemaSpy failed"; docker rm -f $(SCHEMASPY_PG_CONTAINER) >/dev/null 2>&1; exit 1; }
-	@cp "$(SCHEMASPY_TMP)/diagrams/summary/relationships.real.large.svg" "$(SCHEMASPY_SVG_OUT)" || { echo "Failed to copy SVG"; docker rm -f $(SCHEMASPY_PG_CONTAINER) >/dev/null 2>&1; exit 1; }
-	@cp "$(SCHEMASPY_TMP)/diagrams/summary/relationships.real.large.dot" "$(SCHEMASPY_DOT_OUT)" || { echo "Failed to copy DOT"; docker rm -f $(SCHEMASPY_PG_CONTAINER) >/dev/null 2>&1; exit 1; }
-	@docker rm -f $(SCHEMASPY_PG_CONTAINER) >/dev/null 2>&1 || true
+	@$(DOCKER) exec -i $(SCHEMASPY_PG_CONTAINER) psql -X -v ON_ERROR_STOP=1 -1 -U $(SCHEMASPY_PG_USER) -d $(SCHEMASPY_PG_DB) < docs/schema/sql/postgres.sql >/dev/null 2>&1 || { echo "Schema load failed"; $(DOCKER) rm -f $(SCHEMASPY_PG_CONTAINER) >/dev/null 2>&1; exit 1; }
+	@$(DOCKER) run --rm $(if $(SCHEMASPY_PLATFORM),--platform $(SCHEMASPY_PLATFORM),) -v "$(SCHEMASPY_TMP)":/output --network container:$(SCHEMASPY_PG_CONTAINER) $(SCHEMASPY_IMAGE) -t pgsql11 -db $(SCHEMASPY_PG_DB) -host localhost -port 5432 -s public -u $(SCHEMASPY_PG_USER) -p $(SCHEMASPY_PG_PASSWORD) -dbthreads 1 -hq -imageformat svg >/dev/null 2>&1 || { echo "SchemaSpy failed"; $(DOCKER) rm -f $(SCHEMASPY_PG_CONTAINER) >/dev/null 2>&1; exit 1; }
+	@cp "$(SCHEMASPY_TMP)/diagrams/summary/relationships.real.large.svg" "$(SCHEMASPY_SVG_OUT)" || { echo "Failed to copy SVG"; $(DOCKER) rm -f $(SCHEMASPY_PG_CONTAINER) >/dev/null 2>&1; exit 1; }
+	@cp "$(SCHEMASPY_TMP)/diagrams/summary/relationships.real.large.dot" "$(SCHEMASPY_DOT_OUT)" || { echo "Failed to copy DOT"; $(DOCKER) rm -f $(SCHEMASPY_PG_CONTAINER) >/dev/null 2>&1; exit 1; }
+	@$(DOCKER) rm -f $(SCHEMASPY_PG_CONTAINER) >/dev/null 2>&1 || true
 	@echo "SchemaSpy ERD written to $(SCHEMASPY_SVG_OUT) (full report in $(SCHEMASPY_TMP))"
 	@echo "SchemaSpy Graphviz DOT written to $(SCHEMASPY_DOT_OUT) (full report in $(SCHEMASPY_TMP))"
 
