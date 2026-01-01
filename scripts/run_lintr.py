@@ -30,6 +30,21 @@ def _clear_r_env(env: dict[str, str]) -> None:
         env.pop(key, None)
 
 
+def _sanitize_r_environ_files(env: dict[str, str]) -> None:
+    for key in ("R_ENVIRON", "R_ENVIRON_USER"):
+        value = env.get(key)
+        if value is None:
+            continue
+        if not value.strip():
+            env.pop(key, None)
+            continue
+        try:
+            if not Path(value).expanduser().exists():
+                env.pop(key, None)
+        except Exception:
+            env.pop(key, None)
+
+
 def _looks_like_r_home(r_home: Path) -> bool:
     return (r_home / "etc" / "Renviron").exists() and (r_home / Path(*_R_HOME_UTILS_DESC)).exists()
 
@@ -64,6 +79,7 @@ def _guess_r_home(rscript_path: str) -> Path | None:
 
 
 def _sanitize_r_env(env: dict[str, str], rscript_path: str) -> None:
+    _sanitize_r_environ_files(env)
     r_home = env.get("R_HOME")
     if r_home is None:
         guessed = _guess_r_home(rscript_path)
