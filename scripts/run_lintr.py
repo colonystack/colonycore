@@ -21,6 +21,30 @@ def _escape_for_r(value: str) -> str:
     return value.replace("\\", "\\\\").replace('"', '\\"')
 
 
+_R_ENV_KEYS = ("R_HOME", "R_ENVIRON", "R_ENVIRON_USER")
+
+
+def _clear_r_env(env: dict[str, str]) -> None:
+    for key in _R_ENV_KEYS:
+        env.pop(key, None)
+
+
+def _sanitize_r_env(env: dict[str, str]) -> None:
+    r_home = env.get("R_HOME")
+    if r_home is None:
+        return
+    if not r_home.strip():
+        _clear_r_env(env)
+        return
+    try:
+        r_home_path = Path(r_home)
+        if (r_home_path / "etc" / "Renviron").exists():
+            return
+    except Exception:
+        return
+    _clear_r_env(env)
+
+
 REPO_ROOT = Path(__file__).resolve().parent.parent
 REQUIRED_R_PACKAGES: dict[str, str] = {
     "lintr": "3.1.2",
@@ -80,6 +104,7 @@ def main() -> int:
         return 1
 
     env = os.environ.copy()
+    _sanitize_r_env(env)
     env.setdefault("R_LIBS_USER", str(REPO_ROOT / ".cache" / "R-lintr"))
     env.setdefault("R_INSTALL_STAGED", "false")
 
