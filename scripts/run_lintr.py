@@ -49,12 +49,26 @@ def _guess_r_home(rscript_path: str) -> Path | None:
                 return candidate
         except Exception:
             continue
+    for candidate in (
+        Path("/usr/lib/R"),
+        Path("/usr/lib64/R"),
+        Path("/usr/local/lib/R"),
+        Path("/opt/R"),
+    ):
+        try:
+            if _looks_like_r_home(candidate):
+                return candidate
+        except Exception:
+            continue
     return None
 
 
 def _sanitize_r_env(env: dict[str, str], rscript_path: str) -> None:
     r_home = env.get("R_HOME")
     if r_home is None:
+        guessed = _guess_r_home(rscript_path)
+        if guessed is not None:
+            env["R_HOME"] = str(guessed)
         return
     if not r_home.strip():
         _clear_r_env(env)
