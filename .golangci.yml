@@ -61,6 +61,7 @@ linters:
             - io
             - math
             - modernc.org/sqlite
+            - net/mail
             - net/http
             - net/url
             - os
@@ -121,6 +122,7 @@ linters:
             - go/token
             - runtime
             - io
+            - net/mail
             - net/http
             - net/http/httptest
             - os
