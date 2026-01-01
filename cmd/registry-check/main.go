@@ -99,7 +99,8 @@ type jsonSchema struct {
 }
 
 // buildAllowedStatus builds a set of canonical document status strings derived from statusMap.
-// The returned map has canonical status values as keys and empty structs as values for efficient membership checks.
+// buildAllowedStatus builds a set of canonical status values for fast membership testing.
+// The returned map's keys are canonical status strings and the values are empty structs to enable efficient membership checks.
 func buildAllowedStatus() map[string]struct{} {
 	m := make(map[string]struct{}, len(statusMap))
 	for _, canonical := range statusMap {
@@ -157,7 +158,9 @@ func validatePath(p string) (string, error) {
 // It validates the registry path, opens and parses the registry file, and ensures the registry contains at least one document.
 // For each document it performs structural validation and verifies the document's declared status against the document file.
 // Returns an error if path validation, file I/O, parsing, structural validation, status verification, or an empty documents entry occur;
-// document-level errors are annotated with the document index (e.g., "documents[0]: ...").
+// run validates and processes the registry file at the provided relative path.
+// It reads and parses the registry, ensures at least one document exists, loads and applies the registry JSON Schema, and validates each document and its status.
+// Returned errors describe the failure; document-specific errors are annotated with the document index (for example, "documents[0]: ...").
 func run(registryPath string) (err error) {
 	safePath, vErr := validatePath(registryPath)
 	if vErr != nil {
@@ -202,6 +205,9 @@ func run(registryPath string) (err error) {
 	return nil
 }
 
+// loadJSONSchema loads and validates a JSON Schema from the given path.
+// It returns the parsed jsonSchema on success, or an error if the path is invalid,
+// the file cannot be read or parsed, or the schema fails validation.
 func loadJSONSchema(path string) (*jsonSchema, error) {
 	safePath, err := validatePath(path)
 	if err != nil {
@@ -221,6 +227,19 @@ func loadJSONSchema(path string) (*jsonSchema, error) {
 	return &schema, nil
 }
 
+// validateSchema validates a jsonSchema and its nested schemas, returning an error for any schema rule violation.
+// 
+// validateSchema performs recursive structural checks including:
+// - schema is non-nil;
+// - numeric constraints (minItems, minLength) are >= 0 and only used with appropriate types;
+// - enum is only allowed for supported types;
+// - format is permitted for the schema's type;
+// - pattern is only allowed for strings and is compiled into patternRE;
+// - object schemas have Properties defined, Required entries reference existing properties, and each property schema is non-nil and valid;
+// - array schemas have an Items schema which is validated recursively;
+// - only the supported top-level types (object, array, string) are accepted.
+// 
+// The provided path is used to produce contextual error messages describing the location of the violation.
 func validateSchema(schema *jsonSchema, path string) error {
 	if schema == nil {
 		return fmt.Errorf("%s: schema is nil", path)
@@ -288,6 +307,9 @@ func validateSchema(schema *jsonSchema, path string) error {
 	return nil
 }
 
+// validateRegistrySchema validates the given Registry against the provided jsonSchema.
+// It serializes the registry into a map structure and runs schema validation on the resulting payload.
+// An error is returned if the registry or schema is nil, if serialization fails, or if the payload does not conform to the schema.
 func validateRegistrySchema(registry *Registry, schema *jsonSchema) error {
 	if registry == nil {
 		return errors.New("registry is nil")
@@ -302,6 +324,9 @@ func validateRegistrySchema(registry *Registry, schema *jsonSchema) error {
 	return validateValue(payload, schema, "$")
 }
 
+// registryToMap converts a Registry into a map[string]any containing a "documents"
+// slice where each document is represented as a map[string]any suitable for schema
+// validation. It returns an error if any document cannot be serialized to a map.
 func registryToMap(registry *Registry) (map[string]any, error) {
 	docs := make([]any, len(registry.Documents))
 	for i, doc := range registry.Documents {
@@ -314,6 +339,9 @@ func registryToMap(registry *Registry) (map[string]any, error) {
 	return map[string]any{"documents": docs}, nil
 }
 
+// documentToMap converts a Document to a map[string]any by round-tripping it through JSON.
+// The resulting map's keys follow the Document's JSON struct tags.
+// It returns the map or an error if JSON marshaling or unmarshaling fails.
 func documentToMap(doc Document) (map[string]any, error) {
 	payload, err := json.Marshal(doc)
 	if err != nil {
@@ -326,6 +354,20 @@ func documentToMap(doc Document) (map[string]any, error) {
 	return m, nil
 }
 
+// validateValue validates v against s and returns a descriptive error if v does not
+// conform to the provided jsonSchema. The path parameter is a dotted path used to
+// identify the location of v in error messages (e.g. "documents[0].title").
+//
+// The function checks:
+// - when schema is nil: returns an error.
+// - object schemas: required properties, per-property validation, and disallowing
+//   unknown properties when AdditionalProperties is false.
+// - array schemas: element count against MinItems and per-element validation.
+// - string schemas: MinLength, enum membership, pattern (must be precompiled on the schema),
+//   and format checks for date, date-time, email, and URI using the package's helpers.
+//
+// Returns an error describing the first validation failure encountered, or nil if v
+// satisfies the schema.
 func validateValue(value any, schema *jsonSchema, path string) error {
 	if schema == nil {
 		return fmt.Errorf("%s: schema is nil", path)
@@ -411,6 +453,7 @@ func validateValue(value any, schema *jsonSchema, path string) error {
 	return nil
 }
 
+// stringInSlice reports whether the provided string is equal to any element of the slice.
 func stringInSlice(value string, values []string) bool {
 	for _, v := range values {
 		if v == value {
@@ -420,6 +463,13 @@ func stringInSlice(value string, values []string) bool {
 	return false
 }
 
+// parseRegistry parses a registry file in the repository's simple YAML-like format and returns the resulting Registry.
+// 
+// The parser reads the file line-by-line, ignores blank lines and comments, and expects a top-level "documents:" section.
+// Documents are introduced by entries at indent level 2 beginning with "- " and may contain scalar fields at indent level 4
+// and list fields whose items appear at indent level 6 as "- item". On encountering a new document the previous document is
+// appended to the registry; the last document is appended at EOF. The function returns a descriptive error for the first
+// syntax violation (including the offending line number), or any scanner I/O error.
 func parseRegistry(file *os.File) (*Registry, error) {
 	scanner := bufio.NewScanner(file)
 	var registry Registry
@@ -518,6 +568,9 @@ func countLeadingSpaces(s string) int {
 	return count
 }
 
+// splitKeyValue splits a "key: value" pair into its key and value components.
+// It returns the trimmed key and value; if the ":" delimiter is missing the
+// returned error indicates the malformed input.
 func splitKeyValue(part string) (string, string, error) {
 	idx := strings.Index(part, ":")
 	if idx == -1 {
@@ -528,6 +581,9 @@ func splitKeyValue(part string) (string, string, error) {
 	return key, value, nil
 }
 
+// assignScalar assigns a normalized scalar value to the corresponding field on doc based on key.
+// Supported keys: "id", "type", "title", "status", "created", "date", "last_updated", "quorum",
+// "target_release", and "path". It returns an error if the key is not recognized.
 func assignScalar(doc *Document, key, value string) error {
 	value = normalizeScalar(value)
 	switch key {
@@ -557,6 +613,11 @@ func assignScalar(doc *Document, key, value string) error {
 	return nil
 }
 
+// normalizeScalar trims leading and trailing spaces and normalizes quoted scalar values.
+// For double-quoted values it attempts to unquote escape sequences; if unquoting fails it
+// strips the surrounding double quotes. For single-quoted values it removes the outer
+// quotes and converts doubled single quotes to a single quote. If the value is not
+// quoted, it is returned trimmed.
 func normalizeScalar(value string) string {
 	value = strings.TrimSpace(value)
 	if len(value) < 2 {
@@ -575,6 +636,9 @@ func normalizeScalar(value string) string {
 	return value
 }
 
+// resetList resets the named list field on doc to nil.
+// Supported keys are "authors", "stakeholders", "reviewers", "owners", "deciders",
+// "linked_annexes", "linked_adrs", and "linked_rfcs". Unknown keys are ignored.
 func resetList(doc *Document, key string) {
 	switch key {
 	case "authors":
@@ -790,6 +854,7 @@ func extractStatusToken(value string) string {
 }
 
 // validateDate checks that value is a date in YYYY-MM-DD format.
+// validateDate checks that value is a date in YYYY-MM-DD format.
 // It returns an error describing the invalid input when parsing fails.
 func validateDate(value string) error {
 	if _, err := time.Parse("2006-01-02", value); err != nil {
@@ -798,7 +863,7 @@ func validateDate(value string) error {
 	return nil
 }
 
-// validateDateTime checks that value is a RFC 3339 timestamp.
+// It expects timestamps in the RFC3339Nano layout (RFC 3339 with optional fractional seconds).
 func validateDateTime(value string) error {
 	if _, err := time.Parse(time.RFC3339Nano, value); err != nil {
 		return fmt.Errorf("invalid date-time %q", value)
@@ -806,7 +871,8 @@ func validateDateTime(value string) error {
 	return nil
 }
 
-// validateEmail checks that value is a valid email address.
+// validateEmail reports an error if the provided string is not a valid email address.
+// It returns nil when the address is valid; otherwise it returns an error identifying the invalid value.
 func validateEmail(value string) error {
 	if _, err := mail.ParseAddress(value); err != nil {
 		return fmt.Errorf("invalid email %q", value)
@@ -814,7 +880,8 @@ func validateEmail(value string) error {
 	return nil
 }
 
-// validateURI checks that value is a valid URI.
+// validateURI verifies that value is a valid URI.
+// It returns an error describing the invalid value when parsing fails.
 func validateURI(value string) error {
 	if _, err := url.ParseRequestURI(value); err != nil {
 		return fmt.Errorf("invalid uri %q", value)

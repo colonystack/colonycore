@@ -18,6 +18,15 @@ def _normalize_bool(value: str | None) -> bool:
 
 
 def _escape_for_r(value: str) -> str:
+    """
+    Escape backslashes and double quotes for safe embedding in R code.
+    
+    Parameters:
+        value (str): The input string to escape.
+    
+    Returns:
+        str: A new string where backslashes are doubled and double quotes are prefixed with a backslash.
+    """
     return value.replace("\\", "\\\\").replace('"', '\\"')
 
 
@@ -26,11 +35,30 @@ _R_HOME_UTILS_DESC = ("library", "utils", "DESCRIPTION")
 
 
 def _clear_r_env(env: dict[str, str]) -> None:
+    """
+    Remove R-related environment variables from the provided environment mapping.
+    
+    This function mutates the given mapping in place by removing any keys listed in `_R_ENV_KEYS`.
+    
+    Parameters:
+        env (dict[str, str]): Mutable mapping of environment variables to sanitize.
+    """
     for key in _R_ENV_KEYS:
         env.pop(key, None)
 
 
 def _sanitize_r_environ_files(env: dict[str, str]) -> None:
+    """
+    Remove R_ENVIRON and R_ENVIRON_USER entries from the provided environment mapping when their values are empty, invalid, or refer to nonexistent files.
+    
+    This function mutates the `env` mapping in place:
+    - If a key is absent nothing is done for that key.
+    - If the value is empty or only whitespace, the key is removed.
+    - If the value, when expanded (tilde expansion), does not exist or an error occurs while checking, the key is removed.
+    
+    Parameters:
+        env (dict[str, str]): Environment variable mapping to sanitize; entries may be removed in place.
+    """
     for key in ("R_ENVIRON", "R_ENVIRON_USER"):
         value = env.get(key)
         if value is None:
@@ -46,10 +74,28 @@ def _sanitize_r_environ_files(env: dict[str, str]) -> None:
 
 
 def _looks_like_r_home(r_home: Path) -> bool:
+    """
+    Determines whether a filesystem path resembles an R installation home.
+    
+    Parameters:
+        r_home (Path): Path to check for R home markers.
+    
+    Returns:
+        bool: `True` if the path contains an `etc/Renviron` file and the typical R home markers (such as a `library` directory and `DESCRIPTION`), `False` otherwise.
+    """
     return (r_home / "etc" / "Renviron").exists() and (r_home / Path(*_R_HOME_UTILS_DESC)).exists()
 
 
 def _guess_r_home(rscript_path: str) -> Path | None:
+    """
+    Try to locate a plausible R home directory from an Rscript path or common system locations.
+    
+    Parameters:
+        rscript_path (str): Path to the Rscript executable to use as a hint.
+    
+    Returns:
+        Path | None: A Path pointing to a directory that appears to be an R home, or `None` if no suitable directory is found.
+    """
     try:
         resolved = Path(rscript_path).resolve()
     except Exception:
@@ -79,6 +125,15 @@ def _guess_r_home(rscript_path: str) -> Path | None:
 
 
 def _sanitize_r_env(env: dict[str, str], rscript_path: str) -> None:
+    """
+    Sanitize and normalize R-related environment variables in-place.
+    
+    Validate R environment file paths and ensure R_HOME is present and points to a plausible R installation. If R_HOME is missing, empty, or does not appear to be a valid R home, clear R-related environment variables and try to set R_HOME by guessing from the provided Rscript path.
+    
+    Parameters:
+        env (dict[str, str]): Environment mapping to modify in-place (may add, update, or remove R-related keys).
+        rscript_path (str): Path to the Rscript executable used to infer a likely R_HOME when needed.
+    """
     _sanitize_r_environ_files(env)
     r_home = env.get("R_HOME")
     if r_home is None:
