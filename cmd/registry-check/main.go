@@ -99,7 +99,6 @@ type jsonSchema struct {
 }
 
 // buildAllowedStatus builds a set of canonical document status strings derived from statusMap.
-// buildAllowedStatus builds a set of canonical status values for fast membership testing.
 // The returned map's keys are canonical status strings and the values are empty structs to enable efficient membership checks.
 func buildAllowedStatus() map[string]struct{} {
 	m := make(map[string]struct{}, len(statusMap))
@@ -359,12 +358,12 @@ func documentToMap(doc Document) (map[string]any, error) {
 // identify the location of v in error messages (e.g. "documents[0].title").
 //
 // The function checks:
-// - when schema is nil: returns an error.
-// - object schemas: required properties, per-property validation, and disallowing
-//   unknown properties when AdditionalProperties is false.
-// - array schemas: element count against MinItems and per-element validation.
-// - string schemas: MinLength, enum membership, pattern (must be precompiled on the schema),
-//   and format checks for date, date-time, email, and URI using the package's helpers.
+//   - when schema is nil: returns an error.
+//   - object schemas: required properties, per-property validation, and disallowing
+//     unknown properties when AdditionalProperties is false.
+//   - array schemas: element count against MinItems and per-element validation.
+//   - string schemas: MinLength, enum membership, pattern (must be precompiled on the schema),
+//     and format checks for date, date-time, email, and URI using the package's helpers.
 //
 // Returns an error describing the first validation failure encountered, or nil if v
 // satisfies the schema.
@@ -519,7 +518,10 @@ func parseRegistry(file *os.File) (*Registry, error) {
 			if err != nil {
 				return nil, fmt.Errorf("line %d: %w", lineNum, err)
 			}
-			if value == "" {
+			if strings.TrimSpace(value) == "[]" {
+				listField = ""
+				resetList(currentDoc, key)
+			} else if value == "" {
 				listField = key
 				resetList(currentDoc, key)
 			} else {
@@ -854,7 +856,6 @@ func extractStatusToken(value string) string {
 }
 
 // validateDate checks that value is a date in YYYY-MM-DD format.
-// validateDate checks that value is a date in YYYY-MM-DD format.
 // It returns an error describing the invalid input when parsing fails.
 func validateDate(value string) error {
 	if _, err := time.Parse("2006-01-02", value); err != nil {
@@ -863,7 +864,7 @@ func validateDate(value string) error {
 	return nil
 }
 
-// It expects timestamps in the RFC3339Nano layout (RFC 3339 with optional fractional seconds).
+// validateDateTime expects timestamps in the RFC3339Nano layout (RFC 3339 with optional fractional seconds).
 func validateDateTime(value string) error {
 	if _, err := time.Parse(time.RFC3339Nano, value); err != nil {
 		return fmt.Errorf("invalid date-time %q", value)

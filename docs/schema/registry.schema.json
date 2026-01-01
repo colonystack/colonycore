@@ -31,15 +31,18 @@
           },
           "created": {
             "type": "string",
-            "format": "date"
+            "format": "date",
+            "description": "Creation date for the document entry (YYYY-MM-DD)."
           },
           "date": {
             "type": "string",
-            "format": "date"
+            "format": "date",
+            "description": "Effective or published date for the document (YYYY-MM-DD)."
           },
           "last_updated": {
             "type": "string",
-            "format": "date"
+            "format": "date",
+            "description": "Most recent update date for the document entry (YYYY-MM-DD)."
           },
           "authors": {
             "type": "array",

@@ -4,12 +4,12 @@ documents:
     title: Edge Empty Lists
     status: Draft
     path: testutil/fixtures/registry/docs/rfc-edge-empty.md
-    # List fields intentionally left null to exercise empty list handling.
-    authors:
-    stakeholders:
-    reviewers:
-    owners:
-    deciders:
-    linked_annexes:
-    linked_adrs:
-    linked_rfcs:
+    # List fields intentionally empty to exercise empty list handling.
+    authors: []
+    stakeholders: []
+    reviewers: []
+    owners: []
+    deciders: []
+    linked_annexes: []
+    linked_adrs: []
+    linked_rfcs: []

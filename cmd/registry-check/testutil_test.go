@@ -87,12 +87,11 @@ func findRepoRoot(start string) (string, error) {
 	if strings.TrimSpace(start) == "" {
 		return "", fmt.Errorf("start path is empty")
 	}
-	abs := start
 	resolved, err := filepath.Abs(start)
 	if err != nil {
-		return abs, fmt.Errorf("abs %s: %w", start, err)
+		return "", fmt.Errorf("abs %s: %w", start, err)
 	}
-	abs = resolved
+	abs := resolved
 	dir := abs
 	for {
 		if hasRepoMarker(dir) {
@@ -100,7 +99,7 @@ func findRepoRoot(start string) (string, error) {
 		}
 		parent := filepath.Dir(dir)
 		if parent == dir {
-			return abs, fmt.Errorf("repo root not found from %s", abs)
+			return "", fmt.Errorf("repo root not found from %s", abs)
 		}
 		dir = parent
 	}

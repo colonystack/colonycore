@@ -52,20 +52,6 @@ jobs:
           packages: libblas3 libopenblas0-pthread libcurl4-openssl-dev libxml2-dev libxslt1-dev pkg-config
           version: 1
 
-      - name: Ensure BLAS runtime
-        run: |
-          set -euo pipefail
-          if ! ldconfig -p | grep -q "libblas.so.3"; then
-            if apt-cache show libblas3 >/dev/null 2>&1; then
-              sudo apt-get install -y libblas3
-            elif apt-cache show libblas3t64 >/dev/null 2>&1; then
-              sudo apt-get install -y libblas3t64
-            else
-              echo "libblas runtime package not found (libblas3/libblas3t64)." >&2
-              exit 1
-            fi
-          fi
-
       - name: Install tooling
         run: pip install pre-commit ruff
 
