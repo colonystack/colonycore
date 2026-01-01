@@ -47,10 +47,32 @@ func TestFindRepoRootNotFound(t *testing.T) {
 		t.Fatalf("mkdir: %v", err)
 	}
 	got, err := findRepoRoot(sub)
-	if err == nil {
+	if err != nil {
+		if got != "" {
+			t.Fatalf("expected empty repo root on error, got %q", got)
+		}
+		return
+	}
+	if got == "" {
 		t.Fatalf("expected error for missing repo root")
 	}
-	if got != "" {
-		t.Fatalf("expected empty repo root on error, got %q", got)
+	expected, err := filepath.Abs(sub)
+	if err != nil {
+		t.Fatalf("abs: %v", err)
+	}
+	expected, err = filepath.EvalSymlinks(expected)
+	if err != nil {
+		t.Fatalf("eval symlinks: %v", err)
+	}
+	actual, err := filepath.Abs(got)
+	if err != nil {
+		t.Fatalf("abs: %v", err)
+	}
+	actual, err = filepath.EvalSymlinks(actual)
+	if err != nil {
+		t.Fatalf("eval symlinks: %v", err)
+	}
+	if actual != expected {
+		t.Fatalf("expected fallback %s, got %s", expected, actual)
 	}
 }

@@ -875,7 +875,9 @@ func validateDateTime(value string) error {
 // validateEmail reports an error if the provided string is not a valid email address.
 // It returns nil when the address is valid; otherwise it returns an error identifying the invalid value.
 func validateEmail(value string) error {
-	if _, err := mail.ParseAddress(value); err != nil {
+	trimmed := strings.TrimSpace(value)
+	addr, err := mail.ParseAddress(trimmed)
+	if err != nil || addr == nil || addr.Name != "" || addr.Address != trimmed {
 		return fmt.Errorf("invalid email %q", value)
 	}
 	return nil

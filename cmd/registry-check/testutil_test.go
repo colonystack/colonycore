@@ -66,8 +66,8 @@ func runTests(m *testing.M) int {
 	}
 	repoRoot, rootErr := findRepoRoot(cwd)
 	if rootErr != nil {
-		fmt.Fprintln(os.Stderr, "repo root:", rootErr)
-		repoRoot = cwd
+		fmt.Fprintf(os.Stderr, "warning: repo root not found (%v); tests will exit. Run tests from the repo root to enable repo-relative checks.\n", rootErr)
+		return 1
 	}
 	if err := os.Chdir(repoRoot); err != nil {
 		fmt.Fprintln(os.Stderr, "chdir repo root:", err)
@@ -76,9 +76,7 @@ func runTests(m *testing.M) int {
 	code := m.Run()
 	if err := os.Chdir(cwd); err != nil {
 		fmt.Fprintln(os.Stderr, "chdir restore:", err)
-	}
-	if rootErr != nil && code == 0 {
-		fmt.Fprintf(os.Stderr, "warning: repo root not found (%v); tests ran from cwd %s. Run tests from the repo root to enable repo-relative checks.\n", rootErr, cwd)
+		return 1
 	}
 	return code
 }
