@@ -9,6 +9,8 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"net/mail"
+	"net/url"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -293,27 +295,35 @@ func validateRegistrySchema(registry *Registry, schema *jsonSchema) error {
 	if schema == nil {
 		return errors.New("schema is nil")
 	}
-	return validateValue(registryToMap(registry), schema, "$")
+	payload, err := registryToMap(registry)
+	if err != nil {
+		return fmt.Errorf("registry serialization: %w", err)
+	}
+	return validateValue(payload, schema, "$")
 }
 
-func registryToMap(registry *Registry) map[string]any {
+func registryToMap(registry *Registry) (map[string]any, error) {
 	docs := make([]any, len(registry.Documents))
 	for i, doc := range registry.Documents {
-		docs[i] = documentToMap(doc)
+		encoded, err := documentToMap(doc)
+		if err != nil {
+			return nil, fmt.Errorf("documents[%d]: %w", i, err)
+		}
+		docs[i] = encoded
 	}
-	return map[string]any{"documents": docs}
+	return map[string]any{"documents": docs}, nil
 }
 
-func documentToMap(doc Document) map[string]any {
+func documentToMap(doc Document) (map[string]any, error) {
 	payload, err := json.Marshal(doc)
 	if err != nil {
-		return map[string]any{}
+		return nil, fmt.Errorf("marshal document: %w", err)
 	}
 	var m map[string]any
 	if err := json.Unmarshal(payload, &m); err != nil {
-		return map[string]any{}
+		return nil, fmt.Errorf("unmarshal document: %w", err)
 	}
-	return m
+	return m, nil
 }
 
 func validateValue(value any, schema *jsonSchema, path string) error {
@@ -377,6 +387,21 @@ func validateValue(value any, schema *jsonSchema, path string) error {
 		}
 		if schema.Format == schemaFormatDate {
 			if err := validateDate(str); err != nil {
+				return fmt.Errorf("%s: %w", path, err)
+			}
+		}
+		if schema.Format == schemaFormatDateTime {
+			if err := validateDateTime(str); err != nil {
+				return fmt.Errorf("%s: %w", path, err)
+			}
+		}
+		if schema.Format == schemaFormatEmail {
+			if err := validateEmail(str); err != nil {
+				return fmt.Errorf("%s: %w", path, err)
+			}
+		}
+		if schema.Format == schemaFormatURI {
+			if err := validateURI(str); err != nil {
 				return fmt.Errorf("%s: %w", path, err)
 			}
 		}
@@ -769,6 +794,30 @@ func extractStatusToken(value string) string {
 func validateDate(value string) error {
 	if _, err := time.Parse("2006-01-02", value); err != nil {
 		return fmt.Errorf("invalid date %q", value)
+	}
+	return nil
+}
+
+// validateDateTime checks that value is a RFC 3339 timestamp.
+func validateDateTime(value string) error {
+	if _, err := time.Parse(time.RFC3339Nano, value); err != nil {
+		return fmt.Errorf("invalid date-time %q", value)
+	}
+	return nil
+}
+
+// validateEmail checks that value is a valid email address.
+func validateEmail(value string) error {
+	if _, err := mail.ParseAddress(value); err != nil {
+		return fmt.Errorf("invalid email %q", value)
+	}
+	return nil
+}
+
+// validateURI checks that value is a valid URI.
+func validateURI(value string) error {
+	if _, err := url.ParseRequestURI(value); err != nil {
+		return fmt.Errorf("invalid uri %q", value)
 	}
 	return nil
 }

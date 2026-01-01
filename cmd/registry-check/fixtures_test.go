@@ -170,6 +170,27 @@ func TestValidateValueRules(t *testing.T) {
 	if err := validateValue("2025-13-01", dateSchema, "$.date"); err == nil {
 		t.Fatalf("expected date format error")
 	}
+	dateTimeSchema := &jsonSchema{Type: schemaTypeString, Format: schemaFormatDateTime}
+	if err := validateValue("2025-01-01T12:30:00Z", dateTimeSchema, "$.updated"); err != nil {
+		t.Fatalf("expected date-time to be valid, got %v", err)
+	}
+	if err := validateValue("not-a-datetime", dateTimeSchema, "$.updated"); err == nil {
+		t.Fatalf("expected date-time format error")
+	}
+	emailSchema := &jsonSchema{Type: schemaTypeString, Format: schemaFormatEmail}
+	if err := validateValue("user@example.com", emailSchema, "$.email"); err != nil {
+		t.Fatalf("expected email to be valid, got %v", err)
+	}
+	if err := validateValue("invalid@", emailSchema, "$.email"); err == nil {
+		t.Fatalf("expected email format error")
+	}
+	uriSchema := &jsonSchema{Type: schemaTypeString, Format: schemaFormatURI}
+	if err := validateValue("https://example.com/path", uriSchema, "$.uri"); err != nil {
+		t.Fatalf("expected uri to be valid, got %v", err)
+	}
+	if err := validateValue("not a uri", uriSchema, "$.uri"); err == nil {
+		t.Fatalf("expected uri format error")
+	}
 	patternSchema := &jsonSchema{Type: schemaTypeString, Pattern: "^[0-9]+$"}
 	if err := validateSchema(patternSchema, "$.quorum"); err != nil {
 		t.Fatalf("expected pattern schema to be valid, got %v", err)
@@ -184,7 +205,10 @@ func TestValidateValueRules(t *testing.T) {
 
 func TestDocumentToMapIncludesLists(t *testing.T) {
 	doc := Document{ID: "ID", Type: "RFC", Title: "Title", Status: statusMap[statusDraftKey], Path: "docs/rfc/doc.md", Authors: []string{"A"}}
-	m := documentToMap(doc)
+	m, err := documentToMap(doc)
+	if err != nil {
+		t.Fatalf("documentToMap error: %v", err)
+	}
 	if got, ok := m["id"].(string); !ok || got != doc.ID {
 		t.Fatalf("expected id %q, got %v", doc.ID, m["id"])
 	}

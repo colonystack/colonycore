@@ -242,7 +242,7 @@ entity-model-erd:
 	@rm -rf $(SCHEMASPY_TMP)
 	@mkdir -p $(SCHEMASPY_TMP) $(dir $(SCHEMASPY_SVG_OUT))
 	@chmod 777 $(SCHEMASPY_TMP)
-	@$(DOCKER) info >/dev/null 2>&1 || { echo "Docker is required for entity-model-erd. Ensure the daemon is running and your user can access it (or set DOCKER to an alternative runtime/command)."; exit 1; }
+	@$(DOCKER) info >/dev/null 2>&1 || { echo "Container runtime ($(DOCKER)) is required for entity-model-erd. Ensure the daemon is running and your user can access it (or set DOCKER to an alternative runtime/command)."; exit 1; }
 	@$(DOCKER) rm -f $(SCHEMASPY_PG_CONTAINER) >/dev/null 2>&1 || true
 	@$(DOCKER) run --rm -d --name $(SCHEMASPY_PG_CONTAINER) --platform $(SCHEMASPY_PG_PLATFORM) -e POSTGRES_PASSWORD=$(SCHEMASPY_PG_PASSWORD) -e POSTGRES_DB=$(SCHEMASPY_PG_DB) $(SCHEMASPY_PG_IMAGE) >/dev/null 2>&1 || { echo "Failed to start postgres container"; exit 1; }
 	@printf "waiting for postgres"
