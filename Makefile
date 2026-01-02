@@ -17,6 +17,10 @@ SWEET_COMMIT ?= 523919e4e4f284a0c060e6e5e5ff7f6f521fa2ed
 BENCHSTAT_VERSION ?= v0.0.0-20251208221838-04cf7a2dca90
 BENCH_CONF ?= pr
 BENCH_COUNT ?= 10
+# Keep markdownlint pinned to avoid baseline churn until lint unification (#116) and #114.
+MARKDOWNLINT_VERSION ?= 0.41.0
+MARKDOWNLINT_CONFIG ?= .markdownlint.yaml
+MARKDOWNLINT_BASELINE ?= internal/ci/markdownlint.baseline.json
 GOPATH_BIN := $(shell go env GOPATH)/bin
 GOLANGCI_BIN := $(GOPATH_BIN)/golangci-lint
 GOLANGCI_VERSION_PLAIN := $(patsubst v%,%,$(GOLANGCI_VERSION))
@@ -35,7 +39,7 @@ SCHEMASPY_PG_USER ?= postgres
 SCHEMASPY_PG_PASSWORD ?= postgres
 SCHEMASPY_PG_TIMEOUT ?= 60
 
-.PHONY: all build clean lint go-test test registry-check fmt-check vet registry-lint golangci golangci-install python-lint r-lint r-lint-setup r-lint-reset go-lint import-boss import-boss-install entity-model-validate entity-model-generate entity-model-verify entity-model-erd entity-model-diff entity-model-diff-update api-snapshots list-docker-images validate-any-usage benchmarks-run benchmarks-aggregate benchmarks-compare benchmarks-ci
+.PHONY: all build clean lint lint-docs lint-docs-update go-test test registry-check fmt-check vet registry-lint golangci golangci-install python-lint r-lint r-lint-setup r-lint-reset go-lint import-boss import-boss-install entity-model-validate entity-model-generate entity-model-verify entity-model-erd entity-model-diff entity-model-diff-update api-snapshots list-docker-images validate-any-usage benchmarks-run benchmarks-aggregate benchmarks-compare benchmarks-ci
 
 all: build
 
@@ -62,6 +66,34 @@ lint:
 	@$(MAKE) --no-print-directory python-lint
 	@$(MAKE) --no-print-directory r-lint
 	@echo "Lint suite finished successfully"
+
+# TODO(#116): keep docs lint separate until lint unification lands; see #114 context.
+define run_markdownlint
+	@files="$$(find . \( -path './.git' -o -path './.cache' \) -prune -o -type f -name '*.md' -print)"; \
+	if [ -z "$$files" ]; then \
+		echo "No markdown files found"; \
+		exit 0; \
+	fi; \
+	tmpfile=$$(mktemp); \
+	trap 'rm -f "$$tmpfile"' EXIT; \
+	pnpm -s dlx markdownlint-cli@$(MARKDOWNLINT_VERSION) -c $(MARKDOWNLINT_CONFIG) -j $$files > $$tmpfile 2>&1; \
+	status=$$?; \
+	if [ $$status -ne 0 ] && [ ! -s "$$tmpfile" ]; then \
+		echo "markdownlint failed (exit $$status)" >&2; \
+		exit $$status; \
+	fi; \
+	go run ./cmd/check-markdownlint-baseline --baseline $(MARKDOWNLINT_BASELINE) --input $$tmpfile $(1)
+endef
+
+lint-docs:
+	@echo "==> Docs lint (markdownlint baseline)"
+	$(call run_markdownlint,)
+	@echo "lint-docs: OK"
+
+lint-docs-update:
+	@echo "==> Updating markdownlint baseline"
+	$(call run_markdownlint,--update)
+	@echo "lint-docs-update: OK"
 
 validate-plugin-patterns:
 	@echo "==> Validating plugin hexagonal architecture patterns"

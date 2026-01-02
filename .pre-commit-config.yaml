@@ -61,6 +61,13 @@ repos:
         language: system
         pass_filenames: false
         files: '(^clients/python/.*\.py$|\.go$)'
+      - id: markdownlint-docs
+        name: markdownlint docs (manual)
+        entry: make lint-docs
+        language: system
+        pass_filenames: false
+        stages:
+          - manual
       - id: go-test-via-make
         name: go test via make test
         entry: make test
