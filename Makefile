@@ -35,7 +35,7 @@ SCHEMASPY_PG_USER ?= postgres
 SCHEMASPY_PG_PASSWORD ?= postgres
 SCHEMASPY_PG_TIMEOUT ?= 60
 
-.PHONY: all build clean lint go-test test registry-check fmt-check vet registry-lint golangci golangci-install python-lint r-lint r-lint-setup r-lint-reset go-lint import-boss import-boss-install entity-model-validate entity-model-generate entity-model-verify entity-model-erd entity-model-diff entity-model-diff-update api-snapshots list-docker-images validate-any-usage benchmarks-run benchmarks-aggregate benchmarks-compare benchmarks-ci
+.PHONY: all build clean lint go-test test plugin-conformance registry-check fmt-check vet registry-lint golangci golangci-install python-lint r-lint r-lint-setup r-lint-reset go-lint import-boss import-boss-install entity-model-validate entity-model-generate entity-model-verify entity-model-erd entity-model-diff entity-model-diff-update api-snapshots list-docker-images validate-any-usage benchmarks-run benchmarks-aggregate benchmarks-compare benchmarks-ci
 
 all: build
 
@@ -274,3 +274,8 @@ go-test:
 	@echo "Coverage check passed (>= $(COVER_THRESHOLD)% )"
 
 test: go-test
+
+plugin-conformance:
+	@echo "==> plugin conformance"
+	@GOCACHE=$(GOCACHE) go test ./plugins/conformance -count=1
+	@echo "plugin-conformance: OK"

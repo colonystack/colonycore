@@ -95,6 +95,8 @@ If the environment variable `COLONYCORE_STORAGE_DRIVER` is unset, the code will 
 ## Plugin Development
 ColonyCore enforces hexagonal architecture through comprehensive contextual accessor patterns:
 
+Primary reference: `plugins/README.md` documents the stable plugin API surface, compatibility matrix, and conformance workflow.
+
 ### Core Principles
 - **No Raw Constants**: Access domain values via context providers, never raw constants
 - **Contextual Interfaces**: Use `pluginapi.NewEntityContext()`, `NewActionContext()`, `NewSeverityContext()`, `NewLifecycleStageContext()`, `NewHousingContext()`, `NewProtocolContext()`

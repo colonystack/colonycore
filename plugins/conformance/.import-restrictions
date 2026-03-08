@@ -1,0 +1,11 @@
+Rules:
+  - SelectorRegexp: "^colonycore/"
+    AllowedPrefixes:
+      - "colonycore/plugins/conformance"
+      - "colonycore/plugins"
+      - "colonycore/pkg/pluginapi"
+      - "colonycore/pkg/datasetapi"
+InverseRules:
+  - SelectorRegexp: "^colonycore/"
+    AllowedPrefixes:
+      - "colonycore/plugins/conformance"
