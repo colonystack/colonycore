@@ -1,0 +1,3880 @@
+{
+  "meta": {
+    "tool": "markdownlint-cli",
+    "config": ".markdownlint.yaml",
+    "scope": "**/*.md",
+    "references": [
+      "#114",
+      "#116"
+    ],
+    "notes": "Temporary docs lint baseline; see #116 for consolidation.",
+    "baseline_owner": "Core Maintainers",
+    "reduction_targets": [
+      {
+        "milestone": "2026-02",
+        "target_percent": 25,
+        "due_date": "2026-02-01"
+      },
+      {
+        "milestone": "2026-03",
+        "target_percent": 50,
+        "due_date": "2026-03-01"
+      }
+    ],
+    "next_review_date": "2026-02-01",
+    "workflow": "docs/annex/0005-documentation-standards.md (#116)",
+    "ci_policy": "manual"
+  },
+  "issues": [
+    {
+      "file": "./.github/pull_request_template.md",
+      "line": 20,
+      "rule": "MD047"
+    },
+    {
+      "file": "./AGENTS.md",
+      "line": 3,
+      "rule": "MD013"
+    },
+    {
+      "file": "./AGENTS.md",
+      "line": 5,
+      "rule": "MD022"
+    },
+    {
+      "file": "./AGENTS.md",
+      "line": 6,
+      "rule": "MD013"
+    },
+    {
+      "file": "./AGENTS.md",
+      "line": 6,
+      "rule": "MD032"
+    },
+    {
+      "file": "./AGENTS.md",
+      "line": 7,
+      "rule": "MD013"
+    },
+    {
+      "file": "./AGENTS.md",
+      "line": 8,
+      "rule": "MD013"
+    },
+    {
+      "file": "./AGENTS.md",
+      "line": 10,
+      "rule": "MD013"
+    },
+    {
+      "file": "./AGENTS.md",
+      "line": 12,
+      "rule": "MD022"
+    },
+    {
+      "file": "./AGENTS.md",
+      "line": 13,
+      "rule": "MD032"
+    },
+    {
+      "file": "./AGENTS.md",
+      "line": 29,
+      "rule": "MD022"
+    },
+    {
+      "file": "./AGENTS.md",
+      "line": 31,
+      "rule": "MD032"
+    },
+    {
+      "file": "./AGENTS.md",
+      "line": 32,
+      "rule": "MD013"
+    },
+    {
+      "file": "./AGENTS.md",
+      "line": 35,
+      "rule": "MD013"
+    },
+    {
+      "file": "./AGENTS.md",
+      "line": 37,
+      "rule": "MD013"
+    },
+    {
+      "file": "./AGENTS.md",
+      "line": 39,
+      "rule": "MD022"
+    },
+    {
+      "file": "./AGENTS.md",
+      "line": 40,
+      "rule": "MD013"
+    },
+    {
+      "file": "./AGENTS.md",
+      "line": 40,
+      "rule": "MD032"
+    },
+    {
+      "file": "./AGENTS.md",
+      "line": 41,
+      "rule": "MD013"
+    },
+    {
+      "file": "./AGENTS.md",
+      "line": 42,
+      "rule": "MD013"
+    },
+    {
+      "file": "./AGENTS.md",
+      "line": 43,
+      "rule": "MD013"
+    },
+    {
+      "file": "./AGENTS.md",
+      "line": 44,
+      "rule": "MD013"
+    },
+    {
+      "file": "./AGENTS.md",
+      "line": 45,
+      "rule": "MD013"
+    },
+    {
+      "file": "./AGENTS.md",
+      "line": 47,
+      "rule": "MD022"
+    },
+    {
+      "file": "./AGENTS.md",
+      "line": 48,
+      "rule": "MD032"
+    },
+    {
+      "file": "./AGENTS.md",
+      "line": 54,
+      "rule": "MD013"
+    },
+    {
+      "file": "./AGENTS.md",
+      "line": 56,
+      "rule": "MD022"
+    },
+    {
+      "file": "./AGENTS.md",
+      "line": 57,
+      "rule": "MD032"
+    },
+    {
+      "file": "./AGENTS.md",
+      "line": 60,
+      "rule": "MD013"
+    },
+    {
+      "file": "./AGENTS.md",
+      "line": 77,
+      "rule": "MD022"
+    },
+    {
+      "file": "./AGENTS.md",
+      "line": 79,
+      "rule": "MD013"
+    },
+    {
+      "file": "./AGENTS.md",
+      "line": 79,
+      "rule": "MD032"
+    },
+    {
+      "file": "./AGENTS.md",
+      "line": 80,
+      "rule": "MD013"
+    },
+    {
+      "file": "./AGENTS.md",
+      "line": 84,
+      "rule": "MD013"
+    },
+    {
+      "file": "./AGENTS.md",
+      "line": 84,
+      "rule": "MD032"
+    },
+    {
+      "file": "./AGENTS.md",
+      "line": 85,
+      "rule": "MD013"
+    },
+    {
+      "file": "./AGENTS.md",
+      "line": 86,
+      "rule": "MD013"
+    },
+    {
+      "file": "./AGENTS.md",
+      "line": 90,
+      "rule": "MD022"
+    },
+    {
+      "file": "./AGENTS.md",
+      "line": 91,
+      "rule": "MD032"
+    },
+    {
+      "file": "./AGENTS.md",
+      "line": 93,
+      "rule": "MD013"
+    },
+    {
+      "file": "./AGENTS.md",
+      "line": 95,
+      "rule": "MD022"
+    },
+    {
+      "file": "./AGENTS.md",
+      "line": 96,
+      "rule": "MD013"
+    },
+    {
+      "file": "./ARCHITECTURE.md",
+      "line": 3,
+      "rule": "MD013"
+    },
+    {
+      "file": "./ARCHITECTURE.md",
+      "line": 9,
+      "rule": "MD013"
+    },
+    {
+      "file": "./ARCHITECTURE.md",
+      "line": 10,
+      "rule": "MD013"
+    },
+    {
+      "file": "./ARCHITECTURE.md",
+      "line": 11,
+      "rule": "MD013"
+    },
+    {
+      "file": "./ARCHITECTURE.md",
+      "line": 29,
+      "rule": "MD013"
+    },
+    {
+      "file": "./ARCHITECTURE.md",
+      "line": 32,
+      "rule": "MD013"
+    },
+    {
+      "file": "./ARCHITECTURE.md",
+      "line": 34,
+      "rule": "MD022"
+    },
+    {
+      "file": "./ARCHITECTURE.md",
+      "line": 35,
+      "rule": "MD013"
+    },
+    {
+      "file": "./ARCHITECTURE.md",
+      "line": 35,
+      "rule": "MD032"
+    },
+    {
+      "file": "./ARCHITECTURE.md",
+      "line": 36,
+      "rule": "MD013"
+    },
+    {
+      "file": "./ARCHITECTURE.md",
+      "line": 37,
+      "rule": "MD013"
+    },
+    {
+      "file": "./ARCHITECTURE.md",
+      "line": 38,
+      "rule": "MD013"
+    },
+    {
+      "file": "./ARCHITECTURE.md",
+      "line": 39,
+      "rule": "MD013"
+    },
+    {
+      "file": "./ARCHITECTURE.md",
+      "line": 45,
+      "rule": "MD013"
+    },
+    {
+      "file": "./ARCHITECTURE.md",
+      "line": 53,
+      "rule": "MD013"
+    },
+    {
+      "file": "./ARCHITECTURE.md",
+      "line": 65,
+      "rule": "MD013"
+    },
+    {
+      "file": "./ARCHITECTURE.md",
+      "line": 69,
+      "rule": "MD013"
+    },
+    {
+      "file": "./ARCHITECTURE.md",
+      "line": 73,
+      "rule": "MD013"
+    },
+    {
+      "file": "./ARCHITECTURE.md",
+      "line": 93,
+      "rule": "MD013"
+    },
+    {
+      "file": "./ARCHITECTURE.md",
+      "line": 96,
+      "rule": "MD013"
+    },
+    {
+      "file": "./ARCHITECTURE.md",
+      "line": 97,
+      "rule": "MD013"
+    },
+    {
+      "file": "./ARCHITECTURE.md",
+      "line": 98,
+      "rule": "MD013"
+    },
+    {
+      "file": "./ARCHITECTURE.md",
+      "line": 100,
+      "rule": "MD013"
+    },
+    {
+      "file": "./CODE_OF_CONDUCT.md",
+      "line": 3,
+      "rule": "MD022"
+    },
+    {
+      "file": "./CODE_OF_CONDUCT.md",
+      "line": 6,
+      "rule": "MD022"
+    },
+    {
+      "file": "./CODE_OF_CONDUCT.md",
+      "line": 9,
+      "rule": "MD022"
+    },
+    {
+      "file": "./CODE_OF_CONDUCT.md",
+      "line": 11,
+      "rule": "MD032"
+    },
+    {
+      "file": "./CODE_OF_CONDUCT.md",
+      "line": 17,
+      "rule": "MD032"
+    },
+    {
+      "file": "./CODE_OF_CONDUCT.md",
+      "line": 22,
+      "rule": "MD022"
+    },
+    {
+      "file": "./CODE_OF_CONDUCT.md",
+      "line": 24,
+      "rule": "MD032"
+    },
+    {
+      "file": "./CODE_OF_CONDUCT.md",
+      "line": 30,
+      "rule": "MD022"
+    },
+    {
+      "file": "./CODE_OF_CONDUCT.md",
+      "line": 31,
+      "rule": "MD013"
+    },
+    {
+      "file": "./CODE_OF_CONDUCT.md",
+      "line": 31,
+      "rule": "MD032"
+    },
+    {
+      "file": "./CODE_OF_CONDUCT.md",
+      "line": 35,
+      "rule": "MD022"
+    },
+    {
+      "file": "./CODE_OF_CONDUCT.md",
+      "line": 36,
+      "rule": "MD013"
+    },
+    {
+      "file": "./CODE_OF_CONDUCT.md",
+      "line": 38,
+      "rule": "MD022"
+    },
+    {
+      "file": "./CODE_OF_CONDUCT.md",
+      "line": 41,
+      "rule": "MD022"
+    },
+    {
+      "file": "./CONTRIBUTING.md",
+      "line": 5,
+      "rule": "MD022"
+    },
+    {
+      "file": "./CONTRIBUTING.md",
+      "line": 6,
+      "rule": "MD032"
+    },
+    {
+      "file": "./CONTRIBUTING.md",
+      "line": 11,
+      "rule": "MD022"
+    },
+    {
+      "file": "./CONTRIBUTING.md",
+      "line": 14,
+      "rule": "MD022"
+    },
+    {
+      "file": "./CONTRIBUTING.md",
+      "line": 15,
+      "rule": "MD032"
+    },
+    {
+      "file": "./CONTRIBUTING.md",
+      "line": 20,
+      "rule": "MD022"
+    },
+    {
+      "file": "./CONTRIBUTING.md",
+      "line": 21,
+      "rule": "MD032"
+    },
+    {
+      "file": "./CONTRIBUTING.md",
+      "line": 27,
+      "rule": "MD022"
+    },
+    {
+      "file": "./CONTRIBUTING.md",
+      "line": 28,
+      "rule": "MD013"
+    },
+    {
+      "file": "./CONTRIBUTING.md",
+      "line": 28,
+      "rule": "MD032"
+    },
+    {
+      "file": "./CONTRIBUTING.md",
+      "line": 29,
+      "rule": "MD013"
+    },
+    {
+      "file": "./CONTRIBUTING.md",
+      "line": 30,
+      "rule": "MD013"
+    },
+    {
+      "file": "./CONTRIBUTING.md",
+      "line": 31,
+      "rule": "MD013"
+    },
+    {
+      "file": "./CONTRIBUTING.md",
+      "line": 34,
+      "rule": "MD022"
+    },
+    {
+      "file": "./CONTRIBUTING.md",
+      "line": 35,
+      "rule": "MD032"
+    },
+    {
+      "file": "./CONTRIBUTING.md",
+      "line": 37,
+      "rule": "MD013"
+    },
+    {
+      "file": "./CONTRIBUTING.md",
+      "line": 39,
+      "rule": "MD022"
+    },
+    {
+      "file": "./CONTRIBUTING.md",
+      "line": 41,
+      "rule": "MD032"
+    },
+    {
+      "file": "./CONTRIBUTING.md",
+      "line": 45,
+      "rule": "MD022"
+    },
+    {
+      "file": "./CONTRIBUTING.md",
+      "line": 46,
+      "rule": "MD032"
+    },
+    {
+      "file": "./CONTRIBUTING.md",
+      "line": 48,
+      "rule": "MD013"
+    },
+    {
+      "file": "./CONTRIBUTING.md",
+      "line": 50,
+      "rule": "MD022"
+    },
+    {
+      "file": "./CONTRIBUTING.md",
+      "line": 51,
+      "rule": "MD013"
+    },
+    {
+      "file": "./CONTRIBUTING.md",
+      "line": 51,
+      "rule": "MD032"
+    },
+    {
+      "file": "./CONTRIBUTING.md",
+      "line": 52,
+      "rule": "MD013"
+    },
+    {
+      "file": "./CONTRIBUTING.md",
+      "line": 53,
+      "rule": "MD013"
+    },
+    {
+      "file": "./CONTRIBUTING.md",
+      "line": 54,
+      "rule": "MD013"
+    },
+    {
+      "file": "./CONTRIBUTING.md",
+      "line": 56,
+      "rule": "MD022"
+    },
+    {
+      "file": "./CONTRIBUTING.md",
+      "line": 57,
+      "rule": "MD032"
+    },
+    {
+      "file": "./CONTRIBUTING.md",
+      "line": 58,
+      "rule": "MD013"
+    },
+    {
+      "file": "./CONTRIBUTING.md",
+      "line": 60,
+      "rule": "MD022"
+    },
+    {
+      "file": "./CONTRIBUTING.md",
+      "line": 61,
+      "rule": "MD032"
+    },
+    {
+      "file": "./CONTRIBUTING.md",
+      "line": 65,
+      "rule": "MD013"
+    },
+    {
+      "file": "./CONTRIBUTING.md",
+      "line": 66,
+      "rule": "MD013"
+    },
+    {
+      "file": "./CONTRIBUTING.md",
+      "line": 68,
+      "rule": "MD022"
+    },
+    {
+      "file": "./CONTRIBUTING.md",
+      "line": 69,
+      "rule": "MD013"
+    },
+    {
+      "file": "./CONTRIBUTING.md",
+      "line": 69,
+      "rule": "MD032"
+    },
+    {
+      "file": "./CONTRIBUTING.md",
+      "line": 71,
+      "rule": "MD013"
+    },
+    {
+      "file": "./CONTRIBUTING.md",
+      "line": 72,
+      "rule": "MD013"
+    },
+    {
+      "file": "./CONTRIBUTING.md",
+      "line": 74,
+      "rule": "MD013"
+    },
+    {
+      "file": "./CONTRIBUTING.md",
+      "line": 75,
+      "rule": "MD013"
+    },
+    {
+      "file": "./CONTRIBUTING.md",
+      "line": 76,
+      "rule": "MD013"
+    },
+    {
+      "file": "./CONTRIBUTING.md",
+      "line": 77,
+      "rule": "MD013"
+    },
+    {
+      "file": "./CONTRIBUTING.md",
+      "line": 78,
+      "rule": "MD013"
+    },
+    {
+      "file": "./CONTRIBUTING.md",
+      "line": 82,
+      "rule": "MD013"
+    },
+    {
+      "file": "./CONTRIBUTING.md",
+      "line": 85,
+      "rule": "MD022"
+    },
+    {
+      "file": "./CONTRIBUTING.md",
+      "line": 86,
+      "rule": "MD013"
+    },
+    {
+      "file": "./CONTRIBUTING.md",
+      "line": 86,
+      "rule": "MD032"
+    },
+    {
+      "file": "./CONTRIBUTING.md",
+      "line": 87,
+      "rule": "MD013"
+    },
+    {
+      "file": "./CONTRIBUTING.md",
+      "line": 88,
+      "rule": "MD013"
+    },
+    {
+      "file": "./CONTRIBUTING.md",
+      "line": 89,
+      "rule": "MD013"
+    },
+    {
+      "file": "./CONTRIBUTING.md",
+      "line": 90,
+      "rule": "MD013"
+    },
+    {
+      "file": "./CONTRIBUTING.md",
+      "line": 91,
+      "rule": "MD013"
+    },
+    {
+      "file": "./CONTRIBUTING.md",
+      "line": 91,
+      "rule": "MD032"
+    },
+    {
+      "file": "./CONTRIBUTING.md",
+      "line": 92,
+      "rule": "MD022"
+    },
+    {
+      "file": "./CONTRIBUTING.md",
+      "line": 93,
+      "rule": "MD032"
+    },
+    {
+      "file": "./CONTRIBUTING.md",
+      "line": 97,
+      "rule": "MD022"
+    },
+    {
+      "file": "./CONTRIBUTING.md",
+      "line": 100,
+      "rule": "MD022"
+    },
+    {
+      "file": "./CONTRIBUTING.md",
+      "line": 101,
+      "rule": "MD013"
+    },
+    {
+      "file": "./CONTRIBUTING.md",
+      "line": 103,
+      "rule": "MD022"
+    },
+    {
+      "file": "./CONTRIBUTING.md",
+      "line": 104,
+      "rule": "MD032"
+    },
+    {
+      "file": "./MAINTAINERS.md",
+      "line": 5,
+      "rule": "MD022"
+    },
+    {
+      "file": "./MAINTAINERS.md",
+      "line": 6,
+      "rule": "MD032"
+    },
+    {
+      "file": "./MAINTAINERS.md",
+      "line": 6,
+      "rule": "MD034"
+    },
+    {
+      "file": "./MAINTAINERS.md",
+      "line": 10,
+      "rule": "MD022"
+    },
+    {
+      "file": "./MAINTAINERS.md",
+      "line": 11,
+      "rule": "MD032"
+    },
+    {
+      "file": "./MAINTAINERS.md",
+      "line": 17,
+      "rule": "MD022"
+    },
+    {
+      "file": "./MAINTAINERS.md",
+      "line": 18,
+      "rule": "MD032"
+    },
+    {
+      "file": "./MAINTAINERS.md",
+      "line": 22,
+      "rule": "MD022"
+    },
+    {
+      "file": "./MAINTAINERS.md",
+      "line": 23,
+      "rule": "MD032"
+    },
+    {
+      "file": "./MAINTAINERS.md",
+      "line": 27,
+      "rule": "MD022"
+    },
+    {
+      "file": "./MAINTAINERS.md",
+      "line": 28,
+      "rule": "MD032"
+    },
+    {
+      "file": "./MAINTAINERS.md",
+      "line": 31,
+      "rule": "MD022"
+    },
+    {
+      "file": "./MAINTAINERS.md",
+      "line": 32,
+      "rule": "MD032"
+    },
+    {
+      "file": "./MAINTAINERS.md",
+      "line": 35,
+      "rule": "MD022"
+    },
+    {
+      "file": "./MAINTAINERS.md",
+      "line": 36,
+      "rule": "MD032"
+    },
+    {
+      "file": "./MAINTAINERS.md",
+      "line": 39,
+      "rule": "MD022"
+    },
+    {
+      "file": "./MAINTAINERS.md",
+      "line": 40,
+      "rule": "MD032"
+    },
+    {
+      "file": "./MAINTAINERS.md",
+      "line": 42,
+      "rule": "MD022"
+    },
+    {
+      "file": "./MAINTAINERS.md",
+      "line": 43,
+      "rule": "MD032"
+    },
+    {
+      "file": "./MAINTAINERS.md",
+      "line": 45,
+      "rule": "MD022"
+    },
+    {
+      "file": "./MAINTAINERS.md",
+      "line": 46,
+      "rule": "MD032"
+    },
+    {
+      "file": "./README.md",
+      "line": 3,
+      "rule": "MD013"
+    },
+    {
+      "file": "./README.md",
+      "line": 5,
+      "rule": "MD022"
+    },
+    {
+      "file": "./README.md",
+      "line": 6,
+      "rule": "MD032"
+    },
+    {
+      "file": "./README.md",
+      "line": 8,
+      "rule": "MD013"
+    },
+    {
+      "file": "./README.md",
+      "line": 9,
+      "rule": "MD013"
+    },
+    {
+      "file": "./README.md",
+      "line": 11,
+      "rule": "MD013"
+    },
+    {
+      "file": "./README.md",
+      "line": 14,
+      "rule": "MD022"
+    },
+    {
+      "file": "./README.md",
+      "line": 15,
+      "rule": "MD032"
+    },
+    {
+      "file": "./README.md",
+      "line": 19,
+      "rule": "MD022"
+    },
+    {
+      "file": "./README.md",
+      "line": 20,
+      "rule": "MD032"
+    },
+    {
+      "file": "./README.md",
+      "line": 27,
+      "rule": "MD013"
+    },
+    {
+      "file": "./README.md",
+      "line": 30,
+      "rule": "MD004"
+    },
+    {
+      "file": "./README.md",
+      "line": 30,
+      "rule": "MD032"
+    },
+    {
+      "file": "./README.md",
+      "line": 31,
+      "rule": "MD004"
+    },
+    {
+      "file": "./README.md",
+      "line": 31,
+      "rule": "MD013"
+    },
+    {
+      "file": "./README.md",
+      "line": 32,
+      "rule": "MD004"
+    },
+    {
+      "file": "./README.md",
+      "line": 34,
+      "rule": "MD013"
+    },
+    {
+      "file": "./README.md",
+      "line": 39,
+      "rule": "MD004"
+    },
+    {
+      "file": "./README.md",
+      "line": 39,
+      "rule": "MD032"
+    },
+    {
+      "file": "./README.md",
+      "line": 40,
+      "rule": "MD004"
+    },
+    {
+      "file": "./README.md",
+      "line": 41,
+      "rule": "MD004"
+    },
+    {
+      "file": "./README.md",
+      "line": 42,
+      "rule": "MD004"
+    },
+    {
+      "file": "./README.md",
+      "line": 45,
+      "rule": "MD004"
+    },
+    {
+      "file": "./README.md",
+      "line": 45,
+      "rule": "MD032"
+    },
+    {
+      "file": "./README.md",
+      "line": 46,
+      "rule": "MD004"
+    },
+    {
+      "file": "./README.md",
+      "line": 46,
+      "rule": "MD013"
+    },
+    {
+      "file": "./README.md",
+      "line": 47,
+      "rule": "MD004"
+    },
+    {
+      "file": "./README.md",
+      "line": 64,
+      "rule": "MD013"
+    },
+    {
+      "file": "./README.md",
+      "line": 82,
+      "rule": "MD013"
+    },
+    {
+      "file": "./README.md",
+      "line": 84,
+      "rule": "MD022"
+    },
+    {
+      "file": "./README.md",
+      "line": 85,
+      "rule": "MD032"
+    },
+    {
+      "file": "./README.md",
+      "line": 95,
+      "rule": "MD022"
+    },
+    {
+      "file": "./README.md",
+      "line": 98,
+      "rule": "MD022"
+    },
+    {
+      "file": "./README.md",
+      "line": 99,
+      "rule": "MD032"
+    },
+    {
+      "file": "./README.md",
+      "line": 100,
+      "rule": "MD013"
+    },
+    {
+      "file": "./README.md",
+      "line": 104,
+      "rule": "MD022"
+    },
+    {
+      "file": "./README.md",
+      "line": 105,
+      "rule": "MD032"
+    },
+    {
+      "file": "./README.md",
+      "line": 110,
+      "rule": "MD022"
+    },
+    {
+      "file": "./README.md",
+      "line": 111,
+      "rule": "MD031"
+    },
+    {
+      "file": "./README.md",
+      "line": 131,
+      "rule": "MD022"
+    },
+    {
+      "file": "./README.md",
+      "line": 133,
+      "rule": "MD032"
+    },
+    {
+      "file": "./README.md",
+      "line": 139,
+      "rule": "MD022"
+    },
+    {
+      "file": "./README.md",
+      "line": 140,
+      "rule": "MD032"
+    },
+    {
+      "file": "./README.md",
+      "line": 141,
+      "rule": "MD013"
+    },
+    {
+      "file": "./README.md",
+      "line": 144,
+      "rule": "MD022"
+    },
+    {
+      "file": "./README.md",
+      "line": 145,
+      "rule": "MD013"
+    },
+    {
+      "file": "./README.md",
+      "line": 148,
+      "rule": "MD004"
+    },
+    {
+      "file": "./README.md",
+      "line": 148,
+      "rule": "MD013"
+    },
+    {
+      "file": "./README.md",
+      "line": 148,
+      "rule": "MD032"
+    },
+    {
+      "file": "./README.md",
+      "line": 149,
+      "rule": "MD004"
+    },
+    {
+      "file": "./README.md",
+      "line": 149,
+      "rule": "MD013"
+    },
+    {
+      "file": "./README.md",
+      "line": 151,
+      "rule": "MD013"
+    },
+    {
+      "file": "./README.md",
+      "line": 154,
+      "rule": "MD031"
+    },
+    {
+      "file": "./README.md",
+      "line": 158,
+      "rule": "MD022"
+    },
+    {
+      "file": "./README.md",
+      "line": 159,
+      "rule": "MD032"
+    },
+    {
+      "file": "./README.md",
+      "line": 160,
+      "rule": "MD013"
+    },
+    {
+      "file": "./README.md",
+      "line": 161,
+      "rule": "MD013"
+    },
+    {
+      "file": "./SECURITY.md",
+      "line": 5,
+      "rule": "MD022"
+    },
+    {
+      "file": "./SECURITY.md",
+      "line": 6,
+      "rule": "MD013"
+    },
+    {
+      "file": "./SECURITY.md",
+      "line": 8,
+      "rule": "MD022"
+    },
+    {
+      "file": "./SECURITY.md",
+      "line": 9,
+      "rule": "MD032"
+    },
+    {
+      "file": "./SECURITY.md",
+      "line": 13,
+      "rule": "MD022"
+    },
+    {
+      "file": "./SECURITY.md",
+      "line": 14,
+      "rule": "MD032"
+    },
+    {
+      "file": "./SECURITY.md",
+      "line": 19,
+      "rule": "MD022"
+    },
+    {
+      "file": "./SECURITY.md",
+      "line": 20,
+      "rule": "MD013"
+    },
+    {
+      "file": "./SECURITY.md",
+      "line": 20,
+      "rule": "MD032"
+    },
+    {
+      "file": "./SECURITY.md",
+      "line": 23,
+      "rule": "MD022"
+    },
+    {
+      "file": "./SECURITY.md",
+      "line": 24,
+      "rule": "MD032"
+    },
+    {
+      "file": "./SECURITY.md",
+      "line": 27,
+      "rule": "MD022"
+    },
+    {
+      "file": "./SECURITY.md",
+      "line": 28,
+      "rule": "MD013"
+    },
+    {
+      "file": "./SECURITY.md",
+      "line": 30,
+      "rule": "MD022"
+    },
+    {
+      "file": "./SECURITY.md",
+      "line": 33,
+      "rule": "MD022"
+    },
+    {
+      "file": "./SECURITY.md",
+      "line": 36,
+      "rule": "MD022"
+    },
+    {
+      "file": "./clients/R/LINTING.md",
+      "line": 5,
+      "rule": "MD022"
+    },
+    {
+      "file": "./clients/R/LINTING.md",
+      "line": 6,
+      "rule": "MD032"
+    },
+    {
+      "file": "./clients/R/LINTING.md",
+      "line": 7,
+      "rule": "MD013"
+    },
+    {
+      "file": "./clients/R/LINTING.md",
+      "line": 10,
+      "rule": "MD022"
+    },
+    {
+      "file": "./clients/R/LINTING.md",
+      "line": 11,
+      "rule": "MD032"
+    },
+    {
+      "file": "./clients/R/LINTING.md",
+      "line": 16,
+      "rule": "MD022"
+    },
+    {
+      "file": "./clients/R/LINTING.md",
+      "line": 17,
+      "rule": "MD032"
+    },
+    {
+      "file": "./clients/R/LINTING.md",
+      "line": 20,
+      "rule": "MD022"
+    },
+    {
+      "file": "./clients/R/LINTING.md",
+      "line": 21,
+      "rule": "MD032"
+    },
+    {
+      "file": "./clients/R/LINTING.md",
+      "line": 22,
+      "rule": "MD013"
+    },
+    {
+      "file": "./clients/R/LINTING.md",
+      "line": 23,
+      "rule": "MD013"
+    },
+    {
+      "file": "./clients/R/LINTING.md",
+      "line": 24,
+      "rule": "MD013"
+    },
+    {
+      "file": "./clients/R/LINTING.md",
+      "line": 25,
+      "rule": "MD013"
+    },
+    {
+      "file": "./clients/R/LINTING.md",
+      "line": 26,
+      "rule": "MD013"
+    },
+    {
+      "file": "./clients/R/LINTING.md",
+      "line": 28,
+      "rule": "MD022"
+    },
+    {
+      "file": "./clients/R/LINTING.md",
+      "line": 29,
+      "rule": "MD013"
+    },
+    {
+      "file": "./clients/python/LINTING.md",
+      "line": 3,
+      "rule": "MD013"
+    },
+    {
+      "file": "./clients/python/LINTING.md",
+      "line": 5,
+      "rule": "MD022"
+    },
+    {
+      "file": "./clients/python/LINTING.md",
+      "line": 6,
+      "rule": "MD013"
+    },
+    {
+      "file": "./clients/python/LINTING.md",
+      "line": 6,
+      "rule": "MD032"
+    },
+    {
+      "file": "./clients/python/LINTING.md",
+      "line": 7,
+      "rule": "MD013"
+    },
+    {
+      "file": "./clients/python/LINTING.md",
+      "line": 9,
+      "rule": "MD022"
+    },
+    {
+      "file": "./clients/python/LINTING.md",
+      "line": 10,
+      "rule": "MD032"
+    },
+    {
+      "file": "./clients/python/LINTING.md",
+      "line": 16,
+      "rule": "MD022"
+    },
+    {
+      "file": "./clients/python/LINTING.md",
+      "line": 17,
+      "rule": "MD032"
+    },
+    {
+      "file": "./clients/python/LINTING.md",
+      "line": 20,
+      "rule": "MD022"
+    },
+    {
+      "file": "./clients/python/LINTING.md",
+      "line": 21,
+      "rule": "MD032"
+    },
+    {
+      "file": "./clients/python/LINTING.md",
+      "line": 22,
+      "rule": "MD013"
+    },
+    {
+      "file": "./clients/python/LINTING.md",
+      "line": 23,
+      "rule": "MD013"
+    },
+    {
+      "file": "./clients/python/LINTING.md",
+      "line": 25,
+      "rule": "MD022"
+    },
+    {
+      "file": "./clients/python/LINTING.md",
+      "line": 26,
+      "rule": "MD013"
+    },
+    {
+      "file": "./docs/adr/0001-migration-and-rollback.md",
+      "line": 8,
+      "rule": "MD022"
+    },
+    {
+      "file": "./docs/adr/0001-migration-and-rollback.md",
+      "line": 9,
+      "rule": "MD013"
+    },
+    {
+      "file": "./docs/adr/0001-migration-and-rollback.md",
+      "line": 11,
+      "rule": "MD022"
+    },
+    {
+      "file": "./docs/adr/0001-migration-and-rollback.md",
+      "line": 12,
+      "rule": "MD013"
+    },
+    {
+      "file": "./docs/adr/0001-migration-and-rollback.md",
+      "line": 12,
+      "rule": "MD032"
+    },
+    {
+      "file": "./docs/adr/0001-migration-and-rollback.md",
+      "line": 15,
+      "rule": "MD013"
+    },
+    {
+      "file": "./docs/adr/0001-migration-and-rollback.md",
+      "line": 16,
+      "rule": "MD013"
+    },
+    {
+      "file": "./docs/adr/0001-migration-and-rollback.md",
+      "line": 19,
+      "rule": "MD022"
+    },
+    {
+      "file": "./docs/adr/0001-migration-and-rollback.md",
+      "line": 20,
+      "rule": "MD032"
+    },
+    {
+      "file": "./docs/adr/0002-versioning-and-deprecation.md",
+      "line": 8,
+      "rule": "MD022"
+    },
+    {
+      "file": "./docs/adr/0002-versioning-and-deprecation.md",
+      "line": 9,
+      "rule": "MD013"
+    },
+    {
+      "file": "./docs/adr/0002-versioning-and-deprecation.md",
+      "line": 11,
+      "rule": "MD022"
+    },
+    {
+      "file": "./docs/adr/0002-versioning-and-deprecation.md",
+      "line": 12,
+      "rule": "MD013"
+    },
+    {
+      "file": "./docs/adr/0002-versioning-and-deprecation.md",
+      "line": 12,
+      "rule": "MD032"
+    },
+    {
+      "file": "./docs/adr/0002-versioning-and-deprecation.md",
+      "line": 14,
+      "rule": "MD013"
+    },
+    {
+      "file": "./docs/adr/0002-versioning-and-deprecation.md",
+      "line": 15,
+      "rule": "MD013"
+    },
+    {
+      "file": "./docs/adr/0002-versioning-and-deprecation.md",
+      "line": 18,
+      "rule": "MD022"
+    },
+    {
+      "file": "./docs/adr/0002-versioning-and-deprecation.md",
+      "line": 19,
+      "rule": "MD032"
+    },
+    {
+      "file": "./docs/adr/0002-versioning-and-deprecation.md",
+      "line": 23,
+      "rule": "MD022"
+    },
+    {
+      "file": "./docs/adr/0002-versioning-and-deprecation.md",
+      "line": 24,
+      "rule": "MD032"
+    },
+    {
+      "file": "./docs/adr/0003-core-domain-schema.md",
+      "line": 8,
+      "rule": "MD022"
+    },
+    {
+      "file": "./docs/adr/0003-core-domain-schema.md",
+      "line": 11,
+      "rule": "MD022"
+    },
+    {
+      "file": "./docs/adr/0003-core-domain-schema.md",
+      "line": 12,
+      "rule": "MD013"
+    },
+    {
+      "file": "./docs/adr/0003-core-domain-schema.md",
+      "line": 14,
+      "rule": "MD022"
+    },
+    {
+      "file": "./docs/adr/0003-core-domain-schema.md",
+      "line": 15,
+      "rule": "MD013"
+    },
+    {
+      "file": "./docs/adr/0003-core-domain-schema.md",
+      "line": 15,
+      "rule": "MD032"
+    },
+    {
+      "file": "./docs/adr/0003-core-domain-schema.md",
+      "line": 23,
+      "rule": "MD013"
+    },
+    {
+      "file": "./docs/adr/0003-core-domain-schema.md",
+      "line": 25,
+      "rule": "MD022"
+    },
+    {
+      "file": "./docs/adr/0003-core-domain-schema.md",
+      "line": 26,
+      "rule": "MD013"
+    },
+    {
+      "file": "./docs/adr/0003-core-domain-schema.md",
+      "line": 26,
+      "rule": "MD032"
+    },
+    {
+      "file": "./docs/adr/0003-core-domain-schema.md",
+      "line": 28,
+      "rule": "MD013"
+    },
+    {
+      "file": "./docs/adr/0003-core-domain-schema.md",
+      "line": 29,
+      "rule": "MD013"
+    },
+    {
+      "file": "./docs/adr/0003-core-domain-schema.md",
+      "line": 31,
+      "rule": "MD013"
+    },
+    {
+      "file": "./docs/adr/0003-core-domain-schema.md",
+      "line": 33,
+      "rule": "MD022"
+    },
+    {
+      "file": "./docs/adr/0003-core-domain-schema.md",
+      "line": 34,
+      "rule": "MD032"
+    },
+    {
+      "file": "./docs/adr/0003-core-domain-schema.md",
+      "line": 37,
+      "rule": "MD013"
+    },
+    {
+      "file": "./docs/adr/0003-core-domain-schema.md",
+      "line": 39,
+      "rule": "MD022"
+    },
+    {
+      "file": "./docs/adr/0003-core-domain-schema.md",
+      "line": 40,
+      "rule": "MD013"
+    },
+    {
+      "file": "./docs/adr/0003-core-domain-schema.md",
+      "line": 40,
+      "rule": "MD032"
+    },
+    {
+      "file": "./docs/adr/0003-core-domain-schema.md",
+      "line": 41,
+      "rule": "MD013"
+    },
+    {
+      "file": "./docs/adr/0003-core-domain-schema.md",
+      "line": 42,
+      "rule": "MD013"
+    },
+    {
+      "file": "./docs/adr/0003-core-domain-schema.md",
+      "line": 43,
+      "rule": "MD013"
+    },
+    {
+      "file": "./docs/adr/0003-core-domain-schema.md",
+      "line": 45,
+      "rule": "MD022"
+    },
+    {
+      "file": "./docs/adr/0003-core-domain-schema.md",
+      "line": 46,
+      "rule": "MD032"
+    },
+    {
+      "file": "./docs/adr/0003-core-domain-schema.md",
+      "line": 49,
+      "rule": "MD013"
+    },
+    {
+      "file": "./docs/adr/0003-core-domain-schema.md",
+      "line": 51,
+      "rule": "MD013"
+    },
+    {
+      "file": "./docs/adr/0003-core-domain-schema.md",
+      "line": 53,
+      "rule": "MD022"
+    },
+    {
+      "file": "./docs/adr/0003-core-domain-schema.md",
+      "line": 54,
+      "rule": "MD022"
+    },
+    {
+      "file": "./docs/adr/0003-core-domain-schema.md",
+      "line": 55,
+      "rule": "MD032"
+    },
+    {
+      "file": "./docs/adr/0003-core-domain-schema.md",
+      "line": 60,
+      "rule": "MD022"
+    },
+    {
+      "file": "./docs/adr/0003-core-domain-schema.md",
+      "line": 61,
+      "rule": "MD032"
+    },
+    {
+      "file": "./docs/adr/0003-core-domain-schema.md",
+      "line": 65,
+      "rule": "MD022"
+    },
+    {
+      "file": "./docs/adr/0003-core-domain-schema.md",
+      "line": 66,
+      "rule": "MD032"
+    },
+    {
+      "file": "./docs/adr/0004-rules-engine-evaluation.md",
+      "line": 8,
+      "rule": "MD022"
+    },
+    {
+      "file": "./docs/adr/0004-rules-engine-evaluation.md",
+      "line": 9,
+      "rule": "MD013"
+    },
+    {
+      "file": "./docs/adr/0004-rules-engine-evaluation.md",
+      "line": 11,
+      "rule": "MD022"
+    },
+    {
+      "file": "./docs/adr/0004-rules-engine-evaluation.md",
+      "line": 14,
+      "rule": "MD022"
+    },
+    {
+      "file": "./docs/adr/0005-plugin-packaging-and-distribution.md",
+      "line": 8,
+      "rule": "MD022"
+    },
+    {
+      "file": "./docs/adr/0005-plugin-packaging-and-distribution.md",
+      "line": 11,
+      "rule": "MD022"
+    },
+    {
+      "file": "./docs/adr/0005-plugin-packaging-and-distribution.md",
+      "line": 14,
+      "rule": "MD022"
+    },
+    {
+      "file": "./docs/adr/0006-observability-architecture.md",
+      "line": 8,
+      "rule": "MD022"
+    },
+    {
+      "file": "./docs/adr/0006-observability-architecture.md",
+      "line": 11,
+      "rule": "MD022"
+    },
+    {
+      "file": "./docs/adr/0006-observability-architecture.md",
+      "line": 14,
+      "rule": "MD022"
+    },
+    {
+      "file": "./docs/adr/0007-storage-baseline.md",
+      "line": 7,
+      "rule": "MD013"
+    },
+    {
+      "file": "./docs/adr/0007-storage-baseline.md",
+      "line": 9,
+      "rule": "MD022"
+    },
+    {
+      "file": "./docs/adr/0007-storage-baseline.md",
+      "line": 10,
+      "rule": "MD013"
+    },
+    {
+      "file": "./docs/adr/0007-storage-baseline.md",
+      "line": 12,
+      "rule": "MD022"
+    },
+    {
+      "file": "./docs/adr/0007-storage-baseline.md",
+      "line": 13,
+      "rule": "MD013"
+    },
+    {
+      "file": "./docs/adr/0007-storage-baseline.md",
+      "line": 13,
+      "rule": "MD032"
+    },
+    {
+      "file": "./docs/adr/0007-storage-baseline.md",
+      "line": 15,
+      "rule": "MD013"
+    },
+    {
+      "file": "./docs/adr/0007-storage-baseline.md",
+      "line": 16,
+      "rule": "MD013"
+    },
+    {
+      "file": "./docs/adr/0007-storage-baseline.md",
+      "line": 17,
+      "rule": "MD013"
+    },
+    {
+      "file": "./docs/adr/0007-storage-baseline.md",
+      "line": 19,
+      "rule": "MD022"
+    },
+    {
+      "file": "./docs/adr/0007-storage-baseline.md",
+      "line": 20,
+      "rule": "MD022"
+    },
+    {
+      "file": "./docs/adr/0007-storage-baseline.md",
+      "line": 21,
+      "rule": "MD032"
+    },
+    {
+      "file": "./docs/adr/0007-storage-baseline.md",
+      "line": 25,
+      "rule": "MD022"
+    },
+    {
+      "file": "./docs/adr/0007-storage-baseline.md",
+      "line": 26,
+      "rule": "MD032"
+    },
+    {
+      "file": "./docs/adr/0007-storage-baseline.md",
+      "line": 28,
+      "rule": "MD013"
+    },
+    {
+      "file": "./docs/adr/0007-storage-baseline.md",
+      "line": 30,
+      "rule": "MD022"
+    },
+    {
+      "file": "./docs/adr/0007-storage-baseline.md",
+      "line": 38,
+      "rule": "MD022"
+    },
+    {
+      "file": "./docs/adr/0007-storage-baseline.md",
+      "line": 39,
+      "rule": "MD013"
+    },
+    {
+      "file": "./docs/adr/0007-storage-baseline.md",
+      "line": 39,
+      "rule": "MD032"
+    },
+    {
+      "file": "./docs/adr/0007-storage-baseline.md",
+      "line": 43,
+      "rule": "MD022"
+    },
+    {
+      "file": "./docs/adr/0007-storage-baseline.md",
+      "line": 44,
+      "rule": "MD013"
+    },
+    {
+      "file": "./docs/adr/0007-storage-baseline.md",
+      "line": 44,
+      "rule": "MD032"
+    },
+    {
+      "file": "./docs/adr/0007-storage-baseline.md",
+      "line": 45,
+      "rule": "MD013"
+    },
+    {
+      "file": "./docs/adr/0007-storage-baseline.md",
+      "line": 47,
+      "rule": "MD013"
+    },
+    {
+      "file": "./docs/adr/0007-storage-baseline.md",
+      "line": 48,
+      "rule": "MD013"
+    },
+    {
+      "file": "./docs/adr/0007-storage-baseline.md",
+      "line": 50,
+      "rule": "MD013"
+    },
+    {
+      "file": "./docs/adr/0007-storage-baseline.md",
+      "line": 52,
+      "rule": "MD013"
+    },
+    {
+      "file": "./docs/adr/0007-storage-baseline.md",
+      "line": 53,
+      "rule": "MD013"
+    },
+    {
+      "file": "./docs/adr/0007-storage-baseline.md",
+      "line": 55,
+      "rule": "MD022"
+    },
+    {
+      "file": "./docs/adr/0007-storage-baseline.md",
+      "line": 56,
+      "rule": "MD013"
+    },
+    {
+      "file": "./docs/adr/0007-storage-baseline.md",
+      "line": 58,
+      "rule": "MD022"
+    },
+    {
+      "file": "./docs/adr/0007-storage-baseline.md",
+      "line": 59,
+      "rule": "MD032"
+    },
+    {
+      "file": "./docs/adr/0007-storage-baseline.md",
+      "line": 64,
+      "rule": "MD022"
+    },
+    {
+      "file": "./docs/adr/0007-storage-baseline.md",
+      "line": 65,
+      "rule": "MD032"
+    },
+    {
+      "file": "./docs/adr/0007-storage-baseline.md",
+      "line": 69,
+      "rule": "MD013"
+    },
+    {
+      "file": "./docs/adr/0007-storage-baseline.md",
+      "line": 71,
+      "rule": "MD022"
+    },
+    {
+      "file": "./docs/adr/0007-storage-baseline.md",
+      "line": 72,
+      "rule": "MD013"
+    },
+    {
+      "file": "./docs/adr/0007-storage-baseline.md",
+      "line": 74,
+      "rule": "MD022"
+    },
+    {
+      "file": "./docs/adr/0007-storage-baseline.md",
+      "line": 75,
+      "rule": "MD013"
+    },
+    {
+      "file": "./docs/adr/0007-storage-baseline.md",
+      "line": 76,
+      "rule": "MD032"
+    },
+    {
+      "file": "./docs/adr/0007-storage-baseline.md",
+      "line": 79,
+      "rule": "MD013"
+    },
+    {
+      "file": "./docs/adr/0007-storage-baseline.md",
+      "line": 81,
+      "rule": "MD022"
+    },
+    {
+      "file": "./docs/adr/0007-storage-baseline.md",
+      "line": 82,
+      "rule": "MD013"
+    },
+    {
+      "file": "./docs/adr/0007-storage-baseline.md",
+      "line": 83,
+      "rule": "MD032"
+    },
+    {
+      "file": "./docs/adr/0008-object-storage-contract.md",
+      "line": 3,
+      "rule": "MD022"
+    },
+    {
+      "file": "./docs/adr/0008-object-storage-contract.md",
+      "line": 6,
+      "rule": "MD022"
+    },
+    {
+      "file": "./docs/adr/0008-object-storage-contract.md",
+      "line": 7,
+      "rule": "MD013"
+    },
+    {
+      "file": "./docs/adr/0008-object-storage-contract.md",
+      "line": 14,
+      "rule": "MD013"
+    },
+    {
+      "file": "./docs/adr/0008-object-storage-contract.md",
+      "line": 16,
+      "rule": "MD022"
+    },
+    {
+      "file": "./docs/adr/0008-object-storage-contract.md",
+      "line": 17,
+      "rule": "MD013"
+    },
+    {
+      "file": "./docs/adr/0008-object-storage-contract.md",
+      "line": 43,
+      "rule": "MD032"
+    },
+    {
+      "file": "./docs/adr/0008-object-storage-contract.md",
+      "line": 48,
+      "rule": "MD022"
+    },
+    {
+      "file": "./docs/adr/0008-object-storage-contract.md",
+      "line": 49,
+      "rule": "MD032"
+    },
+    {
+      "file": "./docs/adr/0008-object-storage-contract.md",
+      "line": 51,
+      "rule": "MD013"
+    },
+    {
+      "file": "./docs/adr/0008-object-storage-contract.md",
+      "line": 54,
+      "rule": "MD022"
+    },
+    {
+      "file": "./docs/adr/0008-object-storage-contract.md",
+      "line": 55,
+      "rule": "MD032"
+    },
+    {
+      "file": "./docs/adr/0008-object-storage-contract.md",
+      "line": 59,
+      "rule": "MD022"
+    },
+    {
+      "file": "./docs/adr/0008-object-storage-contract.md",
+      "line": 60,
+      "rule": "MD013"
+    },
+    {
+      "file": "./docs/adr/0008-object-storage-contract.md",
+      "line": 60,
+      "rule": "MD032"
+    },
+    {
+      "file": "./docs/adr/0008-object-storage-contract.md",
+      "line": 64,
+      "rule": "MD022"
+    },
+    {
+      "file": "./docs/adr/0008-object-storage-contract.md",
+      "line": 65,
+      "rule": "MD032"
+    },
+    {
+      "file": "./docs/adr/0008-object-storage-contract.md",
+      "line": 66,
+      "rule": "MD013"
+    },
+    {
+      "file": "./docs/adr/0008-object-storage-contract.md",
+      "line": 69,
+      "rule": "MD022"
+    },
+    {
+      "file": "./docs/adr/0008-object-storage-contract.md",
+      "line": 70,
+      "rule": "MD032"
+    },
+    {
+      "file": "./docs/adr/0008-object-storage-contract.md",
+      "line": 77,
+      "rule": "MD022"
+    },
+    {
+      "file": "./docs/adr/0008-object-storage-contract.md",
+      "line": 78,
+      "rule": "MD032"
+    },
+    {
+      "file": "./docs/adr/0008-object-storage-contract.md",
+      "line": 80,
+      "rule": "MD013"
+    },
+    {
+      "file": "./docs/adr/0008-object-storage-contract.md",
+      "line": 82,
+      "rule": "MD022"
+    },
+    {
+      "file": "./docs/adr/0008-object-storage-contract.md",
+      "line": 83,
+      "rule": "MD032"
+    },
+    {
+      "file": "./docs/adr/0008-object-storage-contract.md",
+      "line": 87,
+      "rule": "MD022"
+    },
+    {
+      "file": "./docs/adr/0008-object-storage-contract.md",
+      "line": 88,
+      "rule": "MD013"
+    },
+    {
+      "file": "./docs/adr/0008-object-storage-contract.md",
+      "line": 90,
+      "rule": "MD022"
+    },
+    {
+      "file": "./docs/adr/0008-object-storage-contract.md",
+      "line": 91,
+      "rule": "MD013"
+    },
+    {
+      "file": "./docs/adr/0008-object-storage-contract.md",
+      "line": 91,
+      "rule": "MD032"
+    },
+    {
+      "file": "./docs/adr/0008-object-storage-contract.md",
+      "line": 92,
+      "rule": "MD013"
+    },
+    {
+      "file": "./docs/adr/0008-object-storage-contract.md",
+      "line": 95,
+      "rule": "MD022"
+    },
+    {
+      "file": "./docs/adr/0008-object-storage-contract.md",
+      "line": 96,
+      "rule": "MD032"
+    },
+    {
+      "file": "./docs/adr/0008-object-storage-contract.md",
+      "line": 97,
+      "rule": "MD013"
+    },
+    {
+      "file": "./docs/adr/0008-object-storage-contract.md",
+      "line": 102,
+      "rule": "MD013"
+    },
+    {
+      "file": "./docs/adr/0008-object-storage-contract.md",
+      "line": 104,
+      "rule": "MD022"
+    },
+    {
+      "file": "./docs/adr/0008-object-storage-contract.md",
+      "line": 105,
+      "rule": "MD032"
+    },
+    {
+      "file": "./docs/adr/0008-object-storage-contract.md",
+      "line": 108,
+      "rule": "MD013"
+    },
+    {
+      "file": "./docs/adr/0008-object-storage-contract.md",
+      "line": 111,
+      "rule": "MD022"
+    },
+    {
+      "file": "./docs/adr/0008-object-storage-contract.md",
+      "line": 125,
+      "rule": "MD013"
+    },
+    {
+      "file": "./docs/adr/0009-plugin-interface-stability-and-versioning.md",
+      "line": 3,
+      "rule": "MD022"
+    },
+    {
+      "file": "./docs/adr/0009-plugin-interface-stability-and-versioning.md",
+      "line": 6,
+      "rule": "MD022"
+    },
+    {
+      "file": "./docs/adr/0009-plugin-interface-stability-and-versioning.md",
+      "line": 9,
+      "rule": "MD022"
+    },
+    {
+      "file": "./docs/adr/0009-plugin-interface-stability-and-versioning.md",
+      "line": 12,
+      "rule": "MD022"
+    },
+    {
+      "file": "./docs/adr/0009-plugin-interface-stability-and-versioning.md",
+      "line": 13,
+      "rule": "MD009"
+    },
+    {
+      "file": "./docs/adr/0009-plugin-interface-stability-and-versioning.md",
+      "line": 20,
+      "rule": "MD013"
+    },
+    {
+      "file": "./docs/adr/0009-plugin-interface-stability-and-versioning.md",
+      "line": 23,
+      "rule": "MD032"
+    },
+    {
+      "file": "./docs/adr/0009-plugin-interface-stability-and-versioning.md",
+      "line": 28,
+      "rule": "MD022"
+    },
+    {
+      "file": "./docs/adr/0009-plugin-interface-stability-and-versioning.md",
+      "line": 29,
+      "rule": "MD013"
+    },
+    {
+      "file": "./docs/adr/0009-plugin-interface-stability-and-versioning.md",
+      "line": 31,
+      "rule": "MD022"
+    },
+    {
+      "file": "./docs/adr/0009-plugin-interface-stability-and-versioning.md",
+      "line": 36,
+      "rule": "MD013"
+    },
+    {
+      "file": "./docs/adr/0009-plugin-interface-stability-and-versioning.md",
+      "line": 41,
+      "rule": "MD032"
+    },
+    {
+      "file": "./docs/adr/0009-plugin-interface-stability-and-versioning.md",
+      "line": 42,
+      "rule": "MD013"
+    },
+    {
+      "file": "./docs/adr/0009-plugin-interface-stability-and-versioning.md",
+      "line": 46,
+      "rule": "MD013"
+    },
+    {
+      "file": "./docs/adr/0009-plugin-interface-stability-and-versioning.md",
+      "line": 51,
+      "rule": "MD032"
+    },
+    {
+      "file": "./docs/adr/0009-plugin-interface-stability-and-versioning.md",
+      "line": 55,
+      "rule": "MD013"
+    },
+    {
+      "file": "./docs/adr/0009-plugin-interface-stability-and-versioning.md",
+      "line": 70,
+      "rule": "MD013"
+    },
+    {
+      "file": "./docs/adr/0009-plugin-interface-stability-and-versioning.md",
+      "line": 72,
+      "rule": "MD022"
+    },
+    {
+      "file": "./docs/adr/0009-plugin-interface-stability-and-versioning.md",
+      "line": 73,
+      "rule": "MD013"
+    },
+    {
+      "file": "./docs/adr/0009-plugin-interface-stability-and-versioning.md",
+      "line": 76,
+      "rule": "MD032"
+    },
+    {
+      "file": "./docs/adr/0009-plugin-interface-stability-and-versioning.md",
+      "line": 81,
+      "rule": "MD032"
+    },
+    {
+      "file": "./docs/adr/0009-plugin-interface-stability-and-versioning.md",
+      "line": 82,
+      "rule": "MD013"
+    },
+    {
+      "file": "./docs/adr/0009-plugin-interface-stability-and-versioning.md",
+      "line": 85,
+      "rule": "MD032"
+    },
+    {
+      "file": "./docs/adr/0009-plugin-interface-stability-and-versioning.md",
+      "line": 90,
+      "rule": "MD013"
+    },
+    {
+      "file": "./docs/adr/0009-plugin-interface-stability-and-versioning.md",
+      "line": 93,
+      "rule": "MD022"
+    },
+    {
+      "file": "./docs/adr/0009-plugin-interface-stability-and-versioning.md",
+      "line": 94,
+      "rule": "MD013"
+    },
+    {
+      "file": "./docs/adr/0009-plugin-interface-stability-and-versioning.md",
+      "line": 96,
+      "rule": "MD022"
+    },
+    {
+      "file": "./docs/adr/0009-plugin-interface-stability-and-versioning.md",
+      "line": 97,
+      "rule": "MD009"
+    },
+    {
+      "file": "./docs/adr/0009-plugin-interface-stability-and-versioning.md",
+      "line": 97,
+      "rule": "MD032"
+    },
+    {
+      "file": "./docs/adr/0009-plugin-interface-stability-and-versioning.md",
+      "line": 102,
+      "rule": "MD022"
+    },
+    {
+      "file": "./docs/adr/0009-plugin-interface-stability-and-versioning.md",
+      "line": 104,
+      "rule": "MD013"
+    },
+    {
+      "file": "./docs/adr/0009-plugin-interface-stability-and-versioning.md",
+      "line": 104,
+      "rule": "MD032"
+    },
+    {
+      "file": "./docs/adr/0009-plugin-interface-stability-and-versioning.md",
+      "line": 107,
+      "rule": "MD013"
+    },
+    {
+      "file": "./docs/adr/0009-plugin-interface-stability-and-versioning.md",
+      "line": 109,
+      "rule": "MD022"
+    },
+    {
+      "file": "./docs/adr/0009-plugin-interface-stability-and-versioning.md",
+      "line": 110,
+      "rule": "MD032"
+    },
+    {
+      "file": "./docs/adr/0009-plugin-interface-stability-and-versioning.md",
+      "line": 113,
+      "rule": "MD013"
+    },
+    {
+      "file": "./docs/adr/0009-plugin-interface-stability-and-versioning.md",
+      "line": 115,
+      "rule": "MD022"
+    },
+    {
+      "file": "./docs/adr/0009-plugin-interface-stability-and-versioning.md",
+      "line": 117,
+      "rule": "MD032"
+    },
+    {
+      "file": "./docs/adr/0009-plugin-interface-stability-and-versioning.md",
+      "line": 118,
+      "rule": "MD013"
+    },
+    {
+      "file": "./docs/adr/0009-plugin-interface-stability-and-versioning.md",
+      "line": 119,
+      "rule": "MD013"
+    },
+    {
+      "file": "./docs/adr/0009-plugin-interface-stability-and-versioning.md",
+      "line": 121,
+      "rule": "MD013"
+    },
+    {
+      "file": "./docs/adr/0009-plugin-interface-stability-and-versioning.md",
+      "line": 123,
+      "rule": "MD022"
+    },
+    {
+      "file": "./docs/adr/0009-plugin-interface-stability-and-versioning.md",
+      "line": 127,
+      "rule": "MD032"
+    },
+    {
+      "file": "./docs/adr/0009-plugin-interface-stability-and-versioning.md",
+      "line": 129,
+      "rule": "MD013"
+    },
+    {
+      "file": "./docs/adr/0009-plugin-interface-stability-and-versioning.md",
+      "line": 130,
+      "rule": "MD013"
+    },
+    {
+      "file": "./docs/adr/0009-plugin-interface-stability-and-versioning.md",
+      "line": 133,
+      "rule": "MD032"
+    },
+    {
+      "file": "./docs/adr/0009-plugin-interface-stability-and-versioning.md",
+      "line": 139,
+      "rule": "MD032"
+    },
+    {
+      "file": "./docs/adr/0009-plugin-interface-stability-and-versioning.md",
+      "line": 144,
+      "rule": "MD022"
+    },
+    {
+      "file": "./docs/adr/0009-plugin-interface-stability-and-versioning.md",
+      "line": 145,
+      "rule": "MD013"
+    },
+    {
+      "file": "./docs/adr/0009-plugin-interface-stability-and-versioning.md",
+      "line": 147,
+      "rule": "MD022"
+    },
+    {
+      "file": "./docs/adr/0009-plugin-interface-stability-and-versioning.md",
+      "line": 148,
+      "rule": "MD032"
+    },
+    {
+      "file": "./docs/adr/0009-plugin-interface-stability-and-versioning.md",
+      "line": 153,
+      "rule": "MD022"
+    },
+    {
+      "file": "./docs/adr/0009-plugin-interface-stability-and-versioning.md",
+      "line": 154,
+      "rule": "MD013"
+    },
+    {
+      "file": "./docs/adr/0009-plugin-interface-stability-and-versioning.md",
+      "line": 154,
+      "rule": "MD032"
+    },
+    {
+      "file": "./docs/adr/0009-plugin-interface-stability-and-versioning.md",
+      "line": 155,
+      "rule": "MD013"
+    },
+    {
+      "file": "./docs/adr/0009-plugin-interface-stability-and-versioning.md",
+      "line": 158,
+      "rule": "MD022"
+    },
+    {
+      "file": "./docs/adr/0009-plugin-interface-stability-and-versioning.md",
+      "line": 160,
+      "rule": "MD032"
+    },
+    {
+      "file": "./docs/adr/0009-plugin-interface-stability-and-versioning.md",
+      "line": 164,
+      "rule": "MD032"
+    },
+    {
+      "file": "./docs/adr/0009-plugin-interface-stability-and-versioning.md",
+      "line": 167,
+      "rule": "MD022"
+    },
+    {
+      "file": "./docs/adr/0009-plugin-interface-stability-and-versioning.md",
+      "line": 168,
+      "rule": "MD032"
+    },
+    {
+      "file": "./docs/adr/0009-plugin-interface-stability-and-versioning.md",
+      "line": 171,
+      "rule": "MD022"
+    },
+    {
+      "file": "./docs/adr/0009-plugin-interface-stability-and-versioning.md",
+      "line": 172,
+      "rule": "MD032"
+    },
+    {
+      "file": "./docs/adr/0009-plugin-interface-stability-and-versioning.md",
+      "line": 177,
+      "rule": "MD022"
+    },
+    {
+      "file": "./docs/adr/0009-plugin-interface-stability-and-versioning.md",
+      "line": 178,
+      "rule": "MD032"
+    },
+    {
+      "file": "./docs/adr/0009-plugin-interface-stability-and-versioning.md",
+      "line": 179,
+      "rule": "MD013"
+    },
+    {
+      "file": "./docs/adr/0009-plugin-interface-stability-and-versioning.md",
+      "line": 182,
+      "rule": "MD022"
+    },
+    {
+      "file": "./docs/adr/0009-plugin-interface-stability-and-versioning.md",
+      "line": 183,
+      "rule": "MD032"
+    },
+    {
+      "file": "./docs/adr/0009-plugin-interface-stability-and-versioning.md",
+      "line": 185,
+      "rule": "MD034"
+    },
+    {
+      "file": "./docs/adr/0009-plugin-interface-stability-and-versioning.md",
+      "line": 186,
+      "rule": "MD034"
+    },
+    {
+      "file": "./docs/adr/0010-contextual-accessor-pattern.md",
+      "line": 3,
+      "rule": "MD022"
+    },
+    {
+      "file": "./docs/adr/0010-contextual-accessor-pattern.md",
+      "line": 6,
+      "rule": "MD022"
+    },
+    {
+      "file": "./docs/adr/0010-contextual-accessor-pattern.md",
+      "line": 9,
+      "rule": "MD022"
+    },
+    {
+      "file": "./docs/adr/0010-contextual-accessor-pattern.md",
+      "line": 12,
+      "rule": "MD022"
+    },
+    {
+      "file": "./docs/adr/0010-contextual-accessor-pattern.md",
+      "line": 13,
+      "rule": "MD013"
+    },
+    {
+      "file": "./docs/adr/0010-contextual-accessor-pattern.md",
+      "line": 22,
+      "rule": "MD032"
+    },
+    {
+      "file": "./docs/adr/0010-contextual-accessor-pattern.md",
+      "line": 27,
+      "rule": "MD022"
+    },
+    {
+      "file": "./docs/adr/0010-contextual-accessor-pattern.md",
+      "line": 28,
+      "rule": "MD013"
+    },
+    {
+      "file": "./docs/adr/0010-contextual-accessor-pattern.md",
+      "line": 32,
+      "rule": "MD022"
+    },
+    {
+      "file": "./docs/adr/0010-contextual-accessor-pattern.md",
+      "line": 50,
+      "rule": "MD022"
+    },
+    {
+      "file": "./docs/adr/0010-contextual-accessor-pattern.md",
+      "line": 62,
+      "rule": "MD022"
+    },
+    {
+      "file": "./docs/adr/0010-contextual-accessor-pattern.md",
+      "line": 76,
+      "rule": "MD022"
+    },
+    {
+      "file": "./docs/adr/0010-contextual-accessor-pattern.md",
+      "line": 101,
+      "rule": "MD022"
+    },
+    {
+      "file": "./docs/adr/0010-contextual-accessor-pattern.md",
+      "line": 102,
+      "rule": "MD032"
+    },
+    {
+      "file": "./docs/adr/0010-contextual-accessor-pattern.md",
+      "line": 106,
+      "rule": "MD022"
+    },
+    {
+      "file": "./docs/adr/0010-contextual-accessor-pattern.md",
+      "line": 107,
+      "rule": "MD032"
+    },
+    {
+      "file": "./docs/adr/0010-contextual-accessor-pattern.md",
+      "line": 115,
+      "rule": "MD022"
+    },
+    {
+      "file": "./docs/adr/0010-contextual-accessor-pattern.md",
+      "line": 117,
+      "rule": "MD032"
+    },
+    {
+      "file": "./docs/adr/0010-contextual-accessor-pattern.md",
+      "line": 124,
+      "rule": "MD022"
+    },
+    {
+      "file": "./docs/adr/0010-contextual-accessor-pattern.md",
+      "line": 125,
+      "rule": "MD032"
+    },
+    {
+      "file": "./docs/adr/0010-contextual-accessor-pattern.md",
+      "line": 129,
+      "rule": "MD022"
+    },
+    {
+      "file": "./docs/adr/0010-contextual-accessor-pattern.md",
+      "line": 130,
+      "rule": "MD032"
+    },
+    {
+      "file": "./docs/adr/0010-contextual-accessor-pattern.md",
+      "line": 134,
+      "rule": "MD022"
+    },
+    {
+      "file": "./docs/adr/0010-contextual-accessor-pattern.md",
+      "line": 135,
+      "rule": "MD032"
+    },
+    {
+      "file": "./docs/adr/0010-contextual-accessor-pattern.md",
+      "line": 141,
+      "rule": "MD022"
+    },
+    {
+      "file": "./docs/adr/0010-contextual-accessor-pattern.md",
+      "line": 142,
+      "rule": "MD032"
+    },
+    {
+      "file": "./docs/adr/0010-contextual-accessor-pattern.md",
+      "line": 147,
+      "rule": "MD022"
+    },
+    {
+      "file": "./docs/adr/0010-contextual-accessor-pattern.md",
+      "line": 148,
+      "rule": "MD032"
+    },
+    {
+      "file": "./docs/adr/0010-contextual-accessor-pattern.md",
+      "line": 152,
+      "rule": "MD022"
+    },
+    {
+      "file": "./docs/adr/0010-contextual-accessor-pattern.md",
+      "line": 153,
+      "rule": "MD032"
+    },
+    {
+      "file": "./docs/adr/0010-contextual-accessor-pattern.md",
+      "line": 159,
+      "rule": "MD022"
+    },
+    {
+      "file": "./docs/adr/0010-contextual-accessor-pattern.md",
+      "line": 160,
+      "rule": "MD013"
+    },
+    {
+      "file": "./docs/adr/0010-contextual-accessor-pattern.md",
+      "line": 162,
+      "rule": "MD022"
+    },
+    {
+      "file": "./docs/adr/0010-contextual-accessor-pattern.md",
+      "line": 164,
+      "rule": "MD031"
+    },
+    {
+      "file": "./docs/adr/0010-contextual-accessor-pattern.md",
+      "line": 176,
+      "rule": "MD022"
+    },
+    {
+      "file": "./docs/adr/0010-contextual-accessor-pattern.md",
+      "line": 178,
+      "rule": "MD031"
+    },
+    {
+      "file": "./docs/adr/0010-contextual-accessor-pattern.md",
+      "line": 190,
+      "rule": "MD022"
+    },
+    {
+      "file": "./docs/adr/0010-contextual-accessor-pattern.md",
+      "line": 192,
+      "rule": "MD031"
+    },
+    {
+      "file": "./docs/adr/0010-contextual-accessor-pattern.md",
+      "line": 199,
+      "rule": "MD022"
+    },
+    {
+      "file": "./docs/adr/0010-contextual-accessor-pattern.md",
+      "line": 201,
+      "rule": "MD031"
+    },
+    {
+      "file": "./docs/adr/0010-contextual-accessor-pattern.md",
+      "line": 210,
+      "rule": "MD022"
+    },
+    {
+      "file": "./docs/adr/0010-contextual-accessor-pattern.md",
+      "line": 211,
+      "rule": "MD032"
+    },
+    {
+      "file": "./docs/adr/0010-contextual-accessor-pattern.md",
+      "line": 217,
+      "rule": "MD022"
+    },
+    {
+      "file": "./docs/adr/0010-contextual-accessor-pattern.md",
+      "line": 218,
+      "rule": "MD032"
+    },
+    {
+      "file": "./docs/adr/0010-contextual-accessor-pattern.md",
+      "line": 222,
+      "rule": "MD022"
+    },
+    {
+      "file": "./docs/adr/0010-contextual-accessor-pattern.md",
+      "line": 223,
+      "rule": "MD032"
+    },
+    {
+      "file": "./docs/adr/0010-contextual-accessor-pattern.md",
+      "line": 227,
+      "rule": "MD022"
+    },
+    {
+      "file": "./docs/adr/0010-contextual-accessor-pattern.md",
+      "line": 229,
+      "rule": "MD032"
+    },
+    {
+      "file": "./docs/adr/0010-contextual-accessor-pattern.md",
+      "line": 233,
+      "rule": "MD032"
+    },
+    {
+      "file": "./docs/adr/0010-contextual-accessor-pattern.md",
+      "line": 236,
+      "rule": "MD047"
+    },
+    {
+      "file": "./docs/annex/0001-operational-risk-and-compliance.md",
+      "line": 8,
+      "rule": "MD022"
+    },
+    {
+      "file": "./docs/annex/0001-operational-risk-and-compliance.md",
+      "line": 17,
+      "rule": "MD022"
+    },
+    {
+      "file": "./docs/annex/0001-operational-risk-and-compliance.md",
+      "line": 18,
+      "rule": "MD013"
+    },
+    {
+      "file": "./docs/annex/0001-operational-risk-and-compliance.md",
+      "line": 18,
+      "rule": "MD032"
+    },
+    {
+      "file": "./docs/annex/0001-operational-risk-and-compliance.md",
+      "line": 19,
+      "rule": "MD013"
+    },
+    {
+      "file": "./docs/annex/0001-operational-risk-and-compliance.md",
+      "line": 20,
+      "rule": "MD013"
+    },
+    {
+      "file": "./docs/annex/0001-operational-risk-and-compliance.md",
+      "line": 21,
+      "rule": "MD013"
+    },
+    {
+      "file": "./docs/annex/0001-operational-risk-and-compliance.md",
+      "line": 23,
+      "rule": "MD022"
+    },
+    {
+      "file": "./docs/annex/0001-operational-risk-and-compliance.md",
+      "line": 24,
+      "rule": "MD022"
+    },
+    {
+      "file": "./docs/annex/0001-operational-risk-and-compliance.md",
+      "line": 25,
+      "rule": "MD032"
+    },
+    {
+      "file": "./docs/annex/0001-operational-risk-and-compliance.md",
+      "line": 29,
+      "rule": "MD022"
+    },
+    {
+      "file": "./docs/annex/0001-operational-risk-and-compliance.md",
+      "line": 37,
+      "rule": "MD022"
+    },
+    {
+      "file": "./docs/annex/0001-operational-risk-and-compliance.md",
+      "line": 38,
+      "rule": "MD032"
+    },
+    {
+      "file": "./docs/annex/0002-contextual-accessor-pattern-operations.md",
+      "line": 3,
+      "rule": "MD022"
+    },
+    {
+      "file": "./docs/annex/0002-contextual-accessor-pattern-operations.md",
+      "line": 4,
+      "rule": "MD013"
+    },
+    {
+      "file": "./docs/annex/0002-contextual-accessor-pattern-operations.md",
+      "line": 12,
+      "rule": "MD032"
+    },
+    {
+      "file": "./docs/annex/0002-contextual-accessor-pattern-operations.md",
+      "line": 13,
+      "rule": "MD031"
+    },
+    {
+      "file": "./docs/annex/0002-contextual-accessor-pattern-operations.md",
+      "line": 25,
+      "rule": "MD029"
+    },
+    {
+      "file": "./docs/annex/0002-contextual-accessor-pattern-operations.md",
+      "line": 25,
+      "rule": "MD032"
+    },
+    {
+      "file": "./docs/annex/0002-contextual-accessor-pattern-operations.md",
+      "line": 26,
+      "rule": "MD031"
+    },
+    {
+      "file": "./docs/annex/0002-contextual-accessor-pattern-operations.md",
+      "line": 35,
+      "rule": "MD029"
+    },
+    {
+      "file": "./docs/annex/0002-contextual-accessor-pattern-operations.md",
+      "line": 35,
+      "rule": "MD032"
+    },
+    {
+      "file": "./docs/annex/0002-contextual-accessor-pattern-operations.md",
+      "line": 36,
+      "rule": "MD031"
+    },
+    {
+      "file": "./docs/annex/0002-contextual-accessor-pattern-operations.md",
+      "line": 47,
+      "rule": "MD029"
+    },
+    {
+      "file": "./docs/annex/0002-contextual-accessor-pattern-operations.md",
+      "line": 47,
+      "rule": "MD032"
+    },
+    {
+      "file": "./docs/annex/0002-contextual-accessor-pattern-operations.md",
+      "line": 48,
+      "rule": "MD031"
+    },
+    {
+      "file": "./docs/annex/0002-contextual-accessor-pattern-operations.md",
+      "line": 58,
+      "rule": "MD029"
+    },
+    {
+      "file": "./docs/annex/0002-contextual-accessor-pattern-operations.md",
+      "line": 65,
+      "rule": "MD022"
+    },
+    {
+      "file": "./docs/annex/0002-contextual-accessor-pattern-operations.md",
+      "line": 66,
+      "rule": "MD031"
+    },
+    {
+      "file": "./docs/annex/0002-contextual-accessor-pattern-operations.md",
+      "line": 79,
+      "rule": "MD022"
+    },
+    {
+      "file": "./docs/annex/0002-contextual-accessor-pattern-operations.md",
+      "line": 80,
+      "rule": "MD031"
+    },
+    {
+      "file": "./docs/annex/0002-contextual-accessor-pattern-operations.md",
+      "line": 95,
+      "rule": "MD022"
+    },
+    {
+      "file": "./docs/annex/0002-contextual-accessor-pattern-operations.md",
+      "line": 96,
+      "rule": "MD031"
+    },
+    {
+      "file": "./docs/annex/0002-contextual-accessor-pattern-operations.md",
+      "line": 113,
+      "rule": "MD022"
+    },
+    {
+      "file": "./docs/annex/0002-contextual-accessor-pattern-operations.md",
+      "line": 114,
+      "rule": "MD031"
+    },
+    {
+      "file": "./docs/annex/0002-contextual-accessor-pattern-operations.md",
+      "line": 133,
+      "rule": "MD022"
+    },
+    {
+      "file": "./docs/annex/0002-contextual-accessor-pattern-operations.md",
+      "line": 134,
+      "rule": "MD031"
+    },
+    {
+      "file": "./docs/annex/0002-contextual-accessor-pattern-operations.md",
+      "line": 185,
+      "rule": "MD031"
+    },
+    {
+      "file": "./docs/annex/0002-contextual-accessor-pattern-operations.md",
+      "line": 199,
+      "rule": "MD022"
+    },
+    {
+      "file": "./docs/annex/0002-contextual-accessor-pattern-operations.md",
+      "line": 202,
+      "rule": "MD031"
+    },
+    {
+      "file": "./docs/annex/0002-contextual-accessor-pattern-operations.md",
+      "line": 211,
+      "rule": "MD022"
+    },
+    {
+      "file": "./docs/annex/0002-contextual-accessor-pattern-operations.md",
+      "line": 214,
+      "rule": "MD031"
+    },
+    {
+      "file": "./docs/annex/0002-contextual-accessor-pattern-operations.md",
+      "line": 222,
+      "rule": "MD022"
+    },
+    {
+      "file": "./docs/annex/0002-contextual-accessor-pattern-operations.md",
+      "line": 225,
+      "rule": "MD031"
+    },
+    {
+      "file": "./docs/annex/0002-contextual-accessor-pattern-operations.md",
+      "line": 236,
+      "rule": "MD009"
+    },
+    {
+      "file": "./docs/annex/0002-contextual-accessor-pattern-operations.md",
+      "line": 236,
+      "rule": "MD022"
+    },
+    {
+      "file": "./docs/annex/0002-contextual-accessor-pattern-operations.md",
+      "line": 238,
+      "rule": "MD032"
+    },
+    {
+      "file": "./docs/annex/0002-contextual-accessor-pattern-operations.md",
+      "line": 243,
+      "rule": "MD022"
+    },
+    {
+      "file": "./docs/annex/0002-contextual-accessor-pattern-operations.md",
+      "line": 245,
+      "rule": "MD032"
+    },
+    {
+      "file": "./docs/annex/0002-contextual-accessor-pattern-operations.md",
+      "line": 250,
+      "rule": "MD032"
+    },
+    {
+      "file": "./docs/annex/0002-contextual-accessor-pattern-operations.md",
+      "line": 254,
+      "rule": "MD022"
+    },
+    {
+      "file": "./docs/annex/0002-contextual-accessor-pattern-operations.md",
+      "line": 256,
+      "rule": "MD032"
+    },
+    {
+      "file": "./docs/annex/0002-contextual-accessor-pattern-operations.md",
+      "line": 261,
+      "rule": "MD032"
+    },
+    {
+      "file": "./docs/annex/0002-contextual-accessor-pattern-operations.md",
+      "line": 290,
+      "rule": "MD022"
+    },
+    {
+      "file": "./docs/annex/0002-contextual-accessor-pattern-operations.md",
+      "line": 291,
+      "rule": "MD032"
+    },
+    {
+      "file": "./docs/annex/0002-contextual-accessor-pattern-operations.md",
+      "line": 295,
+      "rule": "MD022"
+    },
+    {
+      "file": "./docs/annex/0002-contextual-accessor-pattern-operations.md",
+      "line": 296,
+      "rule": "MD032"
+    },
+    {
+      "file": "./docs/annex/0002-contextual-accessor-pattern-operations.md",
+      "line": 300,
+      "rule": "MD022"
+    },
+    {
+      "file": "./docs/annex/0002-contextual-accessor-pattern-operations.md",
+      "line": 301,
+      "rule": "MD032"
+    },
+    {
+      "file": "./docs/annex/0002-contextual-accessor-pattern-operations.md",
+      "line": 310,
+      "rule": "MD032"
+    },
+    {
+      "file": "./docs/annex/0002-contextual-accessor-pattern-operations.md",
+      "line": 317,
+      "rule": "MD032"
+    },
+    {
+      "file": "./docs/annex/0002-contextual-accessor-pattern-operations.md",
+      "line": 324,
+      "rule": "MD032"
+    },
+    {
+      "file": "./docs/annex/0002-contextual-accessor-pattern-operations.md",
+      "line": 330,
+      "rule": "MD013"
+    },
+    {
+      "file": "./docs/annex/0002-contextual-accessor-pattern-operations.md",
+      "line": 330,
+      "rule": "MD047"
+    },
+    {
+      "file": "./docs/annex/0003-import-boss-runbook.md",
+      "line": 8,
+      "rule": "MD022"
+    },
+    {
+      "file": "./docs/annex/0003-import-boss-runbook.md",
+      "line": 9,
+      "rule": "MD013"
+    },
+    {
+      "file": "./docs/annex/0003-import-boss-runbook.md",
+      "line": 31,
+      "rule": "MD013"
+    },
+    {
+      "file": "./docs/annex/0003-import-boss-runbook.md",
+      "line": 53,
+      "rule": "MD013"
+    },
+    {
+      "file": "./docs/annex/0003-import-boss-runbook.md",
+      "line": 54,
+      "rule": "MD013"
+    },
+    {
+      "file": "./docs/annex/0003-import-boss-runbook.md",
+      "line": 66,
+      "rule": "MD013"
+    },
+    {
+      "file": "./docs/annex/0003-import-boss-runbook.md",
+      "line": 67,
+      "rule": "MD013"
+    },
+    {
+      "file": "./docs/annex/0003-import-boss-runbook.md",
+      "line": 68,
+      "rule": "MD013"
+    },
+    {
+      "file": "./docs/annex/0003-import-boss-runbook.md",
+      "line": 69,
+      "rule": "MD013"
+    },
+    {
+      "file": "./docs/annex/0003-import-boss-runbook.md",
+      "line": 71,
+      "rule": "MD013"
+    },
+    {
+      "file": "./docs/annex/0003-import-boss-runbook.md",
+      "line": 76,
+      "rule": "MD031"
+    },
+    {
+      "file": "./docs/annex/0003-import-boss-runbook.md",
+      "line": 78,
+      "rule": "MD031"
+    },
+    {
+      "file": "./docs/annex/0003-import-boss-runbook.md",
+      "line": 82,
+      "rule": "MD031"
+    },
+    {
+      "file": "./docs/annex/0003-import-boss-runbook.md",
+      "line": 84,
+      "rule": "MD031"
+    },
+    {
+      "file": "./docs/annex/0003-import-boss-runbook.md",
+      "line": 87,
+      "rule": "MD013"
+    },
+    {
+      "file": "./docs/annex/0004-typing-guidelines.md",
+      "line": 173,
+      "rule": "MD013"
+    },
+    {
+      "file": "./docs/annex/entity-model-overview.md",
+      "line": 3,
+      "rule": "MD013"
+    },
+    {
+      "file": "./docs/annex/entity-model-overview.md",
+      "line": 5,
+      "rule": "MD022"
+    },
+    {
+      "file": "./docs/annex/entity-model-overview.md",
+      "line": 6,
+      "rule": "MD032"
+    },
+    {
+      "file": "./docs/annex/entity-model-overview.md",
+      "line": 13,
+      "rule": "MD022"
+    },
+    {
+      "file": "./docs/annex/entity-model-overview.md",
+      "line": 14,
+      "rule": "MD013"
+    },
+    {
+      "file": "./docs/annex/entity-model-overview.md",
+      "line": 16,
+      "rule": "MD013"
+    },
+    {
+      "file": "./docs/annex/entity-model-overview.md",
+      "line": 18,
+      "rule": "MD022"
+    },
+    {
+      "file": "./docs/annex/entity-model-overview.md",
+      "line": 19,
+      "rule": "MD032"
+    },
+    {
+      "file": "./docs/annex/entity-model-overview.md",
+      "line": 20,
+      "rule": "MD013"
+    },
+    {
+      "file": "./docs/annex/entity-model-overview.md",
+      "line": 21,
+      "rule": "MD013"
+    },
+    {
+      "file": "./docs/annex/entity-model-overview.md",
+      "line": 22,
+      "rule": "MD013"
+    },
+    {
+      "file": "./docs/annex/entity-model-overview.md",
+      "line": 23,
+      "rule": "MD013"
+    },
+    {
+      "file": "./docs/annex/entity-model-overview.md",
+      "line": 25,
+      "rule": "MD022"
+    },
+    {
+      "file": "./docs/annex/entity-model-overview.md",
+      "line": 26,
+      "rule": "MD013"
+    },
+    {
+      "file": "./docs/annex/entity-model-overview.md",
+      "line": 26,
+      "rule": "MD032"
+    },
+    {
+      "file": "./docs/annex/entity-model-overview.md",
+      "line": 27,
+      "rule": "MD013"
+    },
+    {
+      "file": "./docs/annex/plugin-contract.md",
+      "line": 5,
+      "rule": "MD013"
+    },
+    {
+      "file": "./docs/annex/plugin-contract.md",
+      "line": 43,
+      "rule": "MD036"
+    },
+    {
+      "file": "./docs/annex/plugin-contract.md",
+      "line": 58,
+      "rule": "MD036"
+    },
+    {
+      "file": "./docs/annex/plugin-contract.md",
+      "line": 93,
+      "rule": "MD036"
+    },
+    {
+      "file": "./docs/annex/plugin-contract.md",
+      "line": 103,
+      "rule": "MD036"
+    },
+    {
+      "file": "./docs/annex/plugin-contract.md",
+      "line": 130,
+      "rule": "MD036"
+    },
+    {
+      "file": "./docs/annex/plugin-contract.md",
+      "line": 139,
+      "rule": "MD036"
+    },
+    {
+      "file": "./docs/annex/plugin-contract.md",
+      "line": 168,
+      "rule": "MD036"
+    },
+    {
+      "file": "./docs/annex/plugin-contract.md",
+      "line": 170,
+      "rule": "MD036"
+    },
+    {
+      "file": "./docs/annex/plugin-contract.md",
+      "line": 174,
+      "rule": "MD036"
+    },
+    {
+      "file": "./docs/annex/plugin-contract.md",
+      "line": 202,
+      "rule": "MD036"
+    },
+    {
+      "file": "./docs/annex/plugin-contract.md",
+      "line": 210,
+      "rule": "MD036"
+    },
+    {
+      "file": "./docs/annex/plugin-contract.md",
+      "line": 237,
+      "rule": "MD036"
+    },
+    {
+      "file": "./docs/annex/plugin-contract.md",
+      "line": 245,
+      "rule": "MD036"
+    },
+    {
+      "file": "./docs/annex/plugin-contract.md",
+      "line": 276,
+      "rule": "MD036"
+    },
+    {
+      "file": "./docs/annex/plugin-contract.md",
+      "line": 286,
+      "rule": "MD036"
+    },
+    {
+      "file": "./docs/annex/plugin-contract.md",
+      "line": 315,
+      "rule": "MD036"
+    },
+    {
+      "file": "./docs/annex/plugin-contract.md",
+      "line": 329,
+      "rule": "MD036"
+    },
+    {
+      "file": "./docs/annex/plugin-contract.md",
+      "line": 353,
+      "rule": "MD013"
+    },
+    {
+      "file": "./docs/annex/plugin-contract.md",
+      "line": 363,
+      "rule": "MD036"
+    },
+    {
+      "file": "./docs/annex/plugin-contract.md",
+      "line": 372,
+      "rule": "MD036"
+    },
+    {
+      "file": "./docs/annex/plugin-contract.md",
+      "line": 403,
+      "rule": "MD036"
+    },
+    {
+      "file": "./docs/annex/plugin-contract.md",
+      "line": 416,
+      "rule": "MD036"
+    },
+    {
+      "file": "./docs/annex/plugin-contract.md",
+      "line": 447,
+      "rule": "MD036"
+    },
+    {
+      "file": "./docs/annex/plugin-contract.md",
+      "line": 459,
+      "rule": "MD036"
+    },
+    {
+      "file": "./docs/annex/plugin-contract.md",
+      "line": 489,
+      "rule": "MD036"
+    },
+    {
+      "file": "./docs/annex/plugin-contract.md",
+      "line": 491,
+      "rule": "MD036"
+    },
+    {
+      "file": "./docs/annex/plugin-contract.md",
+      "line": 495,
+      "rule": "MD036"
+    },
+    {
+      "file": "./docs/annex/plugin-contract.md",
+      "line": 512,
+      "rule": "MD013"
+    },
+    {
+      "file": "./docs/annex/plugin-contract.md",
+      "line": 522,
+      "rule": "MD036"
+    },
+    {
+      "file": "./docs/annex/plugin-contract.md",
+      "line": 532,
+      "rule": "MD036"
+    },
+    {
+      "file": "./docs/annex/plugin-contract.md",
+      "line": 565,
+      "rule": "MD036"
+    },
+    {
+      "file": "./docs/annex/plugin-contract.md",
+      "line": 574,
+      "rule": "MD036"
+    },
+    {
+      "file": "./docs/annex/plugin-contract.md",
+      "line": 594,
+      "rule": "MD013"
+    },
+    {
+      "file": "./docs/annex/plugin-contract.md",
+      "line": 604,
+      "rule": "MD036"
+    },
+    {
+      "file": "./docs/annex/plugin-contract.md",
+      "line": 613,
+      "rule": "MD036"
+    },
+    {
+      "file": "./docs/annex/plugin-contract.md",
+      "line": 646,
+      "rule": "MD036"
+    },
+    {
+      "file": "./docs/annex/plugin-contract.md",
+      "line": 656,
+      "rule": "MD036"
+    },
+    {
+      "file": "./docs/rfc/0001-colonycore-base-module.md",
+      "line": 3,
+      "rule": "MD013"
+    },
+    {
+      "file": "./docs/rfc/0001-colonycore-base-module.md",
+      "line": 9,
+      "rule": "MD022"
+    },
+    {
+      "file": "./docs/rfc/0001-colonycore-base-module.md",
+      "line": 10,
+      "rule": "MD013"
+    },
+    {
+      "file": "./docs/rfc/0001-colonycore-base-module.md",
+      "line": 10,
+      "rule": "MD032"
+    },
+    {
+      "file": "./docs/rfc/0001-colonycore-base-module.md",
+      "line": 11,
+      "rule": "MD013"
+    },
+    {
+      "file": "./docs/rfc/0001-colonycore-base-module.md",
+      "line": 12,
+      "rule": "MD013"
+    },
+    {
+      "file": "./docs/rfc/0001-colonycore-base-module.md",
+      "line": 14,
+      "rule": "MD022"
+    },
+    {
+      "file": "./docs/rfc/0001-colonycore-base-module.md",
+      "line": 15,
+      "rule": "MD032"
+    },
+    {
+      "file": "./docs/rfc/0001-colonycore-base-module.md",
+      "line": 19,
+      "rule": "MD022"
+    },
+    {
+      "file": "./docs/rfc/0001-colonycore-base-module.md",
+      "line": 20,
+      "rule": "MD032"
+    },
+    {
+      "file": "./docs/rfc/0001-colonycore-base-module.md",
+      "line": 22,
+      "rule": "MD013"
+    },
+    {
+      "file": "./docs/rfc/0001-colonycore-base-module.md",
+      "line": 23,
+      "rule": "MD013"
+    },
+    {
+      "file": "./docs/rfc/0001-colonycore-base-module.md",
+      "line": 24,
+      "rule": "MD013"
+    },
+    {
+      "file": "./docs/rfc/0001-colonycore-base-module.md",
+      "line": 26,
+      "rule": "MD022"
+    },
+    {
+      "file": "./docs/rfc/0001-colonycore-base-module.md",
+      "line": 46,
+      "rule": "MD022"
+    },
+    {
+      "file": "./docs/rfc/0001-colonycore-base-module.md",
+      "line": 63,
+      "rule": "MD022"
+    },
+    {
+      "file": "./docs/rfc/0001-colonycore-base-module.md",
+      "line": 64,
+      "rule": "MD022"
+    },
+    {
+      "file": "./docs/rfc/0001-colonycore-base-module.md",
+      "line": 66,
+      "rule": "MD032"
+    },
+    {
+      "file": "./docs/rfc/0001-colonycore-base-module.md",
+      "line": 70,
+      "rule": "MD022"
+    },
+    {
+      "file": "./docs/rfc/0001-colonycore-base-module.md",
+      "line": 72,
+      "rule": "MD032"
+    },
+    {
+      "file": "./docs/rfc/0001-colonycore-base-module.md",
+      "line": 77,
+      "rule": "MD022"
+    },
+    {
+      "file": "./docs/rfc/0001-colonycore-base-module.md",
+      "line": 79,
+      "rule": "MD032"
+    },
+    {
+      "file": "./docs/rfc/0001-colonycore-base-module.md",
+      "line": 82,
+      "rule": "MD022"
+    },
+    {
+      "file": "./docs/rfc/0001-colonycore-base-module.md",
+      "line": 84,
+      "rule": "MD032"
+    },
+    {
+      "file": "./docs/rfc/0001-colonycore-base-module.md",
+      "line": 87,
+      "rule": "MD022"
+    },
+    {
+      "file": "./docs/rfc/0001-colonycore-base-module.md",
+      "line": 88,
+      "rule": "MD022"
+    },
+    {
+      "file": "./docs/rfc/0001-colonycore-base-module.md",
+      "line": 102,
+      "rule": "MD013"
+    },
+    {
+      "file": "./docs/rfc/0001-colonycore-base-module.md",
+      "line": 103,
+      "rule": "MD032"
+    },
+    {
+      "file": "./docs/rfc/0001-colonycore-base-module.md",
+      "line": 109,
+      "rule": "MD022"
+    },
+    {
+      "file": "./docs/rfc/0001-colonycore-base-module.md",
+      "line": 110,
+      "rule": "MD013"
+    },
+    {
+      "file": "./docs/rfc/0001-colonycore-base-module.md",
+      "line": 110,
+      "rule": "MD032"
+    },
+    {
+      "file": "./docs/rfc/0001-colonycore-base-module.md",
+      "line": 111,
+      "rule": "MD013"
+    },
+    {
+      "file": "./docs/rfc/0001-colonycore-base-module.md",
+      "line": 114,
+      "rule": "MD022"
+    },
+    {
+      "file": "./docs/rfc/0001-colonycore-base-module.md",
+      "line": 115,
+      "rule": "MD013"
+    },
+    {
+      "file": "./docs/rfc/0001-colonycore-base-module.md",
+      "line": 115,
+      "rule": "MD032"
+    },
+    {
+      "file": "./docs/rfc/0001-colonycore-base-module.md",
+      "line": 119,
+      "rule": "MD022"
+    },
+    {
+      "file": "./docs/rfc/0001-colonycore-base-module.md",
+      "line": 120,
+      "rule": "MD032"
+    },
+    {
+      "file": "./docs/rfc/0001-colonycore-base-module.md",
+      "line": 124,
+      "rule": "MD022"
+    },
+    {
+      "file": "./docs/rfc/0001-colonycore-base-module.md",
+      "line": 125,
+      "rule": "MD013"
+    },
+    {
+      "file": "./docs/rfc/0001-colonycore-base-module.md",
+      "line": 125,
+      "rule": "MD032"
+    },
+    {
+      "file": "./docs/rfc/0001-colonycore-base-module.md",
+      "line": 126,
+      "rule": "MD013"
+    },
+    {
+      "file": "./docs/rfc/0001-colonycore-base-module.md",
+      "line": 129,
+      "rule": "MD013"
+    },
+    {
+      "file": "./docs/rfc/0001-colonycore-base-module.md",
+      "line": 130,
+      "rule": "MD013"
+    },
+    {
+      "file": "./docs/rfc/0001-colonycore-base-module.md",
+      "line": 132,
+      "rule": "MD022"
+    },
+    {
+      "file": "./docs/rfc/0001-colonycore-base-module.md",
+      "line": 133,
+      "rule": "MD032"
+    },
+    {
+      "file": "./docs/rfc/0001-colonycore-base-module.md",
+      "line": 134,
+      "rule": "MD013"
+    },
+    {
+      "file": "./docs/rfc/0001-colonycore-base-module.md",
+      "line": 135,
+      "rule": "MD013"
+    },
+    {
+      "file": "./docs/rfc/0001-colonycore-base-module.md",
+      "line": 137,
+      "rule": "MD013"
+    },
+    {
+      "file": "./docs/rfc/0001-colonycore-base-module.md",
+      "line": 139,
+      "rule": "MD022"
+    },
+    {
+      "file": "./docs/rfc/0001-colonycore-base-module.md",
+      "line": 140,
+      "rule": "MD013"
+    },
+    {
+      "file": "./docs/rfc/0001-colonycore-base-module.md",
+      "line": 140,
+      "rule": "MD032"
+    },
+    {
+      "file": "./docs/rfc/0001-colonycore-base-module.md",
+      "line": 142,
+      "rule": "MD013"
+    },
+    {
+      "file": "./docs/rfc/0001-colonycore-base-module.md",
+      "line": 143,
+      "rule": "MD013"
+    },
+    {
+      "file": "./docs/rfc/0001-colonycore-base-module.md",
+      "line": 144,
+      "rule": "MD013"
+    },
+    {
+      "file": "./docs/rfc/0001-colonycore-base-module.md",
+      "line": 146,
+      "rule": "MD022"
+    },
+    {
+      "file": "./docs/rfc/0001-colonycore-base-module.md",
+      "line": 147,
+      "rule": "MD032"
+    },
+    {
+      "file": "./docs/rfc/0001-colonycore-base-module.md",
+      "line": 148,
+      "rule": "MD013"
+    },
+    {
+      "file": "./docs/rfc/0001-colonycore-base-module.md",
+      "line": 152,
+      "rule": "MD013"
+    },
+    {
+      "file": "./docs/rfc/0001-colonycore-base-module.md",
+      "line": 155,
+      "rule": "MD022"
+    },
+    {
+      "file": "./docs/rfc/0001-colonycore-base-module.md",
+      "line": 156,
+      "rule": "MD022"
+    },
+    {
+      "file": "./docs/rfc/0001-colonycore-base-module.md",
+      "line": 157,
+      "rule": "MD013"
+    },
+    {
+      "file": "./docs/rfc/0001-colonycore-base-module.md",
+      "line": 159,
+      "rule": "MD022"
+    },
+    {
+      "file": "./docs/rfc/0001-colonycore-base-module.md",
+      "line": 160,
+      "rule": "MD013"
+    },
+    {
+      "file": "./docs/rfc/0001-colonycore-base-module.md",
+      "line": 160,
+      "rule": "MD032"
+    },
+    {
+      "file": "./docs/rfc/0001-colonycore-base-module.md",
+      "line": 161,
+      "rule": "MD013"
+    },
+    {
+      "file": "./docs/rfc/0001-colonycore-base-module.md",
+      "line": 169,
+      "rule": "MD013"
+    },
+    {
+      "file": "./docs/rfc/0001-colonycore-base-module.md",
+      "line": 171,
+      "rule": "MD022"
+    },
+    {
+      "file": "./docs/rfc/0001-colonycore-base-module.md",
+      "line": 172,
+      "rule": "MD032"
+    },
+    {
+      "file": "./docs/rfc/0001-colonycore-base-module.md",
+      "line": 176,
+      "rule": "MD022"
+    },
+    {
+      "file": "./docs/rfc/0001-colonycore-base-module.md",
+      "line": 177,
+      "rule": "MD031"
+    },
+    {
+      "file": "./docs/rfc/0001-colonycore-base-module.md",
+      "line": 201,
+      "rule": "MD022"
+    },
+    {
+      "file": "./docs/rfc/0001-colonycore-base-module.md",
+      "line": 202,
+      "rule": "MD032"
+    },
+    {
+      "file": "./docs/rfc/0001-colonycore-base-module.md",
+      "line": 206,
+      "rule": "MD022"
+    },
+    {
+      "file": "./docs/rfc/0001-colonycore-base-module.md",
+      "line": 207,
+      "rule": "MD032"
+    },
+    {
+      "file": "./docs/rfc/0001-colonycore-base-module.md",
+      "line": 211,
+      "rule": "MD022"
+    },
+    {
+      "file": "./docs/rfc/0001-colonycore-base-module.md",
+      "line": 212,
+      "rule": "MD032"
+    },
+    {
+      "file": "./docs/rfc/0001-colonycore-base-module.md",
+      "line": 220,
+      "rule": "MD022"
+    },
+    {
+      "file": "./docs/rfc/0001-colonycore-base-module.md",
+      "line": 221,
+      "rule": "MD032"
+    },
+    {
+      "file": "./docs/rfc/0001-colonycore-base-module.md",
+      "line": 223,
+      "rule": "MD013"
+    },
+    {
+      "file": "./docs/rfc/0001-colonycore-base-module.md",
+      "line": 224,
+      "rule": "MD013"
+    },
+    {
+      "file": "./docs/rfc/0001-colonycore-base-module.md",
+      "line": 225,
+      "rule": "MD013"
+    },
+    {
+      "file": "./docs/rfc/0001-colonycore-base-module.md",
+      "line": 227,
+      "rule": "MD022"
+    },
+    {
+      "file": "./docs/rfc/0001-colonycore-base-module.md",
+      "line": 228,
+      "rule": "MD032"
+    },
+    {
+      "file": "./docs/rfc/0001-colonycore-base-module.md",
+      "line": 232,
+      "rule": "MD022"
+    },
+    {
+      "file": "./docs/rfc/0001-colonycore-base-module.md",
+      "line": 233,
+      "rule": "MD032"
+    },
+    {
+      "file": "./docs/schema/README.md",
+      "line": 3,
+      "rule": "MD013"
+    },
+    {
+      "file": "./docs/schema/README.md",
+      "line": 7,
+      "rule": "MD013"
+    },
+    {
+      "file": "./docs/schema/README.md",
+      "line": 13,
+      "rule": "MD013"
+    },
+    {
+      "file": "./docs/schema/README.md",
+      "line": 15,
+      "rule": "MD013"
+    },
+    {
+      "file": "./docs/schema/README.md",
+      "line": 17,
+      "rule": "MD013"
+    },
+    {
+      "file": "./docs/schema/README.md",
+      "line": 18,
+      "rule": "MD013"
+    },
+    {
+      "file": "./docs/schema/README.md",
+      "line": 22,
+      "rule": "MD013"
+    },
+    {
+      "file": "./docs/schema/README.md",
+      "line": 30,
+      "rule": "MD013"
+    },
+    {
+      "file": "./docs/schema/README.md",
+      "line": 33,
+      "rule": "MD013"
+    },
+    {
+      "file": "./docs/schema/README.md",
+      "line": 34,
+      "rule": "MD013"
+    },
+    {
+      "file": "./internal/ci/benchmarks/README.md",
+      "line": 7,
+      "rule": "MD032"
+    },
+    {
+      "file": "./testutil/fixtures/entity-model/README.md",
+      "line": 3,
+      "rule": "MD013"
+    },
+    {
+      "file": "./testutil/fixtures/entity-model/README.md",
+      "line": 6,
+      "rule": "MD032"
+    },
+    {
+      "file": "./testutil/fixtures/entity-model/README.md",
+      "line": 9,
+      "rule": "MD013"
+    },
+    {
+      "file": "./testutil/fixtures/entity-model/README.md",
+      "line": 10,
+      "rule": "MD013"
+    },
+    {
+      "file": "./testutil/fixtures/entity-model/README.md",
+      "line": 13,
+      "rule": "MD013"
+    },
+    {
+      "file": "./testutil/fixtures/entity-model/README.md",
+      "line": 13,
+      "rule": "MD032"
+    },
+    {
+      "file": "./testutil/fixtures/entity-model/README.md",
+      "line": 17,
+      "rule": "MD013"
+    },
+    {
+      "file": "./testutil/fixtures/registry/README.md",
+      "line": 14,
+      "rule": "MD013"
+    },
+    {
+      "file": "./testutil/fixtures/registry/README.md",
+      "line": 15,
+      "rule": "MD013"
+    }
+  ]
+}
