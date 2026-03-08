@@ -56,6 +56,9 @@ func registerPlugin(t *testing.T, tc pluginCase) *capturingRegistry {
 	if err := plugin.Register(registry); err != nil {
 		t.Fatalf("register plugin %q: %v", tc.name, err)
 	}
+	if registry.HasErrors() {
+		t.Fatalf("plugin %q made invalid registration calls: %s", tc.name, strings.Join(registry.Errors(), "; "))
+	}
 	return registry
 }
 
@@ -72,8 +75,12 @@ func assertInitialization(t *testing.T, tc pluginCase, registry *capturingRegist
 		t.Fatalf("plugin %q must register at least one rule", tc.name)
 	}
 	provider := pluginapi.GetVersionProvider()
-	if provider == nil || provider.APIVersion() == "" {
-		t.Fatalf("plugin API version provider must return a non-empty version")
+	if provider == nil {
+		t.Fatalf("plugin API version provider must be available")
+	}
+	apiVersion := provider.APIVersion()
+	if extractMajorVersion(apiVersion) != "v1" {
+		t.Fatalf("plugin API major version must be v1, got %q", apiVersion)
 	}
 }
 
@@ -91,8 +98,17 @@ func assertRegistrationSurface(t *testing.T, tc pluginCase, registry *capturingR
 	}
 
 	ruleNames := make([]string, 0, len(registry.rules))
+	seenRuleNames := make(map[string]struct{}, len(registry.rules))
 	for _, rule := range registry.rules {
-		ruleNames = append(ruleNames, rule.Name())
+		ruleName := rule.Name()
+		if ruleName == "" {
+			t.Fatalf("registered rule has empty name: %q", ruleName)
+		}
+		if _, exists := seenRuleNames[ruleName]; exists {
+			t.Fatalf("registered rule has duplicate name: %q", ruleName)
+		}
+		seenRuleNames[ruleName] = struct{}{}
+		ruleNames = append(ruleNames, ruleName)
 	}
 	for _, name := range tc.expectedRules {
 		if !containsString(ruleNames, name) {
@@ -157,6 +173,22 @@ func assertRegistrationErrors(t *testing.T, tc pluginCase) {
 	if !errors.Is(err, errInjected) {
 		t.Fatalf("expected dataset registration error %q, got %v", errInjected, err)
 	}
+	if registry.HasErrors() {
+		t.Fatalf("plugin %q made invalid registration calls: %s", tc.name, strings.Join(registry.Errors(), "; "))
+	}
+}
+
+func extractMajorVersion(version string) string {
+	version = strings.TrimSpace(version)
+	if version == "" {
+		return ""
+	}
+	for _, separator := range []string{".", "-", "+"} {
+		if idx := strings.Index(version, separator); idx >= 0 {
+			version = version[:idx]
+		}
+	}
+	return version
 }
 
 func frogPluginCase(t *testing.T) pluginCase {
@@ -282,18 +314,37 @@ func stringPointer(v string) *string {
 }
 
 type capturingRegistry struct {
-	schemas     map[string]map[string]any
-	rules       []pluginapi.Rule
-	templates   []datasetapi.Template
-	templateErr error
+	schemas      map[string]map[string]any
+	rules        []pluginapi.Rule
+	templates    []datasetapi.Template
+	templateErr  error
+	invalidCalls []string
 }
 
 func newCapturingRegistry() *capturingRegistry {
 	return &capturingRegistry{schemas: make(map[string]map[string]any)}
 }
 
+func (r *capturingRegistry) recordInvalidCall(message string) {
+	r.invalidCalls = append(r.invalidCalls, message)
+}
+
+func (r *capturingRegistry) HasErrors() bool {
+	return len(r.invalidCalls) > 0
+}
+
+func (r *capturingRegistry) Errors() []string {
+	if len(r.invalidCalls) == 0 {
+		return nil
+	}
+	out := make([]string, len(r.invalidCalls))
+	copy(out, r.invalidCalls)
+	return out
+}
+
 func (r *capturingRegistry) RegisterSchema(entity string, schema map[string]any) {
 	if entity == "" || schema == nil {
+		r.recordInvalidCall(fmt.Sprintf("RegisterSchema(entity=%q): entity must be non-empty and schema must be non-nil", entity))
 		return
 	}
 	cloned := make(map[string]any, len(schema))
@@ -305,6 +356,7 @@ func (r *capturingRegistry) RegisterSchema(entity string, schema map[string]any)
 
 func (r *capturingRegistry) RegisterRule(rule pluginapi.Rule) {
 	if rule == nil {
+		r.recordInvalidCall("RegisterRule(rule=nil): rule must be non-nil")
 		return
 	}
 	r.rules = append(r.rules, rule)

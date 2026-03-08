@@ -58,5 +58,5 @@ What the suite verifies:
 ### Requirements for external plugin developers
 
 - Match the `pkg/pluginapi` v1 interfaces documented above.
-- Add your plugin to the conformance suite table in `plugins/conformance/plugin_conformance_test.go` (or mirror the same checks in your plugin repository).
+- Add your plugin to the `[]pluginCase` slice in `plugins/conformance/plugin_conformance_test.go` (or mirror the same checks in your plugin repository).
 - Keep CI configured to fail on conformance test failures before merge.
