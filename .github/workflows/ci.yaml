@@ -91,6 +91,9 @@ jobs:
           XDG_CACHE_HOME=$PWD/.cache \
           pre-commit run --all-files
 
+      - name: Run plugin conformance suite
+        run: make plugin-conformance
+
   benchmarks:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
