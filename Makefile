@@ -69,14 +69,14 @@ lint:
 
 # TODO(#116): keep docs lint separate until lint unification lands; see #114 context.
 define run_markdownlint
-	@files="$$(find . \( -path './.git' -o -path './.cache' \) -prune -o -type f -name '*.md' -print)"; \
-	if [ -z "$$files" ]; then \
+	@if ! find . \( -path './.git' -o -path './.cache' \) -prune -o -type f -name '*.md' -print -quit | grep -q .; then \
 		echo "No markdown files found"; \
 		exit 0; \
 	fi; \
 	tmpfile=$$(mktemp); \
 	trap 'rm -f "$$tmpfile"' EXIT; \
-	pnpm -s dlx markdownlint-cli@$(MARKDOWNLINT_VERSION) -c $(MARKDOWNLINT_CONFIG) -j $$files > $$tmpfile 2>&1; \
+	find . \( -path './.git' -o -path './.cache' \) -prune -o -type f -name '*.md' -print0 | \
+		xargs -0 pnpm -s dlx markdownlint-cli@$(MARKDOWNLINT_VERSION) -c $(MARKDOWNLINT_CONFIG) -j > $$tmpfile 2>&1; \
 	status=$$?; \
 	if [ $$status -ne 0 ] && [ ! -s "$$tmpfile" ]; then \
 		echo "markdownlint failed (exit $$status)" >&2; \

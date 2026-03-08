@@ -12,6 +12,7 @@ import (
 	"os"
 	"sort"
 	"strings"
+	"time"
 )
 
 const (
@@ -20,7 +21,12 @@ const (
 	defaultScope   = "**/*.md"
 	defaultUsage   = "Usage: check_markdownlint_baseline --baseline <file> [--input <file>] [--update]\n"
 	defaultRunHint = "Update the baseline with: make lint-docs-update\n"
+	dateLayout     = "2006-01-02"
 )
+
+var nowUTC = func() time.Time {
+	return time.Now().UTC()
+}
 
 type lintIssue struct {
 	File string `json:"file"`
@@ -237,6 +243,9 @@ func loadBaseline(path string) (baselineFile, error) {
 }
 
 func writeBaseline(path string, meta baselineMeta, issues []lintIssue) error {
+	if err := validateMetaDates(meta, currentUTCDate()); err != nil {
+		return err
+	}
 	payload := baselineFile{
 		Meta:   meta,
 		Issues: normalizeIssues(issues),
@@ -268,21 +277,84 @@ func diffIssues(current, baseline []lintIssue) []lintIssue {
 }
 
 func defaultBaselineMeta() baselineMeta {
+	reductionTargets, nextReviewDate := defaultReductionSchedule(currentUTCDate())
 	return baselineMeta{
-		Tool:       defaultTool,
-		Config:     defaultConfig,
-		Scope:      defaultScope,
-		References: defaultReferences(),
-		Notes:      "Temporary docs lint baseline; see #116 for consolidation.",
-		Owner:      "Core Maintainers",
-		ReductionTargets: []baselineReductionTarget{
-			{Milestone: "2026-02", TargetPercent: 25, DueDate: "2026-02-01"},
-			{Milestone: "2026-03", TargetPercent: 50, DueDate: "2026-03-01"},
-		},
-		NextReviewDate: "2026-02-01",
-		Workflow:       "docs/annex/0005-documentation-standards.md (#116)",
-		CIPolicy:       "manual",
+		Tool:             defaultTool,
+		Config:           defaultConfig,
+		Scope:            defaultScope,
+		References:       defaultReferences(),
+		Notes:            "Temporary docs lint baseline; see #116 for consolidation.",
+		Owner:            "Core Maintainers",
+		ReductionTargets: reductionTargets,
+		NextReviewDate:   nextReviewDate,
+		Workflow:         "docs/annex/0005-documentation-standards.md (#116)",
+		CIPolicy:         "manual",
 	}
+}
+
+func defaultReductionSchedule(today time.Time) ([]baselineReductionTarget, string) {
+	firstDueDate := firstDayOfNextMonth(today)
+	secondDueDate := firstDueDate.AddDate(0, 1, 0)
+	targets := []baselineReductionTarget{
+		{
+			Milestone:     firstDueDate.Format("2006-01"),
+			TargetPercent: 25,
+			DueDate:       firstDueDate.Format(dateLayout),
+		},
+		{
+			Milestone:     secondDueDate.Format("2006-01"),
+			TargetPercent: 50,
+			DueDate:       secondDueDate.Format(dateLayout),
+		},
+	}
+	return targets, firstDueDate.Format(dateLayout)
+}
+
+func firstDayOfNextMonth(value time.Time) time.Time {
+	firstDay := time.Date(value.Year(), value.Month(), 1, 0, 0, 0, 0, time.UTC)
+	return firstDay.AddDate(0, 1, 0)
+}
+
+func currentUTCDate() time.Time {
+	now := nowUTC()
+	return time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.UTC)
+}
+
+func parseISODate(value string) (time.Time, error) {
+	parsed, err := time.Parse(dateLayout, value)
+	if err != nil {
+		return time.Time{}, err
+	}
+	return parsed.UTC(), nil
+}
+
+func validateMetaDates(meta baselineMeta, today time.Time) error {
+	today = time.Date(today.Year(), today.Month(), today.Day(), 0, 0, 0, 0, time.UTC)
+
+	if strings.TrimSpace(meta.NextReviewDate) != "" {
+		nextReviewDate, err := parseISODate(meta.NextReviewDate)
+		if err != nil {
+			return fmt.Errorf("invalid next review date %q: %w", meta.NextReviewDate, err)
+		}
+		if nextReviewDate.Before(today) {
+			return fmt.Errorf("next review date %q is in the past", meta.NextReviewDate)
+		}
+	}
+
+	for i, target := range meta.ReductionTargets {
+		dueDateValue := strings.TrimSpace(target.DueDate)
+		if dueDateValue == "" {
+			return fmt.Errorf("reduction target %d (%q) due date is required", i+1, target.Milestone)
+		}
+		dueDate, err := parseISODate(dueDateValue)
+		if err != nil {
+			return fmt.Errorf("invalid due date for reduction target %d (%q): %w", i+1, target.Milestone, err)
+		}
+		if dueDate.Before(today) {
+			return fmt.Errorf("reduction target %d (%q) due date %q is in the past", i+1, target.Milestone, dueDateValue)
+		}
+	}
+	return nil
 }
 
 func isZeroMeta(meta baselineMeta) bool {
@@ -329,10 +401,11 @@ func mergeMeta(existing, defaults baselineMeta) baselineMeta {
 	if existing.Owner != "" {
 		merged.Owner = existing.Owner
 	}
-	if len(existing.ReductionTargets) > 0 {
+	today := currentUTCDate()
+	if len(existing.ReductionTargets) > 0 && validateMetaDates(baselineMeta{ReductionTargets: existing.ReductionTargets}, today) == nil {
 		merged.ReductionTargets = existing.ReductionTargets
 	}
-	if existing.NextReviewDate != "" {
+	if existing.NextReviewDate != "" && validateMetaDates(baselineMeta{NextReviewDate: existing.NextReviewDate}, today) == nil {
 		merged.NextReviewDate = existing.NextReviewDate
 	}
 	if existing.Workflow != "" {

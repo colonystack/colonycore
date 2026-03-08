@@ -2,7 +2,7 @@
 
 - Status: Draft
 - Owners: Core Maintainers
-- Last Updated: 2026-01-02
+- Last Updated: 2026-03-08
 - Related: #114, #115, #116
 
 ## Scope

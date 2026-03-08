@@ -9,6 +9,7 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+	"time"
 )
 
 const sampleLintJSON = `{"docs/a.md":[{"lineNumber":1,"ruleNames":["MD001"]}]}`
@@ -183,6 +184,23 @@ func TestIsZeroMeta(t *testing.T) {
 	}
 }
 
+func TestDefaultBaselineMetaUsesFutureDates(t *testing.T) {
+	setNowUTCForTest(t, time.Date(2026, time.March, 8, 12, 0, 0, 0, time.UTC))
+
+	meta := defaultBaselineMeta()
+	if meta.NextReviewDate != "2026-04-01" {
+		t.Fatalf("expected next review date 2026-04-01, got %q", meta.NextReviewDate)
+	}
+
+	wantTargets := []baselineReductionTarget{
+		{Milestone: "2026-04", TargetPercent: 25, DueDate: "2026-04-01"},
+		{Milestone: "2026-05", TargetPercent: 50, DueDate: "2026-05-01"},
+	}
+	if !reflect.DeepEqual(meta.ReductionTargets, wantTargets) {
+		t.Fatalf("expected reduction targets %+v, got %+v", wantTargets, meta.ReductionTargets)
+	}
+}
+
 func TestMergeMetaPrefersExisting(t *testing.T) {
 	defaults := defaultBaselineMeta()
 	existing := baselineMeta{
@@ -192,8 +210,8 @@ func TestMergeMetaPrefersExisting(t *testing.T) {
 		References:       []string{"#999"},
 		Notes:            "note",
 		Owner:            "Owner",
-		ReductionTargets: []baselineReductionTarget{{Milestone: "M1", TargetPercent: 10, DueDate: "2026-02-15"}},
-		NextReviewDate:   "2026-02-15",
+		ReductionTargets: []baselineReductionTarget{{Milestone: "M1", TargetPercent: 10, DueDate: "2099-02-15"}},
+		NextReviewDate:   "2099-02-15",
 		Workflow:         "docs/annex/0005-documentation-standards.md",
 		CIPolicy:         "manual",
 	}
@@ -227,6 +245,43 @@ func TestMergeMetaPrefersExisting(t *testing.T) {
 	}
 	if merged.CIPolicy != existing.CIPolicy {
 		t.Fatalf("expected CI policy to be preserved, got %q", merged.CIPolicy)
+	}
+}
+
+func TestMergeMetaFallsBackToDefaultsForPastDates(t *testing.T) {
+	setNowUTCForTest(t, time.Date(2026, time.March, 8, 12, 0, 0, 0, time.UTC))
+
+	defaults := defaultBaselineMeta()
+	existing := baselineMeta{
+		ReductionTargets: []baselineReductionTarget{{Milestone: "old", TargetPercent: 10, DueDate: "2026-02-15"}},
+		NextReviewDate:   "2026-02-15",
+	}
+
+	merged := mergeMeta(existing, defaults)
+	if !reflect.DeepEqual(merged.ReductionTargets, defaults.ReductionTargets) {
+		t.Fatalf("expected stale reduction targets to fall back to defaults, got %+v", merged.ReductionTargets)
+	}
+	if merged.NextReviewDate != defaults.NextReviewDate {
+		t.Fatalf("expected stale next review date to fall back to default %q, got %q", defaults.NextReviewDate, merged.NextReviewDate)
+	}
+}
+
+func TestWriteBaselineRejectsPastDates(t *testing.T) {
+	setNowUTCForTest(t, time.Date(2026, time.March, 8, 12, 0, 0, 0, time.UTC))
+
+	dir := t.TempDir()
+	path := filepath.Join(dir, "baseline.json")
+
+	meta := defaultBaselineMeta()
+	meta.NextReviewDate = "2026-03-01"
+	if err := writeBaseline(path, meta, nil); err == nil || !strings.Contains(err.Error(), "next review date") {
+		t.Fatalf("expected next review date validation error, got %v", err)
+	}
+
+	meta = defaultBaselineMeta()
+	meta.ReductionTargets[0].DueDate = "2026-03-01"
+	if err := writeBaseline(path, meta, nil); err == nil || !strings.Contains(err.Error(), "due date") {
+		t.Fatalf("expected reduction target due date validation error, got %v", err)
 	}
 }
 
@@ -373,6 +428,50 @@ func TestRunUpdateKeepsExistingMeta(t *testing.T) {
 	}
 }
 
+func TestRunUpdateRefreshesStaleDates(t *testing.T) {
+	setNowUTCForTest(t, time.Date(2026, time.March, 8, 12, 0, 0, 0, time.UTC))
+
+	dir := t.TempDir()
+	baselinePath := filepath.Join(dir, "baseline.json")
+	stale := baselineFile{
+		Meta: baselineMeta{
+			Tool:             "custom-tool",
+			Notes:            "keep",
+			ReductionTargets: []baselineReductionTarget{{Milestone: "old", TargetPercent: 10, DueDate: "2026-02-01"}},
+			NextReviewDate:   "2026-02-01",
+		},
+		Issues: []lintIssue{},
+	}
+	data, err := json.Marshal(stale)
+	if err != nil {
+		t.Fatalf("marshal stale baseline: %v", err)
+	}
+	if err := os.WriteFile(baselinePath, data, 0o600); err != nil {
+		t.Fatalf("write stale baseline: %v", err)
+	}
+
+	var stderr bytes.Buffer
+	exitCode := Run([]string{"cmd", "--baseline", baselinePath, "--update"}, &stderr, strings.NewReader(sampleLintJSON))
+	if exitCode != 0 {
+		t.Fatalf("expected update to succeed, got %d (%s)", exitCode, stderr.String())
+	}
+
+	loaded, err := loadBaseline(baselinePath)
+	if err != nil {
+		t.Fatalf("load baseline: %v", err)
+	}
+	defaults := defaultBaselineMeta()
+	if !reflect.DeepEqual(loaded.Meta.ReductionTargets, defaults.ReductionTargets) {
+		t.Fatalf("expected stale reduction targets to be refreshed, got %+v", loaded.Meta.ReductionTargets)
+	}
+	if loaded.Meta.NextReviewDate != defaults.NextReviewDate {
+		t.Fatalf("expected stale next review date to be refreshed to %q, got %q", defaults.NextReviewDate, loaded.Meta.NextReviewDate)
+	}
+	if loaded.Meta.Tool != "custom-tool" || loaded.Meta.Notes != "keep" {
+		t.Fatalf("expected non-date metadata to be preserved, got %+v", loaded.Meta)
+	}
+}
+
 func TestRunDetectsNewIssues(t *testing.T) {
 	dir := t.TempDir()
 	baselinePath := filepath.Join(dir, "baseline.json")
@@ -441,3 +540,14 @@ func (failingWriter) Write(_ []byte) (int, error) {
 }
 
 var errWriteFailure = errors.New("write failed")
+
+func setNowUTCForTest(t *testing.T, value time.Time) {
+	t.Helper()
+	previous := nowUTC
+	nowUTC = func() time.Time {
+		return value
+	}
+	t.Cleanup(func() {
+		nowUTC = previous
+	})
+}
