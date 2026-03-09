@@ -2,6 +2,7 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"flag"
@@ -105,7 +106,12 @@ func lintTemplateFile(path string) error {
 		return fmt.Errorf("read file: %w", err)
 	}
 	var descriptor datasetapi.TemplateDescriptor
-	if err := json.Unmarshal(payload, &descriptor); err != nil {
+	decoder := json.NewDecoder(bytes.NewReader(payload))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&descriptor); err != nil {
+		return fmt.Errorf("parse JSON: %w", err)
+	}
+	if err := decoder.Decode(new(struct{})); err != io.EOF {
 		return fmt.Errorf("parse JSON: %w", err)
 	}
 	if err := datasetapi.ValidateTemplateDescriptor(descriptor); err != nil {

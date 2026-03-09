@@ -115,6 +115,32 @@ func TestLintTemplateFileJSONParseError(t *testing.T) {
 	}
 }
 
+func TestLintTemplateFileUnknownField(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "unknown.json")
+	payload := `{
+  "plugin": "frog",
+  "key": "frog_population_snapshot",
+  "version": "0.1.0",
+  "title": "Frog Population Snapshot",
+  "description": "fixture",
+  "dialect": "dsl",
+  "query": "REPORT frog_population_snapshot\nSELECT organism_id FROM organisms",
+  "parameters": [],
+  "columns": [{"name":"organism_id","type":"string"}],
+  "output_formats": ["json"],
+  "slug": "frog/frog_population_snapshot@0.1.0",
+  "unknown_key": true
+}`
+	if err := os.WriteFile(path, []byte(payload), 0o600); err != nil {
+		t.Fatalf("write unknown field file: %v", err)
+	}
+	err := lintTemplateFile(path)
+	if err == nil || !strings.Contains(err.Error(), "unknown field") {
+		t.Fatalf("expected unknown field parse error, got %v", err)
+	}
+}
+
 func TestCollectTemplateJSONFilesMissingPath(t *testing.T) {
 	_, err := collectTemplateJSONFiles([]string{filepath.Join(t.TempDir(), "missing")})
 	if err == nil {

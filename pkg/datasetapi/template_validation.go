@@ -183,11 +183,12 @@ func validateSQLSemantics(query string, addIssue func(field, message string)) {
 	if trimmed == "" {
 		return
 	}
-	upper := strings.ToUpper(trimmed)
+	normalized := stripSQLComments(stripSQLStringLiterals(trimmed))
+	normalizedTrim := strings.TrimSpace(normalized)
+	upper := strings.ToUpper(normalizedTrim)
 	if !strings.HasPrefix(upper, "SELECT") && !strings.HasPrefix(upper, "WITH") {
 		addIssue("query", "sql dialect requires a read-only SELECT/WITH statement")
 	}
-	normalized := stripSQLComments(stripSQLStringLiterals(trimmed))
 	if sqlMutationPattern.MatchString(normalized) {
 		addIssue("query", "sql dialect forbids mutating statements")
 	}

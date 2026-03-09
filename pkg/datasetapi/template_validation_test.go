@@ -151,6 +151,8 @@ func TestValidateTemplateSQLMutationKeywordInsideComments(t *testing.T) {
 	tests := []string{
 		"SELECT organism_id -- update organisms\nFROM organisms",
 		"SELECT organism_id /* delete organisms */ FROM organisms",
+		"/* planner hint */ SELECT organism_id FROM organisms",
+		"-- explain note\nSELECT organism_id FROM organisms",
 	}
 	for _, query := range tests {
 		tpl := validTemplateForValidation()
