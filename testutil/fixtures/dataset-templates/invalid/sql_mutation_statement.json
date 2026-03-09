@@ -1,0 +1,21 @@
+{
+  "plugin": "frog",
+  "key": "dangerous_query",
+  "version": "1.0.0",
+  "title": "Dangerous Query",
+  "description": "Should fail because SQL templates must be read-only.",
+  "dialect": "sql",
+  "query": "UPDATE organisms SET species = 'x'",
+  "parameters": [],
+  "columns": [
+    {
+      "name": "species",
+      "type": "string"
+    }
+  ],
+  "metadata": {},
+  "output_formats": [
+    "json"
+  ],
+  "slug": "frog/dangerous_query@1.0.0"
+}

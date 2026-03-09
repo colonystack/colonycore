@@ -1,0 +1,54 @@
+{
+  "plugin": "frog",
+  "key": "frog_population_snapshot",
+  "version": "0.1.0",
+  "title": "Frog Population Snapshot",
+  "description": "Lists frog organisms with lifecycle and housing context.",
+  "dialect": "dsl",
+  "query": "REPORT frog_population_snapshot\nSELECT organism_id, lifecycle_stage FROM organisms",
+  "parameters": [
+    {
+      "name": "stage",
+      "type": "string",
+      "required": false,
+      "enum": [
+        "planned",
+        "larva",
+        "juvenile",
+        "adult",
+        "retired",
+        "deceased"
+      ]
+    },
+    {
+      "name": "limit",
+      "type": "integer",
+      "required": false,
+      "default": 100
+    }
+  ],
+  "columns": [
+    {
+      "name": "organism_id",
+      "type": "string"
+    },
+    {
+      "name": "lifecycle_stage",
+      "type": "string"
+    }
+  ],
+  "metadata": {
+    "source": "core.organisms",
+    "documentation": "docs/rfc/0001-colonycore-base-module.md",
+    "refresh_interval": "PT15M",
+    "tags": [
+      "frog",
+      "population"
+    ]
+  },
+  "output_formats": [
+    "json",
+    "csv"
+  ],
+  "slug": "frog/frog_population_snapshot@0.1.0"
+}

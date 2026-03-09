@@ -144,32 +144,7 @@ func SortTemplateDescriptors(descriptors []TemplateDescriptor) {
 }
 
 func validateTemplate(tpl Template) error {
-	if strings.TrimSpace(tpl.Key) == "" {
-		return errors.New("datasetapi: dataset template key required")
-	}
-	if strings.TrimSpace(tpl.Version) == "" {
-		return errors.New("datasetapi: dataset template version required")
-	}
-	if strings.TrimSpace(tpl.Title) == "" {
-		return errors.New("datasetapi: dataset template title required")
-	}
-	if strings.TrimSpace(tpl.Query) == "" {
-		return errors.New("datasetapi: dataset template query required")
-	}
-	if len(tpl.Columns) == 0 {
-		return errors.New("datasetapi: dataset template requires at least one column")
-	}
-	if len(tpl.OutputFormats) == 0 {
-		return errors.New("datasetapi: dataset template must declare output formats")
-	}
-	if tpl.Binder == nil {
-		return errors.New("datasetapi: dataset template binder required")
-	}
-	dialectProvider := GetDialectProvider()
-	if tpl.Dialect != dialectProvider.SQL() && tpl.Dialect != dialectProvider.DSL() {
-		return fmt.Errorf("datasetapi: unsupported dataset dialect %q", tpl.Dialect)
-	}
-	return nil
+	return ValidateTemplate(tpl)
 }
 
 // - a slice of ParameterError describing missing, undeclared, or coercion errors (empty if validation succeeded).

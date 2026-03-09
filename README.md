@@ -87,6 +87,9 @@ If the environment variable `COLONYCORE_STORAGE_DRIVER` is unset, the code will 
 - Species plugins register versioned dataset templates through the core plugin registry; see
   `internal/core/dataset.go` and the frog reference module (`plugins/frog`) for a working example aligned
   with RFC 0001's reporting guidance.
+- Dataset template invariants and lint semantics are specified in
+  `docs/annex/0006-dataset-template-validation.md`; validate descriptor fixtures with
+  `go run ./cmd/colony lint dataset <path>`.
 - A background export worker (package `internal/adapters/datasets`) applies RBAC scope filters, emits audit entries,
   stores signed artifacts in the managed object store, and serves export status via `/api/v1/datasets/exports`.
 - Sample analyst clients are provided in `clients/python/dataset_client.py` (requests-based) and

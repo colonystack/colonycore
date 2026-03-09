@@ -1,0 +1,33 @@
+{
+  "plugin": "frog",
+  "key": "dsl_without_slug",
+  "version": "1.0.0",
+  "title": "DSL Without Slug",
+  "description": "Edge case showing that static specs may omit host-generated slug values.",
+  "dialect": "dsl",
+  "query": "REPORT dsl_without_slug\nSELECT organism_id FROM organisms",
+  "parameters": [
+    {
+      "name": "stage",
+      "type": "string",
+      "enum": [
+        "juvenile",
+        "adult"
+      ],
+      "default": "adult"
+    }
+  ],
+  "columns": [
+    {
+      "name": "organism_id",
+      "type": "string"
+    }
+  ],
+  "metadata": {
+    "source": "core.organisms"
+  },
+  "output_formats": [
+    "json",
+    "html"
+  ]
+}

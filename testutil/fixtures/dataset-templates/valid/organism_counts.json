@@ -1,0 +1,29 @@
+{
+  "plugin": "frog",
+  "key": "organism_counts",
+  "version": "1.0.0",
+  "title": "Organism Counts",
+  "description": "Simple aggregate count by lifecycle stage.",
+  "dialect": "sql",
+  "query": "SELECT lifecycle_stage, COUNT(*) AS organism_count FROM organisms GROUP BY lifecycle_stage",
+  "parameters": [],
+  "columns": [
+    {
+      "name": "lifecycle_stage",
+      "type": "string"
+    },
+    {
+      "name": "organism_count",
+      "type": "number"
+    }
+  ],
+  "metadata": {
+    "source": "core.organisms"
+  },
+  "output_formats": [
+    "json",
+    "csv",
+    "html"
+  ],
+  "slug": "frog/organism_counts@1.0.0"
+}

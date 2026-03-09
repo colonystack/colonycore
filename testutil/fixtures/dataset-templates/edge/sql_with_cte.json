@@ -1,0 +1,30 @@
+{
+  "plugin": "frog",
+  "key": "sql_with_cte",
+  "version": "1.0.0",
+  "title": "SQL With CTE",
+  "description": "Edge case exercising WITH ... SELECT read-only semantics and intentionally keeping an unused optional parameter.",
+  "dialect": "sql",
+  "query": "WITH active AS (SELECT organism_id FROM organisms WHERE lifecycle_stage = 'adult') SELECT organism_id FROM active",
+  "parameters": [
+    {
+      "name": "limit",
+      "type": "integer",
+      "default": 50
+    }
+  ],
+  "columns": [
+    {
+      "name": "organism_id",
+      "type": "string"
+    }
+  ],
+  "metadata": {
+    "entity_model_major": 1
+  },
+  "output_formats": [
+    "json",
+    "csv"
+  ],
+  "slug": "frog/sql_with_cte@1.0.0"
+}

@@ -28,6 +28,22 @@ The stable plugin entrypoint is `pkg/pluginapi`.
   - `pluginapi.Result` violations for policy decisions.
 - Avoid panics for validation outcomes. Use violations (`block`, `warn`, `log`) in `pluginapi.Result`.
 
+## Dataset template best practices
+
+Reference spec: `docs/annex/0006-dataset-template-validation.md`.
+
+- Treat dataset templates as read models: keep SQL queries read-only (`SELECT`/`WITH` only).
+- Keep `key`, `version`, and `title` stable; changes should be additive and versioned.
+- Prefer explicit parameter contracts:
+  - use canonical types (`string`, `integer`, `number`, `boolean`, `timestamp`)
+  - provide `default` values only when they are valid for the declared type
+  - keep parameter names predictable and machine-friendly (`snake_case` style works best)
+- Keep column names deterministic and unique to avoid downstream renderer ambiguity.
+- Declare only formats the runner can actually materialize.
+- Run lint early during development:
+  - `go run ./cmd/colony lint dataset testutil/fixtures/dataset-templates/valid`
+- Expect fail-fast registration: malformed templates are rejected during `Register`, not first runtime execution.
+
 ## Compatibility matrix
 
 Keep this matrix aligned with ADR-0009 when host releases or API majors change.

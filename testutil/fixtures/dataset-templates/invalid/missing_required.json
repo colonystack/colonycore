@@ -1,0 +1,14 @@
+{
+  "plugin": "frog",
+  "key": "",
+  "version": "",
+  "title": "",
+  "description": "Missing required fields fixture.",
+  "dialect": "sql",
+  "query": "",
+  "parameters": [],
+  "columns": [],
+  "metadata": {},
+  "output_formats": [],
+  "slug": "frog/@"
+}
