@@ -365,7 +365,18 @@ func TestDatasetValidateParametersHostError(t *testing.T) {
 			OutputFormats: []datasetapi.Format{formatProvider.JSON()},
 		},
 	}
-	if _, errs := template.ValidateParameters(map[string]any{}); len(errs) == 0 || !strings.Contains(errs[0].Message, "binder required") {
+	_, errs := template.ValidateParameters(map[string]any{})
+	if len(errs) == 0 {
+		t.Fatalf("expected binder validation error")
+	}
+	found := false
+	for _, err := range errs {
+		if strings.Contains(strings.ToLower(err.Message), "binder") {
+			found = true
+			break
+		}
+	}
+	if !found {
 		t.Fatalf("expected binder error, got %+v", errs)
 	}
 }

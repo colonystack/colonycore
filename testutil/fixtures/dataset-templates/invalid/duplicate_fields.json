@@ -1,0 +1,36 @@
+{
+  "plugin": "frog",
+  "key": "duplicate_fields",
+  "version": "1.0.0",
+  "title": "Duplicate Fields",
+  "description": "Should fail due to duplicate parameter, column, and format declarations.",
+  "dialect": "sql",
+  "query": "SELECT organism_id FROM organisms",
+  "parameters": [
+    {
+      "name": "limit",
+      "type": "integer",
+      "default": 10
+    },
+    {
+      "name": "LIMIT",
+      "type": "integer"
+    }
+  ],
+  "columns": [
+    {
+      "name": "organism_id",
+      "type": "string"
+    },
+    {
+      "name": "ORGANISM_ID",
+      "type": "string"
+    }
+  ],
+  "metadata": {},
+  "output_formats": [
+    "json",
+    "json"
+  ],
+  "slug": "frog/duplicate_fields@1.0.0"
+}

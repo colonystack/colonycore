@@ -286,7 +286,6 @@ func TestValidateParametersDefaultErrors(t *testing.T) {
 		Columns:       []Column{{Name: "c", Type: "string"}},
 		OutputFormats: []Format{formatProvider.JSON()},
 		Parameters: []Parameter{
-			{Name: "ok", Type: "string", Default: json.RawMessage(`"auto"`)},
 			{Name: "badjson", Type: "string", Default: json.RawMessage("not-json")},
 			{Name: "badtype", Type: "integer", Default: json.RawMessage(`"nope"`)},
 			{Name: "nullval", Type: "string", Default: json.RawMessage("null")},
@@ -295,25 +294,26 @@ func TestValidateParametersDefaultErrors(t *testing.T) {
 			return func(context.Context, RunRequest) (RunResult, error) { return RunResult{}, nil }, nil
 		},
 	}
-	host, err := NewHostTemplate("plugin", tpl)
-	if err != nil {
-		t.Fatalf("NewHostTemplate: %v", err)
+	_, err := NewHostTemplate("plugin", tpl)
+	if err == nil {
+		t.Fatalf("expected invalid parameter defaults to fail template validation")
 	}
-	cleaned, errs := host.ValidateParameters(nil)
-	if len(errs) != 3 {
-		t.Fatalf("expected three default errors, got %+v", errs)
+	var validationErr *TemplateValidationError
+	if !errors.As(err, &validationErr) {
+		t.Fatalf("expected TemplateValidationError, got %T", err)
 	}
-	if cleaned["ok"].(string) != "auto" {
-		t.Fatalf("expected ok default to apply, got %v", cleaned["ok"])
-	}
-	if errs[0].Name != "badjson" || !strings.Contains(errs[0].Message, "invalid JSON") {
-		t.Fatalf("expected badjson error, got %+v", errs[0])
-	}
-	if errs[1].Name != "badtype" || !strings.Contains(errs[1].Message, "expects integer") {
-		t.Fatalf("expected badtype error, got %+v", errs[1])
-	}
-	if errs[2].Name != "nullval" || !strings.Contains(errs[2].Message, "cannot be null") {
-		t.Fatalf("expected nullval error, got %+v", errs[2])
+	wantFields := []string{"parameters[0].default", "parameters[1].default", "parameters[2].default"}
+	for _, field := range wantFields {
+		found := false
+		for _, issue := range validationErr.Issues {
+			if issue.Field == field {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Fatalf("expected validation issue %q, got %+v", field, validationErr.Issues)
+		}
 	}
 }
 

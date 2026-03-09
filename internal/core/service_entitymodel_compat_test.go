@@ -35,9 +35,6 @@ func (p compatTestPlugin) Register(reg pluginapi.Registry) error {
 		Query:         "select 1",
 		Columns:       []datasetapi.Column{{Name: "c", Type: "string"}},
 		OutputFormats: []datasetapi.Format{datasetapi.GetFormatProvider().JSON()},
-		Metadata: datasetapi.Metadata{
-			EntityModelMajor: intPtr(p.templateMajor),
-		},
 		Binder: func(env datasetapi.Environment) (datasetapi.Runner, error) {
 			return func(ctx context.Context, req datasetapi.RunRequest) (datasetapi.RunResult, error) {
 				if ctx == nil {
@@ -56,6 +53,9 @@ func (p compatTestPlugin) Register(reg pluginapi.Registry) error {
 				}, nil
 			}, nil
 		},
+	}
+	if p.templateMajor > 0 {
+		tpl.Metadata.EntityModelMajor = intPtr(p.templateMajor)
 	}
 	return reg.RegisterDatasetTemplate(tpl)
 }
