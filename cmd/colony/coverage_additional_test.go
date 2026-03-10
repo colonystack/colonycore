@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -192,6 +193,31 @@ func TestCatalogCommandFailurePaths(t *testing.T) {
 			t.Fatalf("expected duplicate slug output, got %q", stderr.String())
 		}
 	})
+}
+
+func TestCatalogAddFailsWhenAuditWriteFails(t *testing.T) {
+	dir := t.TempDir()
+	catalogPath := filepath.Join(dir, "catalog", testCatalogFile)
+	metadataDir := filepath.Join(dir, "catalog", testMetadataDir)
+
+	blockingFile := filepath.Join(dir, "blocking")
+	if err := os.WriteFile(blockingFile, []byte("x"), 0o600); err != nil {
+		t.Fatalf("write blocking file: %v", err)
+	}
+	auditPath := filepath.Join(blockingFile, testAuditFile)
+
+	descriptor := validTemplateDescriptor()
+	templatePath := filepath.Join(dir, "template.json")
+	writeTemplateFile(t, templatePath, descriptor)
+
+	var stdout, stderr strings.Builder
+	code := cli(catalogArgs("add", catalogPath, auditPath, metadataDir, templatePath), &stdout, &stderr)
+	if code != 1 {
+		t.Fatalf("expected add to fail when audit write fails, got %d stderr=%q", code, stderr.String())
+	}
+	if !strings.Contains(stderr.String(), "unable to write catalog audit log") {
+		t.Fatalf("expected audit failure output, got %q", stderr.String())
+	}
 }
 
 func TestCatalogAddErrorBranches(t *testing.T) {
@@ -401,12 +427,28 @@ func TestCatalogFileHelpers(t *testing.T) {
 		t.Fatalf("expected trailing descriptor parse to fail")
 	}
 
+	var decoded map[string]any
+	if err := decodeStrictJSONFile("", &decoded); err == nil {
+		t.Fatalf("expected empty decode path to fail")
+	}
+
+	trailingMetadataPath := filepath.Join(dir, "metadata.json")
+	if err := os.WriteFile(trailingMetadataPath, []byte("{\"kind\":\"x\"}{\"extra\":true}"), 0o600); err != nil {
+		t.Fatalf("write trailing metadata: %v", err)
+	}
+	if err := decodeStrictJSONFile(trailingMetadataPath, &decoded); err == nil {
+		t.Fatalf("expected trailing metadata parse to fail")
+	}
+
 	blocking := filepath.Join(dir, "blocking")
 	if err := os.WriteFile(blocking, []byte("x"), 0o600); err != nil {
 		t.Fatalf("write blocking file: %v", err)
 	}
 	if err := writeJSONAtomically(filepath.Join(blocking, "out.json"), map[string]string{"x": "y"}); err == nil {
 		t.Fatalf("expected writeJSONAtomically to fail when parent is a file")
+	}
+	if err := writeJSONAtomically(filepath.Join(dir, "marshal-error.json"), map[string]any{"bad": make(chan int)}); err == nil {
+		t.Fatalf("expected writeJSONAtomically to fail for non-serializable payload")
 	}
 }
 
@@ -462,7 +504,111 @@ func TestRandomCatalogIDFallback(t *testing.T) {
 	}
 }
 
-func TestCatalogAuditWarningAndVerificationErrors(t *testing.T) {
+func TestCatalogProcessIsAlive(t *testing.T) {
+	if catalogProcessIsAlive(0) {
+		t.Fatalf("expected PID 0 to be reported as not alive")
+	}
+	if !catalogProcessIsAlive(os.Getpid()) {
+		t.Fatalf("expected current PID to be reported as alive")
+	}
+}
+
+func TestCatalogLockMetadataHelpers(t *testing.T) {
+	dir := t.TempDir()
+	lockPath := filepath.Join(dir, "catalog.lock")
+	now := time.Now().UTC()
+
+	prevStaleAfter := catalogLockStaleAfter
+	catalogLockStaleAfter = 100 * time.Millisecond
+	t.Cleanup(func() {
+		catalogLockStaleAfter = prevStaleAfter
+	})
+
+	stale, err := isCatalogLockStale(filepath.Join(dir, "missing.lock"), now)
+	if err != nil {
+		t.Fatalf("inspect missing lock: %v", err)
+	}
+	if stale {
+		t.Fatalf("missing lock should not be stale")
+	}
+
+	if err := os.WriteFile(lockPath, []byte("not-json"), 0o600); err != nil {
+		t.Fatalf("write malformed lock: %v", err)
+	}
+	stale, err = isCatalogLockStale(lockPath, now)
+	if err != nil {
+		t.Fatalf("inspect malformed lock: %v", err)
+	}
+	if stale {
+		t.Fatalf("fresh malformed lock should not be stale yet")
+	}
+
+	old := now.Add(-time.Second)
+	if err := os.Chtimes(lockPath, old, old); err != nil {
+		t.Fatalf("touch malformed lock mtime: %v", err)
+	}
+	stale, err = isCatalogLockStale(lockPath, now)
+	if err != nil {
+		t.Fatalf("inspect malformed stale lock: %v", err)
+	}
+	if !stale {
+		t.Fatalf("old malformed lock should be stale")
+	}
+
+	payload, err := json.Marshal(catalogLockMetadata{PID: -1, Timestamp: now})
+	if err != nil {
+		t.Fatalf("marshal metadata: %v", err)
+	}
+	if err := os.WriteFile(lockPath, payload, 0o600); err != nil {
+		t.Fatalf("write lock metadata: %v", err)
+	}
+	stale, err = isCatalogLockStale(lockPath, now)
+	if err != nil {
+		t.Fatalf("inspect dead-process lock: %v", err)
+	}
+	if !stale {
+		t.Fatalf("dead-process lock should be stale")
+	}
+
+	payload, err = json.Marshal(catalogLockMetadata{PID: os.Getpid(), Timestamp: time.Time{}})
+	if err != nil {
+		t.Fatalf("marshal zero-time metadata: %v", err)
+	}
+	if err := os.WriteFile(lockPath, payload, 0o600); err != nil {
+		t.Fatalf("write zero-time lock metadata: %v", err)
+	}
+	if err := os.Chtimes(lockPath, now, now); err != nil {
+		t.Fatalf("touch zero-time metadata mtime: %v", err)
+	}
+	stale, err = isCatalogLockStale(lockPath, now)
+	if err != nil {
+		t.Fatalf("inspect zero-time lock metadata: %v", err)
+	}
+	if stale {
+		t.Fatalf("current process lock should not be stale")
+	}
+}
+
+func TestWriteCatalogLockMetadataWriteError(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "lock")
+	if err := os.WriteFile(path, []byte("x"), 0o600); err != nil {
+		t.Fatalf("write fixture lock file: %v", err)
+	}
+	file, err := os.Open(path) // #nosec G304: test fixture path
+	if err != nil {
+		t.Fatalf("open fixture lock file: %v", err)
+	}
+	defer func() {
+		_ = file.Close()
+	}()
+
+	if err := writeCatalogLockMetadata(file, time.Now().UTC()); err == nil {
+		t.Fatalf("expected write metadata to fail for read-only descriptor")
+	}
+}
+
+func TestCatalogAuditWriteAndVerificationErrors(t *testing.T) {
 	dir := t.TempDir()
 
 	blockingFile := filepath.Join(dir, "blocking")
@@ -470,10 +616,12 @@ func TestCatalogAuditWarningAndVerificationErrors(t *testing.T) {
 		t.Fatalf("write blocking file: %v", err)
 	}
 	invalidLogger := catalogAuditLogger{path: filepath.Join(blockingFile, "audit.log"), actor: "tester", catalog: filepath.Join(dir, testCatalogFile)}
-	var stderr strings.Builder
-	writeCatalogAudit(&stderr, invalidLogger, "catalog_add", catalogAuditStatusSuccess, nil, nil)
-	if !strings.Contains(stderr.String(), "warning: unable to write catalog audit log") {
-		t.Fatalf("expected audit warning output, got %q", stderr.String())
+	if err := writeCatalogAudit(invalidLogger, "catalog_add", catalogAuditStatusSuccess, nil, nil); err == nil {
+		t.Fatalf("expected audit write failure")
+	}
+
+	if err := verifyCatalogAuditLogChain(filepath.Join(dir, "missing-audit.log")); err == nil {
+		t.Fatalf("expected missing audit log verification to fail")
 	}
 
 	auditPath := filepath.Join(dir, "audit.log")

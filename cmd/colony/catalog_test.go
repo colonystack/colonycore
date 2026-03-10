@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -101,6 +102,52 @@ func TestCatalogLifecycleCommandsEndToEnd(t *testing.T) {
 	}
 	if entries[len(entries)-1].Operation != "catalog_validate" || entries[len(entries)-1].Status != catalogAuditStatusSuccess {
 		t.Fatalf("expected final audit entry to be successful validation, got %+v", entries[len(entries)-1])
+	}
+}
+
+func TestCatalogMigrateGeneratesUniqueMetadataPerRun(t *testing.T) {
+	dir := t.TempDir()
+	catalogPath := filepath.Join(dir, "catalog", "catalog.json")
+	auditPath := filepath.Join(dir, "catalog", "audit.log.jsonl")
+	metadataDir := filepath.Join(dir, "catalog", "metadata")
+
+	oldDescriptor := validTemplateDescriptor()
+	oldDescriptor.Version = testVersion010
+	oldDescriptor.Slug = fmt.Sprintf("%s/%s@%s", oldDescriptor.Plugin, oldDescriptor.Key, oldDescriptor.Version)
+	oldPath := filepath.Join(dir, "old.json")
+	writeTemplateFile(t, oldPath, oldDescriptor)
+
+	newDescriptor := oldDescriptor
+	newDescriptor.Version = testVersion020
+	newDescriptor.Slug = fmt.Sprintf("%s/%s@%s", newDescriptor.Plugin, newDescriptor.Key, newDescriptor.Version)
+	newPath := filepath.Join(dir, "new.json")
+	writeTemplateFile(t, newPath, newDescriptor)
+
+	for _, invocation := range [][]string{
+		catalogArgs("add", catalogPath, auditPath, metadataDir, oldPath),
+		catalogArgs("add", catalogPath, auditPath, metadataDir, newPath),
+		catalogArgs("migrate", catalogPath, auditPath, metadataDir, oldDescriptor.Slug, newDescriptor.Slug),
+		catalogArgs("migrate", catalogPath, auditPath, metadataDir, oldDescriptor.Slug, newDescriptor.Slug),
+	} {
+		var stdout, stderr strings.Builder
+		if code := cli(invocation, &stdout, &stderr); code != 0 {
+			t.Fatalf("command %q failed with code=%d stderr=%q", strings.Join(invocation, " "), code, stderr.String())
+		}
+	}
+
+	catalog := readCatalogRegistryForTests(t, catalogPath)
+	if len(catalog.Migrations) != 2 {
+		t.Fatalf("expected 2 migration records, got %d", len(catalog.Migrations))
+	}
+	paths := make(map[string]struct{}, len(catalog.Migrations))
+	for _, migration := range catalog.Migrations {
+		paths[migration.MetadataPath] = struct{}{}
+		if _, err := os.Stat(migration.MetadataPath); err != nil {
+			t.Fatalf("expected migration metadata path to exist: %v", err)
+		}
+	}
+	if len(paths) != 2 {
+		t.Fatalf("expected unique migration metadata paths, got %v", paths)
 	}
 }
 
@@ -280,6 +327,150 @@ func TestCatalogValidateFailsForInvalidMigrationMetadata(t *testing.T) {
 	}
 }
 
+func TestCatalogValidateFailsForMetadataSemanticMismatches(t *testing.T) {
+	t.Run("deprecation-kind-mismatch", func(t *testing.T) {
+		catalogPath, auditPath, metadataDir, catalog := setupCatalogWithDeprecationAndMigration(t)
+		deprecated := catalog.Templates[0].Deprecated
+		if deprecated == nil {
+			t.Fatalf("expected deprecated template metadata")
+		}
+
+		var metadata catalogDeprecationMetadata
+		readJSONFile(t, deprecated.MetadataPath, &metadata)
+		metadata.Kind = "wrong_kind"
+		if err := writeJSONAtomically(deprecated.MetadataPath, metadata); err != nil {
+			t.Fatalf("write invalid deprecation metadata: %v", err)
+		}
+
+		var stdout, stderr strings.Builder
+		code := cli(catalogArgs("validate", catalogPath, auditPath, metadataDir), &stdout, &stderr)
+		if code != 1 {
+			t.Fatalf("expected validate failure, got code=%d stderr=%q", code, stderr.String())
+		}
+		if !strings.Contains(stderr.String(), "deprecation metadata kind") {
+			t.Fatalf("expected deprecation metadata kind failure, got %q", stderr.String())
+		}
+	})
+
+	t.Run("deprecation-template-mismatch", func(t *testing.T) {
+		catalogPath, auditPath, metadataDir, catalog := setupCatalogWithDeprecationAndMigration(t)
+		deprecated := catalog.Templates[0].Deprecated
+		if deprecated == nil {
+			t.Fatalf("expected deprecated template metadata")
+		}
+
+		var metadata catalogDeprecationMetadata
+		readJSONFile(t, deprecated.MetadataPath, &metadata)
+		metadata.TemplateSlug = "frog/other@9.9.9"
+		if err := writeJSONAtomically(deprecated.MetadataPath, metadata); err != nil {
+			t.Fatalf("write invalid deprecation metadata: %v", err)
+		}
+
+		var stdout, stderr strings.Builder
+		code := cli(catalogArgs("validate", catalogPath, auditPath, metadataDir), &stdout, &stderr)
+		if code != 1 {
+			t.Fatalf("expected validate failure, got code=%d stderr=%q", code, stderr.String())
+		}
+		if !strings.Contains(stderr.String(), "template slug mismatch") {
+			t.Fatalf("expected deprecation slug mismatch failure, got %q", stderr.String())
+		}
+	})
+
+	t.Run("deprecation-missing-timestamps", func(t *testing.T) {
+		catalogPath, auditPath, metadataDir, catalog := setupCatalogWithDeprecationAndMigration(t)
+		deprecated := catalog.Templates[0].Deprecated
+		if deprecated == nil {
+			t.Fatalf("expected deprecated template metadata")
+		}
+
+		var metadata catalogDeprecationMetadata
+		readJSONFile(t, deprecated.MetadataPath, &metadata)
+		metadata.DeprecatedAt = time.Time{}
+		metadata.SunsetAt = time.Time{}
+		if err := writeJSONAtomically(deprecated.MetadataPath, metadata); err != nil {
+			t.Fatalf("write invalid deprecation metadata: %v", err)
+		}
+
+		var stdout, stderr strings.Builder
+		code := cli(catalogArgs("validate", catalogPath, auditPath, metadataDir), &stdout, &stderr)
+		if code != 1 {
+			t.Fatalf("expected validate failure, got code=%d stderr=%q", code, stderr.String())
+		}
+		if !strings.Contains(stderr.String(), "timestamps are required") {
+			t.Fatalf("expected deprecation timestamp failure, got %q", stderr.String())
+		}
+	})
+
+	t.Run("migration-generated-at-missing", func(t *testing.T) {
+		catalogPath, auditPath, metadataDir, catalog := setupCatalogWithDeprecationAndMigration(t)
+		if len(catalog.Migrations) != 1 {
+			t.Fatalf("expected one migration record")
+		}
+
+		var plan catalogMigrationPlan
+		readJSONFile(t, catalog.Migrations[0].MetadataPath, &plan)
+		plan.GeneratedAt = time.Time{}
+		if err := writeJSONAtomically(catalog.Migrations[0].MetadataPath, plan); err != nil {
+			t.Fatalf("write invalid migration metadata: %v", err)
+		}
+
+		var stdout, stderr strings.Builder
+		code := cli(catalogArgs("validate", catalogPath, auditPath, metadataDir), &stdout, &stderr)
+		if code != 1 {
+			t.Fatalf("expected validate failure, got code=%d stderr=%q", code, stderr.String())
+		}
+		if !strings.Contains(stderr.String(), "migration metadata generated_at") {
+			t.Fatalf("expected migration generated_at failure, got %q", stderr.String())
+		}
+	})
+
+	t.Run("migration-kind-mismatch", func(t *testing.T) {
+		catalogPath, auditPath, metadataDir, catalog := setupCatalogWithDeprecationAndMigration(t)
+		if len(catalog.Migrations) != 1 {
+			t.Fatalf("expected one migration record")
+		}
+
+		var plan catalogMigrationPlan
+		readJSONFile(t, catalog.Migrations[0].MetadataPath, &plan)
+		plan.Kind = "wrong_kind"
+		if err := writeJSONAtomically(catalog.Migrations[0].MetadataPath, plan); err != nil {
+			t.Fatalf("write invalid migration metadata: %v", err)
+		}
+
+		var stdout, stderr strings.Builder
+		code := cli(catalogArgs("validate", catalogPath, auditPath, metadataDir), &stdout, &stderr)
+		if code != 1 {
+			t.Fatalf("expected validate failure, got code=%d stderr=%q", code, stderr.String())
+		}
+		if !strings.Contains(stderr.String(), "migration metadata kind") {
+			t.Fatalf("expected migration kind failure, got %q", stderr.String())
+		}
+	})
+
+	t.Run("migration-endpoint-mismatch", func(t *testing.T) {
+		catalogPath, auditPath, metadataDir, catalog := setupCatalogWithDeprecationAndMigration(t)
+		if len(catalog.Migrations) != 1 {
+			t.Fatalf("expected one migration record")
+		}
+
+		var plan catalogMigrationPlan
+		readJSONFile(t, catalog.Migrations[0].MetadataPath, &plan)
+		plan.To = "frog/other@9.9.9"
+		if err := writeJSONAtomically(catalog.Migrations[0].MetadataPath, plan); err != nil {
+			t.Fatalf("write invalid migration metadata: %v", err)
+		}
+
+		var stdout, stderr strings.Builder
+		code := cli(catalogArgs("validate", catalogPath, auditPath, metadataDir), &stdout, &stderr)
+		if code != 1 {
+			t.Fatalf("expected validate failure, got code=%d stderr=%q", code, stderr.String())
+		}
+		if !strings.Contains(stderr.String(), "endpoint mismatch") {
+			t.Fatalf("expected migration endpoint mismatch failure, got %q", stderr.String())
+		}
+	})
+}
+
 func TestCatalogValidateFailsOnTamperedAuditLog(t *testing.T) {
 	dir := t.TempDir()
 	catalogPath := filepath.Join(dir, "catalog.json")
@@ -322,6 +513,70 @@ func TestCatalogValidateFailsOnTamperedAuditLog(t *testing.T) {
 	}
 }
 
+func TestCatalogValidateFailsWhenAuditLogMissing(t *testing.T) {
+	dir := t.TempDir()
+	catalogPath := filepath.Join(dir, "catalog.json")
+	auditPath := filepath.Join(dir, "missing", "audit.log.jsonl")
+	metadataDir := filepath.Join(dir, "metadata")
+
+	descriptor := validTemplateDescriptor()
+	descriptor.Version = "2.0.0"
+	descriptor.Slug = fmt.Sprintf("%s/%s@%s", descriptor.Plugin, descriptor.Key, descriptor.Version)
+	catalog := catalogRegistry{
+		Version:   catalogSchemaVersion,
+		UpdatedAt: time.Now().UTC(),
+		Templates: []catalogTemplateRecord{{Descriptor: descriptor}},
+	}
+	if err := saveCatalogRegistry(catalogPath, catalog); err != nil {
+		t.Fatalf("save catalog: %v", err)
+	}
+
+	var stdout, stderr strings.Builder
+	code := cli(catalogArgs("validate", catalogPath, auditPath, metadataDir), &stdout, &stderr)
+	if code != 1 {
+		t.Fatalf("expected validation failure for missing audit log, got %d stderr=%q", code, stderr.String())
+	}
+	if !strings.Contains(stderr.String(), "audit log: FAIL") {
+		t.Fatalf("expected missing audit log failure output, got %q", stderr.String())
+	}
+}
+
+func TestCatalogValidateFailsWhenAuditAppendIsUnwritable(t *testing.T) {
+	dir := t.TempDir()
+	catalogPath := filepath.Join(dir, "catalog.json")
+	auditPath := filepath.Join(dir, "audit.log.jsonl")
+	metadataDir := filepath.Join(dir, "metadata")
+
+	descriptor := validTemplateDescriptor()
+	descriptor.Version = "2.1.0"
+	descriptor.Slug = fmt.Sprintf("%s/%s@%s", descriptor.Plugin, descriptor.Key, descriptor.Version)
+	catalog := catalogRegistry{
+		Version:   catalogSchemaVersion,
+		UpdatedAt: time.Now().UTC(),
+		Templates: []catalogTemplateRecord{{Descriptor: descriptor}},
+	}
+	if err := saveCatalogRegistry(catalogPath, catalog); err != nil {
+		t.Fatalf("save catalog: %v", err)
+	}
+
+	logger := catalogAuditLogger{path: auditPath, actor: "tester", catalog: catalogPath, timestampf: func() time.Time { return time.Now().UTC() }}
+	if err := logger.Record("catalog_add", catalogAuditStatusSuccess, map[string]any{"template": descriptor.Slug}, nil); err != nil {
+		t.Fatalf("seed audit log: %v", err)
+	}
+	if err := os.Chmod(auditPath, 0o400); err != nil {
+		t.Fatalf("set read-only audit log: %v", err)
+	}
+
+	var stdout, stderr strings.Builder
+	code := cli(catalogArgs("validate", catalogPath, auditPath, metadataDir), &stdout, &stderr)
+	if code != 1 {
+		t.Fatalf("expected validation failure when audit append fails, got %d stderr=%q", code, stderr.String())
+	}
+	if !strings.Contains(stderr.String(), "unable to write catalog audit log") {
+		t.Fatalf("expected audit append failure output, got %q", stderr.String())
+	}
+}
+
 func TestBuildCatalogCompatibilityDetectsBreakingChanges(t *testing.T) {
 	oldDesc := validTemplateDescriptor()
 	oldDesc.Version = testVersion010
@@ -354,6 +609,37 @@ func TestBuildCatalogCompatibilityDetectsBreakingChanges(t *testing.T) {
 	steps := buildMigrationPlanSteps(summary)
 	if len(steps) < 4 {
 		t.Fatalf("expected additional migration steps for breaking change, got %d", len(steps))
+	}
+}
+
+func TestBuildCatalogCompatibilityDetectsRequirednessChanges(t *testing.T) {
+	oldDesc := validTemplateDescriptor()
+	oldDesc.Version = testVersion010
+	oldDesc.Slug = fmt.Sprintf("%s/%s@%s", oldDesc.Plugin, oldDesc.Key, oldDesc.Version)
+	oldDesc.Parameters = []datasetapi.Parameter{{Name: "limit", Type: "integer", Required: false}}
+
+	newDesc := oldDesc
+	newDesc.Version = testVersion020
+	newDesc.Slug = fmt.Sprintf("%s/%s@%s", newDesc.Plugin, newDesc.Key, newDesc.Version)
+	newDesc.Parameters = []datasetapi.Parameter{{Name: "limit", Type: "integer", Required: true}, {Name: "species", Type: "string", Required: true}}
+
+	summary := buildCatalogCompatibility(oldDesc, newDesc)
+	if !summary.Breaking {
+		t.Fatalf("expected requiredness changes to be breaking")
+	}
+	if !containsString(summary.AddedParameters, "species") {
+		t.Fatalf("expected added required parameter to be recorded")
+	}
+	if !containsSubstring(summary.ChangedParameterTypes, "optional -> required") {
+		t.Fatalf("expected optional->required change to be recorded, got %+v", summary.ChangedParameterTypes)
+	}
+	if !containsSubstring(summary.ChangedParameterTypes, "new required parameter") {
+		t.Fatalf("expected new required parameter change to be recorded, got %+v", summary.ChangedParameterTypes)
+	}
+
+	steps := buildMigrationPlanSteps(summary)
+	if !containsStep(steps, "parameter-mapping") {
+		t.Fatalf("expected parameter-mapping migration step for requiredness changes")
 	}
 }
 
@@ -472,6 +758,44 @@ func TestCatalogAuditRecordFailsWhenLockIsHeld(t *testing.T) {
 	}
 }
 
+func TestWithPathLockRemovesStaleLock(t *testing.T) {
+	dir := t.TempDir()
+	targetPath := filepath.Join(dir, "catalog.json")
+	lockPath := targetPath + ".lock"
+
+	prevStaleAfter := catalogLockStaleAfter
+	catalogLockStaleAfter = 100 * time.Millisecond
+	t.Cleanup(func() {
+		catalogLockStaleAfter = prevStaleAfter
+	})
+
+	stale := catalogLockMetadata{
+		PID:       os.Getpid(),
+		Timestamp: time.Now().UTC().Add(-time.Second),
+	}
+	payload, err := json.Marshal(stale)
+	if err != nil {
+		t.Fatalf("marshal stale lock metadata: %v", err)
+	}
+	if err := os.WriteFile(lockPath, payload, 0o600); err != nil {
+		t.Fatalf("write stale lock metadata: %v", err)
+	}
+
+	ran := false
+	if err := withPathLock(targetPath, func() error {
+		ran = true
+		return nil
+	}); err != nil {
+		t.Fatalf("acquire lock with stale metadata: %v", err)
+	}
+	if !ran {
+		t.Fatalf("expected critical section to run")
+	}
+	if _, err := os.Stat(lockPath); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("expected stale lock file to be removed, got err=%v", err)
+	}
+}
+
 func catalogArgs(subcommand, catalogPath, auditPath, metadataDir string, tail ...string) []string {
 	args := []string{"catalog", subcommand, "--catalog", catalogPath, "--audit-log", auditPath, "--metadata-dir", metadataDir, "--actor", "tester"}
 	return append(args, tail...)
@@ -542,4 +866,65 @@ func overwriteCatalogAuditEntries(t *testing.T, path string, entries []catalogAu
 			t.Fatalf("encode audit entry: %v", err)
 		}
 	}
+}
+
+func setupCatalogWithDeprecationAndMigration(t *testing.T) (string, string, string, catalogRegistry) {
+	t.Helper()
+	dir := t.TempDir()
+	catalogPath := filepath.Join(dir, "catalog", "catalog.json")
+	auditPath := filepath.Join(dir, "catalog", "audit.log.jsonl")
+	metadataDir := filepath.Join(dir, "catalog", "metadata")
+
+	oldDescriptor := validTemplateDescriptor()
+	oldDescriptor.Version = testVersion010
+	oldDescriptor.Slug = fmt.Sprintf("%s/%s@%s", oldDescriptor.Plugin, oldDescriptor.Key, oldDescriptor.Version)
+	oldPath := filepath.Join(dir, "old.json")
+	writeTemplateFile(t, oldPath, oldDescriptor)
+
+	newDescriptor := oldDescriptor
+	newDescriptor.Version = testVersion020
+	newDescriptor.Slug = fmt.Sprintf("%s/%s@%s", newDescriptor.Plugin, newDescriptor.Key, newDescriptor.Version)
+	newPath := filepath.Join(dir, "new.json")
+	writeTemplateFile(t, newPath, newDescriptor)
+
+	for _, invocation := range [][]string{
+		catalogArgs("add", catalogPath, auditPath, metadataDir, oldPath),
+		catalogArgs("add", catalogPath, auditPath, metadataDir, newPath),
+		catalogArgs("deprecate", catalogPath, auditPath, metadataDir, "--reason", "upgrade available", oldDescriptor.Slug),
+		catalogArgs("migrate", catalogPath, auditPath, metadataDir, oldDescriptor.Slug, newDescriptor.Slug),
+	} {
+		var stdout, stderr strings.Builder
+		if code := cli(invocation, &stdout, &stderr); code != 0 {
+			t.Fatalf("setup command %q failed with code=%d stderr=%q", strings.Join(invocation, " "), code, stderr.String())
+		}
+	}
+
+	return catalogPath, auditPath, metadataDir, readCatalogRegistryForTests(t, catalogPath)
+}
+
+func containsString(values []string, expected string) bool {
+	for _, value := range values {
+		if value == expected {
+			return true
+		}
+	}
+	return false
+}
+
+func containsSubstring(values []string, expected string) bool {
+	for _, value := range values {
+		if strings.Contains(value, expected) {
+			return true
+		}
+	}
+	return false
+}
+
+func containsStep(steps []catalogMigrationPlanStep, id string) bool {
+	for _, step := range steps {
+		if step.ID == id {
+			return true
+		}
+	}
+	return false
 }

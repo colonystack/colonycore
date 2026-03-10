@@ -15,6 +15,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -49,6 +50,7 @@ var (
 	catalogFilenameSanitizer = regexp.MustCompile(`[^A-Za-z0-9_.-]+`)
 	catalogLockTimeout       = 5 * time.Second
 	catalogLockRetryInterval = 25 * time.Millisecond
+	catalogLockStaleAfter    = 30 * time.Minute
 )
 
 type catalogRegistry struct {
@@ -150,6 +152,11 @@ type catalogAuditLogger struct {
 	timestampf func() time.Time
 }
 
+type catalogLockMetadata struct {
+	PID       int       `json:"pid"`
+	Timestamp time.Time `json:"timestamp"`
+}
+
 type catalogFlags struct {
 	catalogPath string
 	auditPath   string
@@ -196,14 +203,18 @@ func catalogAddCLI(args []string, stdout, stderr io.Writer) int {
 
 	descriptor, err := readTemplateDescriptor(templatePath)
 	if err != nil {
-		writeCatalogAudit(stderr, audit, "catalog_add", catalogAuditStatusError, map[string]any{"template_path": templatePath}, err)
 		_, _ = fmt.Fprintf(stderr, "colony catalog add: %v\n", err)
+		if auditErr := writeCatalogAudit(audit, "catalog_add", catalogAuditStatusError, map[string]any{"template_path": templatePath}, err); auditErr != nil {
+			reportCatalogAuditFailure(stderr, "colony catalog add", auditErr)
+		}
 		return 1
 	}
 	descriptor, err = normalizeCatalogDescriptor(descriptor)
 	if err != nil {
-		writeCatalogAudit(stderr, audit, "catalog_add", catalogAuditStatusError, map[string]any{"template_path": templatePath}, err)
 		_, _ = fmt.Fprintf(stderr, "colony catalog add: %v\n", err)
+		if auditErr := writeCatalogAudit(audit, "catalog_add", catalogAuditStatusError, map[string]any{"template_path": templatePath}, err); auditErr != nil {
+			reportCatalogAuditFailure(stderr, "colony catalog add", auditErr)
+		}
 		return 1
 	}
 
@@ -227,12 +238,17 @@ func catalogAddCLI(args []string, stdout, stderr io.Writer) int {
 		catalog.UpdatedAt = now
 		return saveCatalogRegistry(flags.catalogPath, catalog)
 	}); err != nil {
-		writeCatalogAudit(stderr, audit, "catalog_add", catalogAuditStatusError, map[string]any{"template": descriptor.Slug}, err)
 		_, _ = fmt.Fprintf(stderr, "colony catalog add: %v\n", err)
+		if auditErr := writeCatalogAudit(audit, "catalog_add", catalogAuditStatusError, map[string]any{"template": descriptor.Slug}, err); auditErr != nil {
+			reportCatalogAuditFailure(stderr, "colony catalog add", auditErr)
+		}
 		return 1
 	}
 
-	writeCatalogAudit(stderr, audit, "catalog_add", catalogAuditStatusSuccess, map[string]any{"template": descriptor.Slug, "template_path": templatePath}, nil)
+	if err := writeCatalogAudit(audit, "catalog_add", catalogAuditStatusSuccess, map[string]any{"template": descriptor.Slug, "template_path": templatePath}, nil); err != nil {
+		reportCatalogAuditFailure(stderr, "colony catalog add", err)
+		return 1
+	}
 	_, _ = fmt.Fprintf(stdout, "added template %s\n", descriptor.Slug)
 	return 0
 }
@@ -305,12 +321,17 @@ func catalogDeprecateCLI(args []string, stdout, stderr io.Writer) int {
 		deprecatedSlug = record.Descriptor.Slug
 		return saveCatalogRegistry(flags.catalogPath, catalog)
 	}); err != nil {
-		writeCatalogAudit(stderr, audit, "catalog_deprecate", catalogAuditStatusError, map[string]any{"template": reference}, err)
 		_, _ = fmt.Fprintf(stderr, "colony catalog deprecate: %v\n", err)
+		if auditErr := writeCatalogAudit(audit, "catalog_deprecate", catalogAuditStatusError, map[string]any{"template": reference}, err); auditErr != nil {
+			reportCatalogAuditFailure(stderr, "colony catalog deprecate", auditErr)
+		}
 		return 1
 	}
 
-	writeCatalogAudit(stderr, audit, "catalog_deprecate", catalogAuditStatusSuccess, map[string]any{"template": deprecatedSlug, "reason": strings.TrimSpace(*reason), "sunset_at": sunset.Format(time.RFC3339), "metadata": metadataPath}, nil)
+	if err := writeCatalogAudit(audit, "catalog_deprecate", catalogAuditStatusSuccess, map[string]any{"template": deprecatedSlug, "reason": strings.TrimSpace(*reason), "sunset_at": sunset.Format(time.RFC3339), "metadata": metadataPath}, nil); err != nil {
+		reportCatalogAuditFailure(stderr, "colony catalog deprecate", err)
+		return 1
+	}
 	_, _ = fmt.Fprintf(stdout, "deprecated template %s until %s\n", deprecatedSlug, sunset.Format(time.RFC3339))
 	return 0
 }
@@ -367,7 +388,7 @@ func catalogMigrateCLI(args []string, stdout, stderr io.Writer) int {
 
 		metadataPath = strings.TrimSpace(*output)
 		if metadataPath == "" {
-			defaultName := fmt.Sprintf("%s_to_%s.json", slugFilename(oldRecord.Descriptor.Slug), slugFilename(newRecord.Descriptor.Slug))
+			defaultName := fmt.Sprintf("%s_to_%s_%s.json", slugFilename(oldRecord.Descriptor.Slug), slugFilename(newRecord.Descriptor.Slug), randomCatalogID())
 			metadataPath, err = writeCatalogMetadata(flags.metadataDir, catalogMigrationMetadataPrefix, defaultName, plan)
 		} else {
 			err = writeJSONAtomically(metadataPath, plan)
@@ -390,12 +411,17 @@ func catalogMigrateCLI(args []string, stdout, stderr io.Writer) int {
 		newSlug = newRecord.Descriptor.Slug
 		return saveCatalogRegistry(flags.catalogPath, catalog)
 	}); err != nil {
-		writeCatalogAudit(stderr, audit, "catalog_migrate", catalogAuditStatusError, map[string]any{"old": oldRef, "new": newRef}, err)
 		_, _ = fmt.Fprintf(stderr, "colony catalog migrate: %v\n", err)
+		if auditErr := writeCatalogAudit(audit, "catalog_migrate", catalogAuditStatusError, map[string]any{"old": oldRef, "new": newRef}, err); auditErr != nil {
+			reportCatalogAuditFailure(stderr, "colony catalog migrate", auditErr)
+		}
 		return 1
 	}
 
-	writeCatalogAudit(stderr, audit, "catalog_migrate", catalogAuditStatusSuccess, map[string]any{"old": oldSlug, "new": newSlug, "metadata": metadataPath, "breaking": compatibility.Breaking}, nil)
+	if err := writeCatalogAudit(audit, "catalog_migrate", catalogAuditStatusSuccess, map[string]any{"old": oldSlug, "new": newSlug, "metadata": metadataPath, "breaking": compatibility.Breaking}, nil); err != nil {
+		reportCatalogAuditFailure(stderr, "colony catalog migrate", err)
+		return 1
+	}
 	_, _ = fmt.Fprintf(stdout, "generated migration plan %s -> %s (%s)\n", oldSlug, newSlug, metadataPath)
 	return 0
 }
@@ -416,8 +442,10 @@ func catalogValidateCLI(args []string, stdout, stderr io.Writer) int {
 
 	catalog, err := loadCatalogRegistry(flags.catalogPath)
 	if err != nil {
-		writeCatalogAudit(stderr, audit, "catalog_validate", catalogAuditStatusError, nil, err)
 		_, _ = fmt.Fprintf(stderr, "colony catalog validate: %v\n", err)
+		if auditErr := writeCatalogAudit(audit, "catalog_validate", catalogAuditStatusError, nil, err); auditErr != nil {
+			reportCatalogAuditFailure(stderr, "colony catalog validate", auditErr)
+		}
 		return 1
 	}
 
@@ -526,12 +554,18 @@ func catalogValidateCLI(args []string, stdout, stderr io.Writer) int {
 	}
 
 	if failures > 0 {
-		writeCatalogAudit(stderr, audit, "catalog_validate", catalogAuditStatusError, map[string]any{"templates": len(catalog.Templates), "failures": failures}, fmt.Errorf("catalog validation failed with %d issue(s)", failures))
 		_, _ = fmt.Fprintf(stderr, "catalog validation failed: %d issue(s)\n", failures)
+		auditErr := writeCatalogAudit(audit, "catalog_validate", catalogAuditStatusError, map[string]any{"templates": len(catalog.Templates), "failures": failures}, fmt.Errorf("catalog validation failed with %d issue(s)", failures))
+		if auditErr != nil {
+			reportCatalogAuditFailure(stderr, "colony catalog validate", auditErr)
+		}
 		return 1
 	}
 
-	writeCatalogAudit(stderr, audit, "catalog_validate", catalogAuditStatusSuccess, map[string]any{"templates": len(catalog.Templates), "failures": 0}, nil)
+	if err := writeCatalogAudit(audit, "catalog_validate", catalogAuditStatusSuccess, map[string]any{"templates": len(catalog.Templates), "failures": 0}, nil); err != nil {
+		reportCatalogAuditFailure(stderr, "colony catalog validate", err)
+		return 1
+	}
 	_, _ = fmt.Fprintf(stdout, "catalog validation passed: %d template(s)\n", len(catalog.Templates))
 	return 0
 }
@@ -578,6 +612,11 @@ func withPathLock(path string, fn func() error) error {
 	for {
 		lockFile, err := os.OpenFile(lockPath, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o600) // #nosec G304: local operator-configured path
 		if err == nil {
+			if err := writeCatalogLockMetadata(lockFile, catalogNowFunc().UTC()); err != nil {
+				_ = lockFile.Close()
+				_ = os.Remove(lockPath)
+				return err
+			}
 			defer func() {
 				_ = lockFile.Close()
 				_ = os.Remove(lockPath)
@@ -587,6 +626,16 @@ func withPathLock(path string, fn func() error) error {
 		if !errors.Is(err, os.ErrExist) {
 			return fmt.Errorf("acquire lock: %w", err)
 		}
+		stale, staleErr := isCatalogLockStale(lockPath, catalogNowFunc().UTC())
+		if staleErr != nil {
+			return staleErr
+		}
+		if stale {
+			if err := os.Remove(lockPath); err != nil && !errors.Is(err, os.ErrNotExist) {
+				return fmt.Errorf("acquire lock: remove stale lock %s: %w", lockPath, err)
+			}
+			continue
+		}
 		if time.Now().After(deadline) {
 			return fmt.Errorf("acquire lock: timed out for %s", lockPath)
 		}
@@ -594,10 +643,76 @@ func withPathLock(path string, fn func() error) error {
 	}
 }
 
-func writeCatalogAudit(stderr io.Writer, audit catalogAuditLogger, operation string, status catalogAuditStatus, details map[string]any, opErr error) {
-	if err := audit.Record(operation, status, details, opErr); err != nil {
-		_, _ = fmt.Fprintf(stderr, "warning: unable to write catalog audit log: %v\n", err)
+func writeCatalogLockMetadata(lockFile *os.File, now time.Time) error {
+	metadata := catalogLockMetadata{
+		PID:       os.Getpid(),
+		Timestamp: now,
 	}
+	payload, err := json.Marshal(metadata)
+	if err != nil {
+		return fmt.Errorf("acquire lock: encode metadata: %w", err)
+	}
+	if _, err := lockFile.Write(append(payload, '\n')); err != nil {
+		return fmt.Errorf("acquire lock: write metadata: %w", err)
+	}
+	return nil
+}
+
+func isCatalogLockStale(lockPath string, now time.Time) (bool, error) {
+	payload, err := os.ReadFile(lockPath) // #nosec G304: local operator-configured path
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return false, nil
+		}
+		return false, fmt.Errorf("acquire lock: read existing lock: %w", err)
+	}
+
+	var metadata catalogLockMetadata
+	if err := json.Unmarshal(payload, &metadata); err != nil {
+		fileInfo, statErr := os.Stat(lockPath)
+		if statErr != nil {
+			if errors.Is(statErr, os.ErrNotExist) {
+				return false, nil
+			}
+			return false, fmt.Errorf("acquire lock: stat existing lock: %w", statErr)
+		}
+		return now.Sub(fileInfo.ModTime().UTC()) > catalogLockStaleAfter, nil
+	}
+
+	if metadata.Timestamp.IsZero() {
+		fileInfo, statErr := os.Stat(lockPath)
+		if statErr != nil {
+			if errors.Is(statErr, os.ErrNotExist) {
+				return false, nil
+			}
+			return false, fmt.Errorf("acquire lock: stat existing lock: %w", statErr)
+		}
+		metadata.Timestamp = fileInfo.ModTime().UTC()
+	}
+	if now.Sub(metadata.Timestamp.UTC()) > catalogLockStaleAfter {
+		return true, nil
+	}
+	return !catalogProcessIsAlive(metadata.PID), nil
+}
+
+func catalogProcessIsAlive(pid int) bool {
+	if pid <= 0 {
+		return false
+	}
+	if _, err := os.Stat("/proc"); err != nil {
+		return true
+	}
+	procPath := filepath.Join("/proc", strconv.Itoa(pid))
+	_, err := os.Stat(procPath)
+	return err == nil
+}
+
+func writeCatalogAudit(audit catalogAuditLogger, operation string, status catalogAuditStatus, details map[string]any, opErr error) error {
+	return audit.Record(operation, status, details, opErr)
+}
+
+func reportCatalogAuditFailure(stderr io.Writer, command string, err error) {
+	_, _ = fmt.Fprintf(stderr, "%s: unable to write catalog audit log: %v\n", command, err)
 }
 
 func (a catalogAuditLogger) Record(operation string, status catalogAuditStatus, details map[string]any, operationErr error) error {
@@ -721,9 +836,6 @@ func readLastCatalogAuditHash(path string) (string, error) {
 func verifyCatalogAuditLogChain(path string) error {
 	file, err := os.Open(path) // #nosec G304: local operator-configured path
 	if err != nil {
-		if errors.Is(err, os.ErrNotExist) {
-			return nil
-		}
 		return fmt.Errorf("open audit log: %w", err)
 	}
 	defer func() {
@@ -856,11 +968,20 @@ func buildCatalogCompatibility(oldDesc, newDesc datasetapi.TemplateDescriptor) c
 		} else if oldParam.Type != newParam.Type {
 			summary.ChangedParameterTypes = append(summary.ChangedParameterTypes, fmt.Sprintf("%s: %s -> %s", oldParam.Name, oldParam.Type, newParam.Type))
 			summary.Breaking = true
+		} else if !oldParam.Required && newParam.Required {
+			summary.ChangedParameterTypes = append(summary.ChangedParameterTypes, fmt.Sprintf("%s: optional -> required", oldParam.Name))
+			summary.Breaking = true
+		} else if oldParam.Required && !newParam.Required {
+			summary.ChangedParameterTypes = append(summary.ChangedParameterTypes, fmt.Sprintf("%s: required -> optional", oldParam.Name))
 		}
 	}
 	for key, newParam := range newParams {
 		if _, ok := oldParams[key]; !ok {
 			summary.AddedParameters = append(summary.AddedParameters, newParam.Name)
+			if newParam.Required {
+				summary.ChangedParameterTypes = append(summary.ChangedParameterTypes, fmt.Sprintf("%s: new required parameter", newParam.Name))
+				summary.Breaking = true
+			}
 		}
 	}
 
