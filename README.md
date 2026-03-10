@@ -90,6 +90,12 @@ If the environment variable `COLONYCORE_STORAGE_DRIVER` is unset, the code will 
 - Dataset template invariants and lint semantics are specified in
   `docs/annex/0006-dataset-template-validation.md`; validate descriptor fixtures with
   `go run ./cmd/colony lint dataset <path>`.
+- Catalog lifecycle CLI workflows (add/deprecate/migrate/validate + audit trail metadata) are documented in
+  `docs/annex/0007-catalog-lifecycle-management.md`. Typical workflow:
+  - `go run ./cmd/colony catalog add path/to/template.json`
+  - `go run ./cmd/colony catalog deprecate frog/frog_population_snapshot@0.1.0 --reason "superseded by 0.2.0"`
+  - `go run ./cmd/colony catalog migrate frog/frog_population_snapshot@0.1.0 frog/frog_population_snapshot@0.2.0`
+  - `go run ./cmd/colony catalog validate`
 - A background export worker (package `internal/adapters/datasets`) applies RBAC scope filters, emits audit entries,
   stores signed artifacts in the managed object store, and serves export status via `/api/v1/datasets/exports`.
 - Sample analyst clients are provided in `clients/python/dataset_client.py` (requests-based) and

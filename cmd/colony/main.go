@@ -19,6 +19,8 @@ import (
 
 var exitFunc = os.Exit
 
+const commandCatalog = "catalog"
+
 func main() {
 	exitFunc(cli(os.Args[1:], os.Stdout, os.Stderr))
 }
@@ -30,6 +32,8 @@ func cli(args []string, stdout, stderr io.Writer) int {
 	}
 
 	switch args[0] {
+	case commandCatalog:
+		return catalogCLI(args[1:], stdout, stderr)
 	case "lint":
 		return lintCLI(args[1:], stdout, stderr)
 	default:
@@ -199,6 +203,7 @@ func isJSONFile(path string) bool {
 
 func printRootUsage(w io.Writer) {
 	_, _ = fmt.Fprintln(w, "Usage:")
+	_, _ = fmt.Fprintln(w, "  colony catalog <add|deprecate|migrate|validate> [flags]")
 	_, _ = fmt.Fprintln(w, "  colony lint dataset [--file <path>] <path> ...")
 }
 
