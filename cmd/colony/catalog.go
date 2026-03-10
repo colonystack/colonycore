@@ -47,6 +47,8 @@ var (
 	}
 	catalogRandomRead        = rand.Read
 	catalogFilenameSanitizer = regexp.MustCompile(`[^A-Za-z0-9_.-]+`)
+	catalogLockTimeout       = 5 * time.Second
+	catalogLockRetryInterval = 25 * time.Millisecond
 )
 
 type catalogRegistry struct {
@@ -205,29 +207,26 @@ func catalogAddCLI(args []string, stdout, stderr io.Writer) int {
 		return 1
 	}
 
-	catalog, err := loadCatalogRegistry(flags.catalogPath)
-	if err != nil {
-		writeCatalogAudit(stderr, audit, "catalog_add", catalogAuditStatusError, map[string]any{"template": descriptor.Slug}, err)
-		_, _ = fmt.Fprintf(stderr, "colony catalog add: %v\n", err)
-		return 1
-	}
-	if _, idx, err := resolveTemplateByReference(catalog, descriptor.Slug); err == nil {
-		err = fmt.Errorf("template %s already exists in catalog", catalog.Templates[idx].Descriptor.Slug)
-		writeCatalogAudit(stderr, audit, "catalog_add", catalogAuditStatusError, map[string]any{"template": descriptor.Slug}, err)
-		_, _ = fmt.Fprintf(stderr, "colony catalog add: %v\n", err)
-		return 1
-	}
+	if err := withCatalogPathLock(flags.catalogPath, func() error {
+		catalog, err := loadCatalogRegistry(flags.catalogPath)
+		if err != nil {
+			return err
+		}
+		if _, idx, err := resolveTemplateByReference(catalog, descriptor.Slug); err == nil {
+			return fmt.Errorf("template %s already exists in catalog", catalog.Templates[idx].Descriptor.Slug)
+		}
 
-	now := catalogNowFunc()
-	catalog.Templates = append(catalog.Templates, catalogTemplateRecord{
-		Descriptor: descriptor,
-		AddedAt:    now,
-		AddedBy:    strings.TrimSpace(flags.actor),
-	})
-	sortTemplateRecords(catalog.Templates)
-	catalog.Version = catalogSchemaVersion
-	catalog.UpdatedAt = now
-	if err := saveCatalogRegistry(flags.catalogPath, catalog); err != nil {
+		now := catalogNowFunc()
+		catalog.Templates = append(catalog.Templates, catalogTemplateRecord{
+			Descriptor: descriptor,
+			AddedAt:    now,
+			AddedBy:    strings.TrimSpace(flags.actor),
+		})
+		sortTemplateRecords(catalog.Templates)
+		catalog.Version = catalogSchemaVersion
+		catalog.UpdatedAt = now
+		return saveCatalogRegistry(flags.catalogPath, catalog)
+	}); err != nil {
 		writeCatalogAudit(stderr, audit, "catalog_add", catalogAuditStatusError, map[string]any{"template": descriptor.Slug}, err)
 		_, _ = fmt.Fprintf(stderr, "colony catalog add: %v\n", err)
 		return 1
@@ -264,55 +263,55 @@ func catalogDeprecateCLI(args []string, stdout, stderr io.Writer) int {
 	audit := newCatalogAuditLogger(flags)
 	reference := flagSet.Arg(0)
 
-	catalog, err := loadCatalogRegistry(flags.catalogPath)
-	if err != nil {
+	var deprecatedSlug string
+	var sunset time.Time
+	var metadataPath string
+	if err := withCatalogPathLock(flags.catalogPath, func() error {
+		catalog, err := loadCatalogRegistry(flags.catalogPath)
+		if err != nil {
+			return err
+		}
+		record, idx, err := resolveTemplateByReference(catalog, reference)
+		if err != nil {
+			return err
+		}
+
+		now := catalogNowFunc()
+		sunset = now.AddDate(0, 0, *windowDays)
+		metadata := catalogDeprecationMetadata{
+			Kind:            "catalog_deprecation",
+			Version:         catalogSchemaVersion,
+			TemplateSlug:    record.Descriptor.Slug,
+			Plugin:          record.Descriptor.Plugin,
+			Key:             record.Descriptor.Key,
+			TemplateVersion: record.Descriptor.Version,
+			Reason:          strings.TrimSpace(*reason),
+			DeprecatedAt:    now,
+			SunsetAt:        sunset,
+		}
+		metadataPath, err = writeCatalogMetadata(flags.metadataDir, catalogDeprecationMetadataPrefix, record.Descriptor.Slug+".json", metadata)
+		if err != nil {
+			return err
+		}
+
+		record.Deprecated = &catalogDeprecationWindow{
+			Reason:       strings.TrimSpace(*reason),
+			DeprecatedAt: now,
+			SunsetAt:     sunset,
+			MetadataPath: metadataPath,
+		}
+		catalog.Templates[idx] = record
+		catalog.UpdatedAt = now
+		deprecatedSlug = record.Descriptor.Slug
+		return saveCatalogRegistry(flags.catalogPath, catalog)
+	}); err != nil {
 		writeCatalogAudit(stderr, audit, "catalog_deprecate", catalogAuditStatusError, map[string]any{"template": reference}, err)
 		_, _ = fmt.Fprintf(stderr, "colony catalog deprecate: %v\n", err)
 		return 1
 	}
-	record, idx, err := resolveTemplateByReference(catalog, reference)
-	if err != nil {
-		writeCatalogAudit(stderr, audit, "catalog_deprecate", catalogAuditStatusError, map[string]any{"template": reference}, err)
-		_, _ = fmt.Fprintf(stderr, "colony catalog deprecate: %v\n", err)
-		return 1
-	}
 
-	now := catalogNowFunc()
-	sunset := now.AddDate(0, 0, *windowDays)
-	metadata := catalogDeprecationMetadata{
-		Kind:            "catalog_deprecation",
-		Version:         catalogSchemaVersion,
-		TemplateSlug:    record.Descriptor.Slug,
-		Plugin:          record.Descriptor.Plugin,
-		Key:             record.Descriptor.Key,
-		TemplateVersion: record.Descriptor.Version,
-		Reason:          strings.TrimSpace(*reason),
-		DeprecatedAt:    now,
-		SunsetAt:        sunset,
-	}
-	metadataPath, err := writeCatalogMetadata(flags.metadataDir, catalogDeprecationMetadataPrefix, record.Descriptor.Slug+".json", metadata)
-	if err != nil {
-		writeCatalogAudit(stderr, audit, "catalog_deprecate", catalogAuditStatusError, map[string]any{"template": record.Descriptor.Slug}, err)
-		_, _ = fmt.Fprintf(stderr, "colony catalog deprecate: %v\n", err)
-		return 1
-	}
-
-	record.Deprecated = &catalogDeprecationWindow{
-		Reason:       strings.TrimSpace(*reason),
-		DeprecatedAt: now,
-		SunsetAt:     sunset,
-		MetadataPath: metadataPath,
-	}
-	catalog.Templates[idx] = record
-	catalog.UpdatedAt = now
-	if err := saveCatalogRegistry(flags.catalogPath, catalog); err != nil {
-		writeCatalogAudit(stderr, audit, "catalog_deprecate", catalogAuditStatusError, map[string]any{"template": record.Descriptor.Slug}, err)
-		_, _ = fmt.Fprintf(stderr, "colony catalog deprecate: %v\n", err)
-		return 1
-	}
-
-	writeCatalogAudit(stderr, audit, "catalog_deprecate", catalogAuditStatusSuccess, map[string]any{"template": record.Descriptor.Slug, "reason": strings.TrimSpace(*reason), "sunset_at": sunset.Format(time.RFC3339), "metadata": metadataPath}, nil)
-	_, _ = fmt.Fprintf(stdout, "deprecated template %s until %s\n", record.Descriptor.Slug, sunset.Format(time.RFC3339))
+	writeCatalogAudit(stderr, audit, "catalog_deprecate", catalogAuditStatusSuccess, map[string]any{"template": deprecatedSlug, "reason": strings.TrimSpace(*reason), "sunset_at": sunset.Format(time.RFC3339), "metadata": metadataPath}, nil)
+	_, _ = fmt.Fprintf(stdout, "deprecated template %s until %s\n", deprecatedSlug, sunset.Format(time.RFC3339))
 	return 0
 }
 
@@ -333,75 +332,71 @@ func catalogMigrateCLI(args []string, stdout, stderr io.Writer) int {
 	newRef := flagSet.Arg(1)
 	audit := newCatalogAuditLogger(flags)
 
-	catalog, err := loadCatalogRegistry(flags.catalogPath)
-	if err != nil {
+	var oldSlug string
+	var newSlug string
+	var metadataPath string
+	var compatibility catalogCompatibilitySummary
+	if err := withCatalogPathLock(flags.catalogPath, func() error {
+		catalog, err := loadCatalogRegistry(flags.catalogPath)
+		if err != nil {
+			return err
+		}
+		oldRecord, _, oldErr := resolveTemplateByReference(catalog, oldRef)
+		if oldErr != nil {
+			return oldErr
+		}
+		newRecord, _, newErr := resolveTemplateByReference(catalog, newRef)
+		if newErr != nil {
+			return fmt.Errorf("new template: %w", newErr)
+		}
+		if oldRecord.Descriptor.Slug == newRecord.Descriptor.Slug {
+			return errors.New("old and new template identifiers must differ")
+		}
+
+		now := catalogNowFunc()
+		compatibility = buildCatalogCompatibility(oldRecord.Descriptor, newRecord.Descriptor)
+		plan := catalogMigrationPlan{
+			Kind:          "catalog_migration_plan",
+			Version:       catalogSchemaVersion,
+			From:          oldRecord.Descriptor.Slug,
+			To:            newRecord.Descriptor.Slug,
+			GeneratedAt:   now,
+			Compatibility: compatibility,
+			Steps:         buildMigrationPlanSteps(compatibility),
+		}
+
+		metadataPath = strings.TrimSpace(*output)
+		if metadataPath == "" {
+			defaultName := fmt.Sprintf("%s_to_%s.json", slugFilename(oldRecord.Descriptor.Slug), slugFilename(newRecord.Descriptor.Slug))
+			metadataPath, err = writeCatalogMetadata(flags.metadataDir, catalogMigrationMetadataPrefix, defaultName, plan)
+		} else {
+			err = writeJSONAtomically(metadataPath, plan)
+		}
+		if err != nil {
+			return err
+		}
+
+		catalog.Migrations = append(catalog.Migrations, catalogMigrationRecord{
+			ID:            randomCatalogID(),
+			From:          oldRecord.Descriptor.Slug,
+			To:            newRecord.Descriptor.Slug,
+			CreatedAt:     now,
+			MetadataPath:  metadataPath,
+			Compatibility: compatibility,
+		})
+		sortMigrationRecords(catalog.Migrations)
+		catalog.UpdatedAt = now
+		oldSlug = oldRecord.Descriptor.Slug
+		newSlug = newRecord.Descriptor.Slug
+		return saveCatalogRegistry(flags.catalogPath, catalog)
+	}); err != nil {
 		writeCatalogAudit(stderr, audit, "catalog_migrate", catalogAuditStatusError, map[string]any{"old": oldRef, "new": newRef}, err)
 		_, _ = fmt.Fprintf(stderr, "colony catalog migrate: %v\n", err)
 		return 1
 	}
-	oldRecord, _, oldErr := resolveTemplateByReference(catalog, oldRef)
-	if oldErr != nil {
-		writeCatalogAudit(stderr, audit, "catalog_migrate", catalogAuditStatusError, map[string]any{"old": oldRef, "new": newRef}, oldErr)
-		_, _ = fmt.Fprintf(stderr, "colony catalog migrate: %v\n", oldErr)
-		return 1
-	}
-	newRecord, _, newErr := resolveTemplateByReference(catalog, newRef)
-	if newErr != nil {
-		err := fmt.Errorf("new template: %w", newErr)
-		writeCatalogAudit(stderr, audit, "catalog_migrate", catalogAuditStatusError, map[string]any{"old": oldRef, "new": newRef}, err)
-		_, _ = fmt.Fprintf(stderr, "colony catalog migrate: %v\n", err)
-		return 1
-	}
-	if oldRecord.Descriptor.Slug == newRecord.Descriptor.Slug {
-		err := errors.New("old and new template identifiers must differ")
-		writeCatalogAudit(stderr, audit, "catalog_migrate", catalogAuditStatusError, map[string]any{"old": oldRef, "new": newRef}, err)
-		_, _ = fmt.Fprintf(stderr, "colony catalog migrate: %v\n", err)
-		return 1
-	}
 
-	now := catalogNowFunc()
-	compatibility := buildCatalogCompatibility(oldRecord.Descriptor, newRecord.Descriptor)
-	plan := catalogMigrationPlan{
-		Kind:          "catalog_migration_plan",
-		Version:       catalogSchemaVersion,
-		From:          oldRecord.Descriptor.Slug,
-		To:            newRecord.Descriptor.Slug,
-		GeneratedAt:   now,
-		Compatibility: compatibility,
-		Steps:         buildMigrationPlanSteps(compatibility),
-	}
-
-	metadataPath := strings.TrimSpace(*output)
-	if metadataPath == "" {
-		defaultName := fmt.Sprintf("%s_to_%s.json", slugFilename(oldRecord.Descriptor.Slug), slugFilename(newRecord.Descriptor.Slug))
-		metadataPath, err = writeCatalogMetadata(flags.metadataDir, catalogMigrationMetadataPrefix, defaultName, plan)
-	} else {
-		err = writeJSONAtomically(metadataPath, plan)
-	}
-	if err != nil {
-		writeCatalogAudit(stderr, audit, "catalog_migrate", catalogAuditStatusError, map[string]any{"old": oldRecord.Descriptor.Slug, "new": newRecord.Descriptor.Slug}, err)
-		_, _ = fmt.Fprintf(stderr, "colony catalog migrate: %v\n", err)
-		return 1
-	}
-
-	catalog.Migrations = append(catalog.Migrations, catalogMigrationRecord{
-		ID:            randomCatalogID(),
-		From:          oldRecord.Descriptor.Slug,
-		To:            newRecord.Descriptor.Slug,
-		CreatedAt:     now,
-		MetadataPath:  metadataPath,
-		Compatibility: compatibility,
-	})
-	sortMigrationRecords(catalog.Migrations)
-	catalog.UpdatedAt = now
-	if err := saveCatalogRegistry(flags.catalogPath, catalog); err != nil {
-		writeCatalogAudit(stderr, audit, "catalog_migrate", catalogAuditStatusError, map[string]any{"old": oldRecord.Descriptor.Slug, "new": newRecord.Descriptor.Slug}, err)
-		_, _ = fmt.Fprintf(stderr, "colony catalog migrate: %v\n", err)
-		return 1
-	}
-
-	writeCatalogAudit(stderr, audit, "catalog_migrate", catalogAuditStatusSuccess, map[string]any{"old": oldRecord.Descriptor.Slug, "new": newRecord.Descriptor.Slug, "metadata": metadataPath, "breaking": compatibility.Breaking}, nil)
-	_, _ = fmt.Fprintf(stdout, "generated migration plan %s -> %s (%s)\n", oldRecord.Descriptor.Slug, newRecord.Descriptor.Slug, metadataPath)
+	writeCatalogAudit(stderr, audit, "catalog_migrate", catalogAuditStatusSuccess, map[string]any{"old": oldSlug, "new": newSlug, "metadata": metadataPath, "breaking": compatibility.Breaking}, nil)
+	_, _ = fmt.Fprintf(stdout, "generated migration plan %s -> %s (%s)\n", oldSlug, newSlug, metadataPath)
 	return 0
 }
 
@@ -458,8 +453,69 @@ func catalogValidateCLI(args []string, stdout, stderr io.Writer) int {
 				_, _ = fmt.Fprintf(stderr, "%s: FAIL\n  deprecation sunset must be after deprecation timestamp\n", desc.Slug)
 				continue
 			}
+			if strings.TrimSpace(record.Deprecated.MetadataPath) == "" {
+				failures++
+				_, _ = fmt.Fprintf(stderr, "%s: FAIL\n  deprecation metadata_path required\n", desc.Slug)
+				continue
+			}
+
+			var metadata catalogDeprecationMetadata
+			if err := decodeStrictJSONFile(record.Deprecated.MetadataPath, &metadata); err != nil {
+				failures++
+				_, _ = fmt.Fprintf(stderr, "%s: FAIL\n  deprecation metadata: %v\n", desc.Slug, err)
+				continue
+			}
+			if metadata.Kind != "catalog_deprecation" {
+				failures++
+				_, _ = fmt.Fprintf(stderr, "%s: FAIL\n  deprecation metadata kind must equal catalog_deprecation\n", desc.Slug)
+				continue
+			}
+			if metadata.TemplateSlug != desc.Slug {
+				failures++
+				_, _ = fmt.Fprintf(stderr, "%s: FAIL\n  deprecation metadata template slug mismatch\n", desc.Slug)
+				continue
+			}
+			if metadata.DeprecatedAt.IsZero() || metadata.SunsetAt.IsZero() {
+				failures++
+				_, _ = fmt.Fprintf(stderr, "%s: FAIL\n  deprecation metadata timestamps are required\n", desc.Slug)
+				continue
+			}
 		}
 		_, _ = fmt.Fprintf(stdout, "%s: OK\n", desc.Slug)
+	}
+
+	for _, migration := range catalog.Migrations {
+		ref := migration.ID
+		if strings.TrimSpace(ref) == "" {
+			ref = fmt.Sprintf("%s->%s", migration.From, migration.To)
+		}
+		if strings.TrimSpace(migration.MetadataPath) == "" {
+			failures++
+			_, _ = fmt.Fprintf(stderr, "%s: FAIL\n  migration metadata_path required\n", ref)
+			continue
+		}
+
+		var plan catalogMigrationPlan
+		if err := decodeStrictJSONFile(migration.MetadataPath, &plan); err != nil {
+			failures++
+			_, _ = fmt.Fprintf(stderr, "%s: FAIL\n  migration metadata: %v\n", ref, err)
+			continue
+		}
+		if plan.Kind != "catalog_migration_plan" {
+			failures++
+			_, _ = fmt.Fprintf(stderr, "%s: FAIL\n  migration metadata kind must equal catalog_migration_plan\n", ref)
+			continue
+		}
+		if plan.From != migration.From || plan.To != migration.To {
+			failures++
+			_, _ = fmt.Fprintf(stderr, "%s: FAIL\n  migration metadata endpoint mismatch\n", ref)
+			continue
+		}
+		if plan.GeneratedAt.IsZero() {
+			failures++
+			_, _ = fmt.Fprintf(stderr, "%s: FAIL\n  migration metadata generated_at is required\n", ref)
+			continue
+		}
 	}
 
 	if err := verifyCatalogAuditLogChain(flags.auditPath); err != nil {
@@ -505,6 +561,39 @@ func newCatalogAuditLogger(flags catalogFlags) catalogAuditLogger {
 	}
 }
 
+func withCatalogPathLock(path string, fn func() error) error {
+	return withPathLock(path, fn)
+}
+
+func withPathLock(path string, fn func() error) error {
+	path = strings.TrimSpace(path)
+	if path == "" {
+		return errors.New("lock path must not be empty")
+	}
+	lockPath := path + ".lock"
+	if err := os.MkdirAll(filepath.Dir(lockPath), 0o750); err != nil {
+		return fmt.Errorf("create lock directory: %w", err)
+	}
+	deadline := time.Now().Add(catalogLockTimeout)
+	for {
+		lockFile, err := os.OpenFile(lockPath, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o600) // #nosec G304: local operator-configured path
+		if err == nil {
+			defer func() {
+				_ = lockFile.Close()
+				_ = os.Remove(lockPath)
+			}()
+			return fn()
+		}
+		if !errors.Is(err, os.ErrExist) {
+			return fmt.Errorf("acquire lock: %w", err)
+		}
+		if time.Now().After(deadline) {
+			return fmt.Errorf("acquire lock: timed out for %s", lockPath)
+		}
+		time.Sleep(catalogLockRetryInterval)
+	}
+}
+
 func writeCatalogAudit(stderr io.Writer, audit catalogAuditLogger, operation string, status catalogAuditStatus, details map[string]any, opErr error) {
 	if err := audit.Record(operation, status, details, opErr); err != nil {
 		_, _ = fmt.Fprintf(stderr, "warning: unable to write catalog audit log: %v\n", err)
@@ -536,13 +625,15 @@ func (a catalogAuditLogger) Record(operation string, status catalogAuditStatus, 
 	if entry.Actor == "" {
 		entry.Actor = "unknown"
 	}
-	previousHash, err := readLastCatalogAuditHash(a.path)
-	if err != nil {
-		return err
-	}
-	entry.PrevHash = previousHash
-	entry.Hash = catalogAuditHash(entry)
-	return appendCatalogAuditEntry(a.path, entry)
+	return withPathLock(a.path, func() error {
+		previousHash, err := readLastCatalogAuditHash(a.path)
+		if err != nil {
+			return err
+		}
+		entry.PrevHash = previousHash
+		entry.Hash = catalogAuditHash(entry)
+		return appendCatalogAuditEntry(a.path, entry)
+	})
 }
 
 func catalogAuditHash(entry catalogAuditEntry) string {
@@ -913,6 +1004,26 @@ func readTemplateDescriptor(path string) (datasetapi.TemplateDescriptor, error) 
 		return datasetapi.TemplateDescriptor{}, fmt.Errorf("parse template descriptor: unexpected trailing data")
 	}
 	return descriptor, nil
+}
+
+func decodeStrictJSONFile(path string, target any) error {
+	path = strings.TrimSpace(path)
+	if path == "" {
+		return errors.New("path must not be empty")
+	}
+	payload, err := os.ReadFile(path) // #nosec G304: local operator-configured path
+	if err != nil {
+		return fmt.Errorf("read %s: %w", path, err)
+	}
+	decoder := json.NewDecoder(bytes.NewReader(payload))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(target); err != nil {
+		return fmt.Errorf("parse %s: %w", path, err)
+	}
+	if err := decoder.Decode(new(struct{})); err != io.EOF {
+		return fmt.Errorf("parse %s: unexpected trailing data", path)
+	}
+	return nil
 }
 
 func formatSet(formats []datasetapi.Format) map[datasetapi.Format]struct{} {

@@ -23,9 +23,10 @@ All commands live under `colony catalog`.
 go run ./cmd/colony catalog add path/to/template.json
 
 # Deprecate a catalog template with reason + window.
-go run ./cmd/colony catalog deprecate frog/frog_population_snapshot@0.1.0 \
+go run ./cmd/colony catalog deprecate \
   --reason "superseded by 0.2.0" \
-  --window-days 90
+  --window-days 90 \
+  frog/frog_population_snapshot@0.1.0
 
 # Generate a migration plan from old template to new template.
 go run ./cmd/colony catalog migrate \
