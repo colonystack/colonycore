@@ -17,6 +17,7 @@ import (
 	"sync"
 	"time"
 
+	"colonycore/internal/observability"
 	"colonycore/pkg/datasetapi"
 )
 
@@ -118,6 +119,7 @@ type Worker struct {
 	catalog Catalog
 	store   ObjectStore
 	audit   AuditLogger
+	events  observability.Recorder
 
 	queue chan exportTask
 	mu    sync.RWMutex
@@ -145,6 +147,7 @@ func NewWorker(c Catalog, store ObjectStore, audit AuditLogger) *Worker {
 		catalog: c,
 		store:   store,
 		audit:   audit,
+		events:  observability.NoopRecorder{},
 		queue:   make(chan exportTask, 32),
 		jobs:    make(map[string]*ExportRecord),
 		ctx:     ctx,
@@ -191,16 +194,22 @@ func (w *Worker) EnqueueExport(ctx context.Context, input ExportInput) (ExportRe
 	formatProvider := datasetapi.GetFormatProvider()
 
 	if w.catalog == nil {
-		return ExportRecord{}, fmt.Errorf("export catalog not configured")
+		err := fmt.Errorf("export catalog not configured")
+		w.emitExportEvent(ctx, "catalog.export.enqueue", observability.StatusError, "", input.TemplateSlug, err.Error(), 0, nil)
+		return ExportRecord{}, err
 	}
 
 	slug := input.TemplateSlug
 	if strings.TrimSpace(slug) == "" {
-		return ExportRecord{}, fmt.Errorf("template slug required")
+		err := fmt.Errorf("template slug required")
+		w.emitExportEvent(ctx, "catalog.export.enqueue", observability.StatusError, "", slug, err.Error(), 0, nil)
+		return ExportRecord{}, err
 	}
 	template, ok := w.catalog.ResolveDatasetTemplate(slug)
 	if !ok {
-		return ExportRecord{}, fmt.Errorf("dataset template %s not found", slug)
+		err := fmt.Errorf("dataset template %s not found", slug)
+		w.emitExportEvent(ctx, "catalog.export.enqueue", observability.StatusError, "", slug, err.Error(), 0, nil)
+		return ExportRecord{}, err
 	}
 
 	formats := input.Formats
@@ -214,7 +223,9 @@ func (w *Worker) EnqueueExport(ctx context.Context, input ExportInput) (ExportRe
 			continue
 		}
 		if !template.SupportsFormat(format) {
-			return ExportRecord{}, fmt.Errorf("format %s not supported by template", format)
+			err := fmt.Errorf("format %s not supported by template", format)
+			w.emitExportEvent(ctx, "catalog.export.enqueue", observability.StatusError, "", slug, err.Error(), 0, nil)
+			return ExportRecord{}, err
 		}
 		uniqFormats = append(uniqFormats, format)
 		seen[format] = struct{}{}
@@ -258,8 +269,13 @@ func (w *Worker) EnqueueExport(ctx context.Context, input ExportInput) (ExportRe
 	select {
 	case w.queue <- exportTask{id: id, input: input}:
 	default:
-		return ExportRecord{}, fmt.Errorf("export queue full")
+		err := fmt.Errorf("export queue full")
+		w.emitExportEvent(ctx, "catalog.export.enqueue", observability.StatusError, id, slug, err.Error(), 0, nil)
+		return ExportRecord{}, err
 	}
+	w.emitExportEvent(ctx, "catalog.export.enqueue", observability.StatusQueued, id, slug, "", 0, map[string]float64{
+		"formats_total": float64(len(uniqFormats)),
+	})
 
 	return queuedSnapshot, nil
 }
@@ -279,6 +295,7 @@ func (w *Worker) GetExport(id string) (ExportRecord, bool) {
 
 func (w *Worker) process(task exportTask) {
 	formatProvider := datasetapi.GetFormatProvider()
+	started := time.Now()
 
 	record := w.snapshot(task.id)
 	if record == nil {
@@ -287,7 +304,7 @@ func (w *Worker) process(task exportTask) {
 
 	template, ok := w.catalog.ResolveDatasetTemplate(task.input.TemplateSlug)
 	if !ok {
-		w.fail(task.id, fmt.Sprintf("template %s missing", task.input.TemplateSlug))
+		w.fail(task.id, fmt.Sprintf("template %s missing", task.input.TemplateSlug), time.Since(started))
 		return
 	}
 
@@ -295,17 +312,17 @@ func (w *Worker) process(task exportTask) {
 
 	cleaned, errs := template.ValidateParameters(task.input.Parameters)
 	if len(errs) > 0 {
-		w.fail(task.id, fmt.Sprintf("parameter validation failed: %v", errs))
+		w.fail(task.id, fmt.Sprintf("parameter validation failed: %v", errs), time.Since(started))
 		return
 	}
 
 	result, paramErrs, err := template.Run(w.ctx, cleaned, task.input.Scope, formatProvider.JSON())
 	if err != nil {
-		w.fail(task.id, fmt.Sprintf("dataset run failed: %v", err))
+		w.fail(task.id, fmt.Sprintf("dataset run failed: %v", err), time.Since(started))
 		return
 	}
 	if len(paramErrs) > 0 {
-		w.fail(task.id, fmt.Sprintf("parameter validation failed: %v", paramErrs))
+		w.fail(task.id, fmt.Sprintf("parameter validation failed: %v", paramErrs), time.Since(started))
 		return
 	}
 
@@ -313,13 +330,13 @@ func (w *Worker) process(task exportTask) {
 	for _, format := range record.Formats {
 		rendered, err := w.materialize(format, template, result)
 		if err != nil {
-			w.fail(task.id, err.Error())
+			w.fail(task.id, err.Error(), time.Since(started))
 			return
 		}
 		if w.store != nil {
 			stored, err := w.store.Put(w.ctx, rendered.Artifact.ID, rendered.Payload, rendered.Artifact.ContentType, rendered.Artifact.Metadata)
 			if err != nil {
-				w.fail(task.id, fmt.Sprintf("store artifact failed: %v", err))
+				w.fail(task.id, fmt.Sprintf("store artifact failed: %v", err), time.Since(started))
 				return
 			}
 			stored.Format = rendered.Artifact.Format
@@ -339,7 +356,7 @@ func (w *Worker) process(task exportTask) {
 		}
 	}
 
-	w.complete(task.id, exportArtifacts)
+	w.complete(task.id, exportArtifacts, time.Since(started))
 }
 
 func (w *Worker) snapshot(id string) *ExportRecord {
@@ -373,9 +390,10 @@ func (w *Worker) updateStatus(id string, status ExportStatus, message string) {
 			OccurredAt: now,
 		})
 	}
+	w.emitExportEvent(w.ctx, "catalog.export.process", exportStatusToEventStatus(status), id, w.templateFor(id), message, 0, nil)
 }
 
-func (w *Worker) complete(id string, artifacts []ExportArtifact) {
+func (w *Worker) complete(id string, artifacts []ExportArtifact, duration time.Duration) {
 	now := time.Now().UTC()
 	w.mu.Lock()
 	if record, ok := w.jobs[id]; ok {
@@ -397,9 +415,12 @@ func (w *Worker) complete(id string, artifacts []ExportArtifact) {
 			OccurredAt: now,
 		})
 	}
+	w.emitExportEvent(w.ctx, "catalog.export.process", observability.StatusSuccess, id, w.templateFor(id), "", duration, map[string]float64{
+		"artifacts_total": float64(len(artifacts)),
+	})
 }
 
-func (w *Worker) fail(id, reason string) {
+func (w *Worker) fail(id, reason string, duration time.Duration) {
 	now := time.Now().UTC()
 	w.mu.Lock()
 	if record, ok := w.jobs[id]; ok {
@@ -421,6 +442,7 @@ func (w *Worker) fail(id, reason string) {
 			OccurredAt: now,
 		})
 	}
+	w.emitExportEvent(w.ctx, "catalog.export.process", observability.StatusError, id, w.templateFor(id), reason, duration, nil)
 }
 
 func (w *Worker) actorFor(id string) string {
@@ -448,6 +470,43 @@ func (w *Worker) scopeFor(id string) datasetapi.Scope {
 		return record.Scope
 	}
 	return datasetapi.Scope{}
+}
+
+func (w *Worker) emitExportEvent(ctx context.Context, name, status, exportID, templateID, errMessage string, duration time.Duration, measures map[string]float64) {
+	if w == nil || w.events == nil {
+		return
+	}
+	labels := map[string]string{}
+	if exportID != "" {
+		labels["export_id"] = exportID
+	}
+	if templateID != "" {
+		labels["template_id"] = templateID
+	}
+	w.events.Record(ctx, observability.Event{
+		Category:   observability.CategoryCatalogOperation,
+		Name:       name,
+		Status:     status,
+		DurationMS: observability.DurationMS(duration),
+		Error:      errMessage,
+		Labels:     labels,
+		Measures:   measures,
+	})
+}
+
+func exportStatusToEventStatus(status ExportStatus) string {
+	switch status {
+	case ExportStatusQueued:
+		return observability.StatusQueued
+	case ExportStatusRunning:
+		return observability.StatusRunning
+	case ExportStatusSucceeded:
+		return observability.StatusSuccess
+	case ExportStatusFailed:
+		return observability.StatusError
+	default:
+		return observability.StatusError
+	}
 }
 
 func (w *Worker) materialize(format datasetapi.Format, template datasetapi.TemplateRuntime, result datasetapi.RunResult) (renderedArtifact, error) {

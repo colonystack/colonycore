@@ -125,3 +125,64 @@ func (errorRule) Name() string { return "error" }
 func (errorRule) Evaluate(_ context.Context, _ RuleView, _ []Change) (Result, error) {
 	return Result{}, fmt.Errorf("boom")
 }
+
+type captureRuleObserver struct {
+	events []RuleExecutionEvent
+}
+
+func (c *captureRuleObserver) RecordRuleExecution(_ context.Context, event RuleExecutionEvent) {
+	c.events = append(c.events, event)
+}
+
+func TestRulesEngineObserverCapturesSuccessAndError(t *testing.T) {
+	engine := NewRulesEngine()
+	observer := &captureRuleObserver{}
+	engine.SetObserver(observer)
+	engine.Register(staticRule{name: "warn"})
+	engine.Register(errorRule{})
+
+	_, err := engine.Evaluate(context.Background(), emptyView{}, []Change{{}})
+	if err == nil {
+		t.Fatalf("expected evaluation error")
+	}
+	if len(observer.events) != 2 {
+		t.Fatalf("expected 2 observer events, got %d", len(observer.events))
+	}
+	if observer.events[0].Rule != "warn" || observer.events[0].ViolationCount != 1 {
+		t.Fatalf("unexpected first observer event: %+v", observer.events[0])
+	}
+	if observer.events[0].BlockingViolationCount != 0 {
+		t.Fatalf("expected no blocking violations in first event: %+v", observer.events[0])
+	}
+	if observer.events[0].Duration < 0 {
+		t.Fatalf("expected non-negative duration: %v", observer.events[0].Duration)
+	}
+	if observer.events[0].ChangeCount != 1 {
+		t.Fatalf("expected change count 1, got %d", observer.events[0].ChangeCount)
+	}
+	if observer.events[1].Rule != "error" || observer.events[1].Error == nil {
+		t.Fatalf("expected error event for second rule, got %+v", observer.events[1])
+	}
+}
+
+func TestRulesEngineSetObserverNilResetsToNoop(t *testing.T) {
+	engine := NewRulesEngine()
+	engine.SetObserver(nil)
+	engine.Register(staticRule{name: "warn"})
+	if _, err := engine.Evaluate(context.Background(), emptyView{}, nil); err != nil {
+		t.Fatalf("expected evaluate to succeed with noop observer: %v", err)
+	}
+}
+
+func TestCountBlockingViolations(t *testing.T) {
+	result := Result{
+		Violations: []Violation{
+			{Rule: "warn", Severity: SeverityWarn},
+			{Rule: "block-a", Severity: SeverityBlock},
+			{Rule: "block-b", Severity: SeverityBlock},
+		},
+	}
+	if got := countBlockingViolations(result); got != 2 {
+		t.Fatalf("expected 2 blocking violations, got %d", got)
+	}
+}

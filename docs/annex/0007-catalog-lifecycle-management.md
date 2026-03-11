@@ -96,5 +96,5 @@ The hash chain is validated by `colony catalog validate`; mismatches fail valida
 
 ## Notes
 
-- This phase introduces lifecycle controls for dataset catalogs; observability instrumentation is expanded in Phase 5.
+- This annex introduces lifecycle controls for dataset catalogs; observability instrumentation is covered by the observability/tooling scope of issue #27.
 - The command intentionally reuses `pkg/datasetapi` template invariants to keep CLI and runtime behavior aligned.

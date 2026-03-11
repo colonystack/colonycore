@@ -4,6 +4,7 @@ package main
 
 import (
 	"bufio"
+	"context"
 	"encoding/json"
 	"errors"
 	"flag"
@@ -17,6 +18,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"colonycore/internal/observability"
 )
 
 type Document struct {
@@ -79,6 +82,9 @@ var (
 			schemaFormatURI:      true,
 		},
 	}
+	registryEventRecorderFactory = func(writer io.Writer) observability.Recorder {
+		return observability.NewJSONRecorder(writer, "cmd.registry-check")
+	}
 )
 
 type jsonSchema struct {
@@ -123,7 +129,8 @@ func cli(args []string, stdout, stderr io.Writer) int {
 	if err := fs.Parse(args); err != nil {
 		return 2
 	}
-	if err := run(registryPath); err != nil {
+	recorder := registryEventRecorderFactory(stderr)
+	if err := runWithRecorder(context.Background(), registryPath, recorder); err != nil {
 		if _, writeErr := fmt.Fprintf(stderr, "Registry validation failed: %v\n", err); writeErr != nil {
 			return 1
 		}
@@ -161,10 +168,39 @@ func validatePath(p string) (string, error) {
 // It reads and parses the registry, ensures at least one document exists, loads and applies the registry JSON Schema, and validates each document and its status.
 // Returned errors describe the failure; document-specific errors are annotated with the document index (for example, "documents[0]: ...").
 func run(registryPath string) (err error) {
+	return runWithRecorder(context.Background(), registryPath, observability.NoopRecorder{})
+}
+
+func runWithRecorder(ctx context.Context, registryPath string, recorder observability.Recorder) (err error) {
+	if recorder == nil {
+		recorder = observability.NoopRecorder{}
+	}
+	start := time.Now()
+	summaryLabels := map[string]string{
+		"registry_path": strings.TrimSpace(registryPath),
+	}
+	summaryMeasures := map[string]float64{}
+	defer func() {
+		event := observability.Event{
+			Category:   observability.CategoryRegistryValidation,
+			Name:       "registry.validate",
+			Status:     observability.StatusSuccess,
+			DurationMS: observability.DurationMS(time.Since(start)),
+			Labels:     summaryLabels,
+			Measures:   summaryMeasures,
+		}
+		if err != nil {
+			event.Status = observability.StatusError
+			event.Error = err.Error()
+		}
+		recorder.Record(ctx, event)
+	}()
+
 	safePath, vErr := validatePath(registryPath)
 	if vErr != nil {
 		return vErr
 	}
+	summaryLabels["registry_path"] = safePath
 	file, err := os.Open(safePath) // #nosec G304: path validated by validatePath
 	if err != nil {
 		return fmt.Errorf("read registry: %w", err)
@@ -183,6 +219,7 @@ func run(registryPath string) (err error) {
 	if len(registry.Documents) == 0 {
 		return errors.New("documents entry is empty")
 	}
+	summaryMeasures["documents_total"] = float64(len(registry.Documents))
 
 	schema, err := loadJSONSchema(registrySchemaPath)
 	if err != nil {
@@ -194,12 +231,47 @@ func run(registryPath string) (err error) {
 
 	for i, doc := range registry.Documents {
 		if err := validateDocument(doc); err != nil {
+			recorder.Record(ctx, observability.Event{
+				Category: observability.CategoryRegistryValidation,
+				Name:     "registry.document.validate",
+				Status:   observability.StatusError,
+				Error:    err.Error(),
+				Labels: map[string]string{
+					"registry_path":  safePath,
+					"document_index": strconv.Itoa(i),
+					"document_id":    doc.ID,
+				},
+			})
 			return fmt.Errorf("documents[%d]: %w", i, err)
 		}
 		if err := validateDocumentStatus(doc); err != nil {
+			recorder.Record(ctx, observability.Event{
+				Category: observability.CategoryRegistryValidation,
+				Name:     "registry.document.status",
+				Status:   observability.StatusError,
+				Error:    err.Error(),
+				Labels: map[string]string{
+					"registry_path":  safePath,
+					"document_index": strconv.Itoa(i),
+					"document_id":    doc.ID,
+				},
+			})
 			return fmt.Errorf("documents[%d]: %w", i, err)
 		}
 	}
+	documentsValidated := float64(len(registry.Documents))
+	summaryMeasures["documents_validated_total"] = documentsValidated
+	recorder.Record(ctx, observability.Event{
+		Category: observability.CategoryRegistryValidation,
+		Name:     "registry.document.validate",
+		Status:   observability.StatusSuccess,
+		Labels: map[string]string{
+			"registry_path": safePath,
+		},
+		Measures: map[string]float64{
+			"documents_validated_total": documentsValidated,
+		},
+	})
 
 	return nil
 }

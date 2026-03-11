@@ -9,6 +9,7 @@ Rules:
       - "colonycore/internal/infra/persistence"
       - "colonycore/internal/infra/blob"
       - "colonycore/internal/entitymodel"
+      - "colonycore/internal/observability"
 InverseRules:
   - SelectorRegexp: "^colonycore/"
     AllowedPrefixes:

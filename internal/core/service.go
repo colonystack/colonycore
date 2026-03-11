@@ -2,6 +2,7 @@ package core
 
 import (
 	"colonycore/internal/entitymodel"
+	"colonycore/internal/observability"
 	"colonycore/pkg/datasetapi"
 	"colonycore/pkg/domain"
 	"colonycore/pkg/pluginapi"
@@ -84,6 +85,11 @@ type Tracer interface {
 	Start(ctx context.Context, operation string) (context.Context, TraceSpan)
 }
 
+// EventRecorder captures structured observability events.
+type EventRecorder interface {
+	Record(ctx context.Context, event observability.Event)
+}
+
 type noopAuditRecorder struct{}
 
 func (noopAuditRecorder) Record(context.Context, AuditEntry) {}
@@ -102,6 +108,33 @@ type noopSpan struct{}
 
 func (noopSpan) End(error) {}
 
+type noopEventRecorder struct{}
+
+func (noopEventRecorder) Record(context.Context, observability.Event) {}
+
+type loggerEventRecorder struct {
+	logger Logger
+}
+
+func (r loggerEventRecorder) Record(_ context.Context, event observability.Event) {
+	if r.logger == nil {
+		return
+	}
+	r.logger.Info(
+		"observability event",
+		"schema_version", event.SchemaVersion,
+		"timestamp", event.Timestamp,
+		"source", event.Source,
+		"category", event.Category,
+		"name", event.Name,
+		"status", event.Status,
+		"duration_ms", event.DurationMS,
+		"error", event.Error,
+		"labels", event.Labels,
+		"measures", event.Measures,
+	)
+}
+
 // ServiceOption configures optional dependencies for the Service constructor.
 type ServiceOption func(*serviceOptions)
 
@@ -111,6 +144,7 @@ type serviceOptions struct {
 	audit   AuditRecorder
 	metrics MetricsRecorder
 	tracer  Tracer
+	events  EventRecorder
 }
 
 // WithClock overrides the default clock used by the service.
@@ -201,6 +235,15 @@ func WithTracer(tracer Tracer) ServiceOption {
 	}
 }
 
+// WithEventRecorder injects a structured event recorder.
+func WithEventRecorder(recorder EventRecorder) ServiceOption {
+	return func(opts *serviceOptions) {
+		if recorder != nil {
+			opts.events = recorder
+		}
+	}
+}
+
 func defaultServiceOptions() serviceOptions {
 	return serviceOptions{
 		clock:   ClockFunc(func() time.Time { return time.Now().UTC() }),
@@ -208,6 +251,7 @@ func defaultServiceOptions() serviceOptions {
 		audit:   noopAuditRecorder{},
 		metrics: noopMetricsRecorder{},
 		tracer:  noopTracer{},
+		events:  nil,
 	}
 }
 
@@ -221,6 +265,7 @@ type Service struct {
 	audit    AuditRecorder
 	metrics  MetricsRecorder
 	tracer   Tracer
+	events   EventRecorder
 	plugins  map[string]PluginMetadata
 	datasets map[string]DatasetTemplate
 	mu       sync.RWMutex
@@ -237,6 +282,9 @@ func NewService(store domain.PersistentStore, opts ...ServiceOption) *Service {
 			opt(&options)
 		}
 	}
+	if options.events == nil {
+		options.events = loggerEventRecorder{logger: options.logger}
+	}
 	svc := &Service{
 		store:    store,
 		clock:    options.clock,
@@ -244,10 +292,14 @@ func NewService(store domain.PersistentStore, opts ...ServiceOption) *Service {
 		audit:    options.audit,
 		metrics:  options.metrics,
 		tracer:   options.tracer,
+		events:   options.events,
 		plugins:  make(map[string]PluginMetadata),
 		datasets: make(map[string]DatasetTemplate),
 	}
 	svc.engine = extractRulesEngine(store)
+	if svc.engine != nil {
+		svc.engine.SetObserver(serviceRuleObserver{events: svc.events})
+	}
 	svc.now = selectNowFunc(store, svc.clock)
 	return svc
 }
@@ -771,40 +823,106 @@ func (e ErrNotFound) Error() string {
 }
 
 // InstallPlugin registers a plugin, wiring its rules into the active engine.
-func (s *Service) InstallPlugin(plugin pluginapi.Plugin) (PluginMetadata, error) {
+func (s *Service) InstallPlugin(plugin pluginapi.Plugin) (meta PluginMetadata, err error) {
+	ctx := context.Background()
 	if plugin == nil {
-		return PluginMetadata{}, fmt.Errorf("plugin cannot be nil")
+		err = fmt.Errorf("plugin cannot be nil")
+		s.emitEvent(ctx, observability.Event{
+			Category: observability.CategoryPluginLifecycle,
+			Name:     "plugin.load",
+			Status:   observability.StatusError,
+			Error:    err.Error(),
+			Labels: map[string]string{
+				"plugin_name":    "unknown",
+				"plugin_version": "unknown",
+			},
+		})
+		return PluginMetadata{}, err
 	}
+
+	started := time.Now()
+	labels := map[string]string{
+		"plugin_name":    plugin.Name(),
+		"plugin_version": plugin.Version(),
+	}
+	measures := map[string]float64{}
+	s.emitEvent(ctx, observability.Event{
+		Category: observability.CategoryPluginLifecycle,
+		Name:     "plugin.load",
+		Status:   observability.StatusStart,
+		Labels:   labels,
+	})
+	defer func() {
+		event := observability.Event{
+			Category:   observability.CategoryPluginLifecycle,
+			Name:       "plugin.load",
+			Status:     observability.StatusSuccess,
+			DurationMS: observability.DurationMS(time.Since(started)),
+			Labels:     labels,
+			Measures:   measures,
+		}
+		if err != nil {
+			event.Status = observability.StatusError
+			event.Error = err.Error()
+		}
+		s.emitEvent(ctx, event)
+	}()
 
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
 	if _, ok := s.plugins[plugin.Name()]; ok {
-		return PluginMetadata{}, fmt.Errorf("plugin %s already registered", plugin.Name())
+		err = fmt.Errorf("plugin %s already registered", plugin.Name())
+		return PluginMetadata{}, err
 	}
 
 	pluginMajor, pluginDeclared := entityModelMajorFromPlugin(plugin)
 	if pluginDeclared {
-		if err := requireEntityModelCompatibility(pluginMajor, fmt.Sprintf("plugin %s", plugin.Name())); err != nil {
+		if err = requireEntityModelCompatibility(pluginMajor, fmt.Sprintf("plugin %s", plugin.Name())); err != nil {
 			return PluginMetadata{}, err
 		}
 	}
 
+	registrationStarted := time.Now()
 	registry := NewPluginRegistry()
-	if err := plugin.Register(registry); err != nil {
+	if err = plugin.Register(registry); err != nil {
+		s.emitEvent(ctx, observability.Event{
+			Category:   observability.CategoryPluginLifecycle,
+			Name:       "plugin.registration",
+			Status:     observability.StatusError,
+			DurationMS: observability.DurationMS(time.Since(registrationStarted)),
+			Error:      err.Error(),
+			Labels:     labels,
+		})
 		return PluginMetadata{}, err
 	}
 
-	for _, rule := range registry.Rules() {
+	rules := registry.Rules()
+	schemas := registry.Schemas()
+	datasetCount := len(registry.DatasetTemplates())
+	s.emitEvent(ctx, observability.Event{
+		Category:   observability.CategoryPluginLifecycle,
+		Name:       "plugin.registration",
+		Status:     observability.StatusSuccess,
+		DurationMS: observability.DurationMS(time.Since(registrationStarted)),
+		Labels:     labels,
+		Measures: map[string]float64{
+			"rules_total":    float64(len(rules)),
+			"schemas_total":  float64(len(schemas)),
+			"datasets_total": float64(datasetCount),
+		},
+	})
+
+	for _, rule := range rules {
 		if s.engine != nil {
 			s.engine.Register(rule)
 		}
 	}
 
-	meta := PluginMetadata{
+	meta = PluginMetadata{
 		Name:    plugin.Name(),
 		Version: plugin.Version(),
-		Schemas: registry.Schemas(),
+		Schemas: schemas,
 	}
 
 	env := DatasetEnvironment{Store: s.store, Now: s.now}
@@ -812,20 +930,22 @@ func (s *Service) InstallPlugin(plugin pluginapi.Plugin) (PluginMetadata, error)
 	for _, dataset := range registry.DatasetTemplates() {
 		dataset.Plugin = plugin.Name()
 		templateMajor, templateDeclared := entityModelMajorFromTemplate(dataset.Template)
-		if err := ensureTemplateCompatibility(templateMajor, templateDeclared, pluginMajor, pluginDeclared, dataset.slug()); err != nil {
+		if err = ensureTemplateCompatibility(templateMajor, templateDeclared, pluginMajor, pluginDeclared, dataset.slug()); err != nil {
 			return PluginMetadata{}, err
 		}
 		if templateDeclared {
-			if err := requireEntityModelCompatibility(templateMajor, fmt.Sprintf("dataset template %s", dataset.slug())); err != nil {
+			if err = requireEntityModelCompatibility(templateMajor, fmt.Sprintf("dataset template %s", dataset.slug())); err != nil {
 				return PluginMetadata{}, err
 			}
 		}
-		if err := dataset.bind(env); err != nil {
-			return PluginMetadata{}, fmt.Errorf("bind dataset %s: %w", dataset.Key, err)
+		if err = dataset.bind(env); err != nil {
+			err = fmt.Errorf("bind dataset %s: %w", dataset.Key, err)
+			return PluginMetadata{}, err
 		}
 		slug := dataset.slug()
 		if _, exists := s.datasets[slug]; exists {
-			return PluginMetadata{}, fmt.Errorf("dataset template %s already installed", slug)
+			err = fmt.Errorf("dataset template %s already installed", slug)
+			return PluginMetadata{}, err
 		}
 		s.datasets[slug] = dataset
 		meta.Datasets = append(meta.Datasets, dataset.Descriptor())
@@ -836,6 +956,9 @@ func (s *Service) InstallPlugin(plugin pluginapi.Plugin) (PluginMetadata, error)
 	}
 
 	s.plugins[plugin.Name()] = meta
+	measures["rules_total"] = float64(len(rules))
+	measures["schemas_total"] = float64(len(schemas))
+	measures["datasets_total"] = float64(len(meta.Datasets))
 	s.logger.Info("plugin installed", "plugin", plugin.Name(), "version", plugin.Version(), "datasets", len(meta.Datasets))
 	return meta, nil
 }
@@ -887,6 +1010,13 @@ func (s *Service) ResolveDatasetTemplate(slug string) (datasetapi.TemplateRuntim
 		return nil, false
 	}
 	return newDatasetTemplateRuntime(template), true
+}
+
+func (s *Service) emitEvent(ctx context.Context, event observability.Event) {
+	if s.events == nil {
+		return
+	}
+	s.events.Record(ctx, event)
 }
 
 func (s *Service) recordAuditSuccess(ctx context.Context, op, entityID string, duration time.Duration) {
@@ -999,6 +1129,39 @@ func (s *Service) run(ctx context.Context, op string, fn func(domain.Transaction
 	}
 	s.logger.Debug("service operation succeeded", "op", op)
 	return res, duration, nil
+}
+
+type serviceRuleObserver struct {
+	events EventRecorder
+}
+
+func (o serviceRuleObserver) RecordRuleExecution(ctx context.Context, event domain.RuleExecutionEvent) {
+	if o.events == nil {
+		return
+	}
+	status := observability.StatusSuccess
+	payload := observability.Event{
+		Category:   observability.CategoryRuleExecution,
+		Name:       "rule.evaluate",
+		Status:     status,
+		DurationMS: observability.DurationMS(event.Duration),
+		Labels: map[string]string{
+			"rule_id": event.Rule,
+		},
+		Measures: map[string]float64{
+			"changes_total":             float64(event.ChangeCount),
+			"violations_total":          float64(event.ViolationCount),
+			"blocking_violations_total": float64(event.BlockingViolationCount),
+		},
+	}
+	if event.Error != nil {
+		payload.Status = observability.StatusError
+		payload.Error = event.Error.Error()
+	}
+	if payload.Labels["rule_id"] == "" {
+		payload.Labels["rule_id"] = "unknown"
+	}
+	o.events.Record(ctx, payload)
 }
 
 type rulesEngineProvider interface {

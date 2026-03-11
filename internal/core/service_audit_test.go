@@ -7,6 +7,7 @@ import (
 	"time"
 
 	memory "colonycore/internal/infra/persistence/memory"
+	"colonycore/internal/observability"
 	"colonycore/pkg/datasetapi"
 	"colonycore/pkg/domain"
 	"colonycore/pkg/pluginapi"
@@ -110,6 +111,16 @@ func TestNoopImplementations(t *testing.T) {
 		t.Fatalf("expected context from tracer")
 	}
 	span.End(nil)
+
+	var events noopEventRecorder
+	events.Record(context.Background(), observability.Event{Name: "noop"})
+
+	loggerRecorder := loggerEventRecorder{}
+	loggerRecorder.Record(context.Background(), observability.Event{
+		Category: observability.CategoryPluginLifecycle,
+		Name:     "plugin.load",
+		Status:   observability.StatusSuccess,
+	})
 }
 
 type auditRecorderStub struct {

@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
@@ -19,6 +20,7 @@ import (
 	"strings"
 	"time"
 
+	"colonycore/internal/observability"
 	"colonycore/pkg/datasetapi"
 )
 
@@ -46,11 +48,14 @@ var (
 		}
 		return "unknown"
 	}
-	catalogRandomRead        = rand.Read
-	catalogFilenameSanitizer = regexp.MustCompile(`[^A-Za-z0-9_.-]+`)
-	catalogLockTimeout       = 5 * time.Second
-	catalogLockRetryInterval = 25 * time.Millisecond
-	catalogLockStaleAfter    = 30 * time.Minute
+	catalogRandomRead           = rand.Read
+	catalogFilenameSanitizer    = regexp.MustCompile(`[^A-Za-z0-9_.-]+`)
+	catalogLockTimeout          = 5 * time.Second
+	catalogLockRetryInterval    = 25 * time.Millisecond
+	catalogLockStaleAfter       = 30 * time.Minute
+	catalogEventRecorderFactory = func(writer io.Writer) observability.Recorder {
+		return observability.NewJSONRecorder(writer, "cmd.colony.catalog")
+	}
 )
 
 type catalogRegistry struct {
@@ -186,23 +191,40 @@ func catalogCLI(args []string, stdout, stderr io.Writer) int {
 	}
 }
 
-func catalogAddCLI(args []string, stdout, stderr io.Writer) int {
+func catalogAddCLI(args []string, stdout, stderr io.Writer) (exitCode int) {
+	recorder := catalogEventRecorderFactory(stderr)
+	started := time.Now()
+	labels := map[string]string{
+		"operation": "catalog_add",
+	}
+	measures := map[string]float64{}
+	var opErr error
+	defer func() {
+		recordCatalogOperationEvent(recorder, "catalog.add", started, opErr, labels, measures)
+	}()
+
 	flagSet := flag.NewFlagSet("colony catalog add", flag.ContinueOnError)
 	flagSet.SetOutput(stderr)
 	flags := defaultCatalogFlags()
 	registerCatalogFlags(flagSet, &flags)
 	if err := flagSet.Parse(args); err != nil {
+		opErr = err
 		return 2
 	}
+	labels["catalog_path"] = strings.TrimSpace(flags.catalogPath)
+	labels["audit_log_path"] = strings.TrimSpace(flags.auditPath)
 	if flagSet.NArg() != 1 {
+		opErr = errors.New("expected exactly one template descriptor file")
 		_, _ = fmt.Fprintln(stderr, "colony catalog add: expected exactly one template descriptor file")
 		return 2
 	}
 	audit := newCatalogAuditLogger(flags)
 	templatePath := flagSet.Arg(0)
+	labels["template_path"] = templatePath
 
 	descriptor, err := readTemplateDescriptor(templatePath)
 	if err != nil {
+		opErr = err
 		_, _ = fmt.Fprintf(stderr, "colony catalog add: %v\n", err)
 		if auditErr := writeCatalogAudit(audit, "catalog_add", catalogAuditStatusError, map[string]any{"template_path": templatePath}, err); auditErr != nil {
 			reportCatalogAuditFailure(stderr, "colony catalog add", auditErr)
@@ -211,12 +233,14 @@ func catalogAddCLI(args []string, stdout, stderr io.Writer) int {
 	}
 	descriptor, err = normalizeCatalogDescriptor(descriptor)
 	if err != nil {
+		opErr = err
 		_, _ = fmt.Fprintf(stderr, "colony catalog add: %v\n", err)
 		if auditErr := writeCatalogAudit(audit, "catalog_add", catalogAuditStatusError, map[string]any{"template_path": templatePath}, err); auditErr != nil {
 			reportCatalogAuditFailure(stderr, "colony catalog add", auditErr)
 		}
 		return 1
 	}
+	labels["template_id"] = descriptor.Slug
 
 	if err := withCatalogPathLock(flags.catalogPath, func() error {
 		catalog, err := loadCatalogRegistry(flags.catalogPath)
@@ -236,8 +260,10 @@ func catalogAddCLI(args []string, stdout, stderr io.Writer) int {
 		sortTemplateRecords(catalog.Templates)
 		catalog.Version = catalogSchemaVersion
 		catalog.UpdatedAt = now
+		measures["templates_total"] = float64(len(catalog.Templates))
 		return saveCatalogRegistry(flags.catalogPath, catalog)
 	}); err != nil {
+		opErr = err
 		_, _ = fmt.Fprintf(stderr, "colony catalog add: %v\n", err)
 		if auditErr := writeCatalogAudit(audit, "catalog_add", catalogAuditStatusError, map[string]any{"template": descriptor.Slug}, err); auditErr != nil {
 			reportCatalogAuditFailure(stderr, "colony catalog add", auditErr)
@@ -246,6 +272,7 @@ func catalogAddCLI(args []string, stdout, stderr io.Writer) int {
 	}
 
 	if err := writeCatalogAudit(audit, "catalog_add", catalogAuditStatusSuccess, map[string]any{"template": descriptor.Slug, "template_path": templatePath}, nil); err != nil {
+		opErr = err
 		reportCatalogAuditFailure(stderr, "colony catalog add", err)
 		return 1
 	}
@@ -253,7 +280,18 @@ func catalogAddCLI(args []string, stdout, stderr io.Writer) int {
 	return 0
 }
 
-func catalogDeprecateCLI(args []string, stdout, stderr io.Writer) int {
+func catalogDeprecateCLI(args []string, stdout, stderr io.Writer) (exitCode int) {
+	recorder := catalogEventRecorderFactory(stderr)
+	started := time.Now()
+	labels := map[string]string{
+		"operation": "catalog_deprecate",
+	}
+	measures := map[string]float64{}
+	var opErr error
+	defer func() {
+		recordCatalogOperationEvent(recorder, "catalog.deprecate", started, opErr, labels, measures)
+	}()
+
 	flagSet := flag.NewFlagSet("colony catalog deprecate", flag.ContinueOnError)
 	flagSet.SetOutput(stderr)
 	flags := defaultCatalogFlags()
@@ -261,23 +299,31 @@ func catalogDeprecateCLI(args []string, stdout, stderr io.Writer) int {
 	reason := flagSet.String("reason", "", "deprecation reason")
 	windowDays := flagSet.Int("window-days", defaultDeprecationWindowInDays, "deprecation window in days")
 	if err := flagSet.Parse(args); err != nil {
+		opErr = err
 		return 2
 	}
+	labels["catalog_path"] = strings.TrimSpace(flags.catalogPath)
+	labels["audit_log_path"] = strings.TrimSpace(flags.auditPath)
 	if flagSet.NArg() != 1 {
+		opErr = errors.New("expected a template key or slug")
 		_, _ = fmt.Fprintln(stderr, "colony catalog deprecate: expected a template key or slug")
 		return 2
 	}
 	if strings.TrimSpace(*reason) == "" {
+		opErr = errors.New("deprecation reason is required")
 		_, _ = fmt.Fprintln(stderr, "colony catalog deprecate: --reason is required")
 		return 2
 	}
 	if *windowDays <= 0 {
+		opErr = errors.New("deprecation window must be greater than zero")
 		_, _ = fmt.Fprintln(stderr, "colony catalog deprecate: --window-days must be greater than zero")
 		return 2
 	}
+	measures["window_days"] = float64(*windowDays)
 
 	audit := newCatalogAuditLogger(flags)
 	reference := flagSet.Arg(0)
+	labels["template_ref"] = reference
 
 	var deprecatedSlug string
 	var sunset time.Time
@@ -319,16 +365,22 @@ func catalogDeprecateCLI(args []string, stdout, stderr io.Writer) int {
 		catalog.Templates[idx] = record
 		catalog.UpdatedAt = now
 		deprecatedSlug = record.Descriptor.Slug
+		measures["templates_total"] = float64(len(catalog.Templates))
 		return saveCatalogRegistry(flags.catalogPath, catalog)
 	}); err != nil {
+		opErr = err
 		_, _ = fmt.Fprintf(stderr, "colony catalog deprecate: %v\n", err)
 		if auditErr := writeCatalogAudit(audit, "catalog_deprecate", catalogAuditStatusError, map[string]any{"template": reference}, err); auditErr != nil {
 			reportCatalogAuditFailure(stderr, "colony catalog deprecate", auditErr)
 		}
 		return 1
 	}
+	labels["template_id"] = deprecatedSlug
+	labels["metadata_path"] = metadataPath
+	labels["sunset_at"] = sunset.Format(time.RFC3339)
 
 	if err := writeCatalogAudit(audit, "catalog_deprecate", catalogAuditStatusSuccess, map[string]any{"template": deprecatedSlug, "reason": strings.TrimSpace(*reason), "sunset_at": sunset.Format(time.RFC3339), "metadata": metadataPath}, nil); err != nil {
+		opErr = err
 		reportCatalogAuditFailure(stderr, "colony catalog deprecate", err)
 		return 1
 	}
@@ -336,21 +388,38 @@ func catalogDeprecateCLI(args []string, stdout, stderr io.Writer) int {
 	return 0
 }
 
-func catalogMigrateCLI(args []string, stdout, stderr io.Writer) int {
+func catalogMigrateCLI(args []string, stdout, stderr io.Writer) (exitCode int) {
+	recorder := catalogEventRecorderFactory(stderr)
+	started := time.Now()
+	labels := map[string]string{
+		"operation": "catalog_migrate",
+	}
+	measures := map[string]float64{}
+	var opErr error
+	defer func() {
+		recordCatalogOperationEvent(recorder, "catalog.migrate", started, opErr, labels, measures)
+	}()
+
 	flagSet := flag.NewFlagSet("colony catalog migrate", flag.ContinueOnError)
 	flagSet.SetOutput(stderr)
 	flags := defaultCatalogFlags()
 	registerCatalogFlags(flagSet, &flags)
 	output := flagSet.String("output", "", "optional migration plan output path")
 	if err := flagSet.Parse(args); err != nil {
+		opErr = err
 		return 2
 	}
+	labels["catalog_path"] = strings.TrimSpace(flags.catalogPath)
+	labels["audit_log_path"] = strings.TrimSpace(flags.auditPath)
 	if flagSet.NArg() != 2 {
+		opErr = errors.New("expected old and new template identifiers")
 		_, _ = fmt.Fprintln(stderr, "colony catalog migrate: expected old and new template identifiers")
 		return 2
 	}
 	oldRef := flagSet.Arg(0)
 	newRef := flagSet.Arg(1)
+	labels["old_ref"] = oldRef
+	labels["new_ref"] = newRef
 	audit := newCatalogAuditLogger(flags)
 
 	var oldSlug string
@@ -409,16 +478,27 @@ func catalogMigrateCLI(args []string, stdout, stderr io.Writer) int {
 		catalog.UpdatedAt = now
 		oldSlug = oldRecord.Descriptor.Slug
 		newSlug = newRecord.Descriptor.Slug
+		measures["migrations_total"] = float64(len(catalog.Migrations))
 		return saveCatalogRegistry(flags.catalogPath, catalog)
 	}); err != nil {
+		opErr = err
 		_, _ = fmt.Fprintf(stderr, "colony catalog migrate: %v\n", err)
 		if auditErr := writeCatalogAudit(audit, "catalog_migrate", catalogAuditStatusError, map[string]any{"old": oldRef, "new": newRef}, err); auditErr != nil {
 			reportCatalogAuditFailure(stderr, "colony catalog migrate", auditErr)
 		}
 		return 1
 	}
+	labels["old_template_id"] = oldSlug
+	labels["new_template_id"] = newSlug
+	labels["metadata_path"] = metadataPath
+	if compatibility.Breaking {
+		labels["breaking_change"] = "true"
+	} else {
+		labels["breaking_change"] = "false"
+	}
 
 	if err := writeCatalogAudit(audit, "catalog_migrate", catalogAuditStatusSuccess, map[string]any{"old": oldSlug, "new": newSlug, "metadata": metadataPath, "breaking": compatibility.Breaking}, nil); err != nil {
+		opErr = err
 		reportCatalogAuditFailure(stderr, "colony catalog migrate", err)
 		return 1
 	}
@@ -426,15 +506,30 @@ func catalogMigrateCLI(args []string, stdout, stderr io.Writer) int {
 	return 0
 }
 
-func catalogValidateCLI(args []string, stdout, stderr io.Writer) int {
+func catalogValidateCLI(args []string, stdout, stderr io.Writer) (exitCode int) {
+	recorder := catalogEventRecorderFactory(stderr)
+	started := time.Now()
+	labels := map[string]string{
+		"operation": "catalog_validate",
+	}
+	measures := map[string]float64{}
+	var opErr error
+	defer func() {
+		recordCatalogOperationEvent(recorder, "catalog.validate", started, opErr, labels, measures)
+	}()
+
 	flagSet := flag.NewFlagSet("colony catalog validate", flag.ContinueOnError)
 	flagSet.SetOutput(stderr)
 	flags := defaultCatalogFlags()
 	registerCatalogFlags(flagSet, &flags)
 	if err := flagSet.Parse(args); err != nil {
+		opErr = err
 		return 2
 	}
+	labels["catalog_path"] = strings.TrimSpace(flags.catalogPath)
+	labels["audit_log_path"] = strings.TrimSpace(flags.auditPath)
 	if flagSet.NArg() > 0 {
+		opErr = errors.New("unexpected positional arguments")
 		_, _ = fmt.Fprintln(stderr, "colony catalog validate: unexpected positional arguments")
 		return 2
 	}
@@ -442,12 +537,15 @@ func catalogValidateCLI(args []string, stdout, stderr io.Writer) int {
 
 	catalog, err := loadCatalogRegistry(flags.catalogPath)
 	if err != nil {
+		opErr = err
 		_, _ = fmt.Fprintf(stderr, "colony catalog validate: %v\n", err)
 		if auditErr := writeCatalogAudit(audit, "catalog_validate", catalogAuditStatusError, nil, err); auditErr != nil {
 			reportCatalogAuditFailure(stderr, "colony catalog validate", auditErr)
 		}
 		return 1
 	}
+	measures["templates_total"] = float64(len(catalog.Templates))
+	measures["migrations_total"] = float64(len(catalog.Migrations))
 
 	failures := 0
 	seen := make(map[string]struct{}, len(catalog.Templates))
@@ -554,8 +652,10 @@ func catalogValidateCLI(args []string, stdout, stderr io.Writer) int {
 	}
 
 	if failures > 0 {
+		opErr = fmt.Errorf("catalog validation failed with %d issue(s)", failures)
 		_, _ = fmt.Fprintf(stderr, "catalog validation failed: %d issue(s)\n", failures)
-		auditErr := writeCatalogAudit(audit, "catalog_validate", catalogAuditStatusError, map[string]any{"templates": len(catalog.Templates), "failures": failures}, fmt.Errorf("catalog validation failed with %d issue(s)", failures))
+		measures["failures_total"] = float64(failures)
+		auditErr := writeCatalogAudit(audit, "catalog_validate", catalogAuditStatusError, map[string]any{"templates": len(catalog.Templates), "failures": failures}, opErr)
 		if auditErr != nil {
 			reportCatalogAuditFailure(stderr, "colony catalog validate", auditErr)
 		}
@@ -563,9 +663,11 @@ func catalogValidateCLI(args []string, stdout, stderr io.Writer) int {
 	}
 
 	if err := writeCatalogAudit(audit, "catalog_validate", catalogAuditStatusSuccess, map[string]any{"templates": len(catalog.Templates), "failures": 0}, nil); err != nil {
+		opErr = err
 		reportCatalogAuditFailure(stderr, "colony catalog validate", err)
 		return 1
 	}
+	measures["failures_total"] = 0
 	_, _ = fmt.Fprintf(stdout, "catalog validation passed: %d template(s)\n", len(catalog.Templates))
 	return 0
 }
@@ -1190,6 +1292,25 @@ func cloneAnyMap(values map[string]any) map[string]any {
 		cloned[key] = value
 	}
 	return cloned
+}
+
+func recordCatalogOperationEvent(recorder observability.Recorder, name string, started time.Time, opErr error, labels map[string]string, measures map[string]float64) {
+	if recorder == nil {
+		recorder = observability.NoopRecorder{}
+	}
+	event := observability.Event{
+		Category:   observability.CategoryCatalogOperation,
+		Name:       name,
+		Status:     observability.StatusSuccess,
+		DurationMS: observability.DurationMS(time.Since(started)),
+		Labels:     labels,
+		Measures:   measures,
+	}
+	if opErr != nil {
+		event.Status = observability.StatusError
+		event.Error = opErr.Error()
+	}
+	recorder.Record(context.Background(), event)
 }
 
 func slugFilename(value string) string {

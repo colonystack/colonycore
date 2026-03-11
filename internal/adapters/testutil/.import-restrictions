@@ -11,6 +11,7 @@ Rules:
       - "colonycore/pkg/domain"
       - "colonycore/pkg/pluginapi"
       - "colonycore/internal/entitymodel"
+      - "colonycore/internal/observability"
 InverseRules:
   - SelectorRegexp: "^colonycore/"
     AllowedPrefixes:

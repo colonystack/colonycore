@@ -1,0 +1,63 @@
+# These alerts depend on derived Prometheus metrics:
+# - colonycore_event_count_total
+# - colonycore_event_duration_ms_bucket
+# See observability/README.md for metric derivation pipelines (OpenTelemetry
+# Collector, Vector, or Fluent Bit) that transform JSON events into metrics.
+groups:
+  - name: colonycore-observability
+    interval: 30s
+    rules:
+      - alert: ColonyCoreRegistryValidationFailures
+        expr: |
+          increase(colonycore_event_count_total{name="registry.validate",status="error"}[10m]) >= 2
+        for: 2m
+        labels:
+          severity: warning
+          service: colonycore
+        annotations:
+          summary: Registry validation is failing
+          description: Registry validation has emitted two or more error events in the last 10 minutes.
+
+      - alert: ColonyCorePluginLoadFailures
+        expr: |
+          increase(colonycore_event_count_total{name="plugin.load",status="error"}[10m]) > 0
+        for: 1m
+        labels:
+          severity: critical
+          service: colonycore
+        annotations:
+          summary: Plugin load failures detected
+          description: One or more plugin load operations failed in the last 10 minutes.
+
+      - alert: ColonyCoreRuleEvaluationLatencyHigh
+        expr: |
+          histogram_quantile(0.95, sum by (le) (rate(colonycore_event_duration_ms_bucket{name="rule.evaluate"}[10m]))) > 250
+        for: 5m
+        labels:
+          severity: warning
+          service: colonycore
+        annotations:
+          summary: Rule evaluation latency is elevated
+          description: P95 rule evaluation latency exceeded 250ms for 5 minutes.
+
+      - alert: ColonyCoreCatalogExportFailures
+        expr: |
+          increase(colonycore_event_count_total{name="catalog.export.process",status="error"}[10m]) >= 3
+        for: 3m
+        labels:
+          severity: warning
+          service: colonycore
+        annotations:
+          summary: Repeated catalog export failures
+          description: At least 3 export processing failures were observed in the last 10 minutes.
+
+      - alert: ColonyCoreCatalogValidateFailures
+        expr: |
+          increase(colonycore_event_count_total{name="catalog.validate",status="error"}[10m]) > 0
+        for: 2m
+        labels:
+          severity: warning
+          service: colonycore
+        annotations:
+          summary: Catalog validation failed
+          description: The catalog validate command reported an error event.

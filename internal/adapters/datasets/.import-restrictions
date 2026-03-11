@@ -8,6 +8,7 @@ Rules:
       - "colonycore/pkg/domain"
       - "colonycore/internal/core"
       - "colonycore/internal/entitymodel"
+      - "colonycore/internal/observability"
 InverseRules:
   - SelectorRegexp: "^colonycore/"
     AllowedPrefixes:

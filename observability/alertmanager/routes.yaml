@@ -1,0 +1,30 @@
+route:
+  receiver: default
+  group_by:
+    - alertname
+    - service
+    - severity
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 2h
+  routes:
+    - matchers:
+        - service="colonycore"
+        - severity="critical"
+      receiver: colonycore-critical
+      continue: false
+
+    - matchers:
+        - service="colonycore"
+        - severity="warning"
+      receiver: colonycore-warning
+      continue: false
+
+receivers:
+  - name: default
+
+  - name: colonycore-warning
+    # Example only. Replace with your webhook/email/slack integration.
+
+  - name: colonycore-critical
+    # Example only. Replace with pager/webhook integration.
