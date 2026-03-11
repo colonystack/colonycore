@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"colonycore/internal/entitymodel"
+	"colonycore/internal/observability"
 	"colonycore/pkg/datasetapi"
 )
 
@@ -24,6 +25,7 @@ type Handler struct {
 	Catalog     Catalog
 	Exports     ExportScheduler
 	EntityModel http.Handler
+	Events      observability.Recorder
 }
 
 // NewHandler constructs a dataset HTTP handler.
@@ -31,6 +33,7 @@ func NewHandler(c Catalog) *Handler {
 	return &Handler{
 		Catalog:     c,
 		EntityModel: entitymodel.NewOpenAPIHandler(),
+		Events:      observability.NoopRecorder{},
 	}
 }
 
@@ -246,14 +249,34 @@ type exportRequest struct {
 
 func (h *Handler) handleRun(w http.ResponseWriter, r *http.Request, template datasetapi.TemplateRuntime) {
 	formatProvider := datasetapi.GetFormatProvider()
+	descriptor := template.Descriptor()
+
+	started := time.Now()
+	status := observability.StatusSuccess
+	errMessage := ""
+	labels := map[string]string{
+		"template_id": descriptor.Slug,
+	}
+	measures := map[string]float64{}
+	defer func() {
+		h.eventRecorder().Record(r.Context(), observability.Event{
+			Category:   observability.CategoryCatalogOperation,
+			Name:       "catalog.template.run",
+			Status:     status,
+			DurationMS: observability.DurationMS(time.Since(started)),
+			Error:      errMessage,
+			Labels:     labels,
+			Measures:   measures,
+		})
+	}()
 
 	var req runRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil && err.Error() != "EOF" {
+		status = observability.StatusError
+		errMessage = "invalid run request payload"
 		writeError(w, http.StatusBadRequest, "invalid run request payload")
 		return
 	}
-
-	descriptor := template.Descriptor()
 
 	scope := datasetapi.Scope{Requestor: req.Scope.Requestor}
 	if len(req.Scope.Roles) > 0 {
@@ -268,6 +291,9 @@ func (h *Handler) handleRun(w http.ResponseWriter, r *http.Request, template dat
 
 	cleaned, errs := template.ValidateParameters(req.Parameters)
 	if len(errs) > 0 {
+		status = observability.StatusError
+		errMessage = "parameter validation failed"
+		measures["validation_errors_total"] = float64(len(errs))
 		writeJSON(w, http.StatusBadRequest, validationResponse{
 			Template:   descriptor,
 			Valid:      false,
@@ -279,17 +305,25 @@ func (h *Handler) handleRun(w http.ResponseWriter, r *http.Request, template dat
 
 	format := negotiateFormat(r, descriptor.OutputFormats)
 	if format == "" {
+		status = observability.StatusError
+		errMessage = "requested format not supported"
 		writeError(w, http.StatusNotAcceptable, "requested format not supported")
 		return
 	}
 
 	selectedFormat := datasetapi.Format(strings.ToLower(format))
+	labels["format"] = string(selectedFormat)
 	result, paramErrs, err := template.Run(r.Context(), cleaned, scope, selectedFormat)
 	if err != nil {
+		status = observability.StatusError
+		errMessage = err.Error()
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 	if len(paramErrs) > 0 {
+		status = observability.StatusError
+		errMessage = "parameter validation failed"
+		measures["validation_errors_total"] = float64(len(paramErrs))
 		writeJSON(w, http.StatusBadRequest, validationResponse{
 			Template:   descriptor,
 			Valid:      false,
@@ -298,6 +332,7 @@ func (h *Handler) handleRun(w http.ResponseWriter, r *http.Request, template dat
 		})
 		return
 	}
+	measures["rows_total"] = float64(len(result.Rows))
 
 	switch selectedFormat {
 	case formatProvider.CSV():
@@ -314,9 +349,27 @@ func (h *Handler) handleRun(w http.ResponseWriter, r *http.Request, template dat
 
 func (h *Handler) handleExportCreate(w http.ResponseWriter, r *http.Request) {
 	formatProvider := datasetapi.GetFormatProvider()
+	started := time.Now()
+	status := observability.StatusSuccess
+	errMessage := ""
+	labels := map[string]string{}
+	measures := map[string]float64{}
+	defer func() {
+		h.eventRecorder().Record(r.Context(), observability.Event{
+			Category:   observability.CategoryCatalogOperation,
+			Name:       "catalog.export.create",
+			Status:     status,
+			DurationMS: observability.DurationMS(time.Since(started)),
+			Error:      errMessage,
+			Labels:     labels,
+			Measures:   measures,
+		})
+	}()
 
 	var req exportRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil && err.Error() != "EOF" {
+		status = observability.StatusError
+		errMessage = "invalid export request payload"
 		writeError(w, http.StatusBadRequest, "invalid export request payload")
 		return
 	}
@@ -324,11 +377,14 @@ func (h *Handler) handleExportCreate(w http.ResponseWriter, r *http.Request) {
 	slug := strings.TrimSpace(req.Template.Slug)
 	if slug == "" {
 		if req.Template.Plugin == "" || req.Template.Key == "" || req.Template.Version == "" {
+			status = observability.StatusError
+			errMessage = "template slug or plugin/key/version required"
 			writeError(w, http.StatusBadRequest, "template slug or plugin/key/version required")
 			return
 		}
 		slug = fmt.Sprintf("%s/%s@%s", req.Template.Plugin, req.Template.Key, req.Template.Version)
 	}
+	labels["template_id"] = slug
 
 	formats := make([]datasetapi.Format, 0, len(req.Formats))
 	for _, f := range req.Formats {
@@ -344,10 +400,13 @@ func (h *Handler) handleExportCreate(w http.ResponseWriter, r *http.Request) {
 		case "html":
 			formats = append(formats, formatProvider.HTML())
 		default:
+			status = observability.StatusError
+			errMessage = "unsupported export format"
 			writeError(w, http.StatusBadRequest, "unsupported export format")
 			return
 		}
 	}
+	measures["formats_total"] = float64(len(formats))
 
 	scope := datasetapi.Scope{Requestor: req.Scope.Requestor}
 	if len(req.Scope.Roles) > 0 {
@@ -371,11 +430,21 @@ func (h *Handler) handleExportCreate(w http.ResponseWriter, r *http.Request) {
 		ProtocolID:   req.ProtocolID,
 	})
 	if err != nil {
+		status = observability.StatusError
+		errMessage = err.Error()
 		writeError(w, http.StatusBadRequest, err.Error())
 		return
 	}
+	labels["export_id"] = record.ID
 
 	writeJSON(w, http.StatusAccepted, map[string]any{"export": record})
+}
+
+func (h *Handler) eventRecorder() observability.Recorder {
+	if h == nil || h.Events == nil {
+		return observability.NoopRecorder{}
+	}
+	return h.Events
 }
 
 func firstNonEmpty(values ...string) string {

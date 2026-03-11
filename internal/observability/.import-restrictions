@@ -1,0 +1,13 @@
+Rules:
+  - SelectorRegexp: "^colonycore/"
+    AllowedPrefixes:
+      - "colonycore/internal/observability"
+InverseRules:
+  - SelectorRegexp: "^colonycore/"
+    AllowedPrefixes:
+      - "colonycore/internal/observability"
+      - "colonycore/internal/core"
+      - "colonycore/internal/adapters/datasets"
+      - "colonycore/internal/adapters/testutil"
+      - "colonycore/cmd/registry-check"
+      - "colonycore/cmd/colony"

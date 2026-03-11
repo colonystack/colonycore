@@ -8,8 +8,10 @@ import (
 	"testing"
 	"time"
 
+	"colonycore/internal/observability"
 	"colonycore/pkg/domain"
 	entitymodel "colonycore/pkg/domain/entitymodel"
+	"colonycore/pkg/pluginapi"
 )
 
 type captureAuditRecorder struct {
@@ -90,6 +92,102 @@ type captureSpan struct {
 
 func (s *captureSpan) End(err error) {
 	s.tracer.ended = append(s.tracer.ended, spanRecord{op: s.op, err: err})
+}
+
+type captureEventRecorder struct {
+	events chan observability.Event
+	buf    []observability.Event
+}
+
+func newCaptureEventRecorder() *captureEventRecorder {
+	return &captureEventRecorder{
+		events: make(chan observability.Event, 128),
+		buf:    make([]observability.Event, 0, 128),
+	}
+}
+
+func (c *captureEventRecorder) Record(_ context.Context, event observability.Event) {
+	if c == nil || c.events == nil {
+		return
+	}
+	c.events <- event
+}
+
+func (c *captureEventRecorder) drain() {
+	for {
+		select {
+		case event := <-c.events:
+			c.buf = append(c.buf, event)
+		default:
+			return
+		}
+	}
+}
+
+func (c *captureEventRecorder) has(category, name, status string) bool {
+	if c == nil || c.events == nil {
+		return false
+	}
+	c.drain()
+	for _, event := range c.buf {
+		if event.Category == category && event.Name == name && event.Status == status {
+			return true
+		}
+	}
+	return false
+}
+
+func (c *captureEventRecorder) snapshot() []observability.Event {
+	if c == nil || c.events == nil {
+		return nil
+	}
+	c.drain()
+	out := make([]observability.Event, len(c.buf))
+	copy(out, c.buf)
+	return out
+}
+
+func (c *captureEventRecorder) hasEventually(category, name, status string, timeout time.Duration) bool {
+	if c == nil {
+		return false
+	}
+	deadline := time.Now().Add(timeout)
+	for time.Now().Before(deadline) {
+		if c.has(category, name, status) {
+			return true
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	return false
+}
+
+type pluginBlockingRule struct{}
+
+func (pluginBlockingRule) Name() string { return "blocking_rule" }
+
+func (pluginBlockingRule) Evaluate(_ context.Context, _ pluginapi.RuleView, _ []pluginapi.Change) (pluginapi.Result, error) {
+	entities := pluginapi.NewEntityContext()
+	violation, err := pluginapi.NewViolationBuilder().
+		WithRule("blocking_rule").
+		WithMessage("blocked").
+		WithEntity(entities.Facility()).
+		WithEntityID("facility-1").
+		BuildBlocking()
+	if err != nil {
+		return pluginapi.Result{}, err
+	}
+	return pluginapi.NewResultBuilder().
+		AddViolation(violation).
+		Build(), nil
+}
+
+type pluginStubForEvents struct{}
+
+func (pluginStubForEvents) Name() string    { return "obs-plugin" }
+func (pluginStubForEvents) Version() string { return "1.0.0" }
+func (pluginStubForEvents) Register(reg pluginapi.Registry) error {
+	reg.RegisterRule(pluginBlockingRule{})
+	return nil
 }
 
 func TestServiceObservabilityComplianceEntities(t *testing.T) {
@@ -348,5 +446,31 @@ func TestJSONTraceTracerExports(t *testing.T) {
 	}
 	if !strings.Contains(buf.String(), "\"operation\":\"trace_op\"") {
 		t.Fatalf("expected JSON output to contain operation: %q", buf.String())
+	}
+}
+
+func TestServiceEmitsPluginAndRuleEvents(t *testing.T) {
+	ctx := context.Background()
+	events := newCaptureEventRecorder()
+	svc := NewInMemoryService(
+		NewRulesEngine(),
+		WithEventRecorder(events),
+	)
+
+	if _, err := svc.InstallPlugin(pluginStubForEvents{}); err != nil {
+		t.Fatalf("install plugin: %v", err)
+	}
+	if !events.hasEventually(observability.CategoryPluginLifecycle, "plugin.registration", observability.StatusSuccess, time.Second) {
+		t.Fatalf("expected plugin registration success event, got %+v", events.snapshot())
+	}
+	if !events.hasEventually(observability.CategoryPluginLifecycle, "plugin.load", observability.StatusSuccess, time.Second) {
+		t.Fatalf("expected plugin load success event, got %+v", events.snapshot())
+	}
+
+	if _, _, err := svc.CreateFacility(ctx, domain.Facility{Facility: entitymodel.Facility{Name: "Blocked"}}); err == nil {
+		t.Fatalf("expected blocking rule to fail transaction")
+	}
+	if !events.hasEventually(observability.CategoryRuleExecution, "rule.evaluate", observability.StatusSuccess, time.Second) {
+		t.Fatalf("expected rule evaluation success event, got %+v", events.snapshot())
 	}
 }
