@@ -1,6 +1,6 @@
 # ColonyCore Observability
 
-This directory contains the default observability assets for the observability/tooling scope of issue #27:
+This directory contains the default observability assets for the observability/tooling scope of issue #107:
 
 - Structured event schema and event catalog
 - Grafana dashboard defaults

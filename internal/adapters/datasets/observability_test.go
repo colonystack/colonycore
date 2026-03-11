@@ -15,11 +15,13 @@ import (
 
 type captureDatasetEvents struct {
 	events chan observability.Event
+	buf    []observability.Event
 }
 
 func newCaptureDatasetEvents() *captureDatasetEvents {
 	return &captureDatasetEvents{
 		events: make(chan observability.Event, 512),
+		buf:    make([]observability.Event, 0, 512),
 	}
 }
 
@@ -37,6 +39,13 @@ func (c *captureDatasetEvents) await(name, status string, timeout time.Duration)
 	if c == nil {
 		return false
 	}
+	for i, event := range c.buf {
+		if event.Name == name && event.Status == status {
+			c.buf = append(c.buf[:i], c.buf[i+1:]...)
+			return true
+		}
+	}
+
 	deadline := time.Now().Add(timeout)
 	for time.Now().Before(deadline) {
 		select {
@@ -44,6 +53,7 @@ func (c *captureDatasetEvents) await(name, status string, timeout time.Duration)
 			if event.Name == name && event.Status == status {
 				return true
 			}
+			c.buf = append(c.buf, event)
 		default:
 			time.Sleep(10 * time.Millisecond)
 		}

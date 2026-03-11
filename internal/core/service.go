@@ -283,7 +283,7 @@ func NewService(store domain.PersistentStore, opts ...ServiceOption) *Service {
 		}
 	}
 	if options.events == nil {
-		options.events = loggerEventRecorder{logger: options.logger}
+		options.events = noopEventRecorder{}
 	}
 	svc := &Service{
 		store:    store,
@@ -869,7 +869,13 @@ func (s *Service) InstallPlugin(plugin pluginapi.Plugin) (meta PluginMetadata, e
 	}()
 
 	s.mu.Lock()
-	defer s.mu.Unlock()
+	var registrationEvent *observability.Event
+	defer func() {
+		s.mu.Unlock()
+		if registrationEvent != nil {
+			s.emitEvent(ctx, *registrationEvent)
+		}
+	}()
 
 	if _, ok := s.plugins[plugin.Name()]; ok {
 		err = fmt.Errorf("plugin %s already registered", plugin.Name())
@@ -886,21 +892,22 @@ func (s *Service) InstallPlugin(plugin pluginapi.Plugin) (meta PluginMetadata, e
 	registrationStarted := time.Now()
 	registry := NewPluginRegistry()
 	if err = plugin.Register(registry); err != nil {
-		s.emitEvent(ctx, observability.Event{
+		event := observability.Event{
 			Category:   observability.CategoryPluginLifecycle,
 			Name:       "plugin.registration",
 			Status:     observability.StatusError,
 			DurationMS: observability.DurationMS(time.Since(registrationStarted)),
 			Error:      err.Error(),
 			Labels:     labels,
-		})
+		}
+		registrationEvent = &event
 		return PluginMetadata{}, err
 	}
 
 	rules := registry.Rules()
 	schemas := registry.Schemas()
 	datasetCount := len(registry.DatasetTemplates())
-	s.emitEvent(ctx, observability.Event{
+	event := observability.Event{
 		Category:   observability.CategoryPluginLifecycle,
 		Name:       "plugin.registration",
 		Status:     observability.StatusSuccess,
@@ -911,7 +918,8 @@ func (s *Service) InstallPlugin(plugin pluginapi.Plugin) (meta PluginMetadata, e
 			"schemas_total":  float64(len(schemas)),
 			"datasets_total": float64(datasetCount),
 		},
-	})
+	}
+	registrationEvent = &event
 
 	for _, rule := range rules {
 		if s.engine != nil {

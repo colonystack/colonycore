@@ -96,11 +96,13 @@ func (s *captureSpan) End(err error) {
 
 type captureEventRecorder struct {
 	events chan observability.Event
+	buf    []observability.Event
 }
 
 func newCaptureEventRecorder() *captureEventRecorder {
 	return &captureEventRecorder{
 		events: make(chan observability.Event, 128),
+		buf:    make([]observability.Event, 0, 128),
 	}
 }
 
@@ -108,9 +110,17 @@ func (c *captureEventRecorder) Record(_ context.Context, event observability.Eve
 	if c == nil || c.events == nil {
 		return
 	}
-	select {
-	case c.events <- event:
-	default:
+	c.events <- event
+}
+
+func (c *captureEventRecorder) drain() {
+	for {
+		select {
+		case event := <-c.events:
+			c.buf = append(c.buf, event)
+		default:
+			return
+		}
 	}
 }
 
@@ -118,46 +128,23 @@ func (c *captureEventRecorder) has(category, name, status string) bool {
 	if c == nil || c.events == nil {
 		return false
 	}
-	buffered := make([]observability.Event, 0)
-	found := false
-	for {
-		select {
-		case event := <-c.events:
-			if event.Category == category && event.Name == name && event.Status == status {
-				found = true
-			}
-			buffered = append(buffered, event)
-		default:
-			for _, event := range buffered {
-				select {
-				case c.events <- event:
-				default:
-				}
-			}
-			return found
+	c.drain()
+	for _, event := range c.buf {
+		if event.Category == category && event.Name == name && event.Status == status {
+			return true
 		}
 	}
+	return false
 }
 
 func (c *captureEventRecorder) snapshot() []observability.Event {
 	if c == nil || c.events == nil {
 		return nil
 	}
-	out := make([]observability.Event, 0)
-	for {
-		select {
-		case event := <-c.events:
-			out = append(out, event)
-		default:
-			for _, event := range out {
-				select {
-				case c.events <- event:
-				default:
-				}
-			}
-			return out
-		}
-	}
+	c.drain()
+	out := make([]observability.Event, len(c.buf))
+	copy(out, c.buf)
+	return out
 }
 
 func (c *captureEventRecorder) hasEventually(category, name, status string, timeout time.Duration) bool {
