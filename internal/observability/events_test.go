@@ -10,7 +10,8 @@ import (
 	"time"
 )
 
-func TestNoopRecorder(_ *testing.T) {
+func TestNoopRecorder(t *testing.T) {
+	t.Helper()
 	var recorder NoopRecorder
 	recorder.Record(context.Background(), Event{Name: "ignored"})
 }

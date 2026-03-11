@@ -280,7 +280,7 @@
       },
       "targets": [
         {
-          "expr": "sum by (name) (increase(colonycore_event_count_total{category=\"catalog.operation\"}[15m]))",
+          "expr": "sum by (name) (rate(colonycore_event_count_total{category=\"catalog.operation\"}[15m]))",
           "legendFormat": "{{name}}",
           "refId": "A"
         }

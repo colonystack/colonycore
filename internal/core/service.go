@@ -1139,11 +1139,10 @@ func (o serviceRuleObserver) RecordRuleExecution(ctx context.Context, event doma
 	if o.events == nil {
 		return
 	}
-	status := observability.StatusSuccess
 	payload := observability.Event{
 		Category:   observability.CategoryRuleExecution,
 		Name:       "rule.evaluate",
-		Status:     status,
+		Status:     observability.StatusSuccess,
 		DurationMS: observability.DurationMS(event.Duration),
 		Labels: map[string]string{
 			"rule_id": event.Rule,

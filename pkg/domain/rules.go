@@ -110,9 +110,6 @@ func (e *RulesEngine) Evaluate(ctx context.Context, view RuleView, changes []Cha
 func (e *RulesEngine) ruleObserver() RuleObserver {
 	e.observerMu.RLock()
 	defer e.observerMu.RUnlock()
-	if e.observer == nil {
-		return noopRuleObserver{}
-	}
 	return e.observer
 }
 

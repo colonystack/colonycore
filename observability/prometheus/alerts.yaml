@@ -20,7 +20,7 @@ groups:
 
       - alert: ColonyCorePluginLoadFailures
         expr: |
-          increase(colonycore_event_count_total{name="plugin.load",status="error"}[10m]) > 0
+          increase(colonycore_event_count_total{name="plugin.load",status="error"}[10m]) >= 1
         for: 1m
         labels:
           severity: critical
@@ -31,7 +31,7 @@ groups:
 
       - alert: ColonyCoreRuleEvaluationLatencyHigh
         expr: |
-          histogram_quantile(0.95, sum by (le) (rate(colonycore_event_duration_ms_bucket{name="rule.evaluate"}[10m]))) > 250
+          histogram_quantile(0.95, sum by (le, job) (rate(colonycore_event_duration_ms_bucket{name="rule.evaluate"}[10m]))) > 250
         for: 5m
         labels:
           severity: warning
@@ -53,7 +53,7 @@ groups:
 
       - alert: ColonyCoreCatalogValidateFailures
         expr: |
-          increase(colonycore_event_count_total{name="catalog.validate",status="error"}[10m]) > 0
+          increase(colonycore_event_count_total{name="catalog.validate",status="error"}[10m]) >= 1
         for: 2m
         labels:
           severity: warning

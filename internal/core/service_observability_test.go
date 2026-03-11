@@ -95,18 +95,81 @@ func (s *captureSpan) End(err error) {
 }
 
 type captureEventRecorder struct {
-	events []observability.Event
+	events chan observability.Event
+}
+
+func newCaptureEventRecorder() *captureEventRecorder {
+	return &captureEventRecorder{
+		events: make(chan observability.Event, 128),
+	}
 }
 
 func (c *captureEventRecorder) Record(_ context.Context, event observability.Event) {
-	c.events = append(c.events, event)
+	if c == nil || c.events == nil {
+		return
+	}
+	select {
+	case c.events <- event:
+	default:
+	}
 }
 
 func (c *captureEventRecorder) has(category, name, status string) bool {
-	for _, event := range c.events {
-		if event.Category == category && event.Name == name && event.Status == status {
+	if c == nil || c.events == nil {
+		return false
+	}
+	buffered := make([]observability.Event, 0)
+	found := false
+	for {
+		select {
+		case event := <-c.events:
+			if event.Category == category && event.Name == name && event.Status == status {
+				found = true
+			}
+			buffered = append(buffered, event)
+		default:
+			for _, event := range buffered {
+				select {
+				case c.events <- event:
+				default:
+				}
+			}
+			return found
+		}
+	}
+}
+
+func (c *captureEventRecorder) snapshot() []observability.Event {
+	if c == nil || c.events == nil {
+		return nil
+	}
+	out := make([]observability.Event, 0)
+	for {
+		select {
+		case event := <-c.events:
+			out = append(out, event)
+		default:
+			for _, event := range out {
+				select {
+				case c.events <- event:
+				default:
+				}
+			}
+			return out
+		}
+	}
+}
+
+func (c *captureEventRecorder) hasEventually(category, name, status string, timeout time.Duration) bool {
+	if c == nil {
+		return false
+	}
+	deadline := time.Now().Add(timeout)
+	for time.Now().Before(deadline) {
+		if c.has(category, name, status) {
 			return true
 		}
+		time.Sleep(10 * time.Millisecond)
 	}
 	return false
 }
@@ -401,7 +464,7 @@ func TestJSONTraceTracerExports(t *testing.T) {
 
 func TestServiceEmitsPluginAndRuleEvents(t *testing.T) {
 	ctx := context.Background()
-	events := &captureEventRecorder{}
+	events := newCaptureEventRecorder()
 	svc := NewInMemoryService(
 		NewRulesEngine(),
 		WithEventRecorder(events),
@@ -410,17 +473,17 @@ func TestServiceEmitsPluginAndRuleEvents(t *testing.T) {
 	if _, err := svc.InstallPlugin(pluginStubForEvents{}); err != nil {
 		t.Fatalf("install plugin: %v", err)
 	}
-	if !events.has(observability.CategoryPluginLifecycle, "plugin.registration", observability.StatusSuccess) {
-		t.Fatalf("expected plugin registration success event, got %+v", events.events)
+	if !events.hasEventually(observability.CategoryPluginLifecycle, "plugin.registration", observability.StatusSuccess, time.Second) {
+		t.Fatalf("expected plugin registration success event, got %+v", events.snapshot())
 	}
-	if !events.has(observability.CategoryPluginLifecycle, "plugin.load", observability.StatusSuccess) {
-		t.Fatalf("expected plugin load success event, got %+v", events.events)
+	if !events.hasEventually(observability.CategoryPluginLifecycle, "plugin.load", observability.StatusSuccess, time.Second) {
+		t.Fatalf("expected plugin load success event, got %+v", events.snapshot())
 	}
 
 	if _, _, err := svc.CreateFacility(ctx, domain.Facility{Facility: entitymodel.Facility{Name: "Blocked"}}); err == nil {
 		t.Fatalf("expected blocking rule to fail transaction")
 	}
-	if !events.has(observability.CategoryRuleExecution, "rule.evaluate", observability.StatusSuccess) {
-		t.Fatalf("expected rule evaluation success event, got %+v", events.events)
+	if !events.hasEventually(observability.CategoryRuleExecution, "rule.evaluate", observability.StatusSuccess, time.Second) {
+		t.Fatalf("expected rule evaluation success event, got %+v", events.snapshot())
 	}
 }

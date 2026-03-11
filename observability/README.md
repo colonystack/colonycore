@@ -27,7 +27,22 @@ All runtime/CLI events use a single JSON envelope (`schema_version=colonycore.ob
 ### Example
 
 ```json
-{"schema_version":"colonycore.observability.v1","timestamp":"2026-03-11T08:30:01Z","source":"cmd.registry-check","category":"registry.validation","name":"registry.validate","status":"success","duration_ms":11.2,"labels":{"registry_path":"docs/rfc/registry.yaml"},"measures":{"documents_total":12,"documents_validated_total":12}}
+{
+  "schema_version": "colonycore.observability.v1",
+  "timestamp": "2026-03-11T08:30:01Z",
+  "source": "cmd.registry-check",
+  "category": "registry.validation",
+  "name": "registry.validate",
+  "status": "success",
+  "duration_ms": 11.2,
+  "labels": {
+    "registry_path": "docs/rfc/registry.yaml"
+  },
+  "measures": {
+    "documents_total": 12,
+    "documents_validated_total": 12
+  }
+}
 ```
 
 ## Event Catalog

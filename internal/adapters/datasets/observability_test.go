@@ -27,20 +27,16 @@ func (c *captureDatasetEvents) Record(_ context.Context, event observability.Eve
 	if c == nil || c.events == nil {
 		return
 	}
-	c.events <- event
+	select {
+	case c.events <- event:
+	default:
+	}
 }
 
 func (c *captureDatasetEvents) await(name, status string, timeout time.Duration) bool {
 	if c == nil {
 		return false
 	}
-	buffered := make([]observability.Event, 0)
-	defer func() {
-		for _, event := range buffered {
-			c.events <- event
-		}
-	}()
-
 	deadline := time.Now().Add(timeout)
 	for time.Now().Before(deadline) {
 		select {
@@ -48,7 +44,6 @@ func (c *captureDatasetEvents) await(name, status string, timeout time.Duration)
 			if event.Name == name && event.Status == status {
 				return true
 			}
-			buffered = append(buffered, event)
 		default:
 			time.Sleep(10 * time.Millisecond)
 		}
