@@ -70,7 +70,43 @@ func loadRegistryFixtureCases(t *testing.T) []registryFixtureCase {
 
 		count := 0
 		for _, entry := range entries {
-			if entry.IsDir() || filepath.Ext(entry.Name()) != ".yaml" {
+			if entry.IsDir() {
+				continue
+			}
+			if strings.HasSuffix(entry.Name(), fixtureErrorSidecarSuffix) {
+				sidecarAbsPath := filepath.Join(fixturesDir, entry.Name())
+				sidecarPath, err := filepath.Rel(registryRepoRoot, sidecarAbsPath)
+				if err != nil {
+					t.Fatalf("resolve sidecar path relative to repo root for %s fixture %s: %v", category.name, entry.Name(), err)
+				}
+				if strings.Contains(sidecarPath, "..") {
+					t.Fatalf("%s sidecar path escapes repo root: %s", category.name, sidecarAbsPath)
+				}
+				sidecarPath = filepath.ToSlash(filepath.Clean(sidecarPath))
+
+				fixtureName := strings.TrimSuffix(entry.Name(), fixtureErrorSidecarSuffix)
+				fixtureAbsPath := filepath.Join(fixturesDir, fixtureName)
+				fixturePath, err := filepath.Rel(registryRepoRoot, fixtureAbsPath)
+				if err != nil {
+					t.Fatalf("resolve fixture path relative to repo root for sidecar %s: %v", sidecarPath, err)
+				}
+				if strings.Contains(fixturePath, "..") {
+					t.Fatalf("%s sidecar %s points to fixture path outside repo root: %s", category.name, sidecarPath, fixtureAbsPath)
+				}
+
+				info, statErr := os.Stat(fixtureAbsPath)
+				if statErr != nil {
+					if errors.Is(statErr, os.ErrNotExist) {
+						t.Fatalf("%s orphan sidecar %s: missing fixture %s", category.name, sidecarPath, filepath.ToSlash(filepath.Clean(fixturePath)))
+					}
+					t.Fatalf("stat fixture for sidecar %s: %v", sidecarPath, statErr)
+				}
+				if info.IsDir() {
+					t.Fatalf("%s orphan sidecar %s: expected file fixture at %s", category.name, sidecarPath, filepath.ToSlash(filepath.Clean(fixturePath)))
+				}
+				continue
+			}
+			if filepath.Ext(entry.Name()) != ".yaml" {
 				continue
 			}
 			count++
@@ -154,9 +190,10 @@ func validateFixtureErrorSubstring(value string) error {
 }
 
 func mustRegistryFixtureRoot() string {
+	fallback := filepath.Clean(filepath.Join("testutil", "fixtures", "registry"))
 	_, file, _, ok := runtime.Caller(0)
-	if !ok {
-		return filepath.Clean(filepath.Join("testutil", "fixtures", "registry"))
+	if !ok || !filepath.IsAbs(file) {
+		return fallback
 	}
 	return filepath.Clean(filepath.Join(filepath.Dir(file), "..", "..", "testutil", "fixtures", "registry"))
 }
