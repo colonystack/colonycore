@@ -9,7 +9,7 @@ This directory holds machine-readable contracts. `entity-model.json` is the seed
 Fixture workflow:
 
 - `go test ./cmd/registry-check -run TestRegistryFixtures -count=1` auto-discovers `valid/`, `edge/`, and `invalid/` fixture registries.
-- Invalid fixtures must include `<fixture>.yaml.error.txt` sidecars with the expected error substring.
+- Invalid fixtures must include `<fixture>.yaml.error.txt` sidecars with field/value-specific expected error substrings.
 - Fixture authoring conventions are documented in `testutil/fixtures/registry/README.md`.
 
 Conventions:

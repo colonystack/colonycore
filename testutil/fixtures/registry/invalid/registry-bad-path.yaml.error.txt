@@ -1,1 +1,1 @@
-does not match pattern
+$.documents[0].path

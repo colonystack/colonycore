@@ -13,7 +13,8 @@ Tooling:
 
 - `go test ./cmd/registry-check -run TestRegistryFixtures -count=1` auto-discovers all `*.yaml` fixtures in `valid/`, `edge/`, and `invalid/`.
 - Expectations are directory-driven: `valid/` and `edge/` must pass; `invalid/` must fail.
-- Every invalid fixture must include a sidecar file at `<fixture>.yaml.error.txt` containing an error substring asserted by the test.
+- Every invalid fixture must include a sidecar file at `<fixture>.yaml.error.txt` containing a non-empty error substring asserted by the test.
+- Sidecar substrings must be field/value specific (for example `$.documents[0].quorum` or `missing required property "title"`), not generic phrases like `not in enum` or `does not match pattern`.
 - Valid and edge fixtures must not include `.error.txt` sidecars.
 
 Conventions:

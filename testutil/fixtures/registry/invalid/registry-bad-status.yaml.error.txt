@@ -1,1 +1,1 @@
-not in enum
+$.documents[0].status
