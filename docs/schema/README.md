@@ -6,6 +6,12 @@ This directory holds machine-readable contracts. `entity-model.json` is the seed
 
 `docs/schema/registry.schema.json` defines the JSON Schema for `docs/rfc/registry.yaml`. The `cmd/registry-check` CLI loads this schema during `make registry-lint`, and registry fixtures live under `testutil/fixtures/registry`.
 
+Fixture workflow:
+
+- `go test ./cmd/registry-check -run TestRegistryFixtures -count=1` auto-discovers `valid/`, `edge/`, and `invalid/` fixture registries.
+- Invalid fixtures must include `<fixture>.yaml.error.txt` sidecars with field/value-specific expected error substrings.
+- Fixture authoring conventions are documented in `testutil/fixtures/registry/README.md`.
+
 Conventions:
 
 - IDs are opaque UUIDv7 strings for all entities.

@@ -1,27 +1,32 @@
 package main
 
 import (
+	"errors"
+	"fmt"
+	"os"
+	"path/filepath"
+	"runtime"
+	"sort"
 	"strings"
 	"testing"
 )
 
+const fixtureErrorSidecarSuffix = ".error.txt"
+
+var (
+	registryFixtureRoot = mustRegistryFixtureRoot()
+	registryRepoRoot    = filepath.Clean(filepath.Join(registryFixtureRoot, "..", "..", ".."))
+)
+
+type registryFixtureCase struct {
+	name       string
+	path       string
+	wantErr    bool
+	wantSubstr string
+}
+
 func TestRegistryFixtures(t *testing.T) {
-	cases := []struct {
-		name       string
-		path       string
-		wantErr    bool
-		wantSubstr string
-	}{
-		{"valid-minimal", "testutil/fixtures/registry/valid/registry-minimal.yaml", false, ""},
-		{"valid-full", "testutil/fixtures/registry/valid/registry-full.yaml", false, ""},
-		{"valid-multi", "testutil/fixtures/registry/valid/registry-multi.yaml", false, ""},
-		{"edge-empty-lists", "testutil/fixtures/registry/edge/registry-empty-lists.yaml", false, ""},
-		{"edge-status-header", "testutil/fixtures/registry/edge/registry-status-header.yaml", false, ""},
-		{"invalid-type", "testutil/fixtures/registry/invalid/registry-bad-type.yaml", true, "schema validation"},
-		{"invalid-status", "testutil/fixtures/registry/invalid/registry-bad-status.yaml", true, "schema validation"},
-		{"invalid-missing-title", "testutil/fixtures/registry/invalid/registry-missing-title.yaml", true, "schema validation"},
-		{"invalid-path", "testutil/fixtures/registry/invalid/registry-bad-path.yaml", true, "schema validation"},
-	}
+	cases := loadRegistryFixtureCases(t)
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -40,6 +45,157 @@ func TestRegistryFixtures(t *testing.T) {
 			}
 		})
 	}
+}
+
+func loadRegistryFixtureCases(t *testing.T) []registryFixtureCase {
+	t.Helper()
+
+	categories := []struct {
+		name    string
+		wantErr bool
+	}{
+		{name: "valid", wantErr: false},
+		{name: "edge", wantErr: false},
+		{name: "invalid", wantErr: true},
+	}
+
+	var cases []registryFixtureCase
+
+	for _, category := range categories {
+		fixturesDir := filepath.Join(registryFixtureRoot, category.name)
+		entries, err := os.ReadDir(fixturesDir)
+		if err != nil {
+			t.Fatalf("read fixture directory %s: %v", fixturesDir, err)
+		}
+
+		count := 0
+		for _, entry := range entries {
+			if entry.IsDir() {
+				continue
+			}
+			if strings.HasSuffix(entry.Name(), fixtureErrorSidecarSuffix) {
+				sidecarAbsPath := filepath.Join(fixturesDir, entry.Name())
+				sidecarPath, err := filepath.Rel(registryRepoRoot, sidecarAbsPath)
+				if err != nil {
+					t.Fatalf("resolve sidecar path relative to repo root for %s fixture %s: %v", category.name, entry.Name(), err)
+				}
+				if strings.Contains(sidecarPath, "..") {
+					t.Fatalf("%s sidecar path escapes repo root: %s", category.name, sidecarAbsPath)
+				}
+				sidecarPath = filepath.ToSlash(filepath.Clean(sidecarPath))
+
+				fixtureName := strings.TrimSuffix(entry.Name(), fixtureErrorSidecarSuffix)
+				fixtureAbsPath := filepath.Join(fixturesDir, fixtureName)
+				fixturePath, err := filepath.Rel(registryRepoRoot, fixtureAbsPath)
+				if err != nil {
+					t.Fatalf("resolve fixture path relative to repo root for sidecar %s: %v", sidecarPath, err)
+				}
+				if strings.Contains(fixturePath, "..") {
+					t.Fatalf("%s sidecar %s points to fixture path outside repo root: %s", category.name, sidecarPath, fixtureAbsPath)
+				}
+
+				info, statErr := os.Stat(fixtureAbsPath)
+				if statErr != nil {
+					if errors.Is(statErr, os.ErrNotExist) {
+						t.Fatalf("%s orphan sidecar %s: missing fixture %s", category.name, sidecarPath, filepath.ToSlash(filepath.Clean(fixturePath)))
+					}
+					t.Fatalf("stat fixture for sidecar %s: %v", sidecarPath, statErr)
+				}
+				if info.IsDir() {
+					t.Fatalf("%s orphan sidecar %s: expected file fixture at %s", category.name, sidecarPath, filepath.ToSlash(filepath.Clean(fixturePath)))
+				}
+				continue
+			}
+			if filepath.Ext(entry.Name()) != ".yaml" {
+				continue
+			}
+			count++
+
+			fixtureAbsPath := filepath.Join(fixturesDir, entry.Name())
+			fixturePath, err := filepath.Rel(registryRepoRoot, fixtureAbsPath)
+			if err != nil {
+				t.Fatalf("resolve fixture path relative to repo root for %s: %v", fixtureAbsPath, err)
+			}
+			if strings.Contains(fixturePath, "..") {
+				t.Fatalf("fixture path escapes repo root: %s", fixtureAbsPath)
+			}
+			fixturePath = filepath.ToSlash(filepath.Clean(fixturePath))
+
+			wantSubstr, sidecarExists, err := loadFixtureErrorExpectation(fixtureAbsPath)
+			if err != nil {
+				t.Fatalf("load fixture sidecar for %s: %v", fixturePath, err)
+			}
+
+			sidecarPath := fixturePath + fixtureErrorSidecarSuffix
+
+			if category.wantErr && !sidecarExists {
+				t.Fatalf("invalid fixture %s must include %s", fixturePath, sidecarPath)
+			}
+			if category.wantErr {
+				if err := validateFixtureErrorSubstring(wantSubstr); err != nil {
+					t.Fatalf("invalid sidecar %s: %v", sidecarPath, err)
+				}
+			}
+			if !category.wantErr && sidecarExists {
+				t.Fatalf("%s fixture %s must not include %s", category.name, fixturePath, sidecarPath)
+			}
+
+			cases = append(cases, registryFixtureCase{
+				name:       category.name + "-" + strings.TrimSuffix(entry.Name(), ".yaml"),
+				path:       fixturePath,
+				wantErr:    category.wantErr,
+				wantSubstr: wantSubstr,
+			})
+		}
+
+		if count == 0 {
+			t.Fatalf("fixture category %q is empty at %s", category.name, fixturesDir)
+		}
+	}
+
+	sort.Slice(cases, func(i, j int) bool {
+		return cases[i].path < cases[j].path
+	})
+
+	return cases
+}
+
+func loadFixtureErrorExpectation(fixturePath string) (string, bool, error) {
+	sidecarPath := fixturePath + fixtureErrorSidecarSuffix
+	data, err := os.ReadFile(sidecarPath) // #nosec G304 -- sidecar path is derived from curated repository fixture paths
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return "", false, nil
+		}
+		return "", false, err
+	}
+
+	return strings.TrimSpace(string(data)), true, nil
+}
+
+func validateFixtureErrorSubstring(value string) error {
+	trimmed := strings.TrimSpace(value)
+	if trimmed == "" {
+		return errors.New("sidecar error substring must not be empty")
+	}
+	lower := strings.ToLower(trimmed)
+	switch lower {
+	case "schema validation", "not in enum", "does not match pattern", "missing required property":
+		return fmt.Errorf("sidecar substring %q is too generic", trimmed)
+	}
+	if !strings.Contains(trimmed, "$.") && !strings.Contains(trimmed, "\"") {
+		return fmt.Errorf("sidecar substring %q must include a schema path ($...) or quoted field/value", trimmed)
+	}
+	return nil
+}
+
+func mustRegistryFixtureRoot() string {
+	fallback := filepath.Clean(filepath.Join("testutil", "fixtures", "registry"))
+	_, file, _, ok := runtime.Caller(0)
+	if !ok || !filepath.IsAbs(file) {
+		return fallback
+	}
+	return filepath.Clean(filepath.Join(filepath.Dir(file), "..", "..", "testutil", "fixtures", "registry"))
 }
 
 func TestLoadJSONSchemaSuccess(t *testing.T) {

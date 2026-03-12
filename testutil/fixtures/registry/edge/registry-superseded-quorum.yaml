@@ -1,0 +1,8 @@
+documents:
+  - id: RFC-EDGE-0002
+    type: RFC
+    title: Edge Superseded Quorum
+    status: Superseded
+    quorum: 2/3
+    target_release: v0.9.0
+    path: testutil/fixtures/registry/docs/rfc-superseded.md
