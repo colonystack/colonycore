@@ -1,0 +1,7 @@
+documents:
+  - id: ADR-INVALID-0005
+    type: ADR
+    title: Invalid Quorum Fixture
+    status: Draft
+    quorum: 0
+    path: testutil/fixtures/registry/docs/invalid-quorum.md

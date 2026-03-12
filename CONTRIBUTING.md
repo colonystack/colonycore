@@ -51,6 +51,7 @@ Use the issue forms:
 - Shared guard helpers that multiple packages use live in `colonycore/testutil`; keep that package free of plugin or adapter imports so existing import rules stay valid.
 - When you need fixtures that reach across architectural boundaries (for example, adapter tests installing reference plugins), create a package-scoped `testutil` directory next to the code under test, document the dependency in `.import-restrictions`, and gate it from production code via guard tests.
 - Dataset adapter tests reuse `internal/adapters/testutil` to install the reference frog plugin via `core.Service`; that helper is allowed to touch the persistence memory/sqlite stores and the public dataset/plugin/domain APIs. Keep any new dependencies scoped to those surfaces and extend the `.import-restrictions` file before relying on them.
+- Registry schema scenarios are fixture-driven under `testutil/fixtures/registry/{valid,edge,invalid}` and exercised by `go test ./cmd/registry-check -run TestRegistryFixtures -count=1`; invalid fixtures must ship `<fixture>.yaml.error.txt` sidecars with expected error substrings.
 - Prefer reusing existing helpers before adding new ones, and explain any new cross-package utilities in the PR description so reviewers can confirm boundary expectations.
 
 ## RFCs / ADRs
