@@ -6,6 +6,7 @@ This document summarizes the enforced architectural boundaries of the repository
 
 - RFC-0001 “ColonyCore Base Module” (`docs/rfc/0001-colonycore-base-module.md`) — system capabilities and lifecycle.
 - ADR-0003 “Core Domain Schema” (`docs/adr/0003-core-domain-schema.md`) — authoritative domain entity definitions.
+- ADR-0006 “Observability Stack Architecture” (`docs/adr/0006-observability-architecture.md`) — accepted structured event model, schema governance, and operator asset baseline.
 - ADR-0009 “Plugin Interface Stability & Semantic Versioning Policy” (`docs/adr/0009-plugin-interface-stability-and-versioning.md`) — public extension surface and compatibility guarantees.
 - ADR-0010 “Contextual Accessor Pattern Implementation” (`docs/adr/0010-contextual-accessor-pattern.md`) — contextual interfaces that decouple plugins from internal constants.
 - ADR-0008 “Object Storage Contract” (`docs/adr/0008-object-storage-contract.md`) — blob subsystem expectations referenced by the dataset adapters.
@@ -36,6 +37,7 @@ Whenever you introduce a new package, add a `.import-restrictions` file and—if
 - If the change involves entity-model inputs or outputs, account for generated SQL/OpenAPI/ERD artifacts and the `make entity-model-verify` target.
 - Keep API stability and contextual accessor guards in view: updates to `pkg/pluginapi` or `pkg/datasetapi` often require snapshot refresh and enforcement test adjustments.
 - Persistence work rarely lives in isolation; parity across memory/sqlite/postgres drivers and `internal/core` adapters is expected per ADR-0007.
+- Observability changes should stay aligned with ADR-0006, `internal/observability`, and the operator assets under `observability/`; category or schema changes require coordinated doc and test updates.
 - Plan to run `make lint` and `make test` at minimum; add targeted suites (dataset adapters, plugin API guards) when you touch their layers.
 
 ## Extension Points

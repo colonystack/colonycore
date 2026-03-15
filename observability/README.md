@@ -1,15 +1,24 @@
 # ColonyCore Observability
 
-This directory contains the default observability assets for the observability/tooling scope of issue #107:
+This directory contains the canonical observability assets accepted by ADR-0006
+and implemented in PR #137 for the observability/tooling phase tracked under
+issue #27.
 
 - Structured event schema and event catalog
 - Grafana dashboard defaults
 - Prometheus and Alertmanager alert defaults
 - Integration patterns for Prometheus, Grafana, Loki, Elasticsearch, Fluent Bit, and Vector
+- The matching recorder primitives and event constants live in `internal/observability`
+
+Structured event emission is opt-in:
+
+- `NoopRecorder` is the default for runtime services and adapters unless a recorder is injected
+- `JSONRecorder` produces one JSON event per line when explicitly wired
+- `cmd/registry-check` and `cmd/colony catalog` emit JSON lines only when `--observability-json` is provided
 
 ## Structured Event Schema (v1)
 
-All runtime/CLI events use a single JSON envelope (`schema_version=colonycore.observability.v1`).
+When enabled, runtime/CLI events use a single JSON envelope (`schema_version=colonycore.observability.v1`).
 
 | Field | Type | Required | Semantics |
 | --- | --- | --- | --- |

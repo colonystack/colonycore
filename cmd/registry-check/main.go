@@ -13,6 +13,7 @@ import (
 	"net/mail"
 	"net/url"
 	"os"
+	pathpkg "path"
 	"path/filepath"
 	"regexp"
 	"strconv"
@@ -82,6 +83,13 @@ var (
 			schemaFormatURI:      true,
 		},
 	}
+	canonicalTypeMap = map[string]string{
+		"rfc":   "RFC",
+		"adr":   "ADR",
+		"annex": "Annex",
+	}
+	referenceIDPattern           = regexp.MustCompile(`(?i)^(rfc|adr|annex)-(.*)$`)
+	quorumFractionPattern        = regexp.MustCompile(`^[1-9][0-9]*/[1-9][0-9]*$`)
 	registryEventRecorderFactory = func(writer io.Writer) observability.Recorder {
 		return observability.NewJSONRecorder(writer, "cmd.registry-check")
 	}
@@ -125,11 +133,32 @@ func cli(args []string, stdout, stderr io.Writer) int {
 	fs := flag.NewFlagSet("registry-check", flag.ContinueOnError)
 	fs.SetOutput(stderr)
 	var registryPath string
+	var observabilityJSON bool
+	var fix bool
 	fs.StringVar(&registryPath, "registry", "docs/rfc/registry.yaml", "path to registry yaml")
+	fs.BoolVar(&observabilityJSON, "observability-json", false, "emit structured observability events as JSON lines to stderr")
+	fs.BoolVar(&fix, "fix", false, "rewrite canonicalizable registry issues in place before validation")
 	if err := fs.Parse(args); err != nil {
 		return 2
 	}
-	recorder := registryEventRecorderFactory(stderr)
+	var recorder observability.Recorder = observability.NoopRecorder{}
+	if observabilityJSON {
+		recorder = registryEventRecorderFactory(stderr)
+	}
+	if fix {
+		fixesApplied, err := fixRegistryFile(registryPath)
+		if err != nil {
+			if _, writeErr := fmt.Fprintf(stderr, "Registry fix failed: %v\n", err); writeErr != nil {
+				return 1
+			}
+			return 1
+		}
+		if fixesApplied > 0 {
+			if _, writeErr := fmt.Fprintf(stdout, "Applied %d registry fix(es).\n", fixesApplied); writeErr != nil {
+				return 1
+			}
+		}
+	}
 	if err := runWithRecorder(context.Background(), registryPath, recorder); err != nil {
 		if _, writeErr := fmt.Fprintf(stderr, "Registry validation failed: %v\n", err); writeErr != nil {
 			return 1
@@ -592,10 +621,14 @@ func parseRegistry(file *os.File) (*Registry, error) {
 			}
 			if strings.TrimSpace(value) == "[]" {
 				listField = ""
-				resetList(currentDoc, key)
+				if err := resetList(currentDoc, key); err != nil {
+					return nil, fmt.Errorf("line %d: %w", lineNum, err)
+				}
 			} else if value == "" {
+				if err := resetList(currentDoc, key); err != nil {
+					return nil, fmt.Errorf("line %d: %w", lineNum, err)
+				}
 				listField = key
-				resetList(currentDoc, key)
 			} else {
 				listField = ""
 				if err := assignScalar(currentDoc, key, value); err != nil {
@@ -712,8 +745,8 @@ func normalizeScalar(value string) string {
 
 // resetList resets the named list field on doc to nil.
 // Supported keys are "authors", "stakeholders", "reviewers", "owners", "deciders",
-// "linked_annexes", "linked_adrs", and "linked_rfcs". Unknown keys are ignored.
-func resetList(doc *Document, key string) {
+// "linked_annexes", "linked_adrs", and "linked_rfcs". Unknown keys return an error.
+func resetList(doc *Document, key string) error {
 	switch key {
 	case "authors":
 		doc.Authors = nil
@@ -732,8 +765,9 @@ func resetList(doc *Document, key string) {
 	case "linked_rfcs":
 		doc.LinkedRFCs = nil
 	default:
-		// ignore unknown list keys until we encounter items where we can error
+		return fmt.Errorf("unsupported list field %q", key)
 	}
+	return nil
 }
 
 func appendList(doc *Document, key, value string) error {
@@ -819,6 +853,293 @@ func validateDocumentStatus(doc Document) error {
 		return fmt.Errorf("status mismatch for %s (%s): registry %q, doc %q", doc.ID, doc.Path, doc.Status, status)
 	}
 	return nil
+}
+
+func fixRegistryFile(path string) (int, error) {
+	safePath, err := validatePath(path)
+	if err != nil {
+		return 0, err
+	}
+
+	file, err := os.Open(safePath) // #nosec G304: path validated by validatePath
+	if err != nil {
+		return 0, fmt.Errorf("read registry: %w", err)
+	}
+	registry, parseErr := parseRegistry(file)
+	closeErr := file.Close()
+	if parseErr != nil {
+		return 0, fmt.Errorf("parse registry: %w", parseErr)
+	}
+	if closeErr != nil {
+		return 0, fmt.Errorf("close registry: %w", closeErr)
+	}
+
+	fixed, fixesApplied := normalizeRegistryForFix(*registry)
+	if fixesApplied == 0 {
+		return 0, nil
+	}
+
+	if err := writeRegistryFile(safePath, fixed); err != nil {
+		return 0, err
+	}
+	return fixesApplied, nil
+}
+
+func normalizeRegistryForFix(registry Registry) (Registry, int) {
+	fixed := registry
+	fixed.Documents = append([]Document(nil), registry.Documents...)
+	total := 0
+	for i, doc := range fixed.Documents {
+		normalized, changes := normalizeDocumentForFix(doc)
+		fixed.Documents[i] = normalized
+		total += changes
+	}
+	return fixed, total
+}
+
+func normalizeDocumentForFix(doc Document) (Document, int) {
+	changes := 0
+
+	doc.ID, changes = applyStringFix(doc.ID, changes, canonicalizeReferenceID)
+	doc.Type, changes = applyStringFix(doc.Type, changes, canonicalizeDocType)
+	doc.Status, changes = applyStringFix(doc.Status, changes, canonicalizeDocStatus)
+	doc.Quorum, changes = applyStringFix(doc.Quorum, changes, canonicalizeQuorum)
+	doc.Path, changes = applyStringFix(doc.Path, changes, canonicalizeRegistryPath)
+	doc.LinkedAnnexes, changes = applyListFix(doc.LinkedAnnexes, changes, canonicalizeReferenceID)
+	doc.LinkedADRs, changes = applyListFix(doc.LinkedADRs, changes, canonicalizeReferenceID)
+	doc.LinkedRFCs, changes = applyListFix(doc.LinkedRFCs, changes, canonicalizeReferenceID)
+
+	return doc, changes
+}
+
+func applyStringFix(value string, count int, fixer func(string) (string, bool)) (string, int) {
+	fixed, changed := fixer(value)
+	if changed {
+		count++
+	}
+	return fixed, count
+}
+
+func applyListFix(values []string, count int, fixer func(string) (string, bool)) ([]string, int) {
+	if len(values) == 0 {
+		return values, count
+	}
+	out := append([]string(nil), values...)
+	for i, value := range out {
+		fixed, changed := fixer(value)
+		out[i] = fixed
+		if changed {
+			count++
+		}
+	}
+	return out, count
+}
+
+func canonicalizeReferenceID(value string) (string, bool) {
+	trimmed := strings.TrimSpace(value)
+	if trimmed == "" {
+		return value, false
+	}
+	matches := referenceIDPattern.FindStringSubmatch(trimmed)
+	if len(matches) != 3 {
+		return trimmed, trimmed != value
+	}
+	prefix, ok := canonicalTypeMap[strings.ToLower(matches[1])]
+	if !ok {
+		return trimmed, trimmed != value
+	}
+	fixed := prefix + "-" + matches[2]
+	return fixed, fixed != value
+}
+
+func canonicalizeDocType(value string) (string, bool) {
+	trimmed := strings.TrimSpace(value)
+	if trimmed == "" {
+		return value, false
+	}
+	canonical, ok := canonicalTypeMap[strings.ToLower(trimmed)]
+	if !ok {
+		return trimmed, trimmed != value
+	}
+	return canonical, canonical != value
+}
+
+func canonicalizeDocStatus(value string) (string, bool) {
+	trimmed := strings.TrimSpace(value)
+	if trimmed == "" {
+		return value, false
+	}
+	canonical, err := canonicalizeStatus(trimmed)
+	if err != nil {
+		return trimmed, trimmed != value
+	}
+	return canonical, canonical != value
+}
+
+func canonicalizeQuorum(value string) (string, bool) {
+	trimmed := strings.TrimSpace(value)
+	if trimmed == "" {
+		return value, false
+	}
+	lower := strings.ToLower(trimmed)
+	switch lower {
+	case "majority", "unanimous":
+		return lower, lower != value
+	}
+	compact := strings.ReplaceAll(trimmed, " ", "")
+	if quorumFractionPattern.MatchString(compact) {
+		return compact, compact != value
+	}
+	return trimmed, trimmed != value
+}
+
+func canonicalizeRegistryPath(value string) (string, bool) {
+	trimmed := strings.TrimSpace(value)
+	if trimmed == "" {
+		return value, false
+	}
+	slashed := strings.ReplaceAll(trimmed, `\`, "/")
+	for strings.HasPrefix(slashed, "./") {
+		slashed = strings.TrimPrefix(slashed, "./")
+	}
+	cleaned := pathpkg.Clean(slashed)
+	switch {
+	case cleaned == ".":
+		return trimmed, trimmed != value
+	case strings.HasPrefix(cleaned, "../"), cleaned == "..":
+		return trimmed, trimmed != value
+	case strings.HasPrefix(cleaned, "/"):
+		return trimmed, trimmed != value
+	default:
+		return cleaned, cleaned != value
+	}
+}
+
+func writeRegistryFile(path string, registry Registry) error {
+	info, err := os.Stat(path)
+	if err != nil {
+		return fmt.Errorf("stat registry: %w", err)
+	}
+	tmpFile, err := os.CreateTemp(filepath.Dir(path), filepath.Base(path)+".tmp-")
+	if err != nil {
+		return fmt.Errorf("create temp registry: %w", err)
+	}
+	tmpPath := tmpFile.Name()
+	cleanupTmp := true
+	defer func() {
+		if cleanupTmp {
+			_ = os.Remove(tmpPath)
+		}
+	}()
+
+	if _, err := io.WriteString(tmpFile, marshalRegistry(registry)); err != nil {
+		_ = tmpFile.Close()
+		return fmt.Errorf("write temp registry: %w", err)
+	}
+	if err := tmpFile.Sync(); err != nil {
+		_ = tmpFile.Close()
+		return fmt.Errorf("sync temp registry: %w", err)
+	}
+	if err := tmpFile.Close(); err != nil {
+		return fmt.Errorf("close temp registry: %w", err)
+	}
+	if err := os.Chmod(tmpPath, info.Mode().Perm()); err != nil {
+		return fmt.Errorf("chmod temp registry: %w", err)
+	}
+
+	backupPath := tmpPath + ".bak"
+	if err := os.Rename(path, backupPath); err != nil {
+		return fmt.Errorf("backup registry: %w", err)
+	}
+	restoreBackup := true
+	defer func() {
+		if restoreBackup {
+			_ = os.Rename(backupPath, path)
+			return
+		}
+		_ = os.Remove(backupPath)
+	}()
+
+	if err := os.Rename(tmpPath, path); err != nil {
+		return fmt.Errorf("replace registry: %w", err)
+	}
+	restoreBackup = false
+	cleanupTmp = false
+	return nil
+}
+
+func marshalRegistry(registry Registry) string {
+	var b strings.Builder
+	b.WriteString("documents:\n")
+	for _, doc := range registry.Documents {
+		b.WriteString("  - id: ")
+		b.WriteString(formatYAMLScalar(doc.ID))
+		b.WriteByte('\n')
+		writeScalarField(&b, "type", doc.Type)
+		writeScalarField(&b, "title", doc.Title)
+		writeScalarField(&b, "status", doc.Status)
+		writeScalarField(&b, "created", doc.Created)
+		writeScalarField(&b, "date", doc.Date)
+		writeScalarField(&b, "last_updated", doc.LastUpdated)
+		writeListField(&b, "authors", doc.Authors)
+		writeListField(&b, "stakeholders", doc.Stakeholders)
+		writeListField(&b, "reviewers", doc.Reviewers)
+		writeScalarField(&b, "quorum", doc.Quorum)
+		writeScalarField(&b, "target_release", doc.TargetRelease)
+		writeListField(&b, "owners", doc.Owners)
+		writeListField(&b, "deciders", doc.Deciders)
+		writeListField(&b, "linked_annexes", doc.LinkedAnnexes)
+		writeListField(&b, "linked_adrs", doc.LinkedADRs)
+		writeListField(&b, "linked_rfcs", doc.LinkedRFCs)
+		writeScalarField(&b, "path", doc.Path)
+	}
+	return b.String()
+}
+
+func writeScalarField(b *strings.Builder, key, value string) {
+	if strings.TrimSpace(value) == "" {
+		return
+	}
+	b.WriteString("    ")
+	b.WriteString(key)
+	b.WriteString(": ")
+	b.WriteString(formatYAMLScalar(value))
+	b.WriteByte('\n')
+}
+
+func writeListField(b *strings.Builder, key string, values []string) {
+	if len(values) == 0 {
+		return
+	}
+	b.WriteString("    ")
+	b.WriteString(key)
+	b.WriteString(":\n")
+	for _, value := range values {
+		b.WriteString("      - ")
+		b.WriteString(formatYAMLScalar(value))
+		b.WriteByte('\n')
+	}
+}
+
+func formatYAMLScalar(value string) string {
+	if needsYAMLQuoting(value) {
+		return strconv.Quote(value)
+	}
+	return value
+}
+
+func needsYAMLQuoting(value string) bool {
+	if value == "" || strings.TrimSpace(value) != value {
+		return true
+	}
+	switch strings.ToLower(strings.TrimSpace(value)) {
+	case "true", "false", "null", "~", "yes", "no", "on", "off":
+		return true
+	}
+	if strings.ContainsAny(value, ":\n\r\t#'\"[]{}!,&*?|>@`\\") {
+		return true
+	}
+	return strings.HasPrefix(value, "-")
 }
 
 // readDocumentStatus reads the document file at the given path and returns the document's canonical status.

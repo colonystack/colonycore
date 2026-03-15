@@ -44,6 +44,35 @@ Reference spec: `docs/annex/0006-dataset-template-validation.md`.
   - `go run ./cmd/colony lint dataset testutil/fixtures/dataset-templates/valid`
 - Expect fail-fast registration: malformed templates are rejected during `Register`, not first runtime execution.
 
+## Migrating pre-v1 plugins to the accepted v1 contract
+
+There was no released external `v0` plugin compatibility line for ColonyCore.
+Treat any pre-stability plugin as a source migration to the accepted `v1`
+contract, not as a binary-compatibility target.
+
+Use this migration path:
+
+1. Replace raw constant comparisons with contextual accessors from
+   [ADR-0010](../docs/adr/0010-contextual-accessor-pattern.md).
+   - Examples: `housing.GetEnvironmentType().IsAquatic()`,
+     `organism.GetCurrentStage().IsAdult()`,
+     `protocol.GetCurrentStatus().IsApproved()`.
+2. Keep registration logic inside `Plugin.Register` limited to the stable
+   `pkg/pluginapi.Registry` callbacks.
+   - Schema, rule, and dataset template registration should fail fast and return
+     errors instead of deferring invalid state to runtime.
+3. Update rule hooks to return `pluginapi.Result` violations for policy
+   outcomes and `error` only for execution failures.
+4. Verify dataset templates against the dataset template spec before release.
+   - Run `go run ./cmd/colony lint dataset <dir>` for local fixtures.
+5. Run the shared conformance suite before merge:
+   - `make plugin-conformance`
+
+This repository treats that migration path as the foundation for any future
+documented `v0 -> v1` upgrade notes. If a prerelease plugin must keep both code
+paths temporarily, keep the compatibility shim in the plugin repository rather
+than widening the accepted `v1` core API.
+
 ## Compatibility matrix
 
 Keep this matrix aligned with ADR-0009 when host releases or API majors change.
@@ -66,6 +95,7 @@ make plugin-conformance
 ```
 
 What the suite verifies:
+
 - plugin initialization (`Name`, `Version`, successful `Register`)
 - schema/rule/template registration expectations
 - rule hook behavior against deterministic fixtures
@@ -74,5 +104,7 @@ What the suite verifies:
 ### Requirements for external plugin developers
 
 - Match the `pkg/pluginapi` v1 interfaces documented above.
-- Add your plugin to the `[]pluginCase` slice in `plugins/conformance/plugin_conformance_test.go` (or mirror the same checks in your plugin repository).
+- Add your plugin to the `[]pluginCase` slice in
+  `plugins/conformance/plugin_conformance_test.go` (or mirror the same checks
+  in your plugin repository).
 - Keep CI configured to fail on conformance test failures before merge.

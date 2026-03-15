@@ -167,6 +167,7 @@ type catalogFlags struct {
 	auditPath   string
 	metadataDir string
 	actor       string
+	emitEvents  bool
 }
 
 func catalogCLI(args []string, stdout, stderr io.Writer) int {
@@ -192,7 +193,7 @@ func catalogCLI(args []string, stdout, stderr io.Writer) int {
 }
 
 func catalogAddCLI(args []string, stdout, stderr io.Writer) (exitCode int) {
-	recorder := catalogEventRecorderFactory(stderr)
+	var recorder observability.Recorder = observability.NoopRecorder{}
 	started := time.Now()
 	labels := map[string]string{
 		"operation": "catalog_add",
@@ -211,6 +212,7 @@ func catalogAddCLI(args []string, stdout, stderr io.Writer) (exitCode int) {
 		opErr = err
 		return 2
 	}
+	recorder = catalogRecorder(flags.emitEvents, stderr)
 	labels["catalog_path"] = strings.TrimSpace(flags.catalogPath)
 	labels["audit_log_path"] = strings.TrimSpace(flags.auditPath)
 	if flagSet.NArg() != 1 {
@@ -281,7 +283,7 @@ func catalogAddCLI(args []string, stdout, stderr io.Writer) (exitCode int) {
 }
 
 func catalogDeprecateCLI(args []string, stdout, stderr io.Writer) (exitCode int) {
-	recorder := catalogEventRecorderFactory(stderr)
+	var recorder observability.Recorder = observability.NoopRecorder{}
 	started := time.Now()
 	labels := map[string]string{
 		"operation": "catalog_deprecate",
@@ -302,6 +304,7 @@ func catalogDeprecateCLI(args []string, stdout, stderr io.Writer) (exitCode int)
 		opErr = err
 		return 2
 	}
+	recorder = catalogRecorder(flags.emitEvents, stderr)
 	labels["catalog_path"] = strings.TrimSpace(flags.catalogPath)
 	labels["audit_log_path"] = strings.TrimSpace(flags.auditPath)
 	if flagSet.NArg() != 1 {
@@ -389,7 +392,7 @@ func catalogDeprecateCLI(args []string, stdout, stderr io.Writer) (exitCode int)
 }
 
 func catalogMigrateCLI(args []string, stdout, stderr io.Writer) (exitCode int) {
-	recorder := catalogEventRecorderFactory(stderr)
+	var recorder observability.Recorder = observability.NoopRecorder{}
 	started := time.Now()
 	labels := map[string]string{
 		"operation": "catalog_migrate",
@@ -409,6 +412,7 @@ func catalogMigrateCLI(args []string, stdout, stderr io.Writer) (exitCode int) {
 		opErr = err
 		return 2
 	}
+	recorder = catalogRecorder(flags.emitEvents, stderr)
 	labels["catalog_path"] = strings.TrimSpace(flags.catalogPath)
 	labels["audit_log_path"] = strings.TrimSpace(flags.auditPath)
 	if flagSet.NArg() != 2 {
@@ -507,7 +511,7 @@ func catalogMigrateCLI(args []string, stdout, stderr io.Writer) (exitCode int) {
 }
 
 func catalogValidateCLI(args []string, stdout, stderr io.Writer) (exitCode int) {
-	recorder := catalogEventRecorderFactory(stderr)
+	var recorder observability.Recorder = observability.NoopRecorder{}
 	started := time.Now()
 	labels := map[string]string{
 		"operation": "catalog_validate",
@@ -526,6 +530,7 @@ func catalogValidateCLI(args []string, stdout, stderr io.Writer) (exitCode int) 
 		opErr = err
 		return 2
 	}
+	recorder = catalogRecorder(flags.emitEvents, stderr)
 	labels["catalog_path"] = strings.TrimSpace(flags.catalogPath)
 	labels["audit_log_path"] = strings.TrimSpace(flags.auditPath)
 	if flagSet.NArg() > 0 {
@@ -678,6 +683,7 @@ func defaultCatalogFlags() catalogFlags {
 		auditPath:   defaultCatalogAuditLogPath,
 		metadataDir: defaultCatalogMetadataPath,
 		actor:       catalogActor(),
+		emitEvents:  false,
 	}
 }
 
@@ -686,6 +692,14 @@ func registerCatalogFlags(flagSet *flag.FlagSet, flags *catalogFlags) {
 	flagSet.StringVar(&flags.auditPath, "audit-log", defaultCatalogAuditLogPath, "catalog audit log path")
 	flagSet.StringVar(&flags.metadataDir, "metadata-dir", defaultCatalogMetadataPath, "catalog metadata output directory")
 	flagSet.StringVar(&flags.actor, "actor", catalogActor(), "catalog actor identity")
+	flagSet.BoolVar(&flags.emitEvents, "observability-json", false, "emit structured observability events as JSON lines to stderr")
+}
+
+func catalogRecorder(enabled bool, writer io.Writer) observability.Recorder {
+	if !enabled {
+		return observability.NoopRecorder{}
+	}
+	return catalogEventRecorderFactory(writer)
 }
 
 func newCatalogAuditLogger(flags catalogFlags) catalogAuditLogger {
@@ -1336,8 +1350,8 @@ func randomCatalogID() string {
 
 func printCatalogUsage(w io.Writer) {
 	_, _ = fmt.Fprintln(w, "Usage:")
-	_, _ = fmt.Fprintln(w, "  colony catalog add [--catalog <path>] [--audit-log <path>] [--metadata-dir <path>] [--actor <id>] <template.json>")
-	_, _ = fmt.Fprintln(w, "  colony catalog deprecate [--catalog <path>] [--audit-log <path>] [--metadata-dir <path>] [--actor <id>] --reason <text> [--window-days <n>] <key|slug>")
-	_, _ = fmt.Fprintln(w, "  colony catalog migrate [--catalog <path>] [--audit-log <path>] [--metadata-dir <path>] [--actor <id>] [--output <path>] <old> <new>")
-	_, _ = fmt.Fprintln(w, "  colony catalog validate [--catalog <path>] [--audit-log <path>] [--metadata-dir <path>] [--actor <id>]")
+	_, _ = fmt.Fprintln(w, "  colony catalog add [--catalog <path>] [--audit-log <path>] [--metadata-dir <path>] [--actor <id>] [--observability-json] <template.json>")
+	_, _ = fmt.Fprintln(w, "  colony catalog deprecate [--catalog <path>] [--audit-log <path>] [--metadata-dir <path>] [--actor <id>] [--observability-json] --reason <text> [--window-days <n>] <key|slug>")
+	_, _ = fmt.Fprintln(w, "  colony catalog migrate [--catalog <path>] [--audit-log <path>] [--metadata-dir <path>] [--actor <id>] [--observability-json] [--output <path>] <old> <new>")
+	_, _ = fmt.Fprintln(w, "  colony catalog validate [--catalog <path>] [--audit-log <path>] [--metadata-dir <path>] [--actor <id>] [--observability-json]")
 }

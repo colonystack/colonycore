@@ -1,0 +1,16 @@
+documents:
+  - id: RFC-TEST-0002
+    type: RFC
+    title: Multi Fixture RFC
+    status: Draft
+    path: testutil/fixtures/registry/docs/rfc-multi.md
+  - id: Annex-TEST-0001
+    type: Annex
+    title: Multi Fixture Annex
+    status: Planned
+    last_updated: 2025-02-01
+    owners:
+      - Ops Team
+    linked_rfcs:
+      - RFC-TEST-0002
+    path: testutil/fixtures/registry/docs/annex-multi.md

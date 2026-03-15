@@ -66,6 +66,7 @@ linters:
             - net/url
             - os
             - os/exec
+            - path
             - path/filepath
             - regexp
             - reflect
