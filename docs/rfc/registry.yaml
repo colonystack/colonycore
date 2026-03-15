@@ -16,6 +16,7 @@ documents:
     linked_annexes:
       - Annex-0001
       - Annex-0004
+      - Annex-0008
     linked_adrs:
       - ADR-0001
       - ADR-0002
@@ -46,6 +47,16 @@ documents:
     linked_rfcs:
       - RFC-0001
     path: docs/annex/0004-typing-guidelines.md
+  - id: Annex-0008
+    type: Annex
+    title: Registry Format Evolution & Compatibility Baseline
+    status: Draft
+    owners:
+      - Core Maintainers
+    last_updated: 2026-03-15
+    linked_rfcs:
+      - RFC-0001
+    path: docs/annex/0008-registry-format-evolution.md
   - id: ADR-0001
     type: ADR
     title: Migration, Backfill & Rollback Strategy
@@ -100,10 +111,10 @@ documents:
   - id: ADR-0006
     type: ADR
     title: Observability Stack Architecture
-    status: Planned
+    status: Accepted
     deciders:
       - Tobias Harnickell
-    date: 2025-09-21
+    date: 2026-03-15
     linked_rfcs:
       - RFC-0001
     path: docs/adr/0006-observability-architecture.md

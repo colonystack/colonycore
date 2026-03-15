@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -44,6 +45,142 @@ func TestCLIFlagParseError(t *testing.T) {
 	}
 	if !strings.Contains(errOut.String(), "flag provided but not defined") {
 		t.Fatalf("expected flag parse error message, got %s", errOut.String())
+	}
+}
+
+func TestCLIObservabilityOptIn(t *testing.T) {
+	docPath := writeTestFile(t, "test_registry_observability_doc.md", "# Test\n- Status: Draft\n")
+	content := "documents:\n  - id: RFC-9\n    type: RFC\n    title: Observability\n    status: Draft\n    path: " + docPath + "\n"
+	rel := "test_registry_observability.yaml"
+	if err := os.WriteFile(rel, []byte(content), 0o600); err != nil {
+		t.Fatalf("write rel: %v", err)
+	}
+	defer func() { _ = os.Remove(rel) }()
+
+	out, errOut := &bytes.Buffer{}, &bytes.Buffer{}
+	code := cli([]string{"-registry", rel}, out, errOut)
+	if code != 0 {
+		t.Fatalf("expected exit 0 without observability flag, got %d stderr=%s", code, errOut.String())
+	}
+	if strings.Contains(errOut.String(), "\"schema_version\"") {
+		t.Fatalf("expected no structured events without opt-in, got %s", errOut.String())
+	}
+
+	out.Reset()
+	errOut.Reset()
+	code = cli([]string{"-registry", rel, "-observability-json"}, out, errOut)
+	if code != 0 {
+		t.Fatalf("expected exit 0 with observability flag, got %d stderr=%s", code, errOut.String())
+	}
+	if !strings.Contains(errOut.String(), "\"schema_version\":\"colonycore.observability.v1\"") {
+		t.Fatalf("expected structured events with opt-in, got %s", errOut.String())
+	}
+}
+
+func TestCLIFixCanonicalizesRegistry(t *testing.T) {
+	docPath := writeTestFile(t, "test_registry_fix_doc.md", "# Test\n- Status: Draft\n")
+	registryPath := writeTestFile(t, "test_registry_fix.yaml", strings.Join([]string{
+		"documents:",
+		"  - id: rfc-7",
+		"    type: rfc",
+		"    title: Fix Me",
+		"    status: draft (working copy)",
+		"    quorum: 1 / 2",
+		"    linked_annexes:",
+		"      - annex-2",
+		"    linked_adrs:",
+		"      - adr-3",
+		"    linked_rfcs:",
+		"      - rfc-4",
+		"    path: .\\" + filepath.Base(docPath),
+	}, "\n")+"\n")
+
+	out, errOut := &bytes.Buffer{}, &bytes.Buffer{}
+	code := cli([]string{"-registry", registryPath, "-fix"}, out, errOut)
+	if code != 0 {
+		t.Fatalf("expected exit 0, got %d stderr=%s", code, errOut.String())
+	}
+	if !strings.Contains(out.String(), "Applied 8 registry fix(es).") {
+		t.Fatalf("expected fix count output, got %s", out.String())
+	}
+	if !strings.Contains(out.String(), "Registry validation passed.") {
+		t.Fatalf("expected validation success output, got %s", out.String())
+	}
+
+	fixed, err := os.ReadFile(registryPath) // #nosec G304 -- registryPath is created by writeTestFile within the repo root
+	if err != nil {
+		t.Fatalf("read fixed registry: %v", err)
+	}
+	want := strings.Join([]string{
+		"documents:",
+		"  - id: RFC-7",
+		"    type: RFC",
+		"    title: Fix Me",
+		"    status: Draft",
+		"    quorum: 1/2",
+		"    linked_annexes:",
+		"      - Annex-2",
+		"    linked_adrs:",
+		"      - ADR-3",
+		"    linked_rfcs:",
+		"      - RFC-4",
+		"    path: " + filepath.Base(docPath),
+		"",
+	}, "\n")
+	if string(fixed) != want {
+		t.Fatalf("unexpected fixed registry:\n%s", string(fixed))
+	}
+}
+
+func TestNormalizeDocumentForFix(t *testing.T) {
+	doc := Document{
+		ID:            " rfc-42 ",
+		Type:          "annex",
+		Status:        "accepted (recorded)",
+		Quorum:        " Majority ",
+		Path:          " ./docs\\rfc\\registry.yaml ",
+		LinkedAnnexes: []string{" annex-1 "},
+		LinkedADRs:    []string{" adr-2 "},
+		LinkedRFCs:    []string{" rfc-3 "},
+	}
+
+	got, changes := normalizeDocumentForFix(doc)
+	if changes != 8 {
+		t.Fatalf("expected 8 changes, got %d", changes)
+	}
+	if got.ID != "RFC-42" {
+		t.Fatalf("expected canonical id, got %q", got.ID)
+	}
+	if got.Type != "Annex" {
+		t.Fatalf("expected canonical type, got %q", got.Type)
+	}
+	if got.Status != "Accepted" {
+		t.Fatalf("expected canonical status, got %q", got.Status)
+	}
+	if got.Quorum != "majority" {
+		t.Fatalf("expected canonical quorum, got %q", got.Quorum)
+	}
+	if got.Path != "docs/rfc/registry.yaml" {
+		t.Fatalf("expected canonical path, got %q", got.Path)
+	}
+	if len(got.LinkedAnnexes) != 1 || got.LinkedAnnexes[0] != "Annex-1" {
+		t.Fatalf("expected canonical annex refs, got %#v", got.LinkedAnnexes)
+	}
+	if len(got.LinkedADRs) != 1 || got.LinkedADRs[0] != "ADR-2" {
+		t.Fatalf("expected canonical ADR refs, got %#v", got.LinkedADRs)
+	}
+	if len(got.LinkedRFCs) != 1 || got.LinkedRFCs[0] != "RFC-3" {
+		t.Fatalf("expected canonical RFC refs, got %#v", got.LinkedRFCs)
+	}
+}
+
+func TestCanonicalizeRegistryPathRejectsTraversal(t *testing.T) {
+	got, changed := canonicalizeRegistryPath(" ../docs/rfc/registry.yaml ")
+	if got != "../docs/rfc/registry.yaml" {
+		t.Fatalf("expected trimmed traversal path to remain unchanged, got %q", got)
+	}
+	if !changed {
+		t.Fatalf("expected surrounding whitespace trim to count as a change")
 	}
 }
 

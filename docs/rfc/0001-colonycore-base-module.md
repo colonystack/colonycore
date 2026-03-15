@@ -135,30 +135,65 @@ States: `scheduled → in-progress → completed` with optional `cancelled`.
 - Tamper-evident audit trails use digital signatures for critical events, and retention policies remain configurable for each jurisdiction.
 - Privacy controls support pseudonymization, minimal data capture, consent linkage, and access review workflows.
 - Semantic versioning is enforced across the core platform and species plugins, with migration guides, feature flags, and deprecation policy documented for every release.
+- Before the first stable release, governance and plugin migration work is
+  anchored on canonical compatibility fixtures plus fixer tooling instead of
+  historical commit replay; see Annex-0008 for the registry evolution workflow
+  and the prerelease plugin migration baseline.
 
 ## 9. Observability, Quality, and Performance
-- Maintain structured logs with correlation IDs for multi-step workflows, and track metrics for queue lag, rule evaluation latency, and occupancy utilization.
+
+- Observability follows ADR-0006: the accepted baseline is the structured event
+  envelope `colonycore.observability.v1`, implemented in
+  `internal/observability` and cataloged in `observability/README.md`.
+- The current accepted event categories are `registry.validation`,
+  `plugin.lifecycle`, `rule.execution`, and `catalog.operation`; metrics for
+  Prometheus and Grafana are derived from those events through external
+  collector or log-to-metrics pipelines using the assets in `observability/`.
+- Structured event emission is opt-in by wiring: runtime services and adapters
+  default to no-op recorders, while CLI commands emit JSON lines only when
+  `--observability-json` is supplied.
 - Tracing spans cover external hardware integrations and long-running procedures.
-- Monitor data quality to detect orphaned entities, inconsistent states, and overdue sanitation, and run nightly integrity checks that produce actionable reports.
-- Testing strategy: deterministic fixtures for species plugins, contract tests for API extensions, migration tests with sample datasets, fuzzers for rules engine.
-- Performance targets: asynchronous workers for heavy computations (pedigree analysis, report generation), sub-second reads for common queries.
+- Monitor data quality to detect orphaned entities, inconsistent states, and
+  overdue sanitation, and run nightly integrity checks that produce actionable
+  reports.
+- Testing strategy: deterministic fixtures for species plugins, contract tests
+  for API extensions, migration tests with sample datasets, fuzzers for rules
+  engine.
+- Governance compatibility baseline: `testutil/fixtures/registry/compat`
+  captures frozen registry examples that must continue to validate unchanged as
+  the schema evolves, and `cmd/registry-check --fix` is limited to
+  canonicalizable authoring issues.
+- Performance targets: asynchronous workers for heavy computations (pedigree
+  analysis, report generation), sub-second reads for common queries.
 
 ## 10. Acceptance Criteria
+
 - Core schema implements entities and relationships listed in Section 4 with migration scripts and temporal history.
-- CRUD APIs and audit logging provided for Organism, Cohort, HousingUnit, BreedingUnit, Procedure, Protocol, and Project entities.
+- CRUD APIs and audit logging provided for Organism, Cohort, HousingUnit,
+  BreedingUnit, Procedure, Protocol, and Project entities.
 - Rules engine executes species and compliance hooks in-transaction with configurable severity levels (block/warn/log).
 - Plugin SDK exposes capability interfaces, JSON Schema extension registration, and test harness with seed fixtures.
 - Compliance workflows enforce protocol/permit checks before breeding, procedures, or inventory actions, with override logging.
-- The observability stack emits the structured logs, metrics, and traces described above and runs scheduled integrity check jobs.
+- The observability stack emits the structured logs, metrics, and traces
+  described above and runs scheduled integrity check jobs.
 - Documentation delivered for plugin authors and integration partners.
 
 ## 11. Reference Species Module: Frog (Minimal)
+
 ### 11.1 Purpose
-Provide a working module that exercises every plugin interface, validates template assumptions, and demonstrates species customization without core changes.
+
+Provide a working module that exercises every plugin interface, validates
+template assumptions, and demonstrates species customization without core
+changes.
 
 ### 11.2 Capability Implementations
-- `LifecycleRules`: Maps developmental stages using Gosner stages grouped to the canonical lifecycle states and enforces completion of metamorphosis before adult classification.
-- `BreedingPlanner`: Supports pair and harem configurations, enforces water quality thresholds before spawning, and blocks pairings closer than second-degree kinship.
+
+- `LifecycleRules`: Maps developmental stages using Gosner stages grouped to
+  the canonical lifecycle states and enforces completion of metamorphosis
+  before adult classification.
+- `BreedingPlanner`: Supports pair and harem configurations, enforces water
+  quality thresholds before spawning, and blocks pairings closer than
+  second-degree kinship.
 - `PhenotypeSchema`: Adds fields for skin coloration index, voice call frequency, and limb regeneration observations.
 - `GenotypingRules`: Defines microsatellite markers with inheritance plausibility checks and cross contamination warnings.
 - `HusbandrySchedule`: Generates feeding (live insects) and water change tasks with temperature dependencies.
@@ -166,14 +201,17 @@ Provide a working module that exercises every plugin interface, validates templa
 - `EnvironmentalNeeds`: Specifies acceptable water temperature (18–24°C), pH (6.5–7.5), humidity (>70%), and light cycle.
 - `EuthanasiaMethods`: Lists MS-222 immersion and double pithing with references to AVMA guidelines.
 - `AgeStageMapper`: Converts days post-fertilization and morphological markers to stage labels for reporting.
-- `ComplianceChecks`: Validates that metamorphs in quarantine cannot be released to common rooms without negative pathogen tests.
+- `ComplianceChecks`: Validates that metamorphs in quarantine cannot be
+  released to common rooms without negative pathogen tests.
 
 ### 11.3 Data Extensions
+
 - Organism schema adds fields: `developmental_stage`, `water_source`, `disease_screening_status`.
 - Observation schema adds enumerations for `skin_score` and numeric `call_frequency_hz`.
 - Sample schema adds `tissue_type` with frog-specific options (e.g., toe clip, skin swab).
 
 ### 11.4 Module Manifest (Illustrative)
+
 ```yaml
 species: Lithobates catesbeianus
 version: 0.1.0
@@ -199,37 +237,52 @@ fixtures:
 ```
 
 ### 11.5 Reference Workflows
-- Create breeding unit template generating spawning tasks, hatching monitoring, and automatic cohort creation when eggs recorded.
+
+- Create breeding unit template generating spawning tasks, hatching monitoring,
+  and automatic cohort creation when eggs recorded.
 - Trigger housing compatibility check ensuring tadpoles never co-house with adults unless partitioned.
 - Demonstrate compliance override: manual release from quarantine requires supervisor approval logged with justification.
 
 ### 11.6 Test Coverage
+
 - Contract tests validating lifecycle transitions across 5 sample organisms through metamorphosis.
 - Fuzzed kinship matrix ensuring breeding planner rejects relatedness > 0.25.
 - Integration tests for water quality sensor ingestion updating environmental alert thresholds.
 
 ## 12. Linked Annexes & ADRs
+
 - Annex-0001: Operational Risk & Compliance (`docs/annex/0001-operational-risk-and-compliance.md`).
+- Annex-0008: Registry Format Evolution & Compatibility Baseline (`docs/annex/0008-registry-format-evolution.md`).
 - ADR-0001: Migration, Backfill & Rollback Strategy (`docs/adr/0001-migration-and-rollback.md`).
 - ADR-0002: Versioning & Deprecation Policy (`docs/adr/0002-versioning-and-deprecation.md`).
 - ADR-0003: Core Domain Schema Normalization (`docs/adr/0003-core-domain-schema.md`).
 - ADR-0004: Rules Engine Evaluation Model (`docs/adr/0004-rules-engine-evaluation.md`).
 - ADR-0005: Plugin Packaging & Distribution (`docs/adr/0005-plugin-packaging-and-distribution.md`).
-- ADR-0006: Observability Stack Architecture (`docs/adr/0006-observability-architecture.md`).
+- ADR-0006: Observability Stack Architecture
+  (`docs/adr/0006-observability-architecture.md`) - accepted baseline for
+  structured event emission, observability assets, and schema governance.
 
 ## 13. RFC Lifecycle Governance
+
 - **Reviewers:** Tobias Harnickell
 - **Quorum:** Tobias Harnickell must approve for status change to `Accepted`.
-- **Decision recording:** Outcome, dissenting notes, and effective date captured in `docs/rfc/registry.yaml` and linked ADRs or annexes.
-- **Revision cadence:** Conduct an annual review or respond to major compliance regulation changes, and track minor updates through patch PRs with changelog entries.
-- **Sunset:** An RFC can be superseded by a replacement RFC. Once marked `Superseded`, move it to the archive after 12 months while retaining references in the registry.
+- **Decision recording:** Outcome, dissenting notes, and effective date
+  captured in `docs/rfc/registry.yaml` and linked ADRs or annexes.
+- **Revision cadence:** Conduct an annual review or respond to major
+  compliance regulation changes, and track minor updates through patch PRs with
+  changelog entries.
+- **Sunset:** An RFC can be superseded by a replacement RFC. Once marked
+  `Superseded`, move it to the archive after 12 months while retaining
+  references in the registry.
 
 ## 14. Outstanding Questions
+
 - Should plugin schemas support backward incompatible changes via version negotiation or require parallel versions?
 - What minimum hardware certification is acceptable for sensor integrations to participate in compliance-critical workflows?
 - Do we need automated detection of offline export retention breaches or rely on manual attestations (see Annex-0001 §3.3)?
 
 ## 15. Milestones
+
 1. Core schema & API scaffolding with rules engine MVP.
 2. Plugin SDK with frog reference module and conformance tests.
 3. Compliance workflow integration and audit log hardening.

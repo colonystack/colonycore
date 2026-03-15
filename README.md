@@ -9,6 +9,7 @@ ColonyCore is an extensible base module for laboratory colony management. It cou
 - `plugins/` hosts externally consumable plugins (for example `plugins/frog`) that register species-specific schemas and rules.
 - `cmd/registry-check/` provides the CLI used to validate `docs/rfc/registry.yaml` against the expected structure.
 - `docs/` captures design history (`docs/adr/`), planning RFCs (`docs/rfc/`), operational annexes (`docs/annex/`), and machine-readable schemas (`docs/schema/`).
+- `observability/` contains the accepted structured event catalog plus default Grafana, Prometheus, and Alertmanager assets defined by ADR-0006.
 - `Makefile` orchestrates common build, lint, and test workflows.
 
 ## Getting started
