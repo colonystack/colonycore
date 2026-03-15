@@ -39,6 +39,47 @@ func TestFixRegistryFileParseError(t *testing.T) {
 	}
 }
 
+func TestFixRegistryFileRejectsUnknownListDeclarations(t *testing.T) {
+	cases := []struct {
+		name    string
+		content string
+	}{
+		{
+			name: "empty-list",
+			content: strings.Join([]string{
+				"documents:",
+				"  - id: RFC-12",
+				"    type: RFC",
+				"    title: Unknown List",
+				"    status: Draft",
+				"    mystery: []",
+				"    path: testutil/fixtures/registry/docs/rfc-minimal.md",
+			}, "\n") + "\n",
+		},
+		{
+			name: "declared-list",
+			content: strings.Join([]string{
+				"documents:",
+				"  - id: RFC-13",
+				"    type: RFC",
+				"    title: Unknown List",
+				"    status: Draft",
+				"    mystery:",
+				"    path: testutil/fixtures/registry/docs/rfc-minimal.md",
+			}, "\n") + "\n",
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			registryPath := writeTestFile(t, tc.name+".yaml", tc.content)
+			if _, err := fixRegistryFile(registryPath); err == nil || !strings.Contains(err.Error(), `unsupported list field "mystery"`) {
+				t.Fatalf("expected unsupported list field error, got %v", err)
+			}
+		})
+	}
+}
+
 func TestNormalizeRegistryForFixDoesNotMutateInput(t *testing.T) {
 	original := Registry{
 		Documents: []Document{

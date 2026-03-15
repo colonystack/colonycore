@@ -119,7 +119,9 @@ func TestRegistryHelperFunctions(t *testing.T) {
 		t.Fatalf("expected unsupported field error")
 	}
 
-	resetList(&d, "authors")
+	if err := resetList(&d, "authors"); err != nil {
+		t.Fatalf("reset authors failed: %v", err)
+	}
 	if err := appendList(&d, "authors", "Alice"); err != nil || len(d.Authors) != 1 {
 		t.Fatalf("append authors failed: %+v %v", d.Authors, err)
 	}
@@ -146,6 +148,9 @@ func TestRegistryHelperFunctions(t *testing.T) {
 	}
 	if err := appendList(&d, "unknown_field", "val"); err == nil {
 		t.Fatalf("expected error for unknown list field")
+	}
+	if err := resetList(&d, "unknown_field"); err == nil {
+		t.Fatalf("expected error for unknown reset list field")
 	}
 
 	// validateDocument error cases

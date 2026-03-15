@@ -621,10 +621,14 @@ func parseRegistry(file *os.File) (*Registry, error) {
 			}
 			if strings.TrimSpace(value) == "[]" {
 				listField = ""
-				resetList(currentDoc, key)
+				if err := resetList(currentDoc, key); err != nil {
+					return nil, fmt.Errorf("line %d: %w", lineNum, err)
+				}
 			} else if value == "" {
+				if err := resetList(currentDoc, key); err != nil {
+					return nil, fmt.Errorf("line %d: %w", lineNum, err)
+				}
 				listField = key
-				resetList(currentDoc, key)
 			} else {
 				listField = ""
 				if err := assignScalar(currentDoc, key, value); err != nil {
@@ -741,8 +745,8 @@ func normalizeScalar(value string) string {
 
 // resetList resets the named list field on doc to nil.
 // Supported keys are "authors", "stakeholders", "reviewers", "owners", "deciders",
-// "linked_annexes", "linked_adrs", and "linked_rfcs". Unknown keys are ignored.
-func resetList(doc *Document, key string) {
+// "linked_annexes", "linked_adrs", and "linked_rfcs". Unknown keys return an error.
+func resetList(doc *Document, key string) error {
 	switch key {
 	case "authors":
 		doc.Authors = nil
@@ -761,8 +765,9 @@ func resetList(doc *Document, key string) {
 	case "linked_rfcs":
 		doc.LinkedRFCs = nil
 	default:
-		// ignore unknown list keys until we encounter items where we can error
+		return fmt.Errorf("unsupported list field %q", key)
 	}
+	return nil
 }
 
 func appendList(doc *Document, key, value string) error {

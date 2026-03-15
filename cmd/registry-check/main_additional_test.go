@@ -124,9 +124,13 @@ func TestAssignScalarAndValidateDocumentBranches(t *testing.T) {
 		t.Fatalf("unexpected validation error: %v", err)
 	}
 
-	// Exercise resetList with unknown field (should be silent) then supported list with no items.
-	resetList(&doc, "unknown_list")
-	resetList(&doc, "authors")
+	// Exercise resetList with unknown field then supported list with no items.
+	if err := resetList(&doc, "unknown_list"); err == nil {
+		t.Fatalf("expected error for unknown reset list field")
+	}
+	if err := resetList(&doc, "authors"); err != nil {
+		t.Fatalf("reset authors: %v", err)
+	}
 	if len(doc.Authors) != 0 {
 		t.Fatalf("expected authors cleared")
 	}

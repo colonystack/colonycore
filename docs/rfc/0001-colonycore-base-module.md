@@ -195,7 +195,7 @@ changes.
   quality thresholds before spawning, and blocks pairings closer than
   second-degree kinship.
 - `PhenotypeSchema`: Adds fields for skin coloration index, voice call frequency, and limb regeneration observations.
-- `GenotypingRules`: Defines microsatellite markers with inheritance plausibility checks and cross contamination warnings.
+- `GenotypingRules`: Defines microsatellite markers with inheritance plausibility checks and cross-contamination warnings.
 - `HusbandrySchedule`: Generates feeding (live insects) and water change tasks with temperature dependencies.
 - `BodyMetrics`: Declares default units (grams, millimeters), calculates body condition based on snout–vent length ratio.
 - `EnvironmentalNeeds`: Specifies acceptable water temperature (18–24°C), pH (6.5–7.5), humidity (>70%), and light cycle.
