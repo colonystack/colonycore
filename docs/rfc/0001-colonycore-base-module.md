@@ -252,7 +252,9 @@ fixtures:
 ## 12. Linked Annexes & ADRs
 
 - Annex-0001: Operational Risk & Compliance (`docs/annex/0001-operational-risk-and-compliance.md`).
+- Annex-0004: Typing Guidelines (`docs/annex/0004-typing-guidelines.md`).
 - Annex-0008: Registry Format Evolution & Compatibility Baseline (`docs/annex/0008-registry-format-evolution.md`).
+- Annex-0009: Dataset Service Dependency Approvals (`docs/annex/0009-dataset-service-dependency-approvals.md`).
 - ADR-0001: Migration, Backfill & Rollback Strategy (`docs/adr/0001-migration-and-rollback.md`).
 - ADR-0002: Versioning & Deprecation Policy (`docs/adr/0002-versioning-and-deprecation.md`).
 - ADR-0003: Core Domain Schema Normalization (`docs/adr/0003-core-domain-schema.md`).

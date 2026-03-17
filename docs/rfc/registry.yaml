@@ -17,6 +17,7 @@ documents:
       - Annex-0001
       - Annex-0004
       - Annex-0008
+      - Annex-0009
     linked_adrs:
       - ADR-0001
       - ADR-0002
@@ -57,6 +58,16 @@ documents:
     linked_rfcs:
       - RFC-0001
     path: docs/annex/0008-registry-format-evolution.md
+  - id: Annex-0009
+    type: Annex
+    title: Dataset Service Dependency Approvals
+    status: Accepted
+    owners:
+      - Core Maintainers
+    last_updated: 2026-03-17
+    linked_rfcs:
+      - RFC-0001
+    path: docs/annex/0009-dataset-service-dependency-approvals.md
   - id: ADR-0001
     type: ADR
     title: Migration, Backfill & Rollback Strategy
