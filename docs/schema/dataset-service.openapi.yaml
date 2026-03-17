@@ -46,6 +46,8 @@ paths:
                   template:
                     $ref: '#/components/schemas/DatasetTemplateDescriptor'
                 required: [template]
+        '405':
+          $ref: '#/components/responses/MethodNotAllowed'
         '404':
           $ref: '#/components/responses/NotFound'
   /api/v1/datasets/templates/{plugin}/{key}/{version}/validate:
@@ -88,6 +90,8 @@ paths:
                 required: [template, valid, parameters]
         '400':
           $ref: '#/components/responses/BadRequest'
+        '405':
+          $ref: '#/components/responses/MethodNotAllowed'
         '404':
           $ref: '#/components/responses/NotFound'
   /api/v1/datasets/templates/{plugin}/{key}/{version}/run:
@@ -143,6 +147,8 @@ paths:
                 format: binary
         '400':
           $ref: '#/components/responses/BadRequest'
+        '405':
+          $ref: '#/components/responses/MethodNotAllowed'
         '404':
           $ref: '#/components/responses/NotFound'
         '406':
@@ -173,6 +179,8 @@ paths:
                   export:
                     $ref: '#/components/schemas/ExportRecord'
                 required: [export]
+        '405':
+          $ref: '#/components/responses/MethodNotAllowed'
         '400':
           $ref: '#/components/responses/BadRequest'
         '404':
@@ -199,6 +207,8 @@ paths:
                   export:
                     $ref: '#/components/schemas/ExportRecord'
                 required: [export]
+        '405':
+          $ref: '#/components/responses/MethodNotAllowed'
         '404':
           $ref: '#/components/responses/NotFound'
 components:
@@ -233,6 +243,12 @@ components:
             $ref: '#/components/schemas/ProblemDetail'
     BadRequest:
       description: Malformed request payload or parameter violation.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetail'
+    MethodNotAllowed:
+      description: Method not allowed.
       content:
         application/problem+json:
           schema:

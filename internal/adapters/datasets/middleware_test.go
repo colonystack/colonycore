@@ -1,11 +1,14 @@
 package datasets
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
+	"log"
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -199,8 +202,8 @@ func TestNoopRequestLoggerAndCorrelationHelpers(t *testing.T) {
 	logger.Info("info", "key", "value")
 	logger.Error("error", "key", "value")
 
-	if got := CorrelationIDFromContext(nil); got != "" {
-		t.Fatalf("expected empty correlation id for nil context, got %q", got)
+	if got := CorrelationIDFromContext(context.Background()); got != "" {
+		t.Fatalf("expected empty correlation id for empty context, got %q", got)
 	}
 	if got := CorrelationIDFromContext(withCorrelationID(context.Background(), "")); got != "" {
 		t.Fatalf("expected empty correlation id for blank value, got %q", got)
@@ -224,6 +227,9 @@ func TestStatusCapturingResponseWriterTracksStatus(t *testing.T) {
 	writer.WriteHeader(http.StatusAccepted)
 	if got := writer.StatusCode(); got != http.StatusCreated {
 		t.Fatalf("expected first status to win, got %d", got)
+	}
+	if writer.Unwrap() != rec {
+		t.Fatalf("expected unwrap to return original response writer")
 	}
 }
 
@@ -284,7 +290,7 @@ func TestHTTPMetricsHandleNilAndAlreadyRegisteredCollectors(t *testing.T) {
 	}
 
 	second.Observe("", "", 0, time.Millisecond)
-	if testutil.ToFloat64(first.requests.WithLabelValues(http.MethodGet, "unmatched", "200")) != 1 {
+	if testutil.ToFloat64(first.requests.WithLabelValues(http.MethodGet, unmatchedRoute, "200")) != 1 {
 		t.Fatalf("expected observe to use default labels when values are blank")
 	}
 }
@@ -296,5 +302,95 @@ func TestCaptureStatusWriterReusesExistingRecorder(t *testing.T) {
 
 	if first != second {
 		t.Fatalf("expected existing status writer to be reused")
+	}
+}
+
+func TestHandlerRejectsNestedExportIDAndRoutePattern(t *testing.T) {
+	h := NewHandler(testCatalog{tpl: buildTemplate()})
+	h.Exports = &recordingScheduler{}
+
+	req := httptest.NewRequest(http.MethodGet, datasetExportsPath+"/a/b", nil)
+	rec := httptest.NewRecorder()
+
+	h.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusNotFound {
+		t.Fatalf("expected 404 for nested export id, got %d", rec.Code)
+	}
+	if got := routePattern(datasetExportsPath + "/a/b"); got != unmatchedRoute {
+		t.Fatalf("expected unmatched route for nested export id, got %q", got)
+	}
+}
+
+func TestDefaultHTTPMetricsFallsBackOnRegistrationError(t *testing.T) {
+	oldRegisterer := prometheus.DefaultRegisterer
+	oldWriter := log.Writer()
+	defer func() {
+		prometheus.DefaultRegisterer = oldRegisterer
+		log.SetOutput(oldWriter)
+		defaultHTTPMetricsOnce = sync.Once{}
+		defaultHTTPMetricsInst = nil
+	}()
+
+	registry := prometheus.NewRegistry()
+	prometheus.DefaultRegisterer = registry
+	defaultHTTPMetricsOnce = sync.Once{}
+	defaultHTTPMetricsInst = nil
+
+	if err := registry.Register(prometheus.NewCounter(prometheus.CounterOpts{
+		Name: "http_request_duration_seconds",
+		Help: "conflict",
+	})); err != nil {
+		t.Fatalf("register conflicting metric: %v", err)
+	}
+
+	var logs bytes.Buffer
+	log.SetOutput(&logs)
+
+	if got := defaultHTTPMetrics(); got != nil {
+		t.Fatalf("expected nil fallback metrics on registration error, got %#v", got)
+	}
+	if !strings.Contains(logs.String(), "datasets http metrics disabled") {
+		t.Fatalf("expected metrics fallback log, got %q", logs.String())
+	}
+}
+
+func TestHTTPMetricsObserveLogsSchemaMismatch(t *testing.T) {
+	oldWriter := log.Writer()
+	defer log.SetOutput(oldWriter)
+
+	var logs bytes.Buffer
+	log.SetOutput(&logs)
+
+	counterMismatch := &HTTPMetrics{
+		requests: prometheus.NewCounterVec(
+			prometheus.CounterOpts{Name: "counter_mismatch_total", Help: "counter"},
+			[]string{"method"},
+		),
+		duration: prometheus.NewHistogramVec(
+			prometheus.HistogramOpts{Name: "counter_mismatch_duration_seconds", Help: "duration"},
+			[]string{"method", "route", "status_code"},
+		),
+	}
+	counterMismatch.Observe(http.MethodGet, datasetTemplatesPath, http.StatusOK, time.Millisecond)
+
+	histogramMismatch := &HTTPMetrics{
+		requests: prometheus.NewCounterVec(
+			prometheus.CounterOpts{Name: "histogram_mismatch_total", Help: "counter"},
+			[]string{"method", "route", "status_code"},
+		),
+		duration: prometheus.NewHistogramVec(
+			prometheus.HistogramOpts{Name: "histogram_mismatch_duration_seconds", Help: "duration"},
+			[]string{"method"},
+		),
+	}
+	histogramMismatch.Observe(http.MethodGet, datasetTemplatesPath, http.StatusOK, time.Millisecond)
+
+	output := logs.String()
+	if !strings.Contains(output, "datasets http request counter skipped") {
+		t.Fatalf("expected counter mismatch log, got %q", output)
+	}
+	if !strings.Contains(output, "datasets http request histogram skipped") {
+		t.Fatalf("expected histogram mismatch log, got %q", output)
 	}
 }

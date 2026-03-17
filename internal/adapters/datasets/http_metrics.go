@@ -2,6 +2,7 @@ package datasets
 
 import (
 	"fmt"
+	"log"
 	"net/http"
 	"strconv"
 	"sync"
@@ -26,7 +27,9 @@ func defaultHTTPMetrics() *HTTPMetrics {
 	defaultHTTPMetricsOnce.Do(func() {
 		metrics, err := NewHTTPMetrics(prometheus.DefaultRegisterer)
 		if err != nil {
-			panic(err)
+			log.Printf("datasets http metrics disabled: %v", err)
+			defaultHTTPMetricsInst = nil
+			return
 		}
 		defaultHTTPMetricsInst = metrics
 	})
@@ -110,7 +113,7 @@ func (m *HTTPMetrics) Observe(method, route string, status int, duration time.Du
 		method = http.MethodGet
 	}
 	if route == "" {
-		route = "unmatched"
+		route = unmatchedRoute
 	}
 	if status == 0 {
 		status = http.StatusOK
@@ -121,8 +124,18 @@ func (m *HTTPMetrics) Observe(method, route string, status int, duration time.Du
 		"route":       route,
 		"status_code": strconv.Itoa(status),
 	}
-	m.requests.With(labels).Inc()
-	m.duration.With(labels).Observe(duration.Seconds())
+	counter, err := m.requests.GetMetricWith(labels)
+	if err != nil {
+		log.Printf("datasets http request counter skipped: %v", err)
+		return
+	}
+	histogram, err := m.duration.GetMetricWith(labels)
+	if err != nil {
+		log.Printf("datasets http request histogram skipped: %v", err)
+		return
+	}
+	counter.Inc()
+	histogram.Observe(duration.Seconds())
 }
 
 func (h *Handler) httpMetrics() *HTTPMetrics {

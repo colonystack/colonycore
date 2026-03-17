@@ -17,6 +17,7 @@ const (
 	datasetTemplatesPath      = "/api/v1/datasets/templates"
 	entityModelOpenAPIPath    = "/admin/entity-model/openapi"
 	datasetExportsPath        = "/api/v1/datasets/exports"
+	unmatchedRoute            = "unmatched"
 	parameterValidationFailed = "parameter validation failed"
 )
 
@@ -84,6 +85,13 @@ func (w *statusCapturingResponseWriter) StatusCode() int {
 		return http.StatusOK
 	}
 	return w.status
+}
+
+func (w *statusCapturingResponseWriter) Unwrap() http.ResponseWriter {
+	if w == nil {
+		return nil
+	}
+	return w.ResponseWriter
 }
 
 func captureStatusWriter(w http.ResponseWriter) *statusCapturingResponseWriter {
@@ -156,6 +164,10 @@ func routePattern(path string) string {
 	case trimmed == datasetExportsPath:
 		return datasetExportsPath
 	case strings.HasPrefix(trimmed, datasetExportsPath+"/"):
+		exportID := strings.TrimPrefix(trimmed, datasetExportsPath+"/")
+		if exportID == "" || strings.Contains(exportID, "/") {
+			return "unmatched"
+		}
 		return datasetExportsPath + "/{exportId}"
 	case strings.HasPrefix(trimmed, datasetTemplatesPath+"/"):
 		remainder := strings.TrimPrefix(trimmed, datasetTemplatesPath+"/")
@@ -171,7 +183,7 @@ func routePattern(path string) string {
 			return datasetTemplatesPath + "/{plugin}/{key}/{version}/*"
 		}
 	default:
-		return "unmatched"
+		return unmatchedRoute
 	}
 }
 

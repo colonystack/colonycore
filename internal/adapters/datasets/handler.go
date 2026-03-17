@@ -182,7 +182,7 @@ func (h *Handler) handleExports(w http.ResponseWriter, r *http.Request, path str
 		return
 	}
 	id := strings.TrimPrefix(path, datasetExportsPath+"/")
-	if id == "" {
+	if id == "" || strings.Contains(id, "/") {
 		writeError(w, http.StatusNotFound, "dataset endpoint not found")
 		return
 	}
