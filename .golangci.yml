@@ -51,6 +51,7 @@ linters:
             - go/parser
             - go/format
             - go/token
+            - github.com/prometheus/client_golang/prometheus
             - maps
             - github.com/aws/aws-sdk-go-v2/aws
             - github.com/aws/aws-sdk-go-v2/config
@@ -117,6 +118,8 @@ linters:
             - github.com/aws/aws-sdk-go-v2/config
             - github.com/aws/aws-sdk-go-v2/credentials
             - github.com/aws/aws-sdk-go-v2/service/s3
+            - github.com/prometheus/client_golang/prometheus
+            - github.com/prometheus/client_golang/prometheus/testutil
             - go/build
             - go/ast
             - go/parser

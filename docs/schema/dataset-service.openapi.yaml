@@ -146,7 +146,7 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
         '406':
-          description: Requested format not supported by the dataset template.
+          $ref: '#/components/responses/NotAcceptable'
         '500':
           $ref: '#/components/responses/InternalError'
   /api/v1/datasets/exports:
@@ -228,28 +228,41 @@ components:
     NotFound:
       description: Resource not found.
       content:
-        application/json:
+        application/problem+json:
           schema:
-            $ref: '#/components/schemas/ErrorResponse'
+            $ref: '#/components/schemas/ProblemDetail'
     BadRequest:
       description: Malformed request payload or parameter violation.
       content:
-        application/json:
+        application/problem+json:
           schema:
-            $ref: '#/components/schemas/ErrorResponse'
+            $ref: '#/components/schemas/ProblemDetail'
+    NotAcceptable:
+      description: Requested format not supported by the dataset template.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetail'
     InternalError:
       description: Unexpected server error.
       content:
-        application/json:
+        application/problem+json:
           schema:
-            $ref: '#/components/schemas/ErrorResponse'
+            $ref: '#/components/schemas/ProblemDetail'
   schemas:
-    ErrorResponse:
+    ProblemDetail:
       type: object
       properties:
-        error:
+        type:
           type: string
-      required: [error]
+        title:
+          type: string
+        status:
+          type: integer
+          format: int32
+        detail:
+          type: string
+      required: [type, title, status, detail]
     DatasetTemplateDescriptor:
       type: object
       properties:

@@ -53,9 +53,20 @@ func TestHandleTemplateUnknownSlug(t *testing.T) {
 	if rr.Code != http.StatusNotFound {
 		t.Fatalf("expected 404 for unknown slug, got %d", rr.Code)
 	}
-	var body map[string]any
-	_ = json.Unmarshal(rr.Body.Bytes(), &body)
-	if body["error"] == "" {
-		t.Fatalf("expected error message in body")
+	var problem problemDetail
+	if err := json.Unmarshal(rr.Body.Bytes(), &problem); err != nil {
+		t.Fatalf("decode problem: %v", err)
+	}
+	if problem.Type != problemTypeBlank {
+		t.Fatalf("expected problem type %q, got %q", problemTypeBlank, problem.Type)
+	}
+	if problem.Title != http.StatusText(http.StatusNotFound) {
+		t.Fatalf("expected title %q, got %q", http.StatusText(http.StatusNotFound), problem.Title)
+	}
+	if problem.Status != http.StatusNotFound {
+		t.Fatalf("expected status %d, got %d", http.StatusNotFound, problem.Status)
+	}
+	if problem.Detail == "" {
+		t.Fatalf("expected problem detail in body")
 	}
 }
