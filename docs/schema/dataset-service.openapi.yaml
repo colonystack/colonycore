@@ -46,6 +46,8 @@ paths:
                   template:
                     $ref: '#/components/schemas/DatasetTemplateDescriptor'
                 required: [template]
+        '405':
+          $ref: '#/components/responses/MethodNotAllowed'
         '404':
           $ref: '#/components/responses/NotFound'
   /api/v1/datasets/templates/{plugin}/{key}/{version}/validate:
@@ -88,6 +90,8 @@ paths:
                 required: [template, valid, parameters]
         '400':
           $ref: '#/components/responses/BadRequest'
+        '405':
+          $ref: '#/components/responses/MethodNotAllowed'
         '404':
           $ref: '#/components/responses/NotFound'
   /api/v1/datasets/templates/{plugin}/{key}/{version}/run:
@@ -143,10 +147,12 @@ paths:
                 format: binary
         '400':
           $ref: '#/components/responses/BadRequest'
+        '405':
+          $ref: '#/components/responses/MethodNotAllowed'
         '404':
           $ref: '#/components/responses/NotFound'
         '406':
-          description: Requested format not supported by the dataset template.
+          $ref: '#/components/responses/NotAcceptable'
         '500':
           $ref: '#/components/responses/InternalError'
   /api/v1/datasets/exports:
@@ -173,6 +179,8 @@ paths:
                   export:
                     $ref: '#/components/schemas/ExportRecord'
                 required: [export]
+        '405':
+          $ref: '#/components/responses/MethodNotAllowed'
         '400':
           $ref: '#/components/responses/BadRequest'
         '404':
@@ -199,6 +207,8 @@ paths:
                   export:
                     $ref: '#/components/schemas/ExportRecord'
                 required: [export]
+        '405':
+          $ref: '#/components/responses/MethodNotAllowed'
         '404':
           $ref: '#/components/responses/NotFound'
 components:
@@ -228,28 +238,47 @@ components:
     NotFound:
       description: Resource not found.
       content:
-        application/json:
+        application/problem+json:
           schema:
-            $ref: '#/components/schemas/ErrorResponse'
+            $ref: '#/components/schemas/ProblemDetail'
     BadRequest:
       description: Malformed request payload or parameter violation.
       content:
-        application/json:
+        application/problem+json:
           schema:
-            $ref: '#/components/schemas/ErrorResponse'
+            $ref: '#/components/schemas/ProblemDetail'
+    MethodNotAllowed:
+      description: Method not allowed.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetail'
+    NotAcceptable:
+      description: Requested format not supported by the dataset template.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetail'
     InternalError:
       description: Unexpected server error.
       content:
-        application/json:
+        application/problem+json:
           schema:
-            $ref: '#/components/schemas/ErrorResponse'
+            $ref: '#/components/schemas/ProblemDetail'
   schemas:
-    ErrorResponse:
+    ProblemDetail:
       type: object
       properties:
-        error:
+        type:
           type: string
-      required: [error]
+        title:
+          type: string
+        status:
+          type: integer
+          format: int32
+        detail:
+          type: string
+      required: [type, title, status, detail]
     DatasetTemplateDescriptor:
       type: object
       properties:

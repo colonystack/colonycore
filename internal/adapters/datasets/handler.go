@@ -22,10 +22,13 @@ type Catalog interface {
 
 // Handler provides HTTP access to dataset templates and exports.
 type Handler struct {
-	Catalog     Catalog
-	Exports     ExportScheduler
-	EntityModel http.Handler
-	Events      observability.Recorder
+	Catalog                Catalog
+	Exports                ExportScheduler
+	EntityModel            http.Handler
+	Events                 observability.Recorder
+	Logger                 RequestLogger
+	Metrics                *HTTPMetrics
+	CorrelationIDGenerator func() string
 }
 
 // NewHandler constructs a dataset HTTP handler.
@@ -34,10 +37,20 @@ func NewHandler(c Catalog) *Handler {
 		Catalog:     c,
 		EntityModel: entitymodel.NewOpenAPIHandler(),
 		Events:      observability.NoopRecorder{},
+		Logger:      noopRequestLogger{},
+		Metrics:     defaultHTTPMetrics(),
 	}
 }
 
 func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	var handler http.Handler = http.HandlerFunc(h.serveHTTP)
+	handler = h.requestLoggingMiddleware(handler)
+	handler = h.requestMetricsMiddleware(handler)
+	handler = h.correlationIDMiddleware(handler)
+	handler.ServeHTTP(w, r)
+}
+
+func (h *Handler) serveHTTP(w http.ResponseWriter, r *http.Request) {
 	if h.Catalog == nil {
 		writeError(w, http.StatusInternalServerError, "dataset catalog not configured")
 		return
@@ -45,24 +58,24 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	path := strings.TrimSuffix(r.URL.Path, "/")
 	switch {
-	case r.Method == http.MethodGet && path == "/api/v1/datasets/templates":
+	case r.Method == http.MethodGet && path == datasetTemplatesPath:
 		h.handleListTemplates(w, r)
 		return
-	case r.Method == http.MethodGet && path == "/admin/entity-model/openapi":
+	case r.Method == http.MethodGet && path == entityModelOpenAPIPath:
 		h.handleEntityModelOpenAPI(w, r)
 		return
-	case strings.HasPrefix(path, "/api/v1/datasets/exports"):
+	case strings.HasPrefix(path, datasetExportsPath):
 		if h.Exports == nil {
-			http.NotFound(w, r)
+			writeError(w, http.StatusNotFound, "dataset endpoint not found")
 			return
 		}
 		h.handleExports(w, r, path)
 		return
-	case strings.HasPrefix(path, "/api/v1/datasets/templates/"):
-		h.handleTemplate(w, r, strings.TrimPrefix(path, "/api/v1/datasets/templates/"))
+	case strings.HasPrefix(path, datasetTemplatesPath+"/"):
+		h.handleTemplate(w, r, strings.TrimPrefix(path, datasetTemplatesPath+"/"))
 		return
 	default:
-		http.NotFound(w, r)
+		writeError(w, http.StatusNotFound, "dataset endpoint not found")
 	}
 }
 
@@ -151,7 +164,7 @@ func (h *Handler) handleTemplate(w http.ResponseWriter, r *http.Request, remaind
 }
 
 func (h *Handler) handleExports(w http.ResponseWriter, r *http.Request, path string) {
-	if path == "/api/v1/datasets/exports" {
+	if path == datasetExportsPath {
 		if r.Method != http.MethodPost {
 			writeError(w, http.StatusMethodNotAllowed, "method not allowed")
 			return
@@ -160,17 +173,17 @@ func (h *Handler) handleExports(w http.ResponseWriter, r *http.Request, path str
 		return
 	}
 
-	if !strings.HasPrefix(path, "/api/v1/datasets/exports/") {
-		http.NotFound(w, r)
+	if !strings.HasPrefix(path, datasetExportsPath+"/") {
+		writeError(w, http.StatusNotFound, "dataset endpoint not found")
 		return
 	}
 	if r.Method != http.MethodGet {
 		writeError(w, http.StatusMethodNotAllowed, "method not allowed")
 		return
 	}
-	id := strings.TrimPrefix(path, "/api/v1/datasets/exports/")
-	if id == "" {
-		http.NotFound(w, r)
+	id := strings.TrimPrefix(path, datasetExportsPath+"/")
+	if id == "" || strings.Contains(id, "/") {
+		writeError(w, http.StatusNotFound, "dataset endpoint not found")
 		return
 	}
 	record, ok := h.Exports.GetExport(id)
@@ -257,6 +270,9 @@ func (h *Handler) handleRun(w http.ResponseWriter, r *http.Request, template dat
 	labels := map[string]string{
 		"template_id": descriptor.Slug,
 	}
+	if correlationID := CorrelationIDFromContext(r.Context()); correlationID != "" {
+		labels["correlation_id"] = correlationID
+	}
 	measures := map[string]float64{}
 	defer func() {
 		h.eventRecorder().Record(r.Context(), observability.Event{
@@ -292,14 +308,9 @@ func (h *Handler) handleRun(w http.ResponseWriter, r *http.Request, template dat
 	cleaned, errs := template.ValidateParameters(req.Parameters)
 	if len(errs) > 0 {
 		status = observability.StatusError
-		errMessage = "parameter validation failed"
+		errMessage = parameterValidationFailed
 		measures["validation_errors_total"] = float64(len(errs))
-		writeJSON(w, http.StatusBadRequest, validationResponse{
-			Template:   descriptor,
-			Valid:      false,
-			Parameters: cleaned,
-			Errors:     errs,
-		})
+		writeError(w, http.StatusBadRequest, parameterValidationDetail(errs))
 		return
 	}
 
@@ -322,14 +333,9 @@ func (h *Handler) handleRun(w http.ResponseWriter, r *http.Request, template dat
 	}
 	if len(paramErrs) > 0 {
 		status = observability.StatusError
-		errMessage = "parameter validation failed"
+		errMessage = parameterValidationFailed
 		measures["validation_errors_total"] = float64(len(paramErrs))
-		writeJSON(w, http.StatusBadRequest, validationResponse{
-			Template:   descriptor,
-			Valid:      false,
-			Parameters: cleaned,
-			Errors:     paramErrs,
-		})
+		writeError(w, http.StatusBadRequest, parameterValidationDetail(paramErrs))
 		return
 	}
 	measures["rows_total"] = float64(len(result.Rows))
@@ -353,6 +359,9 @@ func (h *Handler) handleExportCreate(w http.ResponseWriter, r *http.Request) {
 	status := observability.StatusSuccess
 	errMessage := ""
 	labels := map[string]string{}
+	if correlationID := CorrelationIDFromContext(r.Context()); correlationID != "" {
+		labels["correlation_id"] = correlationID
+	}
 	measures := map[string]float64{}
 	defer func() {
 		h.eventRecorder().Record(r.Context(), observability.Event{
@@ -456,6 +465,28 @@ func firstNonEmpty(values ...string) string {
 	return ""
 }
 
+func parameterValidationDetail(errs []datasetapi.ParameterError) string {
+	if len(errs) == 0 {
+		return parameterValidationFailed
+	}
+
+	details := make([]string, 0, len(errs))
+	for _, err := range errs {
+		switch {
+		case err.Name != "" && err.Message != "":
+			details = append(details, fmt.Sprintf("parameter %s: %s", err.Name, err.Message))
+		case err.Message != "":
+			details = append(details, err.Message)
+		case err.Name != "":
+			details = append(details, fmt.Sprintf("parameter %s: invalid value", err.Name))
+		}
+	}
+	if len(details) == 0 {
+		return parameterValidationFailed
+	}
+	return strings.Join(details, "; ")
+}
+
 func negotiateFormat(r *http.Request, supported []datasetapi.Format) string {
 	formatProvider := datasetapi.GetFormatProvider()
 
@@ -541,5 +572,5 @@ func writeJSON(w http.ResponseWriter, status int, payload any) {
 }
 
 func writeError(w http.ResponseWriter, status int, message string) {
-	writeJSON(w, status, map[string]any{"error": message})
+	writeProblem(w, status, message)
 }
