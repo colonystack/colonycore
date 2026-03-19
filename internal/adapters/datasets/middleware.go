@@ -13,12 +13,26 @@ import (
 )
 
 const (
-	correlationIDHeader       = "X-Correlation-ID"
-	datasetTemplatesPath      = "/api/v1/datasets/templates"
-	entityModelOpenAPIPath    = "/admin/entity-model/openapi"
-	datasetExportsPath        = "/api/v1/datasets/exports"
-	unmatchedRoute            = "unmatched"
-	parameterValidationFailed = "parameter validation failed"
+	correlationIDHeader             = "X-Correlation-ID"
+	datasetTemplatesPath            = "/api/v1/datasets/templates"
+	entityModelOpenAPIPath          = "/admin/entity-model/openapi"
+	datasetExportsPath              = "/api/v1/datasets/exports"
+	datasetScopeRequestorHeader     = "X-Dataset-Requestor"
+	datasetScopeRolesHeader         = "X-Dataset-Roles"
+	datasetScopeProjectIDsHeader    = "X-Dataset-Project-Ids"
+	datasetScopeProtocolIDsHeader   = "X-Dataset-Protocol-Ids"
+	unmatchedRoute                  = "unmatched"
+	parameterValidationFailed       = "parameter validation failed"
+	streamProgressHeader            = "X-Progress"
+	streamErrorTrailer              = "X-Stream-Error"
+	datasetListDefaultPage          = 1
+	datasetListDefaultPageSize      = 50
+	datasetListMaxPageSize          = 200
+	templateRBACProjectsAnnotation  = "rbac.projects"
+	templateRBACProtocolsAnnotation = "rbac.protocols"
+	wildcardScopeValue              = "*"
+	csvStreamFlushEveryRows         = 100
+	csvProgressSampleRows           = 32
 )
 
 // RequestLogger captures dataset adapter request logs using structured fields.

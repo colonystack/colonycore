@@ -18,6 +18,12 @@ _DEFAULT_HEADERS = {
     "Accept": "application/json",
     "User-Agent": "colonycore-dataset-client/0.1",
 }
+_DATASET_SCOPE_HEADERS = {
+    "requestor": "X-Dataset-Requestor",
+    "roles": "X-Dataset-Roles",
+    "project_ids": "X-Dataset-Project-Ids",
+    "protocol_ids": "X-Dataset-Protocol-Ids",
+}
 
 
 @dataclass
@@ -48,10 +54,45 @@ class DatasetClient:
             self._session.headers.setdefault("Authorization", f"Bearer {api_key}")
 
     # Template helpers -----------------------------------------------------
-    def list_templates(self) -> List[Dict[str, Any]]:
-        resp = self._session.get(f"{self._base_url}/api/v1/datasets/templates", timeout=self._timeout)
+    def _scope_headers(self, scope: Optional[Dict[str, Any]]) -> Dict[str, str]:
+        if not scope:
+            return {}
+
+        headers: Dict[str, str] = {}
+        for key, header in _DATASET_SCOPE_HEADERS.items():
+            value = scope.get(key)
+            if value is None or value == "":
+                continue
+            if isinstance(value, (list, tuple, set)):
+                items = [str(item).strip() for item in value if str(item).strip()]
+                if items:
+                    headers[header] = ",".join(items)
+                continue
+            headers[header] = str(value)
+        return headers
+
+    def list_templates_page(
+        self,
+        page: int = 1,
+        page_size: int = 50,
+        scope: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
+        resp = self._session.get(
+            f"{self._base_url}/api/v1/datasets/templates",
+            params={"page": page, "page_size": page_size},
+            headers=self._scope_headers(scope),
+            timeout=self._timeout,
+        )
         resp.raise_for_status()
-        payload = resp.json()
+        return resp.json()
+
+    def list_templates(
+        self,
+        page: int = 1,
+        page_size: int = 50,
+        scope: Optional[Dict[str, Any]] = None,
+    ) -> List[Dict[str, Any]]:
+        payload = self.list_templates_page(page=page, page_size=page_size, scope=scope)
         return payload.get("templates", [])
 
     def get_template(self, plugin: str, key: str, version: str) -> Dict[str, Any]:

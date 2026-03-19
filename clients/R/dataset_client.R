@@ -15,11 +15,63 @@ cc_dataset_headers <- function(token = NULL) {
   headers
 }
 
-cc_list_templates <- function(base_url, token = NULL, timeout = 30) {
+cc_dataset_scope_headers <- function(scope = list()) {
+  if (length(scope) == 0) {
+    return(add_headers())
+  }
+
+  headers <- list()
+  if (!is.null(scope$requestor) && nzchar(scope$requestor)) {
+    headers[["X-Dataset-Requestor"]] <- scope$requestor
+  }
+  if (!is.null(scope$roles) && length(scope$roles) > 0) {
+    headers[["X-Dataset-Roles"]] <- paste(scope$roles, collapse = ",")
+  }
+  if (!is.null(scope$project_ids) && length(scope$project_ids) > 0) {
+    headers[["X-Dataset-Project-Ids"]] <- paste(scope$project_ids, collapse = ",")
+  }
+  if (!is.null(scope$protocol_ids) && length(scope$protocol_ids) > 0) {
+    headers[["X-Dataset-Protocol-Ids"]] <- paste(scope$protocol_ids, collapse = ",")
+  }
+  do.call(add_headers, headers)
+}
+
+cc_list_templates_page <- function(
+  base_url,
+  token = NULL,
+  timeout = 30,
+  page = 1,
+  page_size = 50,
+  scope = list()
+) {
   url <- paste0(rtrim(base_url), "/api/v1/datasets/templates")
-  resp <- GET(url, cc_dataset_headers(token), timeout(timeout))
+  resp <- GET(
+    url,
+    cc_dataset_headers(token),
+    cc_dataset_scope_headers(scope),
+    timeout(timeout),
+    query = list(page = page, page_size = page_size)
+  )
   stop_for_status(resp)
-  content(resp, as = "parsed", simplifyVector = TRUE)$templates
+  content(resp, as = "parsed", simplifyVector = TRUE)
+}
+
+cc_list_templates <- function(
+  base_url,
+  token = NULL,
+  timeout = 30,
+  page = 1,
+  page_size = 50,
+  scope = list()
+) {
+  cc_list_templates_page(
+    base_url = base_url,
+    token = token,
+    timeout = timeout,
+    page = page,
+    page_size = page_size,
+    scope = scope
+  )$templates
 }
 
 cc_get_template <- function(

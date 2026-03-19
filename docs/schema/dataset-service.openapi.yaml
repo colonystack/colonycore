@@ -12,8 +12,33 @@ paths:
   /api/v1/datasets/templates:
     get:
       summary: List dataset templates
-      description: Enumerates all registered dataset templates including schema, metadata, and supported formats.
+      description: >-
+        Enumerates registered dataset templates including schema, metadata, and supported formats.
+        Results are filtered by token-derived project/protocol scope exposed through dataset scope headers,
+        then paginated after filtering.
       tags: [datasets]
+      parameters:
+        - $ref: '#/components/parameters/DatasetRequestorHeader'
+        - $ref: '#/components/parameters/DatasetRolesHeader'
+        - $ref: '#/components/parameters/DatasetProjectIDsHeader'
+        - $ref: '#/components/parameters/DatasetProtocolIDsHeader'
+        - in: query
+          name: page
+          schema:
+            type: integer
+            format: int32
+            minimum: 1
+            default: 1
+          description: One-based page number applied after RBAC filtering.
+        - in: query
+          name: page_size
+          schema:
+            type: integer
+            format: int32
+            minimum: 1
+            maximum: 200
+            default: 50
+          description: Number of templates returned per page.
       responses:
         '200':
           description: Templates enumerated successfully.
@@ -26,7 +51,11 @@ paths:
                     type: array
                     items:
                       $ref: '#/components/schemas/DatasetTemplateDescriptor'
-                required: [templates]
+                  pagination:
+                    $ref: '#/components/schemas/DatasetTemplatePagination'
+                required: [templates, pagination]
+        '400':
+          $ref: '#/components/responses/BadRequest'
   /api/v1/datasets/templates/{plugin}/{key}/{version}:
     parameters:
       - $ref: '#/components/parameters/Plugin'
@@ -124,6 +153,26 @@ paths:
       responses:
         '200':
           description: Dataset rendered successfully.
+          headers:
+            Transfer-Encoding:
+              description: Present for streamed CSV responses and set to `chunked`.
+              schema:
+                type: string
+            Trailer:
+              description: Declares trailer fields for chunked CSV responses.
+              schema:
+                type: string
+            X-Progress:
+              description: >-
+                Progress metadata for streamed CSV responses. The initial header is emitted as
+                `bytes=0/<total>` and the final `bytes=<written>/<total>` value is emitted as an
+                HTTP trailer when chunked transfer encoding is used.
+              schema:
+                type: string
+            X-Stream-Error:
+              description: Failure trailer emitted when a chunked CSV stream terminates early.
+              schema:
+                type: string
           content:
             application/json:
               schema:
@@ -234,6 +283,34 @@ components:
       schema:
         type: string
       description: Semantic version of the dataset template.
+    DatasetRequestorHeader:
+      name: X-Dataset-Requestor
+      in: header
+      required: false
+      schema:
+        type: string
+      description: Requestor identity propagated from upstream authentication middleware.
+    DatasetRolesHeader:
+      name: X-Dataset-Roles
+      in: header
+      required: false
+      schema:
+        type: string
+      description: Comma-delimited RBAC roles propagated from upstream authentication middleware.
+    DatasetProjectIDsHeader:
+      name: X-Dataset-Project-Ids
+      in: header
+      required: false
+      schema:
+        type: string
+      description: Comma-delimited project IDs allowed by the caller's scoped token.
+    DatasetProtocolIDsHeader:
+      name: X-Dataset-Protocol-Ids
+      in: header
+      required: false
+      schema:
+        type: string
+      description: Comma-delimited protocol IDs allowed by the caller's scoped token.
   responses:
     NotFound:
       description: Resource not found.
@@ -325,6 +402,30 @@ components:
         slug:
           type: string
       required: [plugin, key, version, title, description, dialect, query, columns, output_formats, slug]
+    DatasetTemplatePagination:
+      type: object
+      properties:
+        page:
+          type: integer
+          format: int32
+          minimum: 1
+        page_size:
+          type: integer
+          format: int32
+          minimum: 1
+        total_items:
+          type: integer
+          format: int32
+          minimum: 0
+        total_pages:
+          type: integer
+          format: int32
+          minimum: 0
+        has_next:
+          type: boolean
+        has_prev:
+          type: boolean
+      required: [page, page_size, total_items, total_pages, has_next, has_prev]
     DatasetParameter:
       type: object
       properties:
