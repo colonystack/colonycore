@@ -44,3 +44,5 @@ coverage.summary
 .Rhistory
 benchmarks/results
 benchmarks/artifacts
+__pycache__/
+.ruff_cache/

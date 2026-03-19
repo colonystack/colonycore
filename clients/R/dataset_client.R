@@ -172,6 +172,7 @@ cc_run_template <- function(
   parameters = list(),
   scope = list(),
   format = "json",
+  include_stream_metadata = FALSE,
   token = NULL,
   timeout = 60
 ) {
@@ -197,7 +198,16 @@ cc_run_template <- function(
   )
   stop_for_status(resp)
   if (tolower(format) == "csv") {
-    return(content(resp, as = "text", encoding = "UTF-8"))
+    body <- content(resp, as = "text", encoding = "UTF-8")
+    if (isTRUE(include_stream_metadata)) {
+      resp_headers <- headers(resp)
+      return(list(
+        body = body,
+        progress = cc_header_value(resp_headers, "X-Progress"),
+        headers = resp_headers
+      ))
+    }
+    return(body)
   }
   content(resp, as = "parsed", simplifyVector = TRUE)
 }
@@ -291,4 +301,18 @@ cc_download_artifact <- function(url, path = NULL, token = NULL, timeout = 60) {
 
 rtrim <- function(x) {
   sub("/*$", "", x)
+}
+
+cc_header_value <- function(response_headers, name) {
+  if (is.null(response_headers) || length(response_headers) == 0) {
+    return(NULL)
+  }
+
+  target <- tolower(name)
+  for (header_name in names(response_headers)) {
+    if (tolower(header_name) == target) {
+      return(response_headers[[header_name]])
+    }
+  }
+  NULL
 }

@@ -10,7 +10,7 @@ import json
 import os
 import time
 import warnings
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any, Dict, Iterable, List, Optional
 
 import requests
@@ -26,6 +26,7 @@ _DATASET_SCOPE_HEADERS = {
     "project_ids": "X-Dataset-Project-Ids",
     "protocol_ids": "X-Dataset-Protocol-Ids",
 }
+_STREAM_PROGRESS_HEADER = "X-Progress"
 
 
 @dataclass
@@ -34,7 +35,32 @@ class ExportHandle:
 
     id: str
     status: str
-    artifacts: List[Dict[str, Any]]
+    progress_pct: int = 0
+    eta_seconds: Optional[int] = None
+    progress_state: Optional[str] = None
+    artifact_readiness: Optional[str] = None
+    artifacts: List[Dict[str, Any]] = field(default_factory=list)
+    error: Optional[str] = None
+    template: Dict[str, Any] = field(default_factory=dict)
+    scope: Dict[str, Any] = field(default_factory=dict)
+    parameters: Dict[str, Any] = field(default_factory=dict)
+    formats: List[str] = field(default_factory=list)
+    requested_by: Optional[str] = None
+    reason: Optional[str] = None
+    project_id: Optional[str] = None
+    protocol_id: Optional[str] = None
+    created_at: Optional[str] = None
+    updated_at: Optional[str] = None
+    completed_at: Optional[str] = None
+
+
+@dataclass
+class CSVRunResult:
+    """Represents a streamed CSV response plus transport metadata."""
+
+    body: str
+    progress: Optional[str]
+    headers: Dict[str, str] = field(default_factory=dict)
 
 
 class DatasetClient:
@@ -72,6 +98,29 @@ class DatasetClient:
                 continue
             headers[header] = str(value)
         return headers
+
+    def _export_handle(self, payload: Dict[str, Any]) -> ExportHandle:
+        return ExportHandle(
+            id=payload["id"],
+            status=payload["status"],
+            progress_pct=payload.get("progress_pct", 0),
+            eta_seconds=payload.get("eta_seconds"),
+            progress_state=payload.get("progress_state"),
+            artifact_readiness=payload.get("artifact_readiness"),
+            artifacts=list(payload.get("artifacts") or []),
+            error=payload.get("error"),
+            template=dict(payload.get("template") or {}),
+            scope=dict(payload.get("scope") or {}),
+            parameters=dict(payload.get("parameters") or {}),
+            formats=list(payload.get("formats") or []),
+            requested_by=payload.get("requested_by"),
+            reason=payload.get("reason"),
+            project_id=payload.get("project_id"),
+            protocol_id=payload.get("protocol_id"),
+            created_at=payload.get("created_at"),
+            updated_at=payload.get("updated_at"),
+            completed_at=payload.get("completed_at"),
+        )
 
     def list_templates_page(
         self,
@@ -146,6 +195,7 @@ class DatasetClient:
         parameters: Optional[Dict[str, Any]] = None,
         scope: Optional[Dict[str, Any]] = None,
         output_format: str = "json",
+        include_stream_metadata: bool = False,
     ) -> Any:
         path = f"{self._base_url}/api/v1/datasets/templates/{plugin}/{key}/{version}/run"
         headers = {}
@@ -159,6 +209,12 @@ class DatasetClient:
         resp = self._session.post(path, params={"format": fmt}, json=payload, headers=headers, timeout=self._timeout)
         resp.raise_for_status()
         if fmt == "csv":
+            if include_stream_metadata:
+                return CSVRunResult(
+                    body=resp.text,
+                    progress=resp.headers.get(_STREAM_PROGRESS_HEADER),
+                    headers=dict(resp.headers),
+                )
             return resp.text
         return resp.json()
 
@@ -198,13 +254,13 @@ class DatasetClient:
         resp = self._session.post(f"{self._base_url}/api/v1/datasets/exports", json=body, timeout=self._timeout)
         resp.raise_for_status()
         payload = resp.json()["export"]
-        return ExportHandle(id=payload["id"], status=payload["status"], artifacts=payload.get("artifacts", []))
+        return self._export_handle(payload)
 
     def get_export(self, export_id: str) -> ExportHandle:
         resp = self._session.get(f"{self._base_url}/api/v1/datasets/exports/{export_id}", timeout=self._timeout)
         resp.raise_for_status()
         payload = resp.json()["export"]
-        return ExportHandle(id=payload["id"], status=payload["status"], artifacts=payload.get("artifacts", []))
+        return self._export_handle(payload)
 
     def wait_for_export(
         self,
