@@ -18,7 +18,7 @@ import (
 func TestHandlerExportProgressLifecycle(t *testing.T) {
 	runtime, runStarted, releaseRun := newBlockedExportRuntime()
 	catalog := fakeCatalog{tpl: runtime}
-	worker := NewWorker(catalog, NewMemoryObjectStore(), &memAudit{})
+	worker := NewWorker(catalog, NewMemoryObjectStore(), &MemoryAuditLog{})
 	worker.Start()
 	defer func() { _ = worker.Stop(context.Background()) }()
 
