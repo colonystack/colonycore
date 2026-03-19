@@ -202,7 +202,6 @@ type validationResponse struct {
 	Template   datasetapi.TemplateDescriptor `json:"template"`
 	Valid      bool                          `json:"valid"`
 	Parameters map[string]any                `json:"parameters"`
-	Errors     []datasetapi.ParameterError   `json:"errors,omitempty"`
 }
 
 const emptyBodySentinel = "EOF"
@@ -214,11 +213,14 @@ func (h *Handler) handleValidate(w http.ResponseWriter, r *http.Request, templat
 		return
 	}
 	cleaned, errs := template.ValidateParameters(req.Parameters)
+	if len(errs) > 0 {
+		writeProblemWithErrors(w, http.StatusUnprocessableEntity, parameterValidationDetail(errs), errs)
+		return
+	}
 	writeJSON(w, http.StatusOK, validationResponse{
 		Template:   template.Descriptor(),
-		Valid:      len(errs) == 0,
+		Valid:      true,
 		Parameters: cleaned,
-		Errors:     errs,
 	})
 }
 

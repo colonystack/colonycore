@@ -173,13 +173,13 @@ func validateParameters(definitions []Parameter, supplied map[string]any) (map[s
 			}
 			continue
 		}
+		delete(provided, key)
 		coerced, err := coerceParameter(param, val)
 		if err != nil {
 			errs = append(errs, ParameterError{Name: param.Name, Message: err.Error()})
 			continue
 		}
 		cleaned[param.Name] = coerced
-		delete(provided, key)
 	}
 	for leftovers := range provided {
 		errs = append(errs, ParameterError{Name: leftovers, Message: "parameter not declared"})

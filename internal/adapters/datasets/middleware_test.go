@@ -62,7 +62,7 @@ func TestHandlerErrorsUseProblemJSON(t *testing.T) {
 	if rec.Code != http.StatusInternalServerError {
 		t.Fatalf("expected 500, got %d", rec.Code)
 	}
-	if got := rec.Header().Get("Content-Type"); got != "application/problem+json" {
+	if got := rec.Header().Get("Content-Type"); got != problemContentType {
 		t.Fatalf("expected problem content type, got %q", got)
 	}
 

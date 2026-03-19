@@ -85,7 +85,20 @@ func TestHandleValidateInvalidJSON(t *testing.T) {
 	w := httptest.NewRecorder()
 	h.ServeHTTP(w, r)
 	if w.Code != http.StatusBadRequest {
-		t.Fatalf("expected 400 got %d", w.Code)
+		t.Fatalf("expected 400 got %d body=%s", w.Code, w.Body.String())
+	}
+	if got := w.Header().Get("Content-Type"); got != problemContentType {
+		t.Fatalf("expected problem content type, got %q", got)
+	}
+	var problem problemDetail
+	if err := json.Unmarshal(w.Body.Bytes(), &problem); err != nil {
+		t.Fatalf("decode problem: %v", err)
+	}
+	if problem.Status != http.StatusBadRequest {
+		t.Fatalf("expected status %d, got %d", http.StatusBadRequest, problem.Status)
+	}
+	if problem.Detail != "invalid validation request payload" {
+		t.Fatalf("unexpected detail %q", problem.Detail)
 	}
 }
 

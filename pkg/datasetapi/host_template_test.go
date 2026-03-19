@@ -259,6 +259,9 @@ func TestValidateParametersErrors(t *testing.T) {
 	if len(paramErrs) == 0 || !strings.Contains(paramErrs[0].Message, "value must be one of") {
 		t.Fatalf("expected enum validation error, got %+v", paramErrs)
 	}
+	if len(paramErrs) != 1 || paramErrs[0].Name != "stage" {
+		t.Fatalf("expected only the declared parameter validation error, got %+v", paramErrs)
+	}
 	_, leftovers := host.ValidateParameters(map[string]any{"stage": "adult", "limit": 1, "mystery": 1})
 	if len(leftovers) == 0 || leftovers[len(leftovers)-1].Name != "mystery" {
 		t.Fatalf("expected leftover parameter error, got %+v", leftovers)

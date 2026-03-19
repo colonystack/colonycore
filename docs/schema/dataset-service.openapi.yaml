@@ -70,7 +70,7 @@ paths:
                   additionalProperties: {}
       responses:
         '200':
-          description: Validation outcome.
+          description: Parameters validated successfully.
           content:
             application/json:
               schema:
@@ -83,11 +83,9 @@ paths:
                   parameters:
                     type: object
                     additionalProperties: {}
-                  errors:
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/DatasetParameterError'
                 required: [template, valid, parameters]
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
         '400':
           $ref: '#/components/responses/BadRequest'
         '405':
@@ -242,7 +240,13 @@ components:
           schema:
             $ref: '#/components/schemas/ProblemDetail'
     BadRequest:
-      description: Malformed request payload or parameter violation.
+      description: Malformed request payload.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetail'
+    UnprocessableEntity:
+      description: Request semantic validation failed.
       content:
         application/problem+json:
           schema:
@@ -278,6 +282,10 @@ components:
           format: int32
         detail:
           type: string
+        errors:
+          type: array
+          items:
+            $ref: '#/components/schemas/DatasetParameterError'
       required: [type, title, status, detail]
     DatasetTemplateDescriptor:
       type: object
