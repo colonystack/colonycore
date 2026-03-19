@@ -17,7 +17,7 @@ import (
 func TestHandleExportCreateErrorBranches(t *testing.T) {
 	tpl := buildTemplate()
 	cat := testCatalog{tpl: tpl}
-	wkr := NewWorker(cat, NewMemoryObjectStore(), &memAudit{})
+	wkr := NewWorker(cat, NewMemoryObjectStore(), &MemoryAuditLog{})
 	wkr.Start()
 	defer func() { _ = wkr.Stop(context.Background()) }()
 	h := &Handler{Catalog: cat, Exports: wkr}
@@ -42,7 +42,7 @@ func TestHandleExportCreateDedupFormats(t *testing.T) {
 	tpl := buildTemplate()
 	tpl.OutputFormats = []datasetapi.Format{core.FormatJSON, core.FormatCSV}
 	cat := testCatalog{tpl: tpl}
-	wkr := NewWorker(cat, NewMemoryObjectStore(), &memAudit{})
+	wkr := NewWorker(cat, NewMemoryObjectStore(), &MemoryAuditLog{})
 	wkr.Start()
 	defer func() { _ = wkr.Stop(context.Background()) }()
 	h := &Handler{Catalog: cat, Exports: wkr}

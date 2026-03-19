@@ -291,6 +291,17 @@ func (w *Worker) EnqueueExport(ctx context.Context, input ExportInput) (ExportRe
 	queuedSnapshot := record.copy()
 	w.mu.Unlock()
 
+	select {
+	case w.queue <- exportTask{id: id, input: input}:
+	default:
+		w.mu.Lock()
+		delete(w.jobs, id)
+		w.mu.Unlock()
+		err := fmt.Errorf("export queue full")
+		w.emitExportEvent(ctx, "catalog.export.enqueue", observability.StatusError, id, slug, err.Error(), 0, nil)
+		return ExportRecord{}, err
+	}
+
 	if w.audit != nil {
 		w.audit.Record(ctx, AuditEntry{
 			ID:         newID(),
@@ -302,14 +313,6 @@ func (w *Worker) EnqueueExport(ctx context.Context, input ExportInput) (ExportRe
 			Reason:     input.Reason,
 			OccurredAt: now,
 		})
-	}
-
-	select {
-	case w.queue <- exportTask{id: id, input: input}:
-	default:
-		err := fmt.Errorf("export queue full")
-		w.emitExportEvent(ctx, "catalog.export.enqueue", observability.StatusError, id, slug, err.Error(), 0, nil)
-		return ExportRecord{}, err
 	}
 	w.emitExportEvent(ctx, "catalog.export.enqueue", observability.StatusQueued, id, slug, "", 0, map[string]float64{
 		"formats_total": float64(len(uniqFormats)),

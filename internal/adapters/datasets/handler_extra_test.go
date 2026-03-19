@@ -78,7 +78,7 @@ func TestHandlerExportsLifecycle(t *testing.T) {
 	tpl := buildTemplate()
 	cat := testCatalog{tpl: tpl}
 	store := NewMemoryObjectStore()
-	wkr := NewWorker(cat, store, &memAudit{})
+	wkr := NewWorker(cat, store, &MemoryAuditLog{})
 	wkr.Start()
 	defer func() { _ = wkr.Stop(context.Background()) }()
 	h := &Handler{Catalog: cat, Exports: wkr}

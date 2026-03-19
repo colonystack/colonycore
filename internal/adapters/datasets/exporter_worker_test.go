@@ -186,16 +186,12 @@ func (c *transientCatalog) DatasetTemplates() []datasetapi.TemplateDescriptor {
 	return []datasetapi.TemplateDescriptor{c.tpl.Descriptor()}
 }
 
-type memAudit struct{ entries []AuditEntry }
-
-func (m *memAudit) Record(_ context.Context, e AuditEntry) { m.entries = append(m.entries, e) }
-
 func TestWorkerSuccessAcrossFormats(t *testing.T) {
 	formatProvider := datasetapi.GetFormatProvider()
 	tpl := buildRuntimeTemplate()
 	catalog := fakeCatalog{tpl: tpl}
 	store := NewMemoryObjectStore()
-	audit := &memAudit{}
+	audit := &MemoryAuditLog{}
 	w := NewWorker(catalog, store, audit)
 	w.Start()
 	defer func() { _ = w.Stop(context.Background()) }()
@@ -333,12 +329,24 @@ func TestWorkerQueueFull(t *testing.T) {
 	formatProvider := datasetapi.GetFormatProvider()
 	tpl := buildRuntimeTemplate()
 	catalog := fakeCatalog{tpl: tpl}
-	w := NewWorker(catalog, nil, nil)
+	audit := &MemoryAuditLog{}
+	w := NewWorker(catalog, nil, audit)
 	w.queue = make(chan exportTask, 1)
 	w.queue <- exportTask{id: "pre", input: ExportInput{TemplateSlug: tpl.Descriptor().Slug}}
 
 	if _, err := w.EnqueueExport(context.Background(), ExportInput{TemplateSlug: tpl.Descriptor().Slug, Formats: []datasetapi.Format{formatProvider.JSON()}}); err == nil || !strings.Contains(err.Error(), "queue full") {
 		t.Fatalf("expected queue full error, got %v", err)
+	}
+
+	if entries := audit.Entries(); len(entries) != 0 {
+		t.Fatalf("expected no queued audit entry when enqueue fails, got %+v", entries)
+	}
+
+	w.mu.RLock()
+	jobCount := len(w.jobs)
+	w.mu.RUnlock()
+	if jobCount != 0 {
+		t.Fatalf("expected queue-full enqueue to leave no stored jobs, got %d", jobCount)
 	}
 }
 
