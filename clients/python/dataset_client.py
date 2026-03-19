@@ -9,6 +9,7 @@ from __future__ import annotations
 import json
 import os
 import time
+import warnings
 from dataclasses import dataclass
 from typing import Any, Dict, Iterable, List, Optional
 
@@ -17,6 +18,13 @@ import requests
 _DEFAULT_HEADERS = {
     "Accept": "application/json",
     "User-Agent": "colonycore-dataset-client/0.1",
+}
+_MAX_TEMPLATE_PAGES = 1000
+_DATASET_SCOPE_HEADERS = {
+    "requestor": "X-Dataset-Requestor",
+    "roles": "X-Dataset-Roles",
+    "project_ids": "X-Dataset-Project-Ids",
+    "protocol_ids": "X-Dataset-Protocol-Ids",
 }
 
 
@@ -48,11 +56,69 @@ class DatasetClient:
             self._session.headers.setdefault("Authorization", f"Bearer {api_key}")
 
     # Template helpers -----------------------------------------------------
-    def list_templates(self) -> List[Dict[str, Any]]:
-        resp = self._session.get(f"{self._base_url}/api/v1/datasets/templates", timeout=self._timeout)
+    def _scope_headers(self, scope: Optional[Dict[str, Any]]) -> Dict[str, str]:
+        if not scope:
+            return {}
+
+        headers: Dict[str, str] = {}
+        for key, header in _DATASET_SCOPE_HEADERS.items():
+            value = scope.get(key)
+            if value is None or value == "":
+                continue
+            if isinstance(value, (list, tuple, set)):
+                items = [str(item).strip() for item in value if str(item).strip()]
+                if items:
+                    headers[header] = ",".join(items)
+                continue
+            headers[header] = str(value)
+        return headers
+
+    def list_templates_page(
+        self,
+        page: int = 1,
+        page_size: int = 50,
+        scope: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
+        resp = self._session.get(
+            f"{self._base_url}/api/v1/datasets/templates",
+            params={"page": page, "page_size": page_size},
+            headers=self._scope_headers(scope),
+            timeout=self._timeout,
+        )
         resp.raise_for_status()
-        payload = resp.json()
-        return payload.get("templates", [])
+        return resp.json()
+
+    def list_templates(
+        self,
+        page: int = 1,
+        page_size: int = 50,
+        scope: Optional[Dict[str, Any]] = None,
+    ) -> List[Dict[str, Any]]:
+        templates: List[Dict[str, Any]] = []
+        current_page = page
+        pages_fetched = 0
+
+        while True:
+            payload = self.list_templates_page(page=current_page, page_size=page_size, scope=scope)
+            pages_fetched += 1
+            page_templates = payload.get("templates", [])
+            if not page_templates:
+                break
+
+            templates.extend(page_templates)
+            if not (payload.get("pagination") or {}).get("has_next"):
+                break
+            if pages_fetched >= _MAX_TEMPLATE_PAGES:
+                warnings.warn(
+                    f"template listing truncated after {_MAX_TEMPLATE_PAGES} pages; additional pages were not fetched",
+                    RuntimeWarning,
+                    stacklevel=2,
+                )
+                break
+
+            current_page += 1
+
+        return templates
 
     def get_template(self, plugin: str, key: str, version: str) -> Dict[str, Any]:
         path = f"{self._base_url}/api/v1/datasets/templates/{plugin}/{key}/{version}"

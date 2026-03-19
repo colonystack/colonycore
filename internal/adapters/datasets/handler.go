@@ -1,11 +1,12 @@
 package datasets
 
 import (
+	"bytes"
 	"encoding/csv"
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -97,20 +98,22 @@ func (h *Handler) handleEntityModelOpenAPI(w http.ResponseWriter, r *http.Reques
 	handler.ServeHTTP(w, r)
 }
 
-func (h *Handler) handleListTemplates(w http.ResponseWriter, _ *http.Request) {
+func (h *Handler) handleListTemplates(w http.ResponseWriter, r *http.Request) {
+	page, pageSize, err := parseTemplatePagination(r)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
 	templates := h.Catalog.DatasetTemplates()
-	sort.Slice(templates, func(i, j int) bool {
-		a := templates[i]
-		b := templates[j]
-		if a.Plugin == b.Plugin {
-			if a.Key == b.Key {
-				return a.Version < b.Version
-			}
-			return a.Key < b.Key
-		}
-		return a.Plugin < b.Plugin
+	datasetapi.SortTemplateDescriptors(templates)
+	templates = filterTemplatesByScope(templates, datasetScopeFromRequest(r))
+	templates, pagination := paginateTemplates(templates, page, pageSize)
+
+	writeJSON(w, http.StatusOK, templateListResponse{
+		Templates:  templates,
+		Pagination: pagination,
 	})
-	writeJSON(w, http.StatusOK, map[string]any{"templates": templates})
 }
 
 func (h *Handler) handleTemplate(w http.ResponseWriter, r *http.Request, remainder string) {
@@ -196,6 +199,20 @@ func (h *Handler) handleExports(w http.ResponseWriter, r *http.Request, path str
 
 type validationRequest struct {
 	Parameters map[string]any `json:"parameters"`
+}
+
+type templateListResponse struct {
+	Templates  []datasetapi.TemplateDescriptor `json:"templates"`
+	Pagination templatePagination              `json:"pagination"`
+}
+
+type templatePagination struct {
+	Page       int  `json:"page"`
+	PageSize   int  `json:"page_size"`
+	TotalItems int  `json:"total_items"`
+	TotalPages int  `json:"total_pages"`
+	HasNext    bool `json:"has_next"`
+	HasPrev    bool `json:"has_prev"`
 }
 
 type validationResponse struct {
@@ -344,7 +361,11 @@ func (h *Handler) handleRun(w http.ResponseWriter, r *http.Request, template dat
 
 	switch selectedFormat {
 	case formatProvider.CSV():
-		streamCSV(w, descriptor, result)
+		if err := streamCSV(w, descriptor, result); err != nil {
+			status = observability.StatusError
+			errMessage = err.Error()
+			h.logger().Error("dataset csv stream failed", "template", descriptor.Slug, "error", err.Error())
+		}
 	default:
 		writeJSON(w, http.StatusOK, runResponse{
 			Template:   descriptor,
@@ -516,38 +537,347 @@ func negotiateFormat(r *http.Request, supported []datasetapi.Format) string {
 	return ""
 }
 
-func streamCSV(w http.ResponseWriter, descriptor datasetapi.TemplateDescriptor, result datasetapi.RunResult) {
+func streamCSV(w http.ResponseWriter, descriptor datasetapi.TemplateDescriptor, result datasetapi.RunResult) error {
 	filename := fmt.Sprintf("%s-%s.csv", descriptor.Key, time.Now().UTC().Format("20060102T150405Z"))
+	columns := csvColumns(descriptor, result)
+	totalBytes := estimateCSVSize(columns, result.Rows)
 
 	w.Header().Set("Content-Type", "text/csv")
 	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s\"", filename))
-	writer := csv.NewWriter(w)
-	defer writer.Flush()
-
-	var columns []datasetapi.Column
-	if len(result.Schema) > 0 {
-		columns = result.Schema
-	} else {
-		columns = descriptor.Columns
+	w.Header().Set("Transfer-Encoding", "chunked")
+	w.Header().Add("Trailer", streamErrorTrailer)
+	if totalBytes > 0 {
+		w.Header().Add("Trailer", streamProgressHeader)
+		w.Header().Set(streamProgressHeader, fmt.Sprintf("bytes=0/%d", totalBytes))
 	}
 
-	headers := make([]string, len(columns))
-	for i, column := range columns {
-		headers[i] = column.Name
-	}
-	if err := writer.Write(headers); err != nil {
-		return
-	}
-
-	for _, row := range result.Rows {
-		record := make([]string, len(columns))
-		for i, column := range columns {
-			record[i] = formatValue(row[column.Name])
-		}
-		if err := writer.Write(record); err != nil {
+	counter := &countingResponseWriter{ResponseWriter: w}
+	var streamErr error
+	defer func() {
+		if totalBytes <= 0 {
+			if streamErr != nil {
+				w.Header().Set(streamErrorTrailer, streamErr.Error())
+			}
 			return
 		}
+		progressTotal := totalBytes
+		if counter.bytesWritten > progressTotal {
+			progressTotal = counter.bytesWritten
+		}
+		w.Header().Set(streamProgressHeader, fmt.Sprintf("bytes=%d/%d", counter.bytesWritten, progressTotal))
+		if streamErr != nil {
+			w.Header().Set(streamErrorTrailer, streamErr.Error())
+		}
+	}()
+
+	writer := csv.NewWriter(counter)
+	flusher, _ := w.(http.Flusher)
+
+	if err := writer.Write(csvHeaderRecord(columns)); err != nil {
+		streamErr = fmt.Errorf("write csv header: %w", err)
+		return streamErr
 	}
+	writer.Flush()
+	if writer.Error() != nil {
+		streamErr = fmt.Errorf("flush csv header: %w", writer.Error())
+		return streamErr
+	}
+	if flusher != nil {
+		flusher.Flush()
+	}
+
+	rowsSinceFlush := 0
+	for i, row := range result.Rows {
+		if err := writer.Write(csvRowRecord(columns, row)); err != nil {
+			streamErr = fmt.Errorf("write csv row %d: %w", i, err)
+			return streamErr
+		}
+		rowsSinceFlush++
+		if rowsSinceFlush >= csvStreamFlushEveryRows {
+			writer.Flush()
+			if writer.Error() != nil {
+				streamErr = fmt.Errorf("flush csv rows at row %d: %w", i, writer.Error())
+				return streamErr
+			}
+			if flusher != nil {
+				flusher.Flush()
+			}
+			rowsSinceFlush = 0
+		}
+	}
+	writer.Flush()
+	if writer.Error() != nil {
+		streamErr = fmt.Errorf("flush final csv rows: %w", writer.Error())
+		return streamErr
+	}
+	if flusher != nil {
+		flusher.Flush()
+	}
+	return nil
+}
+
+func parseTemplatePagination(r *http.Request) (int, int, error) {
+	page, err := parsePositiveQueryInt(r, "page", datasetListDefaultPage)
+	if err != nil {
+		return 0, 0, err
+	}
+
+	pageSize, err := parsePositiveQueryInt(r, "page_size", datasetListDefaultPageSize)
+	if err != nil {
+		return 0, 0, err
+	}
+	if pageSize > datasetListMaxPageSize {
+		return 0, 0, fmt.Errorf("page_size must be between 1 and %d", datasetListMaxPageSize)
+	}
+
+	return page, pageSize, nil
+}
+
+func parsePositiveQueryInt(r *http.Request, key string, fallback int) (int, error) {
+	if r == nil {
+		return fallback, nil
+	}
+	raw := strings.TrimSpace(r.URL.Query().Get(key))
+	if raw == "" {
+		return fallback, nil
+	}
+	value, err := strconv.Atoi(raw)
+	if err != nil || value <= 0 {
+		return 0, fmt.Errorf("%s must be a positive integer", key)
+	}
+	return value, nil
+}
+
+func paginateTemplates(templates []datasetapi.TemplateDescriptor, page int, pageSize int) ([]datasetapi.TemplateDescriptor, templatePagination) {
+	totalItems := len(templates)
+	totalPages := 0
+	if totalItems > 0 {
+		totalPages = (totalItems + pageSize - 1) / pageSize
+	}
+
+	start64 := int64(page-1) * int64(pageSize)
+	if start64 < 0 || start64 >= int64(totalItems) {
+		return []datasetapi.TemplateDescriptor{}, templatePagination{
+			Page:       page,
+			PageSize:   pageSize,
+			TotalItems: totalItems,
+			TotalPages: totalPages,
+			HasNext:    totalPages > 0 && page < totalPages,
+			HasPrev:    totalPages > 0 && page > 1,
+		}
+	}
+	end64 := start64 + int64(pageSize)
+	if end64 < start64 || end64 > int64(totalItems) {
+		end64 = int64(totalItems)
+	}
+	start := int(start64)
+	end := int(end64)
+
+	paged := make([]datasetapi.TemplateDescriptor, 0, end-start)
+	if start < end {
+		paged = append(paged, templates[start:end]...)
+	}
+
+	return paged, templatePagination{
+		Page:       page,
+		PageSize:   pageSize,
+		TotalItems: totalItems,
+		TotalPages: totalPages,
+		HasNext:    totalPages > 0 && page < totalPages,
+		HasPrev:    totalPages > 0 && page > 1,
+	}
+}
+
+func filterTemplatesByScope(templates []datasetapi.TemplateDescriptor, scope datasetapi.Scope) []datasetapi.TemplateDescriptor {
+	if len(templates) == 0 {
+		return []datasetapi.TemplateDescriptor{}
+	}
+
+	filtered := make([]datasetapi.TemplateDescriptor, 0, len(templates))
+	for _, template := range templates {
+		if templateAllowedByScope(template, scope) {
+			filtered = append(filtered, template)
+		}
+	}
+	return filtered
+}
+
+func templateAllowedByScope(template datasetapi.TemplateDescriptor, scope datasetapi.Scope) bool {
+	annotations := template.Metadata.Annotations
+	if !matchesScopeAnnotation(annotations[templateRBACProjectsAnnotation], scope.ProjectIDs) {
+		return false
+	}
+	if !matchesScopeAnnotation(annotations[templateRBACProtocolsAnnotation], scope.ProtocolIDs) {
+		return false
+	}
+	return true
+}
+
+func matchesScopeAnnotation(annotation string, permitted []string) bool {
+	values := parseDelimitedValues(annotation)
+	if len(values) == 0 {
+		return true
+	}
+	if len(values) == 1 && values[0] == wildcardScopeValue {
+		return len(permitted) > 0
+	}
+	if len(permitted) == 0 {
+		return false
+	}
+
+	allowed := make(map[string]struct{}, len(values))
+	for _, value := range values {
+		allowed[value] = struct{}{}
+	}
+	for _, candidate := range permitted {
+		if _, ok := allowed[candidate]; ok {
+			return true
+		}
+	}
+	return false
+}
+
+func datasetScopeFromRequest(r *http.Request) datasetapi.Scope {
+	if r == nil {
+		return datasetapi.Scope{}
+	}
+
+	scope := datasetapi.Scope{
+		Requestor:   strings.TrimSpace(r.Header.Get(datasetScopeRequestorHeader)),
+		Roles:       parseDelimitedValues(r.Header.Get(datasetScopeRolesHeader)),
+		ProjectIDs:  parseDelimitedValues(r.Header.Get(datasetScopeProjectIDsHeader)),
+		ProtocolIDs: parseDelimitedValues(r.Header.Get(datasetScopeProtocolIDsHeader)),
+	}
+	if len(scope.Roles) == 0 {
+		scope.Roles = nil
+	}
+	if len(scope.ProjectIDs) == 0 {
+		scope.ProjectIDs = nil
+	}
+	if len(scope.ProtocolIDs) == 0 {
+		scope.ProtocolIDs = nil
+	}
+	return scope
+}
+
+func parseDelimitedValues(value string) []string {
+	if strings.TrimSpace(value) == "" {
+		return nil
+	}
+
+	seen := make(map[string]struct{})
+	values := make([]string, 0, strings.Count(value, ",")+1)
+	for _, part := range strings.Split(value, ",") {
+		candidate := strings.TrimSpace(part)
+		if candidate == "" {
+			continue
+		}
+		if _, ok := seen[candidate]; ok {
+			continue
+		}
+		seen[candidate] = struct{}{}
+		values = append(values, candidate)
+	}
+	if len(values) == 0 {
+		return nil
+	}
+	return values
+}
+
+type countingResponseWriter struct {
+	http.ResponseWriter
+	bytesWritten int
+}
+
+func (w *countingResponseWriter) Write(p []byte) (int, error) {
+	n, err := w.ResponseWriter.Write(p)
+	w.bytesWritten += n
+	return n, err
+}
+
+func (w *countingResponseWriter) Flush() {
+	if flusher, ok := w.ResponseWriter.(http.Flusher); ok {
+		flusher.Flush()
+	}
+}
+
+func csvColumns(descriptor datasetapi.TemplateDescriptor, result datasetapi.RunResult) []datasetapi.Column {
+	if len(result.Schema) > 0 {
+		return result.Schema
+	}
+	return descriptor.Columns
+}
+
+func csvHeaderRecord(columns []datasetapi.Column) []string {
+	record := make([]string, len(columns))
+	for i, column := range columns {
+		record[i] = column.Name
+	}
+	return record
+}
+
+func csvRowRecord(columns []datasetapi.Column, row datasetapi.Row) []string {
+	record := make([]string, len(columns))
+	for i, column := range columns {
+		record[i] = formatValue(row[column.Name])
+	}
+	return record
+}
+
+func estimateCSVSize(columns []datasetapi.Column, rows []datasetapi.Row) int {
+	headerSize, err := estimateCSVSectionSize(columns, nil)
+	if err != nil {
+		return 0
+	}
+	if len(rows) == 0 {
+		return headerSize
+	}
+
+	sampleRows := rows
+	if len(sampleRows) > csvProgressSampleRows {
+		sampleRows = sampleRows[:csvProgressSampleRows]
+	}
+
+	sampleSize, err := estimateCSVSectionSize(columns, sampleRows)
+	if err != nil {
+		return 0
+	}
+	if len(rows) == len(sampleRows) {
+		return sampleSize
+	}
+
+	samplePayloadSize := sampleSize - headerSize
+	if samplePayloadSize < 0 {
+		samplePayloadSize = 0
+	}
+	averageRowSize := 0
+	if len(sampleRows) > 0 {
+		averageRowSize = (samplePayloadSize + len(sampleRows) - 1) / len(sampleRows)
+	}
+
+	totalSize := headerSize + averageRowSize*len(rows)
+	if totalSize < sampleSize {
+		totalSize = sampleSize
+	}
+	return totalSize
+}
+
+func estimateCSVSectionSize(columns []datasetapi.Column, rows []datasetapi.Row) (int, error) {
+	buf := &bytes.Buffer{}
+	writer := csv.NewWriter(buf)
+	if err := writer.Write(csvHeaderRecord(columns)); err != nil {
+		return 0, err
+	}
+	for _, row := range rows {
+		if err := writer.Write(csvRowRecord(columns, row)); err != nil {
+			return 0, err
+		}
+	}
+	writer.Flush()
+	if writer.Error() != nil {
+		return 0, writer.Error()
+	}
+	return buf.Len(), nil
 }
 
 func formatValue(value any) string {

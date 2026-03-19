@@ -233,6 +233,20 @@ func TestStatusCapturingResponseWriterTracksStatus(t *testing.T) {
 	}
 }
 
+func TestStatusCapturingResponseWriterFlushForwards(t *testing.T) {
+	base := &flushTrackingResponseWriter{}
+	writer := &statusCapturingResponseWriter{ResponseWriter: base}
+
+	writer.Flush()
+
+	if !base.flushed {
+		t.Fatalf("expected flush to be forwarded")
+	}
+	if got := writer.StatusCode(); got != http.StatusOK {
+		t.Fatalf("expected flush to capture implicit 200, got %d", got)
+	}
+}
+
 func TestProblemAndValidationHelpersCoverFallbacks(t *testing.T) {
 	const expectedErrorTitle = "Error"
 

@@ -4,6 +4,8 @@
 library(httr)
 library(jsonlite)
 
+cc_dataset_max_template_pages <- 1000
+
 cc_dataset_headers <- function(token = NULL) {
   headers <- add_headers(
     `User-Agent` = "colonycore-dataset-client/0.1",
@@ -15,11 +17,104 @@ cc_dataset_headers <- function(token = NULL) {
   headers
 }
 
-cc_list_templates <- function(base_url, token = NULL, timeout = 30) {
+cc_dataset_scope_headers <- function(scope = list()) {
+  if (length(scope) == 0) {
+    return(add_headers())
+  }
+
+  headers <- list()
+  if (!is.null(scope$requestor) && nzchar(scope$requestor)) {
+    headers[["X-Dataset-Requestor"]] <- scope$requestor
+  }
+  if (!is.null(scope$roles) && length(scope$roles) > 0) {
+    headers[["X-Dataset-Roles"]] <- paste(scope$roles, collapse = ",")
+  }
+  if (!is.null(scope$project_ids) && length(scope$project_ids) > 0) {
+    headers[["X-Dataset-Project-Ids"]] <- paste(scope$project_ids, collapse = ",")
+  }
+  if (!is.null(scope$protocol_ids) && length(scope$protocol_ids) > 0) {
+    headers[["X-Dataset-Protocol-Ids"]] <- paste(scope$protocol_ids, collapse = ",")
+  }
+  do.call(add_headers, headers)
+}
+
+cc_list_templates_page <- function(
+  base_url,
+  token = NULL,
+  timeout = 30,
+  page = 1,
+  page_size = 50,
+  scope = list()
+) {
   url <- paste0(rtrim(base_url), "/api/v1/datasets/templates")
-  resp <- GET(url, cc_dataset_headers(token), timeout(timeout))
+  resp <- GET(
+    url,
+    cc_dataset_headers(token),
+    cc_dataset_scope_headers(scope),
+    timeout(timeout),
+    query = list(page = page, page_size = page_size)
+  )
   stop_for_status(resp)
-  content(resp, as = "parsed", simplifyVector = TRUE)$templates
+  content(resp, as = "parsed", simplifyVector = TRUE)
+}
+
+cc_list_templates <- function(
+  base_url,
+  token = NULL,
+  timeout = 30,
+  page = 1,
+  page_size = 50,
+  scope = list()
+) {
+  templates <- NULL
+  current_page <- page
+  pages_fetched <- 0
+
+  repeat {
+    payload <- cc_list_templates_page(
+      base_url = base_url,
+      token = token,
+      timeout = timeout,
+      page = current_page,
+      page_size = page_size,
+      scope = scope
+    )
+    pages_fetched <- pages_fetched + 1
+    page_templates <- payload$templates
+    if (is.null(page_templates) || length(page_templates) == 0) {
+      break
+    }
+
+    if (is.null(templates)) {
+      templates <- page_templates
+    } else if (is.data.frame(templates) && is.data.frame(page_templates)) {
+      templates <- rbind(templates, page_templates)
+    } else {
+      templates <- append(templates, page_templates)
+    }
+
+    if (!isTRUE(payload$pagination$has_next)) {
+      break
+    }
+    if (pages_fetched >= cc_dataset_max_template_pages) {
+      warning(
+        sprintf(
+          "template listing truncated after %d pages; additional pages were not fetched",
+          cc_dataset_max_template_pages
+        ),
+        call. = FALSE
+      )
+      break
+    }
+
+    current_page <- current_page + 1
+  }
+
+  if (is.null(templates)) {
+    list()
+  } else {
+    templates
+  }
 }
 
 cc_get_template <- function(

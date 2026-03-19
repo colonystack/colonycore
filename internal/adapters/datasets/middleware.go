@@ -13,12 +13,26 @@ import (
 )
 
 const (
-	correlationIDHeader       = "X-Correlation-ID"
-	datasetTemplatesPath      = "/api/v1/datasets/templates"
-	entityModelOpenAPIPath    = "/admin/entity-model/openapi"
-	datasetExportsPath        = "/api/v1/datasets/exports"
-	unmatchedRoute            = "unmatched"
-	parameterValidationFailed = "parameter validation failed"
+	correlationIDHeader             = "X-Correlation-ID"
+	datasetTemplatesPath            = "/api/v1/datasets/templates"
+	entityModelOpenAPIPath          = "/admin/entity-model/openapi"
+	datasetExportsPath              = "/api/v1/datasets/exports"
+	datasetScopeRequestorHeader     = "X-Dataset-Requestor"
+	datasetScopeRolesHeader         = "X-Dataset-Roles"
+	datasetScopeProjectIDsHeader    = "X-Dataset-Project-Ids"
+	datasetScopeProtocolIDsHeader   = "X-Dataset-Protocol-Ids"
+	unmatchedRoute                  = "unmatched"
+	parameterValidationFailed       = "parameter validation failed"
+	streamProgressHeader            = "X-Progress"
+	streamErrorTrailer              = "X-Stream-Error"
+	datasetListDefaultPage          = 1
+	datasetListDefaultPageSize      = 50
+	datasetListMaxPageSize          = 200
+	templateRBACProjectsAnnotation  = "rbac.projects"
+	templateRBACProtocolsAnnotation = "rbac.protocols"
+	wildcardScopeValue              = "*"
+	csvStreamFlushEveryRows         = 100
+	csvProgressSampleRows           = 32
 )
 
 // RequestLogger captures dataset adapter request logs using structured fields.
@@ -78,6 +92,18 @@ func (w *statusCapturingResponseWriter) Write(body []byte) (int, error) {
 		w.WriteHeader(http.StatusOK)
 	}
 	return w.ResponseWriter.Write(body)
+}
+
+func (w *statusCapturingResponseWriter) Flush() {
+	if w == nil || w.ResponseWriter == nil {
+		return
+	}
+	if !w.wroteHeader {
+		w.WriteHeader(http.StatusOK)
+	}
+	if flusher, ok := w.ResponseWriter.(http.Flusher); ok {
+		flusher.Flush()
+	}
 }
 
 func (w *statusCapturingResponseWriter) StatusCode() int {
