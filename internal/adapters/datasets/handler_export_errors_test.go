@@ -113,7 +113,20 @@ func TestHandleRunParameterValidationError(t *testing.T) {
 	r.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
 	h.ServeHTTP(w, r)
-	if w.Code != http.StatusBadRequest {
-		t.Fatalf("expected 400 got %d body=%s", w.Code, w.Body.String())
+	if w.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("expected 422 got %d body=%s", w.Code, w.Body.String())
+	}
+	if got := w.Header().Get("Content-Type"); got != problemContentType {
+		t.Fatalf("expected problem content type, got %q", got)
+	}
+	var problem problemDetail
+	if err := json.Unmarshal(w.Body.Bytes(), &problem); err != nil {
+		t.Fatalf("decode problem: %v", err)
+	}
+	if problem.Status != http.StatusUnprocessableEntity {
+		t.Fatalf("expected status %d, got %d", http.StatusUnprocessableEntity, problem.Status)
+	}
+	if len(problem.Errors) != 1 || problem.Errors[0].Name != "limit" {
+		t.Fatalf("expected field-level limit error, got %+v", problem.Errors)
 	}
 }

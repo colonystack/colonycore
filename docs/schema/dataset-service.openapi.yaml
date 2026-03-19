@@ -145,6 +145,8 @@ paths:
                 format: binary
         '400':
           $ref: '#/components/responses/BadRequest'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
         '405':
           $ref: '#/components/responses/MethodNotAllowed'
         '404':
