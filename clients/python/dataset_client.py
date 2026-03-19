@@ -9,6 +9,7 @@ from __future__ import annotations
 import json
 import os
 import time
+import warnings
 from dataclasses import dataclass
 from typing import Any, Dict, Iterable, List, Optional
 
@@ -18,6 +19,7 @@ _DEFAULT_HEADERS = {
     "Accept": "application/json",
     "User-Agent": "colonycore-dataset-client/0.1",
 }
+_MAX_TEMPLATE_PAGES = 1000
 _DATASET_SCOPE_HEADERS = {
     "requestor": "X-Dataset-Requestor",
     "roles": "X-Dataset-Roles",
@@ -94,15 +96,24 @@ class DatasetClient:
     ) -> List[Dict[str, Any]]:
         templates: List[Dict[str, Any]] = []
         current_page = page
+        pages_fetched = 0
 
         while True:
             payload = self.list_templates_page(page=current_page, page_size=page_size, scope=scope)
+            pages_fetched += 1
             page_templates = payload.get("templates", [])
             if not page_templates:
                 break
 
             templates.extend(page_templates)
             if not (payload.get("pagination") or {}).get("has_next"):
+                break
+            if pages_fetched >= _MAX_TEMPLATE_PAGES:
+                warnings.warn(
+                    f"template listing truncated after {_MAX_TEMPLATE_PAGES} pages; additional pages were not fetched",
+                    RuntimeWarning,
+                    stacklevel=2,
+                )
                 break
 
             current_page += 1

@@ -4,6 +4,8 @@
 library(httr)
 library(jsonlite)
 
+cc_dataset_max_template_pages <- 1000
+
 cc_dataset_headers <- function(token = NULL) {
   headers <- add_headers(
     `User-Agent` = "colonycore-dataset-client/0.1",
@@ -66,6 +68,7 @@ cc_list_templates <- function(
 ) {
   templates <- NULL
   current_page <- page
+  pages_fetched <- 0
 
   repeat {
     payload <- cc_list_templates_page(
@@ -76,6 +79,7 @@ cc_list_templates <- function(
       page_size = page_size,
       scope = scope
     )
+    pages_fetched <- pages_fetched + 1
     page_templates <- payload$templates
     if (is.null(page_templates) || length(page_templates) == 0) {
       break
@@ -90,6 +94,16 @@ cc_list_templates <- function(
     }
 
     if (!isTRUE(payload$pagination$has_next)) {
+      break
+    }
+    if (pages_fetched >= cc_dataset_max_template_pages) {
+      warning(
+        sprintf(
+          "template listing truncated after %d pages; additional pages were not fetched",
+          cc_dataset_max_template_pages
+        ),
+        call. = FALSE
+      )
       break
     }
 

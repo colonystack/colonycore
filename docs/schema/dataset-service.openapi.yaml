@@ -159,9 +159,15 @@ paths:
               schema:
                 type: string
             Trailer:
-              description: Declares trailer fields for chunked CSV responses.
+              description: >-
+                Comma-separated list of HTTP trailer field names declared for chunked CSV
+                responses. The server always declares `X-Stream-Error` and may also declare
+                `X-Progress` when byte progress metadata is available, for example
+                `X-Stream-Error, X-Progress`.
               schema:
                 type: string
+                pattern: '^[A-Za-z0-9-]+(?:,\s*[A-Za-z0-9-]+)*$'
+                example: X-Stream-Error, X-Progress
             X-Progress:
               description: >-
                 Progress metadata for streamed CSV responses. The initial header is emitted as
