@@ -87,7 +87,7 @@ func (t DatasetTemplate) ValidateParameters(params map[string]any) (map[string]a
 	host, err := t.hostOrNew()
 	if err != nil {
 		name := datasetSlug(t.Plugin, t.Key, t.Version)
-		if strings.TrimSpace(name) == "" {
+		if strings.TrimSpace(t.Key) == "" || strings.TrimSpace(t.Version) == "" {
 			name = "template"
 		}
 		return nil, []datasetapi.ParameterError{{Name: name, Message: err.Error()}}
