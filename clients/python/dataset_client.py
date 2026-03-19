@@ -92,8 +92,22 @@ class DatasetClient:
         page_size: int = 50,
         scope: Optional[Dict[str, Any]] = None,
     ) -> List[Dict[str, Any]]:
-        payload = self.list_templates_page(page=page, page_size=page_size, scope=scope)
-        return payload.get("templates", [])
+        templates: List[Dict[str, Any]] = []
+        current_page = page
+
+        while True:
+            payload = self.list_templates_page(page=current_page, page_size=page_size, scope=scope)
+            page_templates = payload.get("templates", [])
+            if not page_templates:
+                break
+
+            templates.extend(page_templates)
+            if not (payload.get("pagination") or {}).get("has_next"):
+                break
+
+            current_page += 1
+
+        return templates
 
     def get_template(self, plugin: str, key: str, version: str) -> Dict[str, Any]:
         path = f"{self._base_url}/api/v1/datasets/templates/{plugin}/{key}/{version}"

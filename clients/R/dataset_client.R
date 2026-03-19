@@ -64,14 +64,43 @@ cc_list_templates <- function(
   page_size = 50,
   scope = list()
 ) {
-  cc_list_templates_page(
-    base_url = base_url,
-    token = token,
-    timeout = timeout,
-    page = page,
-    page_size = page_size,
-    scope = scope
-  )$templates
+  templates <- NULL
+  current_page <- page
+
+  repeat {
+    payload <- cc_list_templates_page(
+      base_url = base_url,
+      token = token,
+      timeout = timeout,
+      page = current_page,
+      page_size = page_size,
+      scope = scope
+    )
+    page_templates <- payload$templates
+    if (is.null(page_templates) || length(page_templates) == 0) {
+      break
+    }
+
+    if (is.null(templates)) {
+      templates <- page_templates
+    } else if (is.data.frame(templates) && is.data.frame(page_templates)) {
+      templates <- rbind(templates, page_templates)
+    } else {
+      templates <- append(templates, page_templates)
+    }
+
+    if (!isTRUE(payload$pagination$has_next)) {
+      break
+    }
+
+    current_page <- current_page + 1
+  }
+
+  if (is.null(templates)) {
+    list()
+  } else {
+    templates
+  }
 }
 
 cc_get_template <- function(

@@ -3,6 +3,7 @@ package datasets
 import (
 	"encoding/json"
 	"fmt"
+	"math"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -194,5 +195,24 @@ func TestHandleListTemplatesRejectsInvalidPagination(t *testing.T) {
 				t.Fatalf("expected 400 for %s, got %d body=%s", path, rec.Code, rec.Body.String())
 			}
 		})
+	}
+}
+
+func TestPaginateTemplatesHandlesOverflowingPageOffsets(t *testing.T) {
+	templates := []datasetapi.TemplateDescriptor{
+		{Plugin: "a", Key: "one", Version: "1.0.0"},
+		{Plugin: "a", Key: "two", Version: "1.0.0"},
+	}
+
+	paged, pagination := paginateTemplates(templates, math.MaxInt, datasetListMaxPageSize)
+
+	if len(paged) != 0 {
+		t.Fatalf("expected empty page for overflowing offset, got %+v", paged)
+	}
+	if pagination.Page != math.MaxInt || pagination.PageSize != datasetListMaxPageSize {
+		t.Fatalf("unexpected pagination metadata: %+v", pagination)
+	}
+	if pagination.TotalItems != len(templates) {
+		t.Fatalf("expected total_items=%d, got %+v", len(templates), pagination)
 	}
 }

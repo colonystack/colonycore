@@ -94,6 +94,18 @@ func (w *statusCapturingResponseWriter) Write(body []byte) (int, error) {
 	return w.ResponseWriter.Write(body)
 }
 
+func (w *statusCapturingResponseWriter) Flush() {
+	if w == nil || w.ResponseWriter == nil {
+		return
+	}
+	if !w.wroteHeader {
+		w.WriteHeader(http.StatusOK)
+	}
+	if flusher, ok := w.ResponseWriter.(http.Flusher); ok {
+		flusher.Flush()
+	}
+}
+
 func (w *statusCapturingResponseWriter) StatusCode() int {
 	if w == nil || w.status == 0 {
 		return http.StatusOK

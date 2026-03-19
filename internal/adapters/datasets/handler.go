@@ -655,14 +655,23 @@ func paginateTemplates(templates []datasetapi.TemplateDescriptor, page int, page
 		totalPages = (totalItems + pageSize - 1) / pageSize
 	}
 
-	start := (page - 1) * pageSize
-	if start > totalItems {
-		start = totalItems
+	start64 := int64(page-1) * int64(pageSize)
+	if start64 < 0 || start64 >= int64(totalItems) {
+		return []datasetapi.TemplateDescriptor{}, templatePagination{
+			Page:       page,
+			PageSize:   pageSize,
+			TotalItems: totalItems,
+			TotalPages: totalPages,
+			HasNext:    totalPages > 0 && page < totalPages,
+			HasPrev:    totalPages > 0 && page > 1,
+		}
 	}
-	end := start + pageSize
-	if end > totalItems {
-		end = totalItems
+	end64 := start64 + int64(pageSize)
+	if end64 < start64 || end64 > int64(totalItems) {
+		end64 = int64(totalItems)
 	}
+	start := int(start64)
+	end := int(end64)
 
 	paged := make([]datasetapi.TemplateDescriptor, 0, end-start)
 	if start < end {
