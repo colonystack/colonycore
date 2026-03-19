@@ -36,6 +36,36 @@ const (
 	ExportStatusFailed ExportStatus = "failed"
 )
 
+// ExportProgressState describes the finer-grained stage of export processing.
+type ExportProgressState string
+
+// Possible progress states for an export.
+const (
+	ExportProgressStateQueued                 ExportProgressState = "queued"
+	ExportProgressStateValidatingParameters   ExportProgressState = "validating_parameters"
+	ExportProgressStateExecutingTemplate      ExportProgressState = "executing_template"
+	ExportProgressStateMaterializingArtifacts ExportProgressState = "materializing_artifacts"
+	ExportProgressStateCompleted              ExportProgressState = "completed"
+	ExportProgressStateFailed                 ExportProgressState = "failed"
+)
+
+// ExportArtifactReadiness describes whether export artifacts are available yet.
+type ExportArtifactReadiness string
+
+// Possible artifact readiness states.
+const (
+	ExportArtifactReadinessPending     ExportArtifactReadiness = "pending"
+	ExportArtifactReadinessPartial     ExportArtifactReadiness = "partial"
+	ExportArtifactReadinessReady       ExportArtifactReadiness = "ready"
+	ExportArtifactReadinessUnavailable ExportArtifactReadiness = "unavailable"
+)
+
+const (
+	exportProgressValidatePct        = 15
+	exportProgressExecutePct         = 45
+	exportProgressMaterializeBasePct = 70
+)
+
 // ExportArtifact captures a stored dataset artifact.
 type ExportArtifact struct {
 	ID          string            `json:"id"`
@@ -49,21 +79,26 @@ type ExportArtifact struct {
 
 // ExportRecord tracks an export request and resulting artifacts.
 type ExportRecord struct {
-	ID          string                        `json:"id"`
-	Template    datasetapi.TemplateDescriptor `json:"template"`
-	Scope       datasetapi.Scope              `json:"scope"`
-	Parameters  map[string]any                `json:"parameters"`
-	Formats     []datasetapi.Format           `json:"formats"`
-	Status      ExportStatus                  `json:"status"`
-	Error       string                        `json:"error,omitempty"`
-	Artifacts   []ExportArtifact              `json:"artifacts,omitempty"`
-	RequestedBy string                        `json:"requested_by"`
-	Reason      string                        `json:"reason,omitempty"`
-	ProjectID   string                        `json:"project_id,omitempty"`
-	ProtocolID  string                        `json:"protocol_id,omitempty"`
-	CreatedAt   time.Time                     `json:"created_at"`
-	UpdatedAt   time.Time                     `json:"updated_at"`
-	CompletedAt *time.Time                    `json:"completed_at,omitempty"`
+	ID                string                        `json:"id"`
+	Template          datasetapi.TemplateDescriptor `json:"template"`
+	Scope             datasetapi.Scope              `json:"scope"`
+	Parameters        map[string]any                `json:"parameters"`
+	Formats           []datasetapi.Format           `json:"formats"`
+	Status            ExportStatus                  `json:"status"`
+	ProgressPct       int                           `json:"progress_pct"`
+	ETASeconds        *int                          `json:"eta_seconds"`
+	ProgressState     ExportProgressState           `json:"progress_state"`
+	ArtifactReadiness ExportArtifactReadiness       `json:"artifact_readiness"`
+	Error             string                        `json:"error,omitempty"`
+	Artifacts         []ExportArtifact              `json:"artifacts,omitempty"`
+	RequestedBy       string                        `json:"requested_by"`
+	Reason            string                        `json:"reason,omitempty"`
+	ProjectID         string                        `json:"project_id,omitempty"`
+	ProtocolID        string                        `json:"protocol_id,omitempty"`
+	CreatedAt         time.Time                     `json:"created_at"`
+	UpdatedAt         time.Time                     `json:"updated_at"`
+	CompletedAt       *time.Time                    `json:"completed_at,omitempty"`
+	StartedAt         *time.Time                    `json:"-"`
 }
 
 // ExportInput represents an enqueue request for the worker.
@@ -234,18 +269,21 @@ func (w *Worker) EnqueueExport(ctx context.Context, input ExportInput) (ExportRe
 	id := newID()
 	now := time.Now().UTC()
 	record := ExportRecord{
-		ID:          id,
-		Template:    template.Descriptor(),
-		Scope:       input.Scope,
-		Parameters:  cloneMap(input.Parameters),
-		Formats:     uniqFormats,
-		Status:      ExportStatusQueued,
-		RequestedBy: input.RequestedBy,
-		Reason:      input.Reason,
-		ProjectID:   input.ProjectID,
-		ProtocolID:  input.ProtocolID,
-		CreatedAt:   now,
-		UpdatedAt:   now,
+		ID:                id,
+		Template:          template.Descriptor(),
+		Scope:             input.Scope,
+		Parameters:        cloneMap(input.Parameters),
+		Formats:           uniqFormats,
+		Status:            ExportStatusQueued,
+		ProgressPct:       0,
+		ProgressState:     ExportProgressStateQueued,
+		ArtifactReadiness: ExportArtifactReadinessPending,
+		RequestedBy:       input.RequestedBy,
+		Reason:            input.Reason,
+		ProjectID:         input.ProjectID,
+		ProtocolID:        input.ProtocolID,
+		CreatedAt:         now,
+		UpdatedAt:         now,
 	}
 
 	w.mu.Lock()
@@ -309,6 +347,7 @@ func (w *Worker) process(task exportTask) {
 	}
 
 	w.updateStatus(task.id, ExportStatusRunning, "")
+	w.setProgress(task.id, ExportProgressStateValidatingParameters, exportProgressValidatePct)
 
 	cleaned, errs := template.ValidateParameters(task.input.Parameters)
 	if len(errs) > 0 {
@@ -316,6 +355,7 @@ func (w *Worker) process(task exportTask) {
 		return
 	}
 
+	w.setProgress(task.id, ExportProgressStateExecutingTemplate, exportProgressExecutePct)
 	result, paramErrs, err := template.Run(w.ctx, cleaned, task.input.Scope, formatProvider.JSON())
 	if err != nil {
 		w.fail(task.id, fmt.Sprintf("dataset run failed: %v", err), time.Since(started))
@@ -327,6 +367,7 @@ func (w *Worker) process(task exportTask) {
 	}
 
 	exportArtifacts := make([]ExportArtifact, 0, len(record.Formats))
+	w.setProgress(task.id, ExportProgressStateMaterializingArtifacts, exportProgressMaterializeBasePct)
 	for _, format := range record.Formats {
 		rendered, err := w.materialize(format, template, result)
 		if err != nil {
@@ -351,8 +392,10 @@ func (w *Worker) process(task exportTask) {
 			}
 			stored.Metadata = mergeMetadata(rendered.Artifact.Metadata, stored.Metadata)
 			exportArtifacts = append(exportArtifacts, stored)
+			w.appendArtifact(task.id, stored, len(record.Formats))
 		} else {
 			exportArtifacts = append(exportArtifacts, rendered.Artifact)
+			w.appendArtifact(task.id, rendered.Artifact, len(record.Formats))
 		}
 	}
 
@@ -376,6 +419,11 @@ func (w *Worker) updateStatus(id string, status ExportStatus, message string) {
 		record.Status = status
 		record.Error = message
 		record.UpdatedAt = now
+		if status == ExportStatusRunning && record.StartedAt == nil {
+			startedAt := now
+			record.StartedAt = &startedAt
+		}
+		refreshExportProgress(record, now)
 	}
 	w.mu.Unlock()
 	if w.audit != nil {
@@ -393,15 +441,43 @@ func (w *Worker) updateStatus(id string, status ExportStatus, message string) {
 	w.emitExportEvent(w.ctx, "catalog.export.process", exportStatusToEventStatus(status), id, w.templateFor(id), message, 0, nil)
 }
 
+func (w *Worker) setProgress(id string, state ExportProgressState, progressPct int) {
+	now := time.Now().UTC()
+	w.mu.Lock()
+	if record, ok := w.jobs[id]; ok {
+		record.ProgressState = state
+		record.ProgressPct = clampProgressPct(progressPct)
+		record.UpdatedAt = now
+		refreshExportProgress(record, now)
+	}
+	w.mu.Unlock()
+}
+
+func (w *Worker) appendArtifact(id string, artifact ExportArtifact, totalFormats int) {
+	now := time.Now().UTC()
+	w.mu.Lock()
+	if record, ok := w.jobs[id]; ok {
+		record.Artifacts = append(record.Artifacts, artifact)
+		record.ProgressState = ExportProgressStateMaterializingArtifacts
+		record.ProgressPct = materializationProgressPct(totalFormats, len(record.Artifacts))
+		record.UpdatedAt = now
+		refreshExportProgress(record, now)
+	}
+	w.mu.Unlock()
+}
+
 func (w *Worker) complete(id string, artifacts []ExportArtifact, duration time.Duration) {
 	now := time.Now().UTC()
 	w.mu.Lock()
 	if record, ok := w.jobs[id]; ok {
 		record.Status = ExportStatusSucceeded
 		record.Error = ""
-		record.Artifacts = artifacts
+		record.ProgressPct = 100
+		record.ProgressState = ExportProgressStateCompleted
+		record.Artifacts = cloneArtifacts(artifacts)
 		record.UpdatedAt = now
 		record.CompletedAt = &now
+		refreshExportProgress(record, now)
 	}
 	w.mu.Unlock()
 	if w.audit != nil {
@@ -426,8 +502,10 @@ func (w *Worker) fail(id, reason string, duration time.Duration) {
 	if record, ok := w.jobs[id]; ok {
 		record.Status = ExportStatusFailed
 		record.Error = reason
+		record.ProgressState = ExportProgressStateFailed
 		record.UpdatedAt = now
 		record.CompletedAt = &now
+		refreshExportProgress(record, now)
 	}
 	w.mu.Unlock()
 	if w.audit != nil {
@@ -706,10 +784,100 @@ func (r ExportRecord) copy() ExportRecord {
 	dup := r
 	dup.Parameters = cloneMap(r.Parameters)
 	dup.Formats = append([]datasetapi.Format(nil), r.Formats...)
-	if len(r.Artifacts) > 0 {
-		dup.Artifacts = append([]ExportArtifact(nil), r.Artifacts...)
-	}
+	dup.Artifacts = cloneArtifacts(r.Artifacts)
+	dup.ETASeconds = cloneIntPointer(r.ETASeconds)
+	dup.CompletedAt = cloneTimePointer(r.CompletedAt)
+	dup.StartedAt = cloneTimePointer(r.StartedAt)
 	return dup
+}
+
+func cloneArtifacts(in []ExportArtifact) []ExportArtifact {
+	if len(in) == 0 {
+		return nil
+	}
+	out := make([]ExportArtifact, len(in))
+	copy(out, in)
+	for i := range out {
+		out[i].Metadata = cloneMap(out[i].Metadata)
+	}
+	return out
+}
+
+func cloneIntPointer(in *int) *int {
+	if in == nil {
+		return nil
+	}
+	value := *in
+	return &value
+}
+
+func cloneTimePointer(in *time.Time) *time.Time {
+	if in == nil {
+		return nil
+	}
+	value := *in
+	return &value
+}
+
+func refreshExportProgress(record *ExportRecord, now time.Time) {
+	if record == nil {
+		return
+	}
+	record.ProgressPct = clampProgressPct(record.ProgressPct)
+	record.ArtifactReadiness = deriveArtifactReadiness(*record)
+	record.ETASeconds = estimateETASeconds(record.Status, record.StartedAt, record.ProgressPct, now)
+}
+
+func clampProgressPct(progressPct int) int {
+	switch {
+	case progressPct < 0:
+		return 0
+	case progressPct > 100:
+		return 100
+	default:
+		return progressPct
+	}
+}
+
+func estimateETASeconds(status ExportStatus, startedAt *time.Time, progressPct int, now time.Time) *int {
+	if status != ExportStatusRunning || startedAt == nil || progressPct <= 0 || progressPct >= 100 {
+		return nil
+	}
+	elapsedSeconds := int(now.Sub(*startedAt).Seconds())
+	if elapsedSeconds < 0 {
+		elapsedSeconds = 0
+	}
+	remaining := (elapsedSeconds*(100-progressPct) + progressPct - 1) / progressPct
+	return &remaining
+}
+
+func materializationProgressPct(totalFormats, readyArtifacts int) int {
+	if totalFormats <= 0 {
+		return exportProgressMaterializeBasePct
+	}
+	return clampProgressPct(exportProgressMaterializeBasePct + (readyArtifacts*(100-exportProgressMaterializeBasePct))/(totalFormats+1))
+}
+
+func deriveArtifactReadiness(record ExportRecord) ExportArtifactReadiness {
+	readyArtifacts := len(record.Artifacts)
+	totalFormats := len(record.Formats)
+
+	switch {
+	case readyArtifacts == 0 && record.Status == ExportStatusFailed:
+		return ExportArtifactReadinessUnavailable
+	case readyArtifacts == 0:
+		return ExportArtifactReadinessPending
+	// Failed exports may still expose persisted artifacts from earlier formats, so
+	// preserve partial/ready readiness when materialization made useful output available.
+	case totalFormats > 0 && readyArtifacts < totalFormats:
+		return ExportArtifactReadinessPartial
+	case totalFormats > 0:
+		return ExportArtifactReadinessReady
+	case record.Status == ExportStatusFailed:
+		return ExportArtifactReadinessUnavailable
+	default:
+		return ExportArtifactReadinessPending
+	}
 }
 
 func cloneMap(in map[string]any) map[string]any {

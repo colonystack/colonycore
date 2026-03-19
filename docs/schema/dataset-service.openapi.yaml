@@ -474,6 +474,20 @@ components:
             enum: [json, csv, parquet, png, html]
         status:
           $ref: '#/components/schemas/ExportStatus'
+        progress_pct:
+          type: integer
+          format: int32
+          minimum: 0
+          maximum: 100
+        eta_seconds:
+          type: integer
+          format: int32
+          minimum: 0
+          nullable: true
+        progress_state:
+          $ref: '#/components/schemas/ExportProgressState'
+        artifact_readiness:
+          $ref: '#/components/schemas/ExportArtifactReadiness'
         error:
           type: string
         artifacts:
@@ -498,7 +512,7 @@ components:
           type: string
           format: date-time
           nullable: true
-      required: [id, template, scope, formats, status, requested_by, created_at, updated_at]
+      required: [id, template, scope, formats, status, progress_pct, eta_seconds, progress_state, artifact_readiness, requested_by, created_at, updated_at]
     ExportArtifact:
       type: object
       properties:
@@ -525,3 +539,9 @@ components:
     ExportStatus:
       type: string
       enum: [queued, running, succeeded, failed]
+    ExportProgressState:
+      type: string
+      enum: [queued, validating_parameters, executing_template, materializing_artifacts, completed, failed]
+    ExportArtifactReadiness:
+      type: string
+      enum: [pending, partial, ready, unavailable]
