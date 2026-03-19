@@ -186,6 +186,17 @@ func TestWorkerFailedExportReportsPartialArtifactReadiness(t *testing.T) {
 	}
 }
 
+func TestDeriveArtifactReadinessReadyWithoutDeclaredFormats(t *testing.T) {
+	readiness := deriveArtifactReadiness(ExportRecord{
+		Status:    ExportStatusFailed,
+		Artifacts: []ExportArtifact{{ID: "artifact-1"}},
+	})
+
+	if readiness != ExportArtifactReadinessReady {
+		t.Fatalf("expected ready artifact readiness without declared formats, got %q", readiness)
+	}
+}
+
 func newBlockedExportRuntime() (*stubRuntime, <-chan struct{}, chan struct{}) {
 	formatProvider := datasetapi.GetFormatProvider()
 	runtime := newStubRuntime(

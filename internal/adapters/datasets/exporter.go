@@ -867,14 +867,14 @@ func deriveArtifactReadiness(record ExportRecord) ExportArtifactReadiness {
 		return ExportArtifactReadinessUnavailable
 	case readyArtifacts == 0:
 		return ExportArtifactReadinessPending
+	case totalFormats == 0 && readyArtifacts > 0:
+		return ExportArtifactReadinessReady
 	// Failed exports may still expose persisted artifacts from earlier formats, so
 	// preserve partial/ready readiness when materialization made useful output available.
 	case totalFormats > 0 && readyArtifacts < totalFormats:
 		return ExportArtifactReadinessPartial
 	case totalFormats > 0:
 		return ExportArtifactReadinessReady
-	case record.Status == ExportStatusFailed:
-		return ExportArtifactReadinessUnavailable
 	default:
 		return ExportArtifactReadinessPending
 	}
