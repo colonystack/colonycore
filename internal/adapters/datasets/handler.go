@@ -202,7 +202,6 @@ type validationResponse struct {
 	Template   datasetapi.TemplateDescriptor `json:"template"`
 	Valid      bool                          `json:"valid"`
 	Parameters map[string]any                `json:"parameters"`
-	Errors     []datasetapi.ParameterError   `json:"errors,omitempty"`
 }
 
 const emptyBodySentinel = "EOF"
@@ -214,11 +213,14 @@ func (h *Handler) handleValidate(w http.ResponseWriter, r *http.Request, templat
 		return
 	}
 	cleaned, errs := template.ValidateParameters(req.Parameters)
+	if len(errs) > 0 {
+		writeParameterValidationProblem(w, http.StatusUnprocessableEntity, errs)
+		return
+	}
 	writeJSON(w, http.StatusOK, validationResponse{
 		Template:   template.Descriptor(),
-		Valid:      len(errs) == 0,
+		Valid:      true,
 		Parameters: cleaned,
-		Errors:     errs,
 	})
 }
 
@@ -310,7 +312,7 @@ func (h *Handler) handleRun(w http.ResponseWriter, r *http.Request, template dat
 		status = observability.StatusError
 		errMessage = parameterValidationFailed
 		measures["validation_errors_total"] = float64(len(errs))
-		writeError(w, http.StatusBadRequest, parameterValidationDetail(errs))
+		writeParameterValidationProblem(w, http.StatusUnprocessableEntity, errs)
 		return
 	}
 
@@ -335,7 +337,7 @@ func (h *Handler) handleRun(w http.ResponseWriter, r *http.Request, template dat
 		status = observability.StatusError
 		errMessage = parameterValidationFailed
 		measures["validation_errors_total"] = float64(len(paramErrs))
-		writeError(w, http.StatusBadRequest, parameterValidationDetail(paramErrs))
+		writeParameterValidationProblem(w, http.StatusUnprocessableEntity, paramErrs)
 		return
 	}
 	measures["rows_total"] = float64(len(result.Rows))
@@ -485,6 +487,10 @@ func parameterValidationDetail(errs []datasetapi.ParameterError) string {
 		return parameterValidationFailed
 	}
 	return strings.Join(details, "; ")
+}
+
+func writeParameterValidationProblem(w http.ResponseWriter, status int, errs []datasetapi.ParameterError) {
+	writeProblemWithErrors(w, status, parameterValidationDetail(errs), errs)
 }
 
 func negotiateFormat(r *http.Request, supported []datasetapi.Format) string {

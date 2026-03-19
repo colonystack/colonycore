@@ -3,6 +3,7 @@ package datasets
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -35,11 +36,15 @@ func TestHandleRunParameterErrors(t *testing.T) {
 
 	h.ServeHTTP(rec, req)
 
-	if rec.Code != http.StatusBadRequest {
-		t.Fatalf("expected 400, got %d body=%s", rec.Code, rec.Body.String())
+	if rec.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("expected 422, got %d body=%s", rec.Code, rec.Body.String())
 	}
-	if !strings.Contains(rec.Body.String(), "too large") {
-		t.Fatalf("expected parameter error in body, got %s", rec.Body.String())
+	var problem problemDetail
+	if err := json.Unmarshal(rec.Body.Bytes(), &problem); err != nil {
+		t.Fatalf("decode problem: %v", err)
+	}
+	if len(problem.Errors) != 1 || problem.Errors[0].Name != "limit" || problem.Errors[0].Message != "too large" {
+		t.Fatalf("expected field-level limit error, got %+v", problem.Errors)
 	}
 }
 

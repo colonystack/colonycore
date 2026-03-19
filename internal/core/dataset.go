@@ -86,7 +86,11 @@ func (t DatasetTemplate) SupportsFormat(format datasetapi.Format) bool {
 func (t DatasetTemplate) ValidateParameters(params map[string]any) (map[string]any, []datasetapi.ParameterError) {
 	host, err := t.hostOrNew()
 	if err != nil {
-		return nil, []datasetapi.ParameterError{{Name: "", Message: err.Error()}}
+		name := datasetSlug(t.Plugin, t.Key, t.Version)
+		if strings.TrimSpace(t.Key) == "" || strings.TrimSpace(t.Version) == "" {
+			name = "template"
+		}
+		return nil, []datasetapi.ParameterError{{Name: name, Message: err.Error()}}
 	}
 	return host.ValidateParameters(params)
 }

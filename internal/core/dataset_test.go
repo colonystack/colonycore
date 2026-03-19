@@ -379,6 +379,9 @@ func TestDatasetValidateParametersHostError(t *testing.T) {
 	if !found {
 		t.Fatalf("expected binder error, got %+v", errs)
 	}
+	if errs[0].Name != "demo@1.0.0" {
+		t.Fatalf("expected dataset identifier in validation error name, got %+v", errs)
+	}
 }
 
 func TestDatasetTemplateRunWithoutBind(t *testing.T) {
