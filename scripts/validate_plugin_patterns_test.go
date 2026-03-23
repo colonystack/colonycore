@@ -76,6 +76,16 @@ func TestRunContractValidationFailure(t *testing.T) {
 	}
 }
 
+func TestRunContractValidationFailureWriterError(t *testing.T) {
+	contractErr := errors.New("contract mismatch")
+	exitCode := run([]string{"validate_plugin_patterns", "plugin"}, &failingWriter{}, func(string) []validation.Error {
+		return nil
+	}, func(string) error { return contractErr }, noopFlowValidator)
+	if exitCode != 1 {
+		t.Fatalf("expected exit code 1, got %d", exitCode)
+	}
+}
+
 func TestRunUsesDefaultContractPath(t *testing.T) {
 	var calledWith string
 	validator := func(path string) error {
@@ -226,6 +236,51 @@ func TestRunViolationWriterFailures(t *testing.T) {
 	}
 }
 
+func TestRunWithFlowViolations(t *testing.T) {
+	var stderr bytes.Buffer
+	mockErrors := []validation.Error{
+		{File: "plugin/contract.md", Message: "flow mismatch"},
+	}
+	exitCode := run([]string{"validate_plugin_patterns", "plugin"}, &stderr, func(string) []validation.Error {
+		return nil
+	}, noopContractValidator, func(string) []validation.Error {
+		return mockErrors
+	})
+	if exitCode != 1 {
+		t.Fatalf("expected exit code 1, got %d", exitCode)
+	}
+	output := stderr.String()
+	if !strings.Contains(output, "plugin contract flow violations") {
+		t.Fatalf("expected flow violation header, got %q", output)
+	}
+	if !strings.Contains(output, mockErrors[0].File) || !strings.Contains(output, mockErrors[0].Message) {
+		t.Fatalf("expected flow violation details in output, got %q", output)
+	}
+}
+
+func TestRunFlowViolationWriterFailures(t *testing.T) {
+	mockErrors := []validation.Error{
+		{File: "plugin/contract.md", Message: "flow mismatch"},
+	}
+	for name, failAt := range map[string]int{
+		"header":  1,
+		"file":    2,
+		"message": 3,
+	} {
+		t.Run(name, func(t *testing.T) {
+			writer := &limitedWriter{failAt: failAt}
+			exit := run([]string{"cmd", "dir"}, writer, func(string) []validation.Error {
+				return nil
+			}, noopContractValidator, func(string) []validation.Error {
+				return mockErrors
+			})
+			if exit != 1 {
+				t.Fatalf("expected exit code 1 when writer fails at %s (call %d), got %d", name, failAt, exit)
+			}
+		})
+	}
+}
+
 func TestExtractContractMetadata(t *testing.T) {
 	content := []byte("<!-- CONTRACT-METADATA {\"version\":\"1\",\"entities\":{}} -->")
 	meta, err := extractContractMetadata(content)
@@ -244,6 +299,13 @@ func TestExtractContractMetadataMissingBlock(t *testing.T) {
 	}
 }
 
+func TestExtractContractMetadataInvalidJSON(t *testing.T) {
+	_, err := extractContractMetadata([]byte("<!-- CONTRACT-METADATA {invalid json} -->"))
+	if err == nil {
+		t.Fatalf("expected error for invalid metadata JSON")
+	}
+}
+
 func TestValidateContract(t *testing.T) {
 	schemaMeta, err := loadSchemaMetadata(filepath.Join("..", entityModelPath))
 	if err != nil {
@@ -255,6 +317,36 @@ func TestValidateContract(t *testing.T) {
 			t.Fatalf("expected contract validation success, got %v", err)
 		}
 	})
+}
+
+func TestValidateContractReadFailure(t *testing.T) {
+	err := validateContract(filepath.Join(t.TempDir(), "missing-contract.md"))
+	if err == nil || !strings.Contains(err.Error(), "read contract") {
+		t.Fatalf("expected read contract error, got %v", err)
+	}
+}
+
+func TestValidateContractMetadataParseFailure(t *testing.T) {
+	contractPath := filepath.Join(t.TempDir(), "contract.md")
+	if err := os.WriteFile(contractPath, []byte("<!-- CONTRACT-METADATA {invalid json} -->"), 0o600); err != nil {
+		t.Fatalf("write contract file: %v", err)
+	}
+	if err := validateContract(contractPath); err == nil || !strings.Contains(err.Error(), "parse contract metadata") {
+		t.Fatalf("expected parse contract metadata error, got %v", err)
+	}
+}
+
+func TestValidateContractSchemaLoadFailure(t *testing.T) {
+	schemaMeta, err := loadSchemaMetadata(filepath.Join("..", entityModelPath))
+	if err != nil {
+		t.Fatalf("load schema metadata: %v", err)
+	}
+	contractPath := writeContractFile(t, schemaMeta)
+	missingSchemaPath := filepath.Join(t.TempDir(), "missing-entity-model.json")
+	err = validateContractWithSchemaPath(contractPath, missingSchemaPath)
+	if err == nil || !strings.Contains(err.Error(), "read entity-model schema") || !strings.Contains(err.Error(), "missing-entity-model.json") {
+		t.Fatalf("expected schema load failure, got %v", err)
+	}
 }
 
 func TestValidateContractMismatch(t *testing.T) {
@@ -276,6 +368,53 @@ func TestCompareContractMetadataEntityMismatch(t *testing.T) {
 	bad := contractMetadata{Version: "1", Entities: map[string]contractEntityMetadata{"b": {}}}
 	if err := compareContractMetadata(good, bad); err == nil {
 		t.Fatalf("expected mismatch error")
+	}
+}
+
+func TestCompareContractMetadataFieldMismatches(t *testing.T) {
+	t.Run("required fields", func(t *testing.T) {
+		contractMeta := contractMetadata{
+			Version: "1",
+			Entities: map[string]contractEntityMetadata{
+				"organism": {Required: []string{"a"}, ExtensionHooks: []string{"hook"}},
+			},
+		}
+		schemaMeta := contractMetadata{
+			Version: "1",
+			Entities: map[string]contractEntityMetadata{
+				"organism": {Required: []string{"b"}, ExtensionHooks: []string{"hook"}},
+			},
+		}
+		if err := compareContractMetadata(contractMeta, schemaMeta); err == nil || !strings.Contains(err.Error(), "required fields mismatch") {
+			t.Fatalf("expected required fields mismatch, got %v", err)
+		}
+	})
+
+	t.Run("extension hooks", func(t *testing.T) {
+		contractMeta := contractMetadata{
+			Version: "1",
+			Entities: map[string]contractEntityMetadata{
+				"organism": {Required: []string{"a"}, ExtensionHooks: []string{"hook-a"}},
+			},
+		}
+		schemaMeta := contractMetadata{
+			Version: "1",
+			Entities: map[string]contractEntityMetadata{
+				"organism": {Required: []string{"a"}, ExtensionHooks: []string{"hook-b"}},
+			},
+		}
+		if err := compareContractMetadata(contractMeta, schemaMeta); err == nil || !strings.Contains(err.Error(), "extension hooks mismatch") {
+			t.Fatalf("expected extension hooks mismatch, got %v", err)
+		}
+	})
+}
+
+func TestEqualSlicesMismatches(t *testing.T) {
+	if equalSlices([]string{"a"}, []string{"a", "b"}) {
+		t.Fatalf("expected unequal lengths to return false")
+	}
+	if equalSlices([]string{"a"}, []string{"b"}) {
+		t.Fatalf("expected unequal values to return false")
 	}
 }
 

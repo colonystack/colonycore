@@ -56,47 +56,49 @@ rules should decode per entity type before evaluation.
 
 Any exception must be explicit, documented, and limited:
 
-- Record the exception in the guard allowlist (file path + rationale + owner).
-- Prefer file-level or symbol-level exceptions; avoid line-level unless unavoidable.
+- Record the exception in the guard allowlist as an exact `anyguard` selector.
+- Keep the description tied to the JSON/codec boundary or helper that still
+  requires `any`.
 - Update this policy and the allowlist together to keep review transparent.
 
 ### Allowlist format and location
 
-Store the allowlist in `internal/ci/any_allowlist.json` to keep it close to API
+Store the allowlist in `internal/ci/any_allowlist.yaml` to keep it close to API
 snapshots and outside layered packages.
 
-Format (JSON, no new dependencies):
+Format (YAML, `anyguard` schema version `2`):
 
 - Top-level:
-  - `version`: integer schema version.
+  - `version`: integer schema version (`2`).
   - `exclude_globs`: list of globs to ignore (for example `**/*_test.go`).
   - `entries`: array of allowlist entries.
 - Entry fields:
-  - `path`: repo-relative file path.
-  - `symbols`: optional list of identifiers within the file (type or function names;
-    for methods use the receiver type name).
-  - `category`: one of `json-boundary`, `third-party-shim`, `reflection`,
-    `generic-constraint`, `internal-helper`, `test-only`, `legacy-exception`.
-  - `public`: boolean; public exceptions should be `json-boundary` only. Temporary
-    `legacy-exception` entries are allowed when a migration is tracked in TODO.
-  - `rationale`: short explanation tied to this policy.
-  - `owner`: maintainer group or area owner.
+  - `selector.path`: repo-relative file path.
+  - `selector.owner`: owning type or function name reported by `anyguard`.
+  - `selector.category`: exact AST child slot reported by `anyguard`
+    (for example `*ast.MapType.Value`).
+  - `selector.line` / `selector.column`: exact coordinates for the finding.
+  - `description`: short explanation tied to this policy.
   - `refs`: optional list of relevant docs (ADR/RFC/annex paths).
 
 Guard behavior:
 
-- Prefer file- or symbol-level entries; avoid line-level to reduce drift.
+- Match the canonical finding identity exactly:
+  `{path, owner, category, line, column}`.
+- Keep entries fully resolved; this repository does not rely on legacy
+  selector matching without coordinates.
 - Exclude tests via `exclude_globs` rather than per-entry.
-- `legacy-exception` entries must include a removal note in the rationale and stay
-  linked to TODO tracking.
+- Stale or ambiguous selectors fail closed and must be updated together with the
+  source change.
 
 ## Guard implementation
 
-The lint-time guard is implemented in `scripts/validate_any_usage/main.go` and runs via
-`make lint` (target `validate-any-usage`). For local verification:
+The lint-time guard runs through `anyguard` v2.0.2 as a golangci-lint module
+plugin. `make golangci` builds the custom binary from `.custom-gcl.yml` and
+executes it with the repository's `.golangci.yml`. For local verification:
 
 ```bash
-GOCACHE=$PWD/.cache/go-build go run ./scripts/validate_any_usage
+make golangci
 ```
 
 Default roots enforced by the guard:
@@ -110,7 +112,8 @@ Default roots enforced by the guard:
 - `internal/infra/persistence`
 - `plugins`
 
-Override the defaults with `-roots` as needed for local checks.
+Override the defaults by editing the `linters.settings.custom.anyguard.settings.roots`
+list in `.golangci.yml` when the audit scope changes.
 
 ## Layering and contract constraints
 
@@ -129,9 +132,10 @@ direction against `ARCHITECTURE.md` before changing imports.
 
 ## Code-owner review checklist
 
-- `make lint` passes, including `validate-any-usage` and import-boss guards.
+- `make lint` passes, including the `anyguard` module plugin and import-boss
+  guards.
 - Any `any` usage is limited to JSON/codec boundaries or documented allowlist
-  entries in `internal/ci/any_allowlist.json`.
+  entries in `internal/ci/any_allowlist.yaml`.
 - Public API changes (if any) update `internal/ci/{pluginapi,datasetapi}.snapshot`
   and keep `pkg/pluginapi`/`pkg/datasetapi` free of `internal/**` or `pkg/domain`
   imports.
@@ -159,7 +163,8 @@ Baseline microbenchmarks cover JSON-boundary clone paths so regressions stay vis
 
 ### Added
 
-- `validate-any-usage` lint guard with allowlist enforcement (`internal/ci/any_allowlist.json`).
+- `anyguard` module-plugin enforcement with an exact-selector allowlist
+  (`internal/ci/any_allowlist.yaml`).
 
 ### Changed
 
@@ -170,7 +175,10 @@ Baseline microbenchmarks cover JSON-boundary clone paths so regressions stay vis
 ### Migration notes
 
 - Plugins and dataset templates must decode `ChangePayload.Raw()` and parameter `Example`/`Default` as JSON bytes.
-- Extension payload access should use `ObjectPayload`/`ExtensionPayload` wrappers and contextual helpers; raw maps remain JSON-boundary only.
+- Extension payload access should use `ObjectPayload`/`ExtensionPayload`
+  wrappers and contextual helpers; raw maps remain JSON-boundary only.
+- Allowlist maintenance now follows the `anyguard` selector model; changes that
+  move or split `any` usage must refresh the exact selector coordinates.
 
 ## References
 

@@ -8,6 +8,7 @@ run:
 linters:
   default: none
   enable:
+    - anyguard       # Enforce exact allowlisted any usage via module plugin
     - depguard       # Enforce allowed/denied imports (project policy)
     - govet          # Core vet checks
     - staticcheck    # Advanced static analysis
@@ -20,6 +21,22 @@ linters:
     - gocyclo        # Cyclomatic complexity
     - gosec          # Security checks (may require tuning later)
   settings:
+    custom:
+      anyguard:
+        type: module
+        description: Enforce allowlisted any usage
+        original-url: github.com/tobythehutt/anyguard
+        settings:
+          allowlist: internal/ci/any_allowlist.yaml
+          roots:
+            - pkg/pluginapi
+            - pkg/datasetapi
+            - pkg/domain
+            - internal/core
+            - internal/adapters/datasets
+            - internal/infra/blob
+            - internal/infra/persistence
+            - plugins
     errcheck:
       check-type-assertions: false
       check-blank: false

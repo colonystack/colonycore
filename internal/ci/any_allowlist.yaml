@@ -1,0 +1,3970 @@
+version: 2
+exclude_globs:
+  - "**/*_test.go"
+entries:
+  - selector:
+      path: internal/adapters/datasets/exporter.go
+      owner: "ExportArtifact"
+      category: "*ast.MapType.Value"
+      line: 76
+      column: 25
+    description: "Export records and artifact metadata carry JSON-like parameter maps."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: internal/adapters/datasets/exporter.go
+      owner: "ExportRecord"
+      category: "*ast.MapType.Value"
+      line: 85
+      column: 31
+    description: "Export records and artifact metadata carry JSON-like parameter maps."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: internal/adapters/datasets/exporter.go
+      owner: "ExportInput"
+      category: "*ast.MapType.Value"
+      line: 107
+      column: 26
+    description: "Export records and artifact metadata carry JSON-like parameter maps."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: internal/adapters/datasets/exporter.go
+      owner: "ObjectStore"
+      category: "*ast.MapType.Value"
+      line: 125
+      column: 95
+    description: "Export records and artifact metadata carry JSON-like parameter maps."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: internal/adapters/datasets/exporter.go
+      owner: "AuditEntry"
+      category: "*ast.MapType.Value"
+      line: 148
+      column: 24
+    description: "Export records and artifact metadata carry JSON-like parameter maps."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: internal/adapters/datasets/exporter.go
+      owner: "Worker"
+      category: "*ast.MapType.Value"
+      line: 440
+      column: 27
+    description: "Export records and artifact metadata carry JSON-like parameter maps."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: internal/adapters/datasets/exporter.go
+      owner: "Worker"
+      category: "*ast.MapType.Value"
+      line: 522
+      column: 27
+    description: "Export records and artifact metadata carry JSON-like parameter maps."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: internal/adapters/datasets/exporter.go
+      owner: "Worker"
+      category: "*ast.MapType.Value"
+      line: 609
+      column: 26
+    description: "Export records and artifact metadata carry JSON-like parameter maps."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: internal/adapters/datasets/exporter.go
+      owner: "Worker"
+      category: "*ast.MapType.Value"
+      line: 650
+      column: 26
+    description: "Export records and artifact metadata carry JSON-like parameter maps."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: internal/adapters/datasets/exporter.go
+      owner: "Worker"
+      category: "*ast.MapType.Value"
+      line: 665
+      column: 29
+    description: "Export records and artifact metadata carry JSON-like parameter maps."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: internal/adapters/datasets/exporter.go
+      owner: "Worker"
+      category: "*ast.MapType.Value"
+      line: 681
+      column: 26
+    description: "Export records and artifact metadata carry JSON-like parameter maps."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: internal/adapters/datasets/exporter.go
+      owner: "Worker"
+      category: "*ast.MapType.Value"
+      line: 700
+      column: 29
+    description: "Export records and artifact metadata carry JSON-like parameter maps."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: internal/adapters/datasets/exporter.go
+      owner: "mergeMetadata"
+      category: "*ast.MapType.Value"
+      line: 772
+      column: 36
+    description: "Export records and artifact metadata carry JSON-like parameter maps."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: internal/adapters/datasets/exporter.go
+      owner: "mergeMetadata"
+      category: "*ast.MapType.Value"
+      line: 772
+      column: 58
+    description: "Export records and artifact metadata carry JSON-like parameter maps."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: internal/adapters/datasets/exporter.go
+      owner: "mergeMetadata"
+      category: "*ast.MapType.Value"
+      line: 772
+      column: 74
+    description: "Export records and artifact metadata carry JSON-like parameter maps."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: internal/adapters/datasets/exporter.go
+      owner: "mergeMetadata"
+      category: "*ast.MapType.Value"
+      line: 776
+      column: 25
+    description: "Export records and artifact metadata carry JSON-like parameter maps."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: internal/adapters/datasets/exporter.go
+      owner: "cloneMap"
+      category: "*ast.MapType.Value"
+      line: 886
+      column: 29
+    description: "Export records and artifact metadata carry JSON-like parameter maps."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: internal/adapters/datasets/exporter.go
+      owner: "cloneMap"
+      category: "*ast.MapType.Value"
+      line: 886
+      column: 45
+    description: "Export records and artifact metadata carry JSON-like parameter maps."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: internal/adapters/datasets/exporter.go
+      owner: "cloneMap"
+      category: "*ast.MapType.Value"
+      line: 890
+      column: 25
+    description: "Export records and artifact metadata carry JSON-like parameter maps."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: internal/adapters/datasets/exporter.go
+      owner: "MemoryObjectStore"
+      category: "*ast.MapType.Value"
+      line: 922
+      column: 120
+    description: "Export records and artifact metadata carry JSON-like parameter maps."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: internal/adapters/datasets/handler.go
+      owner: "Handler"
+      category: "*ast.MapType.Value"
+      line: 141
+      column: 42
+    description: "Dataset HTTP handlers exchange JSON payloads with untyped parameters."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: internal/adapters/datasets/handler.go
+      owner: "Handler"
+      category: "*ast.MapType.Value"
+      line: 197
+      column: 41
+    description: "Dataset HTTP handlers exchange JSON payloads with untyped parameters."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: internal/adapters/datasets/handler.go
+      owner: "validationRequest"
+      category: "*ast.MapType.Value"
+      line: 201
+      column: 24
+    description: "Dataset HTTP handlers exchange JSON payloads with untyped parameters."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: internal/adapters/datasets/handler.go
+      owner: "validationResponse"
+      category: "*ast.MapType.Value"
+      line: 221
+      column: 24
+    description: "Dataset HTTP handlers exchange JSON payloads with untyped parameters."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: internal/adapters/datasets/handler.go
+      owner: "runRequest"
+      category: "*ast.MapType.Value"
+      line: 245
+      column: 24
+    description: "Dataset HTTP handlers exchange JSON payloads with untyped parameters."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: internal/adapters/datasets/handler.go
+      owner: "runResponse"
+      category: "*ast.MapType.Value"
+      line: 257
+      column: 24
+    description: "Dataset HTTP handlers exchange JSON payloads with untyped parameters."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: internal/adapters/datasets/handler.go
+      owner: "exportRequest"
+      category: "*ast.MapType.Value"
+      line: 268
+      column: 24
+    description: "Dataset HTTP handlers exchange JSON payloads with untyped parameters."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: internal/adapters/datasets/handler.go
+      owner: "Handler"
+      category: "*ast.MapType.Value"
+      line: 472
+      column: 47
+    description: "Dataset HTTP handlers exchange JSON payloads with untyped parameters."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: internal/adapters/datasets/handler.go
+      owner: "formatValue"
+      category: "*ast.Field.Type"
+      line: 883
+      column: 24
+    description: "Dataset HTTP handlers exchange JSON payloads with untyped parameters."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: internal/adapters/datasets/handler.go
+      owner: "writeJSON"
+      category: "*ast.Field.Type"
+      line: 904
+      column: 59
+    description: "Dataset HTTP handlers exchange JSON payloads with untyped parameters."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: internal/core/dataset.go
+      owner: "DatasetTemplate"
+      category: "*ast.MapType.Value"
+      line: 86
+      column: 63
+    description: "Dataset execution parameters are JSON-like maps at the runtime boundary."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: internal/core/dataset.go
+      owner: "DatasetTemplate"
+      category: "*ast.MapType.Value"
+      line: 86
+      column: 80
+    description: "Dataset execution parameters are JSON-like maps at the runtime boundary."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: internal/core/dataset.go
+      owner: "DatasetTemplate"
+      category: "*ast.MapType.Value"
+      line: 99
+      column: 69
+    description: "Dataset execution parameters are JSON-like maps at the runtime boundary."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: internal/core/extension_payload.go
+      owner: "mapExtensionPayloads"
+      category: "*ast.MapType.Value"
+      line: 10
+      column: 53
+    description: "Extension payload normalization retains JSON-like maps from plugins."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: internal/core/extension_payload.go
+      owner: "mapExtensionPayloads"
+      category: "*ast.MapType.Value"
+      line: 10
+      column: 91
+    description: "Extension payload normalization retains JSON-like maps from plugins."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: internal/core/extension_payload.go
+      owner: "mapExtensionPayloads"
+      category: "*ast.MapType.Value"
+      line: 14
+      column: 47
+    description: "Extension payload normalization retains JSON-like maps from plugins."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: internal/core/extension_payload.go
+      owner: "mapExtensionPayloads"
+      category: "*ast.MapType.Value"
+      line: 20
+      column: 40
+    description: "Extension payload normalization retains JSON-like maps from plugins."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: internal/core/extension_payload.go
+      owner: "mapExtensionPayloads"
+      category: "*ast.MapType.Value"
+      line: 26
+      column: 37
+    description: "Extension payload normalization retains JSON-like maps from plugins."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: internal/core/observability_exporters.go
+      owner: "NewExpvarMetricsRecorder"
+      category: "*ast.Field.Type"
+      line: 46
+      column: 42
+    description: "expvar.Func requires func() any; shim to the stdlib expvar API."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: internal/core/plugin.go
+      owner: "PluginRegistry"
+      category: "*ast.MapType.Value"
+      line: 15
+      column: 33
+    description: "Plugin registry stores JSON schema payloads."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: internal/core/plugin.go
+      owner: "NewPluginRegistry"
+      category: "*ast.MapType.Value"
+      line: 24
+      column: 40
+    description: "Plugin registry stores JSON schema payloads."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: internal/core/plugin.go
+      owner: "PluginRegistry"
+      category: "*ast.MapType.Value"
+      line: 42
+      column: 74
+    description: "Plugin registry stores JSON schema payloads."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: internal/core/plugin.go
+      owner: "PluginRegistry"
+      category: "*ast.MapType.Value"
+      line: 46
+      column: 24
+    description: "Plugin registry stores JSON schema payloads."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: internal/core/plugin.go
+      owner: "PluginRegistry"
+      category: "*ast.MapType.Value"
+      line: 75
+      column: 58
+    description: "Plugin registry stores JSON schema payloads."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: internal/core/plugin.go
+      owner: "PluginRegistry"
+      category: "*ast.MapType.Value"
+      line: 76
+      column: 36
+    description: "Plugin registry stores JSON schema payloads."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: internal/core/plugin.go
+      owner: "PluginRegistry"
+      category: "*ast.MapType.Value"
+      line: 78
+      column: 25
+    description: "Plugin registry stores JSON schema payloads."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: internal/core/plugin.go
+      owner: "PluginMetadata"
+      category: "*ast.MapType.Value"
+      line: 110
+      column: 33
+    description: "Plugin registry stores JSON schema payloads."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: internal/core/plugin_rule_adapter.go
+      owner: "organismView"
+      category: "*ast.MapType.Value"
+      line: 187
+      column: 28
+    description: "Rule adapter exposes extension attributes and change payloads as JSON-like maps."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: internal/core/plugin_rule_adapter.go
+      owner: "organismView"
+      category: "*ast.MapType.Value"
+      line: 248
+      column: 47
+    description: "Rule adapter exposes extension attributes and change payloads as JSON-like maps."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: internal/core/plugin_rule_adapter.go
+      owner: "organismView"
+      category: "*ast.MapType.Value"
+      line: 254
+      column: 51
+    description: "Rule adapter exposes extension attributes and change payloads as JSON-like maps."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: internal/core/plugin_rule_adapter.go
+      owner: "facilityView"
+      category: "*ast.MapType.Value"
+      line: 395
+      column: 28
+    description: "Rule adapter exposes extension attributes and change payloads as JSON-like maps."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: internal/core/plugin_rule_adapter.go
+      owner: "facilityView"
+      category: "*ast.MapType.Value"
+      line: 427
+      column: 57
+    description: "Rule adapter exposes extension attributes and change payloads as JSON-like maps."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: internal/core/plugin_rule_adapter.go
+      owner: "facilityView"
+      category: "*ast.MapType.Value"
+      line: 433
+      column: 61
+    description: "Rule adapter exposes extension attributes and change payloads as JSON-like maps."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: internal/core/plugin_rule_adapter.go
+      owner: "observationView"
+      category: "*ast.MapType.Value"
+      line: 543
+      column: 25
+    description: "Rule adapter exposes extension attributes and change payloads as JSON-like maps."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: internal/core/plugin_rule_adapter.go
+      owner: "observationView"
+      category: "*ast.MapType.Value"
+      line: 584
+      column: 44
+    description: "Rule adapter exposes extension attributes and change payloads as JSON-like maps."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: internal/core/plugin_rule_adapter.go
+      owner: "observationView"
+      category: "*ast.MapType.Value"
+      line: 590
+      column: 48
+    description: "Rule adapter exposes extension attributes and change payloads as JSON-like maps."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: internal/core/plugin_rule_adapter.go
+      owner: "sampleView"
+      category: "*ast.MapType.Value"
+      line: 636
+      column: 29
+    description: "Rule adapter exposes extension attributes and change payloads as JSON-like maps."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: internal/core/plugin_rule_adapter.go
+      owner: "sampleView"
+      category: "*ast.MapType.Value"
+      line: 675
+      column: 51
+    description: "Rule adapter exposes extension attributes and change payloads as JSON-like maps."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: internal/core/plugin_rule_adapter.go
+      owner: "sampleView"
+      category: "*ast.MapType.Value"
+      line: 678
+      column: 45
+    description: "Rule adapter exposes extension attributes and change payloads as JSON-like maps."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: internal/core/plugin_rule_adapter.go
+      owner: "sampleView"
+      category: "*ast.MapType.Value"
+      line: 684
+      column: 49
+    description: "Rule adapter exposes extension attributes and change payloads as JSON-like maps."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: internal/core/plugin_rule_adapter.go
+      owner: "supplyItemView"
+      category: "*ast.MapType.Value"
+      line: 922
+      column: 28
+    description: "Rule adapter exposes extension attributes and change payloads as JSON-like maps."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: internal/core/plugin_rule_adapter.go
+      owner: "supplyItemView"
+      category: "*ast.MapType.Value"
+      line: 975
+      column: 49
+    description: "Rule adapter exposes extension attributes and change payloads as JSON-like maps."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: internal/core/plugin_rule_adapter.go
+      owner: "supplyItemView"
+      category: "*ast.MapType.Value"
+      line: 981
+      column: 53
+    description: "Rule adapter exposes extension attributes and change payloads as JSON-like maps."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: internal/core/plugin_rule_adapter.go
+      owner: "cloneCustodyEventMaps"
+      category: "*ast.MapType.Value"
+      line: 1211
+      column: 77
+    description: "Rule adapter exposes extension attributes and change payloads as JSON-like maps."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: internal/core/plugin_rule_adapter.go
+      owner: "cloneCustodyEventMaps"
+      category: "*ast.MapType.Value"
+      line: 1215
+      column: 27
+    description: "Rule adapter exposes extension attributes and change payloads as JSON-like maps."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: internal/core/plugin_rule_adapter.go
+      owner: "cloneCustodyEventMaps"
+      category: "*ast.MapType.Value"
+      line: 1217
+      column: 23
+    description: "Rule adapter exposes extension attributes and change payloads as JSON-like maps."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: internal/core/plugin_rule_adapter.go
+      owner: "cloneAttributes"
+      category: "*ast.MapType.Value"
+      line: 1246
+      column: 39
+    description: "Rule adapter exposes extension attributes and change payloads as JSON-like maps."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: internal/core/plugin_rule_adapter.go
+      owner: "cloneAttributes"
+      category: "*ast.MapType.Value"
+      line: 1246
+      column: 55
+    description: "Rule adapter exposes extension attributes and change payloads as JSON-like maps."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: internal/core/plugin_rule_adapter.go
+      owner: "cloneAttributes"
+      category: "*ast.MapType.Value"
+      line: 1250
+      column: 25
+    description: "Rule adapter exposes extension attributes and change payloads as JSON-like maps."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: internal/core/plugin_rule_adapter.go
+      owner: "deepCloneAttribute"
+      category: "*ast.Field.Type"
+      line: 1306
+      column: 27
+    description: "Rule adapter exposes extension attributes and change payloads as JSON-like maps."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: internal/core/plugin_rule_adapter.go
+      owner: "deepCloneAttribute"
+      category: "*ast.Field.Type"
+      line: 1306
+      column: 32
+    description: "Rule adapter exposes extension attributes and change payloads as JSON-like maps."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: internal/core/plugin_rule_adapter.go
+      owner: "deepCloneAttribute"
+      category: "*ast.MapType.Value"
+      line: 1310
+      column: 22
+    description: "Rule adapter exposes extension attributes and change payloads as JSON-like maps."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: internal/core/plugin_rule_adapter.go
+      owner: "deepCloneAttribute"
+      category: "*ast.MapType.Value"
+      line: 1312
+      column: 24
+    description: "Rule adapter exposes extension attributes and change payloads as JSON-like maps."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: internal/core/plugin_rule_adapter.go
+      owner: "deepCloneAttribute"
+      category: "*ast.ArrayType.Elt"
+      line: 1319
+      column: 13
+    description: "Rule adapter exposes extension attributes and change payloads as JSON-like maps."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: internal/core/plugin_rule_adapter.go
+      owner: "deepCloneAttribute"
+      category: "*ast.ArrayType.Elt"
+      line: 1321
+      column: 15
+    description: "Rule adapter exposes extension attributes and change payloads as JSON-like maps."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: internal/core/plugin_rule_adapter.go
+      owner: "deepCloneAttribute"
+      category: "*ast.MapType.Value"
+      line: 1335
+      column: 24
+    description: "Rule adapter exposes extension attributes and change payloads as JSON-like maps."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: internal/core/plugin_rule_adapter.go
+      owner: "deepCloneAttribute"
+      category: "*ast.MapType.Value"
+      line: 1337
+      column: 26
+    description: "Rule adapter exposes extension attributes and change payloads as JSON-like maps."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: internal/core/service.go
+      owner: "Logger"
+      category: "*ast.Ellipsis.Elt"
+      line: 33
+      column: 28
+    description: "Internal structured logging accepts key/value fields for diagnostics."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: internal/core/service.go
+      owner: "Logger"
+      category: "*ast.Ellipsis.Elt"
+      line: 34
+      column: 27
+    description: "Internal structured logging accepts key/value fields for diagnostics."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: internal/core/service.go
+      owner: "Logger"
+      category: "*ast.Ellipsis.Elt"
+      line: 35
+      column: 27
+    description: "Internal structured logging accepts key/value fields for diagnostics."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: internal/core/service.go
+      owner: "Logger"
+      category: "*ast.Ellipsis.Elt"
+      line: 36
+      column: 28
+    description: "Internal structured logging accepts key/value fields for diagnostics."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: internal/core/service.go
+      owner: "noopLogger"
+      category: "*ast.Ellipsis.Elt"
+      line: 41
+      column: 36
+    description: "Internal structured logging accepts key/value fields for diagnostics."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: internal/core/service.go
+      owner: "noopLogger"
+      category: "*ast.Ellipsis.Elt"
+      line: 42
+      column: 35
+    description: "Internal structured logging accepts key/value fields for diagnostics."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: internal/core/service.go
+      owner: "noopLogger"
+      category: "*ast.Ellipsis.Elt"
+      line: 43
+      column: 35
+    description: "Internal structured logging accepts key/value fields for diagnostics."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: internal/core/service.go
+      owner: "noopLogger"
+      category: "*ast.Ellipsis.Elt"
+      line: 44
+      column: 36
+    description: "Internal structured logging accepts key/value fields for diagnostics."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: internal/core/service.go
+      owner: "Service"
+      category: "*ast.MapType.Value"
+      line: 985
+      column: 45
+    description: "Clones plugin schema maps before returning metadata."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: internal/core/service.go
+      owner: "Service"
+      category: "*ast.MapType.Value"
+      line: 987
+      column: 30
+    description: "Clones plugin schema maps before returning metadata."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: internal/infra/blob/fs/store.go
+      owner: "writeJSON"
+      category: "*ast.Field.Type"
+      line: 246
+      column: 31
+    description: "Filesystem blob metadata sidecars are serialized as JSON payloads."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+      - "docs/adr/0008-object-storage-contract.md"
+  - selector:
+      path: internal/infra/blob/fs/store.go
+      owner: "jsonMarshal"
+      category: "*ast.Field.Type"
+      line: 268
+      column: 25
+    description: "Filesystem blob metadata sidecars are serialized as JSON payloads."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+      - "docs/adr/0008-object-storage-contract.md"
+  - selector:
+      path: internal/infra/blob/fs/store.go
+      owner: "jsonUnmarshal"
+      category: "*ast.Field.Type"
+      line: 269
+      column: 35
+    description: "Filesystem blob metadata sidecars are serialized as JSON payloads."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+      - "docs/adr/0008-object-storage-contract.md"
+  - selector:
+      path: internal/infra/persistence/memory/store.go
+      owner: "migrateSnapshot"
+      category: "*ast.MapType.Value"
+      line: 465
+      column: 81
+    description: "Snapshot stores seed extension and baseline attributes using JSON payload maps."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+      - "docs/adr/0003-core-domain-schema.md"
+      - "docs/adr/0007-storage-baseline.md"
+  - selector:
+      path: internal/infra/persistence/memory/store.go
+      owner: "migrateSnapshot"
+      category: "*ast.MapType.Value"
+      line: 480
+      column: 86
+    description: "Snapshot stores seed extension and baseline attributes using JSON payload maps."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+      - "docs/adr/0003-core-domain-schema.md"
+      - "docs/adr/0007-storage-baseline.md"
+  - selector:
+      path: internal/infra/persistence/memory/store.go
+      owner: "migrateSnapshot"
+      category: "*ast.MapType.Value"
+      line: 501
+      column: 98
+    description: "Snapshot stores seed extension and baseline attributes using JSON payload maps."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+      - "docs/adr/0003-core-domain-schema.md"
+      - "docs/adr/0007-storage-baseline.md"
+  - selector:
+      path: internal/infra/persistence/memory/store.go
+      owner: "migrateSnapshot"
+      category: "*ast.MapType.Value"
+      line: 513
+      column: 86
+    description: "Snapshot stores seed extension and baseline attributes using JSON payload maps."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+      - "docs/adr/0003-core-domain-schema.md"
+      - "docs/adr/0007-storage-baseline.md"
+  - selector:
+      path: internal/infra/persistence/memory/store.go
+      owner: "migrateSnapshot"
+      category: "*ast.MapType.Value"
+      line: 518
+      column: 88
+    description: "Snapshot stores seed extension and baseline attributes using JSON payload maps."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+      - "docs/adr/0003-core-domain-schema.md"
+      - "docs/adr/0007-storage-baseline.md"
+  - selector:
+      path: internal/infra/persistence/memory/store.go
+      owner: "migrateSnapshot"
+      category: "*ast.MapType.Value"
+      line: 534
+      column: 81
+    description: "Snapshot stores seed extension and baseline attributes using JSON payload maps."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+      - "docs/adr/0003-core-domain-schema.md"
+      - "docs/adr/0007-storage-baseline.md"
+  - selector:
+      path: internal/infra/persistence/memory/store.go
+      owner: "migrateSnapshot"
+      category: "*ast.MapType.Value"
+      line: 606
+      column: 84
+    description: "Snapshot stores seed extension and baseline attributes using JSON payload maps."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+      - "docs/adr/0003-core-domain-schema.md"
+      - "docs/adr/0007-storage-baseline.md"
+  - selector:
+      path: internal/infra/persistence/memory/store.go
+      owner: "migrateSnapshot"
+      category: "*ast.MapType.Value"
+      line: 628
+      column: 81
+    description: "Snapshot stores seed extension and baseline attributes using JSON payload maps."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+      - "docs/adr/0003-core-domain-schema.md"
+      - "docs/adr/0007-storage-baseline.md"
+  - selector:
+      path: internal/infra/persistence/memory/store.go
+      owner: "migrateSnapshot"
+      category: "*ast.MapType.Value"
+      line: 702
+      column: 79
+    description: "Snapshot stores seed extension and baseline attributes using JSON payload maps."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+      - "docs/adr/0003-core-domain-schema.md"
+      - "docs/adr/0007-storage-baseline.md"
+  - selector:
+      path: internal/infra/persistence/memory/store.go
+      owner: "migrateSnapshot"
+      category: "*ast.MapType.Value"
+      line: 717
+      column: 88
+    description: "Snapshot stores seed extension and baseline attributes using JSON payload maps."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+      - "docs/adr/0003-core-domain-schema.md"
+      - "docs/adr/0007-storage-baseline.md"
+  - selector:
+      path: internal/infra/persistence/memory/store.go
+      owner: "transaction"
+      category: "*ast.MapType.Value"
+      line: 1666
+      column: 73
+    description: "Snapshot stores seed extension and baseline attributes using JSON payload maps."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+      - "docs/adr/0003-core-domain-schema.md"
+      - "docs/adr/0007-storage-baseline.md"
+  - selector:
+      path: internal/infra/persistence/memory/store.go
+      owner: "transaction"
+      category: "*ast.MapType.Value"
+      line: 1836
+      column: 80
+    description: "Snapshot stores seed extension and baseline attributes using JSON payload maps."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+      - "docs/adr/0003-core-domain-schema.md"
+      - "docs/adr/0007-storage-baseline.md"
+  - selector:
+      path: internal/infra/persistence/memory/store.go
+      owner: "transaction"
+      category: "*ast.MapType.Value"
+      line: 1858
+      column: 86
+    description: "Snapshot stores seed extension and baseline attributes using JSON payload maps."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+      - "docs/adr/0003-core-domain-schema.md"
+      - "docs/adr/0007-storage-baseline.md"
+  - selector:
+      path: internal/infra/persistence/memory/store.go
+      owner: "transaction"
+      category: "*ast.MapType.Value"
+      line: 1923
+      column: 78
+    description: "Snapshot stores seed extension and baseline attributes using JSON payload maps."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+      - "docs/adr/0003-core-domain-schema.md"
+      - "docs/adr/0007-storage-baseline.md"
+  - selector:
+      path: internal/infra/persistence/memory/store.go
+      owner: "transaction"
+      category: "*ast.MapType.Value"
+      line: 1943
+      column: 84
+    description: "Snapshot stores seed extension and baseline attributes using JSON payload maps."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+      - "docs/adr/0003-core-domain-schema.md"
+      - "docs/adr/0007-storage-baseline.md"
+  - selector:
+      path: internal/infra/persistence/memory/store.go
+      owner: "transaction"
+      category: "*ast.MapType.Value"
+      line: 1980
+      column: 82
+    description: "Snapshot stores seed extension and baseline attributes using JSON payload maps."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+      - "docs/adr/0003-core-domain-schema.md"
+      - "docs/adr/0007-storage-baseline.md"
+  - selector:
+      path: internal/infra/persistence/memory/store.go
+      owner: "transaction"
+      category: "*ast.MapType.Value"
+      line: 1985
+      column: 84
+    description: "Snapshot stores seed extension and baseline attributes using JSON payload maps."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+      - "docs/adr/0003-core-domain-schema.md"
+      - "docs/adr/0007-storage-baseline.md"
+  - selector:
+      path: internal/infra/persistence/memory/store.go
+      owner: "transaction"
+      category: "*ast.MapType.Value"
+      line: 2013
+      column: 88
+    description: "Snapshot stores seed extension and baseline attributes using JSON payload maps."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+      - "docs/adr/0003-core-domain-schema.md"
+      - "docs/adr/0007-storage-baseline.md"
+  - selector:
+      path: internal/infra/persistence/memory/store.go
+      owner: "transaction"
+      category: "*ast.MapType.Value"
+      line: 2018
+      column: 90
+    description: "Snapshot stores seed extension and baseline attributes using JSON payload maps."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+      - "docs/adr/0003-core-domain-schema.md"
+      - "docs/adr/0007-storage-baseline.md"
+  - selector:
+      path: internal/infra/persistence/memory/store.go
+      owner: "transaction"
+      category: "*ast.MapType.Value"
+      line: 2076
+      column: 75
+    description: "Snapshot stores seed extension and baseline attributes using JSON payload maps."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+      - "docs/adr/0003-core-domain-schema.md"
+      - "docs/adr/0007-storage-baseline.md"
+  - selector:
+      path: internal/infra/persistence/memory/store.go
+      owner: "transaction"
+      category: "*ast.MapType.Value"
+      line: 2107
+      column: 81
+    description: "Snapshot stores seed extension and baseline attributes using JSON payload maps."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+      - "docs/adr/0003-core-domain-schema.md"
+      - "docs/adr/0007-storage-baseline.md"
+  - selector:
+      path: internal/infra/persistence/memory/store.go
+      owner: "transaction"
+      category: "*ast.MapType.Value"
+      line: 2154
+      column: 92
+    description: "Snapshot stores seed extension and baseline attributes using JSON payload maps."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+      - "docs/adr/0003-core-domain-schema.md"
+      - "docs/adr/0007-storage-baseline.md"
+  - selector:
+      path: internal/infra/persistence/memory/store.go
+      owner: "transaction"
+      category: "*ast.MapType.Value"
+      line: 2179
+      column: 98
+    description: "Snapshot stores seed extension and baseline attributes using JSON payload maps."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+      - "docs/adr/0003-core-domain-schema.md"
+      - "docs/adr/0007-storage-baseline.md"
+  - selector:
+      path: internal/infra/persistence/memory/store.go
+      owner: "transaction"
+      category: "*ast.MapType.Value"
+      line: 2392
+      column: 73
+    description: "Snapshot stores seed extension and baseline attributes using JSON payload maps."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+      - "docs/adr/0003-core-domain-schema.md"
+      - "docs/adr/0007-storage-baseline.md"
+  - selector:
+      path: internal/infra/persistence/memory/store.go
+      owner: "transaction"
+      category: "*ast.MapType.Value"
+      line: 2430
+      column: 79
+    description: "Snapshot stores seed extension and baseline attributes using JSON payload maps."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+      - "docs/adr/0003-core-domain-schema.md"
+      - "docs/adr/0007-storage-baseline.md"
+  - selector:
+      path: internal/infra/persistence/memory/store.go
+      owner: "transaction"
+      category: "*ast.MapType.Value"
+      line: 2488
+      column: 75
+    description: "Snapshot stores seed extension and baseline attributes using JSON payload maps."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+      - "docs/adr/0003-core-domain-schema.md"
+      - "docs/adr/0007-storage-baseline.md"
+  - selector:
+      path: internal/infra/persistence/memory/store.go
+      owner: "transaction"
+      category: "*ast.MapType.Value"
+      line: 2533
+      column: 81
+    description: "Snapshot stores seed extension and baseline attributes using JSON payload maps."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+      - "docs/adr/0003-core-domain-schema.md"
+      - "docs/adr/0007-storage-baseline.md"
+  - selector:
+      path: internal/infra/persistence/memory/store.go
+      owner: "transaction"
+      category: "*ast.MapType.Value"
+      line: 2805
+      column: 75
+    description: "Snapshot stores seed extension and baseline attributes using JSON payload maps."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+      - "docs/adr/0003-core-domain-schema.md"
+      - "docs/adr/0007-storage-baseline.md"
+  - selector:
+      path: internal/infra/persistence/memory/store.go
+      owner: "transaction"
+      category: "*ast.MapType.Value"
+      line: 2843
+      column: 81
+    description: "Snapshot stores seed extension and baseline attributes using JSON payload maps."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+      - "docs/adr/0003-core-domain-schema.md"
+      - "docs/adr/0007-storage-baseline.md"
+  - selector:
+      path: internal/infra/persistence/postgres/store.go
+      owner: "execQuerier"
+      category: "*ast.Ellipsis.Elt"
+      line: 551
+      column: 57
+    description: "Postgres persistence uses database/sql Exec/Query signatures."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+      - "docs/adr/0007-storage-baseline.md"
+  - selector:
+      path: internal/infra/persistence/postgres/store.go
+      owner: "execQuerier"
+      category: "*ast.Ellipsis.Elt"
+      line: 552
+      column: 58
+    description: "Postgres persistence uses database/sql Exec/Query signatures."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+      - "docs/adr/0007-storage-baseline.md"
+  - selector:
+      path: internal/infra/persistence/postgres/store.go
+      owner: "marshalJSONNullable"
+      category: "*ast.Field.Type"
+      line: 2635
+      column: 32
+    description: "Postgres persistence marshals extension attributes and custody payloads as JSON."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+      - "docs/adr/0003-core-domain-schema.md"
+      - "docs/adr/0007-storage-baseline.md"
+  - selector:
+      path: internal/infra/persistence/postgres/store.go
+      owner: "marshalJSONRequired"
+      category: "*ast.Field.Type"
+      line: 2642
+      column: 46
+    description: "Postgres persistence marshals extension attributes and custody payloads as JSON."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+      - "docs/adr/0003-core-domain-schema.md"
+      - "docs/adr/0007-storage-baseline.md"
+  - selector:
+      path: internal/infra/persistence/postgres/store.go
+      owner: "sliceEmpty"
+      category: "*ast.Field.Type"
+      line: 2649
+      column: 19
+    description: "Postgres persistence marshals extension attributes and custody payloads as JSON."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+      - "docs/adr/0003-core-domain-schema.md"
+      - "docs/adr/0007-storage-baseline.md"
+  - selector:
+      path: internal/infra/persistence/postgres/store.go
+      owner: "decodeMap"
+      category: "*ast.MapType.Value"
+      line: 2671
+      column: 40
+    description: "Postgres persistence marshals extension attributes and custody payloads as JSON."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+      - "docs/adr/0003-core-domain-schema.md"
+      - "docs/adr/0007-storage-baseline.md"
+  - selector:
+      path: internal/infra/persistence/postgres/store.go
+      owner: "decodeMap"
+      category: "*ast.MapType.Value"
+      line: 2675
+      column: 21
+    description: "Postgres persistence marshals extension attributes and custody payloads as JSON."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+      - "docs/adr/0003-core-domain-schema.md"
+      - "docs/adr/0007-storage-baseline.md"
+  - selector:
+      path: internal/infra/persistence/postgres/testutil/stub.go
+      owner: "StubConn"
+      category: "*ast.MapType.Value"
+      line: 17
+      column: 37
+    description: "Postgres stub stores row payloads as JSON-like maps for test assertions."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: internal/infra/persistence/postgres/testutil/stub.go
+      owner: "NewStubDB"
+      category: "*ast.MapType.Value"
+      line: 27
+      column: 57
+    description: "Postgres stub stores row payloads as JSON-like maps for test assertions."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: internal/infra/persistence/postgres/testutil/stub.go
+      owner: "StubConn"
+      category: "*ast.MapType.Value"
+      line: 79
+      column: 43
+    description: "Postgres stub stores row payloads as JSON-like maps for test assertions."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: internal/infra/persistence/postgres/testutil/stub.go
+      owner: "StubConn"
+      category: "*ast.MapType.Value"
+      line: 93
+      column: 26
+    description: "Postgres stub stores row payloads as JSON-like maps for test assertions."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: internal/infra/persistence/postgres/testutil/stub.go
+      owner: "StubConn"
+      category: "*ast.MapType.Value"
+      line: 99
+      column: 30
+    description: "Postgres stub stores row payloads as JSON-like maps for test assertions."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: internal/infra/persistence/postgres/testutil/stub.go
+      owner: "StubConn"
+      category: "*ast.MapType.Value"
+      line: 120
+      column: 29
+    description: "Postgres stub stores row payloads as JSON-like maps for test assertions."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: internal/infra/persistence/postgres/testutil/stub.go
+      owner: "StubConn"
+      category: "*ast.MapType.Value"
+      line: 136
+      column: 43
+    description: "Postgres stub stores row payloads as JSON-like maps for test assertions."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: internal/infra/persistence/sqlite/memstore.go
+      owner: "migrateSnapshot"
+      category: "*ast.MapType.Value"
+      line: 473
+      column: 81
+    description: "Snapshot stores seed extension and baseline attributes using JSON payload maps."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+      - "docs/adr/0003-core-domain-schema.md"
+      - "docs/adr/0007-storage-baseline.md"
+  - selector:
+      path: internal/infra/persistence/sqlite/memstore.go
+      owner: "migrateSnapshot"
+      category: "*ast.MapType.Value"
+      line: 488
+      column: 86
+    description: "Snapshot stores seed extension and baseline attributes using JSON payload maps."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+      - "docs/adr/0003-core-domain-schema.md"
+      - "docs/adr/0007-storage-baseline.md"
+  - selector:
+      path: internal/infra/persistence/sqlite/memstore.go
+      owner: "migrateSnapshot"
+      category: "*ast.MapType.Value"
+      line: 509
+      column: 98
+    description: "Snapshot stores seed extension and baseline attributes using JSON payload maps."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+      - "docs/adr/0003-core-domain-schema.md"
+      - "docs/adr/0007-storage-baseline.md"
+  - selector:
+      path: internal/infra/persistence/sqlite/memstore.go
+      owner: "migrateSnapshot"
+      category: "*ast.MapType.Value"
+      line: 521
+      column: 86
+    description: "Snapshot stores seed extension and baseline attributes using JSON payload maps."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+      - "docs/adr/0003-core-domain-schema.md"
+      - "docs/adr/0007-storage-baseline.md"
+  - selector:
+      path: internal/infra/persistence/sqlite/memstore.go
+      owner: "migrateSnapshot"
+      category: "*ast.MapType.Value"
+      line: 526
+      column: 88
+    description: "Snapshot stores seed extension and baseline attributes using JSON payload maps."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+      - "docs/adr/0003-core-domain-schema.md"
+      - "docs/adr/0007-storage-baseline.md"
+  - selector:
+      path: internal/infra/persistence/sqlite/memstore.go
+      owner: "migrateSnapshot"
+      category: "*ast.MapType.Value"
+      line: 542
+      column: 81
+    description: "Snapshot stores seed extension and baseline attributes using JSON payload maps."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+      - "docs/adr/0003-core-domain-schema.md"
+      - "docs/adr/0007-storage-baseline.md"
+  - selector:
+      path: internal/infra/persistence/sqlite/memstore.go
+      owner: "migrateSnapshot"
+      category: "*ast.MapType.Value"
+      line: 605
+      column: 84
+    description: "Snapshot stores seed extension and baseline attributes using JSON payload maps."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+      - "docs/adr/0003-core-domain-schema.md"
+      - "docs/adr/0007-storage-baseline.md"
+  - selector:
+      path: internal/infra/persistence/sqlite/memstore.go
+      owner: "migrateSnapshot"
+      category: "*ast.MapType.Value"
+      line: 627
+      column: 81
+    description: "Snapshot stores seed extension and baseline attributes using JSON payload maps."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+      - "docs/adr/0003-core-domain-schema.md"
+      - "docs/adr/0007-storage-baseline.md"
+  - selector:
+      path: internal/infra/persistence/sqlite/memstore.go
+      owner: "migrateSnapshot"
+      category: "*ast.MapType.Value"
+      line: 701
+      column: 79
+    description: "Snapshot stores seed extension and baseline attributes using JSON payload maps."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+      - "docs/adr/0003-core-domain-schema.md"
+      - "docs/adr/0007-storage-baseline.md"
+  - selector:
+      path: internal/infra/persistence/sqlite/memstore.go
+      owner: "migrateSnapshot"
+      category: "*ast.MapType.Value"
+      line: 716
+      column: 88
+    description: "Snapshot stores seed extension and baseline attributes using JSON payload maps."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+      - "docs/adr/0003-core-domain-schema.md"
+      - "docs/adr/0007-storage-baseline.md"
+  - selector:
+      path: internal/infra/persistence/sqlite/memstore.go
+      owner: "transaction"
+      category: "*ast.MapType.Value"
+      line: 1486
+      column: 73
+    description: "Snapshot stores seed extension and baseline attributes using JSON payload maps."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+      - "docs/adr/0003-core-domain-schema.md"
+      - "docs/adr/0007-storage-baseline.md"
+  - selector:
+      path: internal/infra/persistence/sqlite/memstore.go
+      owner: "transaction"
+      category: "*ast.MapType.Value"
+      line: 1686
+      column: 80
+    description: "Snapshot stores seed extension and baseline attributes using JSON payload maps."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+      - "docs/adr/0003-core-domain-schema.md"
+      - "docs/adr/0007-storage-baseline.md"
+  - selector:
+      path: internal/infra/persistence/sqlite/memstore.go
+      owner: "transaction"
+      category: "*ast.MapType.Value"
+      line: 1710
+      column: 86
+    description: "Snapshot stores seed extension and baseline attributes using JSON payload maps."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+      - "docs/adr/0003-core-domain-schema.md"
+      - "docs/adr/0007-storage-baseline.md"
+  - selector:
+      path: internal/infra/persistence/sqlite/memstore.go
+      owner: "transaction"
+      category: "*ast.MapType.Value"
+      line: 1841
+      column: 82
+    description: "Snapshot stores seed extension and baseline attributes using JSON payload maps."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+      - "docs/adr/0003-core-domain-schema.md"
+      - "docs/adr/0007-storage-baseline.md"
+  - selector:
+      path: internal/infra/persistence/sqlite/memstore.go
+      owner: "transaction"
+      category: "*ast.MapType.Value"
+      line: 1846
+      column: 84
+    description: "Snapshot stores seed extension and baseline attributes using JSON payload maps."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+      - "docs/adr/0003-core-domain-schema.md"
+      - "docs/adr/0007-storage-baseline.md"
+  - selector:
+      path: internal/infra/persistence/sqlite/memstore.go
+      owner: "transaction"
+      category: "*ast.MapType.Value"
+      line: 1877
+      column: 88
+    description: "Snapshot stores seed extension and baseline attributes using JSON payload maps."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+      - "docs/adr/0003-core-domain-schema.md"
+      - "docs/adr/0007-storage-baseline.md"
+  - selector:
+      path: internal/infra/persistence/sqlite/memstore.go
+      owner: "transaction"
+      category: "*ast.MapType.Value"
+      line: 1882
+      column: 90
+    description: "Snapshot stores seed extension and baseline attributes using JSON payload maps."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+      - "docs/adr/0003-core-domain-schema.md"
+      - "docs/adr/0007-storage-baseline.md"
+  - selector:
+      path: internal/infra/persistence/sqlite/memstore.go
+      owner: "transaction"
+      category: "*ast.MapType.Value"
+      line: 1950
+      column: 75
+    description: "Snapshot stores seed extension and baseline attributes using JSON payload maps."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+      - "docs/adr/0003-core-domain-schema.md"
+      - "docs/adr/0007-storage-baseline.md"
+  - selector:
+      path: internal/infra/persistence/sqlite/memstore.go
+      owner: "transaction"
+      category: "*ast.MapType.Value"
+      line: 1984
+      column: 81
+    description: "Snapshot stores seed extension and baseline attributes using JSON payload maps."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+      - "docs/adr/0003-core-domain-schema.md"
+      - "docs/adr/0007-storage-baseline.md"
+  - selector:
+      path: internal/infra/persistence/sqlite/memstore.go
+      owner: "transaction"
+      category: "*ast.MapType.Value"
+      line: 2041
+      column: 92
+    description: "Snapshot stores seed extension and baseline attributes using JSON payload maps."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+      - "docs/adr/0003-core-domain-schema.md"
+      - "docs/adr/0007-storage-baseline.md"
+  - selector:
+      path: internal/infra/persistence/sqlite/memstore.go
+      owner: "transaction"
+      category: "*ast.MapType.Value"
+      line: 2069
+      column: 98
+    description: "Snapshot stores seed extension and baseline attributes using JSON payload maps."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+      - "docs/adr/0003-core-domain-schema.md"
+      - "docs/adr/0007-storage-baseline.md"
+  - selector:
+      path: internal/infra/persistence/sqlite/memstore.go
+      owner: "transaction"
+      category: "*ast.MapType.Value"
+      line: 2312
+      column: 73
+    description: "Snapshot stores seed extension and baseline attributes using JSON payload maps."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+      - "docs/adr/0003-core-domain-schema.md"
+      - "docs/adr/0007-storage-baseline.md"
+  - selector:
+      path: internal/infra/persistence/sqlite/memstore.go
+      owner: "transaction"
+      category: "*ast.MapType.Value"
+      line: 2352
+      column: 79
+    description: "Snapshot stores seed extension and baseline attributes using JSON payload maps."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+      - "docs/adr/0003-core-domain-schema.md"
+      - "docs/adr/0007-storage-baseline.md"
+  - selector:
+      path: internal/infra/persistence/sqlite/memstore.go
+      owner: "transaction"
+      category: "*ast.MapType.Value"
+      line: 2418
+      column: 75
+    description: "Snapshot stores seed extension and baseline attributes using JSON payload maps."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+      - "docs/adr/0003-core-domain-schema.md"
+      - "docs/adr/0007-storage-baseline.md"
+  - selector:
+      path: internal/infra/persistence/sqlite/memstore.go
+      owner: "transaction"
+      category: "*ast.MapType.Value"
+      line: 2465
+      column: 81
+    description: "Snapshot stores seed extension and baseline attributes using JSON payload maps."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+      - "docs/adr/0003-core-domain-schema.md"
+      - "docs/adr/0007-storage-baseline.md"
+  - selector:
+      path: internal/infra/persistence/sqlite/memstore.go
+      owner: "transaction"
+      category: "*ast.MapType.Value"
+      line: 2775
+      column: 75
+    description: "Snapshot stores seed extension and baseline attributes using JSON payload maps."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+      - "docs/adr/0003-core-domain-schema.md"
+      - "docs/adr/0007-storage-baseline.md"
+  - selector:
+      path: internal/infra/persistence/sqlite/memstore.go
+      owner: "transaction"
+      category: "*ast.MapType.Value"
+      line: 2815
+      column: 81
+    description: "Snapshot stores seed extension and baseline attributes using JSON payload maps."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+      - "docs/adr/0003-core-domain-schema.md"
+      - "docs/adr/0007-storage-baseline.md"
+  - selector:
+      path: internal/infra/persistence/sqlite/store.go
+      owner: "ddlExec"
+      category: "*ast.Ellipsis.Elt"
+      line: 254
+      column: 29
+    description: "DDL execution mirrors database/sql Exec signatures."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+      - "docs/adr/0007-storage-baseline.md"
+  - selector:
+      path: pkg/datasetapi/extensions.go
+      owner: "ExtensionSet"
+      category: "*ast.MapType.Value"
+      line: 16
+      column: 41
+    description: "ExtensionSet carries JSON object payloads grouped by hook and plugin; Get/Core return ExtensionPayload wrappers."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: pkg/datasetapi/extensions.go
+      owner: "NewExtensionSet"
+      category: "*ast.MapType.Value"
+      line: 24
+      column: 59
+    description: "ExtensionSet carries JSON object payloads grouped by hook and plugin; Get/Core return ExtensionPayload wrappers."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: pkg/datasetapi/extensions.go
+      owner: "extensionSet"
+      category: "*ast.MapType.Value"
+      line: 30
+      column: 43
+    description: "ExtensionSet carries JSON object payloads grouped by hook and plugin; Get/Core return ExtensionPayload wrappers."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: pkg/datasetapi/extensions.go
+      owner: "extensionSet"
+      category: "*ast.MapType.Value"
+      line: 106
+      column: 63
+    description: "ExtensionSet carries JSON object payloads grouped by hook and plugin; Get/Core return ExtensionPayload wrappers."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: pkg/datasetapi/extensions.go
+      owner: "cloneRaw"
+      category: "*ast.MapType.Value"
+      line: 116
+      column: 52
+    description: "ExtensionSet carries JSON object payloads grouped by hook and plugin; Get/Core return ExtensionPayload wrappers."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: pkg/datasetapi/extensions.go
+      owner: "cloneRaw"
+      category: "*ast.MapType.Value"
+      line: 116
+      column: 90
+    description: "ExtensionSet carries JSON object payloads grouped by hook and plugin; Get/Core return ExtensionPayload wrappers."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: pkg/datasetapi/extensions.go
+      owner: "cloneRaw"
+      category: "*ast.MapType.Value"
+      line: 120
+      column: 47
+    description: "ExtensionSet carries JSON object payloads grouped by hook and plugin; Get/Core return ExtensionPayload wrappers."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: pkg/datasetapi/extensions.go
+      owner: "cloneRaw"
+      category: "*ast.MapType.Value"
+      line: 126
+      column: 40
+    description: "ExtensionSet carries JSON object payloads grouped by hook and plugin; Get/Core return ExtensionPayload wrappers."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: pkg/datasetapi/extensions.go
+      owner: "cloneRaw"
+      category: "*ast.MapType.Value"
+      line: 133
+      column: 41
+    description: "ExtensionSet carries JSON object payloads grouped by hook and plugin; Get/Core return ExtensionPayload wrappers."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: pkg/datasetapi/extensions.go
+      owner: "cloneValue"
+      category: "*ast.Field.Type"
+      line: 144
+      column: 23
+    description: "ExtensionSet carries JSON object payloads grouped by hook and plugin; Get/Core return ExtensionPayload wrappers."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: pkg/datasetapi/extensions.go
+      owner: "cloneValue"
+      category: "*ast.Field.Type"
+      line: 144
+      column: 28
+    description: "ExtensionSet carries JSON object payloads grouped by hook and plugin; Get/Core return ExtensionPayload wrappers."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: pkg/datasetapi/extensions.go
+      owner: "cloneValue"
+      category: "*ast.MapType.Value"
+      line: 151
+      column: 22
+    description: "ExtensionSet carries JSON object payloads grouped by hook and plugin; Get/Core return ExtensionPayload wrappers."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: pkg/datasetapi/extensions.go
+      owner: "cloneValue"
+      category: "*ast.MapType.Value"
+      line: 153
+      column: 29
+    description: "ExtensionSet carries JSON object payloads grouped by hook and plugin; Get/Core return ExtensionPayload wrappers."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: pkg/datasetapi/extensions.go
+      owner: "cloneValue"
+      category: "*ast.ArrayType.Elt"
+      line: 160
+      column: 13
+    description: "ExtensionSet carries JSON object payloads grouped by hook and plugin; Get/Core return ExtensionPayload wrappers."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: pkg/datasetapi/extensions.go
+      owner: "cloneValue"
+      category: "*ast.ArrayType.Elt"
+      line: 162
+      column: 20
+    description: "ExtensionSet carries JSON object payloads grouped by hook and plugin; Get/Core return ExtensionPayload wrappers."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: pkg/datasetapi/extensions.go
+      owner: "cloneValue"
+      category: "*ast.MapType.Value"
+      line: 176
+      column: 24
+    description: "ExtensionSet carries JSON object payloads grouped by hook and plugin; Get/Core return ExtensionPayload wrappers."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: pkg/datasetapi/extensions.go
+      owner: "cloneValue"
+      category: "*ast.MapType.Value"
+      line: 178
+      column: 31
+    description: "ExtensionSet carries JSON object payloads grouped by hook and plugin; Get/Core return ExtensionPayload wrappers."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: pkg/datasetapi/extensions.go
+      owner: "cloneValue"
+      category: "*ast.MapType.Value"
+      line: 183
+      column: 53
+    description: "ExtensionSet carries JSON object payloads grouped by hook and plugin; Get/Core return ExtensionPayload wrappers."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: pkg/datasetapi/facade.go
+      owner: "Organism"
+      category: "*ast.MapType.Value"
+      line: 388
+      column: 26
+    description: "Facade serialization exposes JSON-like attributes and custody payloads."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: pkg/datasetapi/facade.go
+      owner: "Organism"
+      category: "*ast.MapType.Value"
+      line: 390
+      column: 30
+    description: "Facade serialization exposes JSON-like attributes and custody payloads."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: pkg/datasetapi/facade.go
+      owner: "Facility"
+      category: "*ast.MapType.Value"
+      line: 447
+      column: 36
+    description: "Facade serialization exposes JSON-like attributes and custody payloads."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: pkg/datasetapi/facade.go
+      owner: "Facility"
+      category: "*ast.MapType.Value"
+      line: 449
+      column: 40
+    description: "Facade serialization exposes JSON-like attributes and custody payloads."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: pkg/datasetapi/facade.go
+      owner: "BreedingUnit"
+      category: "*ast.MapType.Value"
+      line: 475
+      column: 33
+    description: "Facade serialization exposes JSON-like attributes and custody payloads."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: pkg/datasetapi/facade.go
+      owner: "BreedingUnit"
+      category: "*ast.MapType.Value"
+      line: 477
+      column: 37
+    description: "Facade serialization exposes JSON-like attributes and custody payloads."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: pkg/datasetapi/facade.go
+      owner: "Observation"
+      category: "*ast.MapType.Value"
+      line: 539
+      column: 20
+    description: "Facade serialization exposes JSON-like attributes and custody payloads."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: pkg/datasetapi/facade.go
+      owner: "Observation"
+      category: "*ast.MapType.Value"
+      line: 541
+      column: 24
+    description: "Facade serialization exposes JSON-like attributes and custody payloads."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: pkg/datasetapi/facade.go
+      owner: "Sample"
+      category: "*ast.MapType.Value"
+      line: 566
+      column: 26
+    description: "Facade serialization exposes JSON-like attributes and custody payloads."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: pkg/datasetapi/facade.go
+      owner: "Sample"
+      category: "*ast.MapType.Value"
+      line: 568
+      column: 30
+    description: "Facade serialization exposes JSON-like attributes and custody payloads."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: pkg/datasetapi/facade.go
+      owner: "SupplyItem"
+      category: "*ast.MapType.Value"
+      line: 652
+      column: 26
+    description: "Facade serialization exposes JSON-like attributes and custody payloads."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: pkg/datasetapi/facade.go
+      owner: "SupplyItem"
+      category: "*ast.MapType.Value"
+      line: 654
+      column: 30
+    description: "Facade serialization exposes JSON-like attributes and custody payloads."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: pkg/datasetapi/facade.go
+      owner: "organism"
+      category: "*ast.MapType.Value"
+      line: 695
+      column: 28
+    description: "Facade serialization exposes JSON-like attributes and custody payloads."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: pkg/datasetapi/facade.go
+      owner: "organism"
+      category: "*ast.MapType.Value"
+      line: 752
+      column: 43
+    description: "Facade serialization exposes JSON-like attributes and custody payloads."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: pkg/datasetapi/facade.go
+      owner: "organism"
+      category: "*ast.MapType.Value"
+      line: 758
+      column: 47
+    description: "Facade serialization exposes JSON-like attributes and custody payloads."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: pkg/datasetapi/facade.go
+      owner: "organism"
+      category: "*ast.MapType.Value"
+      line: 817
+      column: 25
+    description: "Facade serialization exposes JSON-like attributes and custody payloads."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: pkg/datasetapi/facade.go
+      owner: "facility"
+      category: "*ast.MapType.Value"
+      line: 1043
+      column: 28
+    description: "Facade serialization exposes JSON-like attributes and custody payloads."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: pkg/datasetapi/facade.go
+      owner: "facility"
+      category: "*ast.MapType.Value"
+      line: 1071
+      column: 53
+    description: "Facade serialization exposes JSON-like attributes and custody payloads."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: pkg/datasetapi/facade.go
+      owner: "facility"
+      category: "*ast.MapType.Value"
+      line: 1077
+      column: 57
+    description: "Facade serialization exposes JSON-like attributes and custody payloads."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: pkg/datasetapi/facade.go
+      owner: "facility"
+      category: "*ast.MapType.Value"
+      line: 1138
+      column: 35
+    description: "Facade serialization exposes JSON-like attributes and custody payloads."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: pkg/datasetapi/facade.go
+      owner: "breedingUnit"
+      category: "*ast.MapType.Value"
+      line: 1169
+      column: 30
+    description: "Facade serialization exposes JSON-like attributes and custody payloads."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: pkg/datasetapi/facade.go
+      owner: "breedingUnit"
+      category: "*ast.MapType.Value"
+      line: 1231
+      column: 54
+    description: "Facade serialization exposes JSON-like attributes and custody payloads."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: pkg/datasetapi/facade.go
+      owner: "breedingUnit"
+      category: "*ast.MapType.Value"
+      line: 1237
+      column: 58
+    description: "Facade serialization exposes JSON-like attributes and custody payloads."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: pkg/datasetapi/facade.go
+      owner: "breedingUnit"
+      category: "*ast.MapType.Value"
+      line: 1294
+      column: 32
+    description: "Facade serialization exposes JSON-like attributes and custody payloads."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: pkg/datasetapi/facade.go
+      owner: "observation"
+      category: "*ast.MapType.Value"
+      line: 1515
+      column: 25
+    description: "Facade serialization exposes JSON-like attributes and custody payloads."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: pkg/datasetapi/facade.go
+      owner: "observation"
+      category: "*ast.MapType.Value"
+      line: 1552
+      column: 40
+    description: "Facade serialization exposes JSON-like attributes and custody payloads."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: pkg/datasetapi/facade.go
+      owner: "observation"
+      category: "*ast.MapType.Value"
+      line: 1556
+      column: 44
+    description: "Facade serialization exposes JSON-like attributes and custody payloads."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: pkg/datasetapi/facade.go
+      owner: "observation"
+      category: "*ast.MapType.Value"
+      line: 1599
+      column: 26
+    description: "Facade serialization exposes JSON-like attributes and custody payloads."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: pkg/datasetapi/facade.go
+      owner: "sample"
+      category: "*ast.MapType.Value"
+      line: 1629
+      column: 29
+    description: "Facade serialization exposes JSON-like attributes and custody payloads."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: pkg/datasetapi/facade.go
+      owner: "sample"
+      category: "*ast.MapType.Value"
+      line: 1662
+      column: 41
+    description: "Facade serialization exposes JSON-like attributes and custody payloads."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: pkg/datasetapi/facade.go
+      owner: "sample"
+      category: "*ast.MapType.Value"
+      line: 1666
+      column: 45
+    description: "Facade serialization exposes JSON-like attributes and custody payloads."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: pkg/datasetapi/facade.go
+      owner: "sample"
+      category: "*ast.MapType.Value"
+      line: 1743
+      column: 32
+    description: "Facade serialization exposes JSON-like attributes and custody payloads."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: pkg/datasetapi/facade.go
+      owner: "sample"
+      category: "*ast.MapType.Value"
+      line: 1744
+      column: 30
+    description: "Facade serialization exposes JSON-like attributes and custody payloads."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: pkg/datasetapi/facade.go
+      owner: "supplyItem"
+      category: "*ast.MapType.Value"
+      line: 2069
+      column: 28
+    description: "Facade serialization exposes JSON-like attributes and custody payloads."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: pkg/datasetapi/facade.go
+      owner: "supplyItem"
+      category: "*ast.MapType.Value"
+      line: 2118
+      column: 45
+    description: "Facade serialization exposes JSON-like attributes and custody payloads."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: pkg/datasetapi/facade.go
+      owner: "supplyItem"
+      category: "*ast.MapType.Value"
+      line: 2124
+      column: 49
+    description: "Facade serialization exposes JSON-like attributes and custody payloads."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: pkg/datasetapi/facade.go
+      owner: "supplyItem"
+      category: "*ast.MapType.Value"
+      line: 2166
+      column: 29
+    description: "Facade serialization exposes JSON-like attributes and custody payloads."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: pkg/datasetapi/facade.go
+      owner: "serializeCustodyEvents"
+      category: "*ast.MapType.Value"
+      line: 2242
+      column: 65
+    description: "Facade serialization exposes JSON-like attributes and custody payloads."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: pkg/datasetapi/facade.go
+      owner: "serializeCustodyEvents"
+      category: "*ast.MapType.Value"
+      line: 2246
+      column: 27
+    description: "Facade serialization exposes JSON-like attributes and custody payloads."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: pkg/datasetapi/facade.go
+      owner: "serializeCustodyEvents"
+      category: "*ast.MapType.Value"
+      line: 2248
+      column: 23
+    description: "Facade serialization exposes JSON-like attributes and custody payloads."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: pkg/datasetapi/facade.go
+      owner: "extractCoreMap"
+      category: "*ast.MapType.Value"
+      line: 2263
+      column: 64
+    description: "Facade serialization exposes JSON-like attributes and custody payloads."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: pkg/datasetapi/facade.go
+      owner: "cloneAttributes"
+      category: "*ast.MapType.Value"
+      line: 2275
+      column: 39
+    description: "Facade serialization exposes JSON-like attributes and custody payloads."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: pkg/datasetapi/facade.go
+      owner: "cloneAttributes"
+      category: "*ast.MapType.Value"
+      line: 2275
+      column: 55
+    description: "Facade serialization exposes JSON-like attributes and custody payloads."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: pkg/datasetapi/facade.go
+      owner: "cloneAttributes"
+      category: "*ast.MapType.Value"
+      line: 2279
+      column: 25
+    description: "Facade serialization exposes JSON-like attributes and custody payloads."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: pkg/datasetapi/facade.go
+      owner: "deepClone"
+      category: "*ast.Field.Type"
+      line: 2292
+      column: 18
+    description: "Facade serialization exposes JSON-like attributes and custody payloads."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: pkg/datasetapi/facade.go
+      owner: "deepClone"
+      category: "*ast.Field.Type"
+      line: 2292
+      column: 23
+    description: "Facade serialization exposes JSON-like attributes and custody payloads."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: pkg/datasetapi/facade.go
+      owner: "deepClone"
+      category: "*ast.MapType.Value"
+      line: 2296
+      column: 22
+    description: "Facade serialization exposes JSON-like attributes and custody payloads."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: pkg/datasetapi/facade.go
+      owner: "deepClone"
+      category: "*ast.MapType.Value"
+      line: 2298
+      column: 24
+    description: "Facade serialization exposes JSON-like attributes and custody payloads."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: pkg/datasetapi/facade.go
+      owner: "deepClone"
+      category: "*ast.ArrayType.Elt"
+      line: 2305
+      column: 13
+    description: "Facade serialization exposes JSON-like attributes and custody payloads."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: pkg/datasetapi/facade.go
+      owner: "deepClone"
+      category: "*ast.ArrayType.Elt"
+      line: 2307
+      column: 15
+    description: "Facade serialization exposes JSON-like attributes and custody payloads."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: pkg/datasetapi/facade.go
+      owner: "deepClone"
+      category: "*ast.MapType.Value"
+      line: 2321
+      column: 24
+    description: "Facade serialization exposes JSON-like attributes and custody payloads."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: pkg/datasetapi/facade.go
+      owner: "deepClone"
+      category: "*ast.MapType.Value"
+      line: 2323
+      column: 26
+    description: "Facade serialization exposes JSON-like attributes and custody payloads."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: pkg/datasetapi/host_template.go
+      owner: "HostTemplate"
+      category: "*ast.MapType.Value"
+      line: 74
+      column: 60
+    description: "HostTemplate validation and runtime signatures use JSON-like parameters."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: pkg/datasetapi/host_template.go
+      owner: "HostTemplate"
+      category: "*ast.MapType.Value"
+      line: 74
+      column: 77
+    description: "HostTemplate validation and runtime signatures use JSON-like parameters."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: pkg/datasetapi/host_template.go
+      owner: "HostTemplate"
+      category: "*ast.MapType.Value"
+      line: 100
+      column: 66
+    description: "HostTemplate validation and runtime signatures use JSON-like parameters."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: pkg/datasetapi/host_template.go
+      owner: "validateParameters"
+      category: "*ast.MapType.Value"
+      line: 151
+      column: 70
+    description: "Internal helper functions operate on untyped parameter values."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: pkg/datasetapi/host_template.go
+      owner: "validateParameters"
+      category: "*ast.MapType.Value"
+      line: 151
+      column: 87
+    description: "Internal helper functions operate on untyped parameter values."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: pkg/datasetapi/host_template.go
+      owner: "validateParameters"
+      category: "*ast.MapType.Value"
+      line: 152
+      column: 29
+    description: "Internal helper functions operate on untyped parameter values."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: pkg/datasetapi/host_template.go
+      owner: "coerceDefaultParameter"
+      category: "*ast.Field.Type"
+      line: 198
+      column: 47
+    description: "Internal helper functions operate on untyped parameter values."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: pkg/datasetapi/host_template.go
+      owner: "coerceDefaultParameter"
+      category: "*ast.ValueSpec.Type"
+      line: 199
+      column: 10
+    description: "Internal helper functions operate on untyped parameter values."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: pkg/datasetapi/host_template.go
+      owner: "findParamValue"
+      category: "*ast.MapType.Value"
+      line: 211
+      column: 54
+    description: "Internal helper functions operate on untyped parameter values."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: pkg/datasetapi/host_template.go
+      owner: "findParamValue"
+      category: "*ast.Field.Type"
+      line: 211
+      column: 60
+    description: "Internal helper functions operate on untyped parameter values."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: pkg/datasetapi/host_template.go
+      owner: "coerceParameter"
+      category: "*ast.Field.Type"
+      line: 227
+      column: 43
+    description: "Internal helper functions operate on untyped parameter values."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: pkg/datasetapi/host_template.go
+      owner: "coerceParameter"
+      category: "*ast.Field.Type"
+      line: 227
+      column: 49
+    description: "Internal helper functions operate on untyped parameter values."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: pkg/datasetapi/payload.go
+      owner: "ExtensionPayload"
+      category: "*ast.MapType.Value"
+      line: 7
+      column: 21
+    description: "ExtensionPayload wraps JSON-like extension data."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: pkg/datasetapi/payload.go
+      owner: "NewExtensionPayload"
+      category: "*ast.MapType.Value"
+      line: 13
+      column: 44
+    description: "ExtensionPayload wraps JSON-like extension data."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: pkg/datasetapi/payload.go
+      owner: "ExtensionPayload"
+      category: "*ast.MapType.Value"
+      line: 40
+      column: 44
+    description: "ExtensionPayload wraps JSON-like extension data."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: pkg/datasetapi/types.go
+      owner: "RunRequest"
+      category: "*ast.MapType.Value"
+      line: 169
+      column: 24
+    description: "Dataset execution boundaries use JSON-like maps for parameters and rows."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+      - "docs/adr/0009-plugin-interface-stability-and-versioning.md"
+  - selector:
+      path: pkg/datasetapi/types.go
+      owner: "Row"
+      category: "*ast.MapType.Value"
+      line: 187
+      column: 21
+    description: "Dataset execution boundaries use JSON-like maps for parameters and rows."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+      - "docs/adr/0009-plugin-interface-stability-and-versioning.md"
+  - selector:
+      path: pkg/datasetapi/types.go
+      owner: "RunResult"
+      category: "*ast.MapType.Value"
+      line: 193
+      column: 25
+    description: "Dataset execution boundaries use JSON-like maps for parameters and rows."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+      - "docs/adr/0009-plugin-interface-stability-and-versioning.md"
+  - selector:
+      path: pkg/datasetapi/types.go
+      owner: "TemplateRuntime"
+      category: "*ast.MapType.Value"
+      line: 210
+      column: 39
+    description: "Dataset execution boundaries use JSON-like maps for parameters and rows."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+      - "docs/adr/0009-plugin-interface-stability-and-versioning.md"
+  - selector:
+      path: pkg/datasetapi/types.go
+      owner: "TemplateRuntime"
+      category: "*ast.MapType.Value"
+      line: 210
+      column: 56
+    description: "Dataset execution boundaries use JSON-like maps for parameters and rows."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+      - "docs/adr/0009-plugin-interface-stability-and-versioning.md"
+  - selector:
+      path: pkg/datasetapi/types.go
+      owner: "TemplateRuntime"
+      category: "*ast.MapType.Value"
+      line: 211
+      column: 45
+    description: "Dataset execution boundaries use JSON-like maps for parameters and rows."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+      - "docs/adr/0009-plugin-interface-stability-and-versioning.md"
+  - selector:
+      path: pkg/domain/entities.go
+      owner: "Organism"
+      category: "*ast.MapType.Value"
+      line: 267
+      column: 25
+    description: "Domain entities marshal/unmarshal extension attributes and hook payloads as JSON boundary maps."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+      - "docs/adr/0003-core-domain-schema.md"
+  - selector:
+      path: pkg/domain/entities.go
+      owner: "Organism"
+      category: "*ast.MapType.Value"
+      line: 268
+      column: 36
+    description: "Domain entities marshal/unmarshal extension attributes and hook payloads as JSON boundary maps."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+      - "docs/adr/0003-core-domain-schema.md"
+  - selector:
+      path: pkg/domain/entities.go
+      owner: "Organism"
+      category: "*ast.MapType.Value"
+      line: 281
+      column: 25
+    description: "Domain entities marshal/unmarshal extension attributes and hook payloads as JSON boundary maps."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+      - "docs/adr/0003-core-domain-schema.md"
+  - selector:
+      path: pkg/domain/entities.go
+      owner: "Organism"
+      category: "*ast.MapType.Value"
+      line: 282
+      column: 36
+    description: "Domain entities marshal/unmarshal extension attributes and hook payloads as JSON boundary maps."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+      - "docs/adr/0003-core-domain-schema.md"
+  - selector:
+      path: pkg/domain/entities.go
+      owner: "Facility"
+      category: "*ast.MapType.Value"
+      line: 318
+      column: 35
+    description: "Domain entities marshal/unmarshal extension attributes and hook payloads as JSON boundary maps."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+      - "docs/adr/0003-core-domain-schema.md"
+  - selector:
+      path: pkg/domain/entities.go
+      owner: "Facility"
+      category: "*ast.MapType.Value"
+      line: 319
+      column: 46
+    description: "Domain entities marshal/unmarshal extension attributes and hook payloads as JSON boundary maps."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+      - "docs/adr/0003-core-domain-schema.md"
+  - selector:
+      path: pkg/domain/entities.go
+      owner: "Facility"
+      category: "*ast.MapType.Value"
+      line: 332
+      column: 35
+    description: "Domain entities marshal/unmarshal extension attributes and hook payloads as JSON boundary maps."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+      - "docs/adr/0003-core-domain-schema.md"
+  - selector:
+      path: pkg/domain/entities.go
+      owner: "Facility"
+      category: "*ast.MapType.Value"
+      line: 333
+      column: 46
+    description: "Domain entities marshal/unmarshal extension attributes and hook payloads as JSON boundary maps."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+      - "docs/adr/0003-core-domain-schema.md"
+  - selector:
+      path: pkg/domain/entities.go
+      owner: "BreedingUnit"
+      category: "*ast.MapType.Value"
+      line: 366
+      column: 32
+    description: "Domain entities marshal/unmarshal extension attributes and hook payloads as JSON boundary maps."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+      - "docs/adr/0003-core-domain-schema.md"
+  - selector:
+      path: pkg/domain/entities.go
+      owner: "BreedingUnit"
+      category: "*ast.MapType.Value"
+      line: 367
+      column: 43
+    description: "Domain entities marshal/unmarshal extension attributes and hook payloads as JSON boundary maps."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+      - "docs/adr/0003-core-domain-schema.md"
+  - selector:
+      path: pkg/domain/entities.go
+      owner: "BreedingUnit"
+      category: "*ast.MapType.Value"
+      line: 380
+      column: 32
+    description: "Domain entities marshal/unmarshal extension attributes and hook payloads as JSON boundary maps."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+      - "docs/adr/0003-core-domain-schema.md"
+  - selector:
+      path: pkg/domain/entities.go
+      owner: "BreedingUnit"
+      category: "*ast.MapType.Value"
+      line: 381
+      column: 43
+    description: "Domain entities marshal/unmarshal extension attributes and hook payloads as JSON boundary maps."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+      - "docs/adr/0003-core-domain-schema.md"
+  - selector:
+      path: pkg/domain/entities.go
+      owner: "Observation"
+      category: "*ast.MapType.Value"
+      line: 414
+      column: 25
+    description: "Domain entities marshal/unmarshal extension attributes and hook payloads as JSON boundary maps."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+      - "docs/adr/0003-core-domain-schema.md"
+  - selector:
+      path: pkg/domain/entities.go
+      owner: "Observation"
+      category: "*ast.MapType.Value"
+      line: 415
+      column: 36
+    description: "Domain entities marshal/unmarshal extension attributes and hook payloads as JSON boundary maps."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+      - "docs/adr/0003-core-domain-schema.md"
+  - selector:
+      path: pkg/domain/entities.go
+      owner: "Observation"
+      category: "*ast.MapType.Value"
+      line: 428
+      column: 25
+    description: "Domain entities marshal/unmarshal extension attributes and hook payloads as JSON boundary maps."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+      - "docs/adr/0003-core-domain-schema.md"
+  - selector:
+      path: pkg/domain/entities.go
+      owner: "Observation"
+      category: "*ast.MapType.Value"
+      line: 429
+      column: 36
+    description: "Domain entities marshal/unmarshal extension attributes and hook payloads as JSON boundary maps."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+      - "docs/adr/0003-core-domain-schema.md"
+  - selector:
+      path: pkg/domain/entities.go
+      owner: "Sample"
+      category: "*ast.MapType.Value"
+      line: 465
+      column: 25
+    description: "Domain entities marshal/unmarshal extension attributes and hook payloads as JSON boundary maps."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+      - "docs/adr/0003-core-domain-schema.md"
+  - selector:
+      path: pkg/domain/entities.go
+      owner: "Sample"
+      category: "*ast.MapType.Value"
+      line: 466
+      column: 36
+    description: "Domain entities marshal/unmarshal extension attributes and hook payloads as JSON boundary maps."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+      - "docs/adr/0003-core-domain-schema.md"
+  - selector:
+      path: pkg/domain/entities.go
+      owner: "Sample"
+      category: "*ast.MapType.Value"
+      line: 479
+      column: 25
+    description: "Domain entities marshal/unmarshal extension attributes and hook payloads as JSON boundary maps."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+      - "docs/adr/0003-core-domain-schema.md"
+  - selector:
+      path: pkg/domain/entities.go
+      owner: "Sample"
+      category: "*ast.MapType.Value"
+      line: 480
+      column: 36
+    description: "Domain entities marshal/unmarshal extension attributes and hook payloads as JSON boundary maps."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+      - "docs/adr/0003-core-domain-schema.md"
+  - selector:
+      path: pkg/domain/entities.go
+      owner: "SupplyItem"
+      category: "*ast.MapType.Value"
+      line: 516
+      column: 25
+    description: "Domain entities marshal/unmarshal extension attributes and hook payloads as JSON boundary maps."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+      - "docs/adr/0003-core-domain-schema.md"
+  - selector:
+      path: pkg/domain/entities.go
+      owner: "SupplyItem"
+      category: "*ast.MapType.Value"
+      line: 517
+      column: 36
+    description: "Domain entities marshal/unmarshal extension attributes and hook payloads as JSON boundary maps."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+      - "docs/adr/0003-core-domain-schema.md"
+  - selector:
+      path: pkg/domain/entities.go
+      owner: "SupplyItem"
+      category: "*ast.MapType.Value"
+      line: 530
+      column: 25
+    description: "Domain entities marshal/unmarshal extension attributes and hook payloads as JSON boundary maps."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+      - "docs/adr/0003-core-domain-schema.md"
+  - selector:
+      path: pkg/domain/entities.go
+      owner: "SupplyItem"
+      category: "*ast.MapType.Value"
+      line: 531
+      column: 36
+    description: "Domain entities marshal/unmarshal extension attributes and hook payloads as JSON boundary maps."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+      - "docs/adr/0003-core-domain-schema.md"
+  - selector:
+      path: pkg/domain/entities.go
+      owner: "Line"
+      category: "*ast.MapType.Value"
+      line: 559
+      column: 33
+    description: "Domain entities marshal/unmarshal extension attributes and hook payloads as JSON boundary maps."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+      - "docs/adr/0003-core-domain-schema.md"
+  - selector:
+      path: pkg/domain/entities.go
+      owner: "Line"
+      category: "*ast.MapType.Value"
+      line: 560
+      column: 33
+    description: "Domain entities marshal/unmarshal extension attributes and hook payloads as JSON boundary maps."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+      - "docs/adr/0003-core-domain-schema.md"
+  - selector:
+      path: pkg/domain/entities.go
+      owner: "Line"
+      category: "*ast.MapType.Value"
+      line: 574
+      column: 33
+    description: "Domain entities marshal/unmarshal extension attributes and hook payloads as JSON boundary maps."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+      - "docs/adr/0003-core-domain-schema.md"
+  - selector:
+      path: pkg/domain/entities.go
+      owner: "Line"
+      category: "*ast.MapType.Value"
+      line: 575
+      column: 33
+    description: "Domain entities marshal/unmarshal extension attributes and hook payloads as JSON boundary maps."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+      - "docs/adr/0003-core-domain-schema.md"
+  - selector:
+      path: pkg/domain/entities.go
+      owner: "Strain"
+      category: "*ast.MapType.Value"
+      line: 594
+      column: 25
+    description: "Domain entities marshal/unmarshal extension attributes and hook payloads as JSON boundary maps."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+      - "docs/adr/0003-core-domain-schema.md"
+  - selector:
+      path: pkg/domain/entities.go
+      owner: "Strain"
+      category: "*ast.MapType.Value"
+      line: 607
+      column: 25
+    description: "Domain entities marshal/unmarshal extension attributes and hook payloads as JSON boundary maps."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+      - "docs/adr/0003-core-domain-schema.md"
+  - selector:
+      path: pkg/domain/entities.go
+      owner: "GenotypeMarker"
+      category: "*ast.MapType.Value"
+      line: 623
+      column: 25
+    description: "Domain entities marshal/unmarshal extension attributes and hook payloads as JSON boundary maps."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+      - "docs/adr/0003-core-domain-schema.md"
+  - selector:
+      path: pkg/domain/entities.go
+      owner: "GenotypeMarker"
+      category: "*ast.MapType.Value"
+      line: 636
+      column: 25
+    description: "Domain entities marshal/unmarshal extension attributes and hook payloads as JSON boundary maps."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+      - "docs/adr/0003-core-domain-schema.md"
+  - selector:
+      path: pkg/domain/entitymodel/model_gen.go
+      owner: "BreedingUnit"
+      category: "*ast.MapType.Value"
+      line: 110
+      column: 31
+    description: "Generated entity model includes extension payload fields as JSON maps per ADR-0003."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+      - "docs/adr/0003-core-domain-schema.md"
+  - selector:
+      path: pkg/domain/entitymodel/model_gen.go
+      owner: "Facility"
+      category: "*ast.MapType.Value"
+      line: 138
+      column: 34
+    description: "Generated entity model includes extension payload fields as JSON maps per ADR-0003."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+      - "docs/adr/0003-core-domain-schema.md"
+  - selector:
+      path: pkg/domain/entitymodel/model_gen.go
+      owner: "Line"
+      category: "*ast.MapType.Value"
+      line: 176
+      column: 32
+    description: "Generated entity model includes extension payload fields as JSON maps per ADR-0003."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+      - "docs/adr/0003-core-domain-schema.md"
+  - selector:
+      path: pkg/domain/entitymodel/model_gen.go
+      owner: "Line"
+      category: "*ast.MapType.Value"
+      line: 180
+      column: 32
+    description: "Generated entity model includes extension payload fields as JSON maps per ADR-0003."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+      - "docs/adr/0003-core-domain-schema.md"
+  - selector:
+      path: pkg/domain/entitymodel/model_gen.go
+      owner: "Observation"
+      category: "*ast.MapType.Value"
+      line: 192
+      column: 25
+    description: "Generated entity model includes extension payload fields as JSON maps per ADR-0003."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+      - "docs/adr/0003-core-domain-schema.md"
+  - selector:
+      path: pkg/domain/entitymodel/model_gen.go
+      owner: "Organism"
+      category: "*ast.MapType.Value"
+      line: 204
+      column: 24
+    description: "Generated entity model includes extension payload fields as JSON maps per ADR-0003."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+      - "docs/adr/0003-core-domain-schema.md"
+  - selector:
+      path: pkg/domain/entitymodel/model_gen.go
+      owner: "Sample"
+      category: "*ast.MapType.Value"
+      line: 283
+      column: 29
+    description: "Generated entity model includes extension payload fields as JSON maps per ADR-0003."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+      - "docs/adr/0003-core-domain-schema.md"
+  - selector:
+      path: pkg/domain/entitymodel/model_gen.go
+      owner: "SupplyItem"
+      category: "*ast.MapType.Value"
+      line: 315
+      column: 28
+    description: "Generated entity model includes extension payload fields as JSON maps per ADR-0003."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+      - "docs/adr/0003-core-domain-schema.md"
+  - selector:
+      path: pkg/domain/extension/container.go
+      owner: "validateHookPayload"
+      category: "*ast.Field.Type"
+      line: 202
+      column: 42
+    description: "Extension containers store hook payloads as JSON-like maps at the domain boundary."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+      - "docs/adr/0003-core-domain-schema.md"
+  - selector:
+      path: pkg/domain/extension/container.go
+      owner: "isJSONObject"
+      category: "*ast.Field.Type"
+      line: 229
+      column: 25
+    description: "Extension containers store hook payloads as JSON-like maps at the domain boundary."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+      - "docs/adr/0003-core-domain-schema.md"
+  - selector:
+      path: pkg/domain/extension/container.go
+      owner: "isJSONArray"
+      category: "*ast.Field.Type"
+      line: 240
+      column: 24
+    description: "Extension containers store hook payloads as JSON-like maps at the domain boundary."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+      - "docs/adr/0003-core-domain-schema.md"
+  - selector:
+      path: pkg/domain/extension/container.go
+      owner: "Container"
+      category: "*ast.MapType.Value"
+      line: 257
+      column: 30
+    description: "Extension containers store hook payloads as JSON-like maps at the domain boundary."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+      - "docs/adr/0003-core-domain-schema.md"
+  - selector:
+      path: pkg/domain/extension/container.go
+      owner: "NewContainer"
+      category: "*ast.MapType.Value"
+      line: 263
+      column: 37
+    description: "Extension containers store hook payloads as JSON-like maps at the domain boundary."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+      - "docs/adr/0003-core-domain-schema.md"
+  - selector:
+      path: pkg/domain/extension/container.go
+      owner: "FromRaw"
+      category: "*ast.MapType.Value"
+      line: 269
+      column: 40
+    description: "Extension containers store hook payloads as JSON-like maps at the domain boundary."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+      - "docs/adr/0003-core-domain-schema.md"
+  - selector:
+      path: pkg/domain/extension/container.go
+      owner: "Container"
+      category: "*ast.MapType.Value"
+      line: 286
+      column: 40
+    description: "Extension containers store hook payloads as JSON-like maps at the domain boundary."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+      - "docs/adr/0003-core-domain-schema.md"
+  - selector:
+      path: pkg/domain/extension/container.go
+      owner: "Container"
+      category: "*ast.MapType.Value"
+      line: 291
+      column: 68
+    description: "Extension containers store hook payloads as JSON-like maps at the domain boundary."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+      - "docs/adr/0003-core-domain-schema.md"
+  - selector:
+      path: pkg/domain/extension/container.go
+      owner: "Container"
+      category: "*ast.Field.Type"
+      line: 305
+      column: 59
+    description: "Extension containers store hook payloads as JSON-like maps at the domain boundary."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+      - "docs/adr/0003-core-domain-schema.md"
+  - selector:
+      path: pkg/domain/extension/container.go
+      owner: "Container"
+      category: "*ast.MapType.Value"
+      line: 314
+      column: 37
+    description: "Extension containers store hook payloads as JSON-like maps at the domain boundary."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+      - "docs/adr/0003-core-domain-schema.md"
+  - selector:
+      path: pkg/domain/extension/container.go
+      owner: "Container"
+      category: "*ast.Field.Type"
+      line: 336
+      column: 53
+    description: "Extension containers store hook payloads as JSON-like maps at the domain boundary."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+      - "docs/adr/0003-core-domain-schema.md"
+  - selector:
+      path: pkg/domain/extension/container.go
+      owner: "Container"
+      category: "*ast.MapType.Value"
+      line: 397
+      column: 37
+    description: "Extension containers store hook payloads as JSON-like maps at the domain boundary."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+      - "docs/adr/0003-core-domain-schema.md"
+  - selector:
+      path: pkg/domain/extension/container.go
+      owner: "Container"
+      category: "*ast.MapType.Value"
+      line: 399
+      column: 28
+    description: "Extension containers store hook payloads as JSON-like maps at the domain boundary."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+      - "docs/adr/0003-core-domain-schema.md"
+  - selector:
+      path: pkg/domain/extension/container.go
+      owner: "Container"
+      category: "*ast.MapType.Value"
+      line: 414
+      column: 33
+    description: "Extension containers store hook payloads as JSON-like maps at the domain boundary."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+      - "docs/adr/0003-core-domain-schema.md"
+  - selector:
+      path: pkg/domain/extension/container.go
+      owner: "Container"
+      category: "*ast.MapType.Value"
+      line: 424
+      column: 37
+    description: "Extension containers store hook payloads as JSON-like maps at the domain boundary."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+      - "docs/adr/0003-core-domain-schema.md"
+  - selector:
+      path: pkg/domain/extension/container.go
+      owner: "Container"
+      category: "*ast.MapType.Value"
+      line: 439
+      column: 48
+    description: "Extension containers store hook payloads as JSON-like maps at the domain boundary."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+      - "docs/adr/0003-core-domain-schema.md"
+  - selector:
+      path: pkg/domain/extension/container.go
+      owner: "Container"
+      category: "*ast.MapType.Value"
+      line: 441
+      column: 32
+    description: "Extension containers store hook payloads as JSON-like maps at the domain boundary."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+      - "docs/adr/0003-core-domain-schema.md"
+  - selector:
+      path: pkg/domain/extension/container.go
+      owner: "Container"
+      category: "*ast.MapType.Value"
+      line: 443
+      column: 37
+    description: "Extension containers store hook payloads as JSON-like maps at the domain boundary."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+      - "docs/adr/0003-core-domain-schema.md"
+  - selector:
+      path: pkg/domain/extension/container.go
+      owner: "Container"
+      category: "*ast.MapType.Value"
+      line: 445
+      column: 28
+    description: "Extension containers store hook payloads as JSON-like maps at the domain boundary."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+      - "docs/adr/0003-core-domain-schema.md"
+  - selector:
+      path: pkg/domain/extension/container.go
+      owner: "CloneValue"
+      category: "*ast.Field.Type"
+      line: 456
+      column: 23
+    description: "Extension containers store hook payloads as JSON-like maps at the domain boundary."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+      - "docs/adr/0003-core-domain-schema.md"
+  - selector:
+      path: pkg/domain/extension/container.go
+      owner: "CloneValue"
+      category: "*ast.Field.Type"
+      line: 456
+      column: 28
+    description: "Extension containers store hook payloads as JSON-like maps at the domain boundary."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+      - "docs/adr/0003-core-domain-schema.md"
+  - selector:
+      path: pkg/domain/extension/container.go
+      owner: "CloneMap"
+      category: "*ast.MapType.Value"
+      line: 462
+      column: 33
+    description: "Extension containers store hook payloads as JSON-like maps at the domain boundary."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+      - "docs/adr/0003-core-domain-schema.md"
+  - selector:
+      path: pkg/domain/extension/container.go
+      owner: "CloneMap"
+      category: "*ast.MapType.Value"
+      line: 462
+      column: 49
+    description: "Extension containers store hook payloads as JSON-like maps at the domain boundary."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+      - "docs/adr/0003-core-domain-schema.md"
+  - selector:
+      path: pkg/domain/extension/container.go
+      owner: "CloneMap"
+      category: "*ast.MapType.Value"
+      line: 470
+      column: 35
+    description: "Extension containers store hook payloads as JSON-like maps at the domain boundary."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+      - "docs/adr/0003-core-domain-schema.md"
+  - selector:
+      path: pkg/domain/extension/container.go
+      owner: "cloneValue"
+      category: "*ast.Field.Type"
+      line: 479
+      column: 23
+    description: "Extension containers store hook payloads as JSON-like maps at the domain boundary."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+      - "docs/adr/0003-core-domain-schema.md"
+  - selector:
+      path: pkg/domain/extension/container.go
+      owner: "cloneValue"
+      category: "*ast.Field.Type"
+      line: 479
+      column: 28
+    description: "Extension containers store hook payloads as JSON-like maps at the domain boundary."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+      - "docs/adr/0003-core-domain-schema.md"
+  - selector:
+      path: pkg/domain/extension/object_payload.go
+      owner: "ObjectPayload"
+      category: "*ast.MapType.Value"
+      line: 14
+      column: 25
+    description: "ObjectPayload wraps JSON-like extension data in the domain layer."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: pkg/domain/extension/object_payload.go
+      owner: "NewObjectPayload"
+      category: "*ast.Field.Type"
+      line: 20
+      column: 37
+    description: "ObjectPayload wraps JSON-like extension data in the domain layer."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: pkg/domain/extension/object_payload.go
+      owner: "NewObjectPayload"
+      category: "*ast.MapType.Value"
+      line: 31
+      column: 29
+    description: "ObjectPayload wraps JSON-like extension data in the domain layer."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: pkg/domain/extension/object_payload.go
+      owner: "ObjectPayload"
+      category: "*ast.MapType.Value"
+      line: 75
+      column: 41
+    description: "ObjectPayload wraps JSON-like extension data in the domain layer."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: pkg/domain/extension/slot.go
+      owner: "Slot"
+      category: "*ast.MapType.Value"
+      line: 16
+      column: 20
+    description: "Extension slots carry JSON-like payloads keyed by plugin."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: pkg/domain/extension/slot.go
+      owner: "NewSlot"
+      category: "*ast.MapType.Value"
+      line: 23
+      column: 27
+    description: "Extension slots carry JSON-like payloads keyed by plugin."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: pkg/domain/extension/slot.go
+      owner: "Slot"
+      category: "*ast.MapType.Value"
+      line: 47
+      column: 30
+    description: "Extension slots carry JSON-like payloads keyed by plugin."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: pkg/domain/extension/slot.go
+      owner: "Slot"
+      category: "*ast.Field.Type"
+      line: 52
+      column: 45
+    description: "Extension slots carry JSON-like payloads keyed by plugin."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: pkg/domain/extension/slot.go
+      owner: "Slot"
+      category: "*ast.Field.Type"
+      line: 68
+      column: 38
+    description: "Extension slots carry JSON-like payloads keyed by plugin."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: pkg/domain/extension/slot.go
+      owner: "Slot"
+      category: "*ast.MapType.Value"
+      line: 104
+      column: 33
+    description: "Extension slots carry JSON-like payloads keyed by plugin."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: pkg/domain/extension/slot.go
+      owner: "Slot"
+      category: "*ast.MapType.Value"
+      line: 106
+      column: 21
+    description: "Extension slots carry JSON-like payloads keyed by plugin."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: pkg/domain/extension/slot.go
+      owner: "Slot"
+      category: "*ast.MapType.Value"
+      line: 108
+      column: 25
+    description: "Extension slots carry JSON-like payloads keyed by plugin."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: pkg/domain/extension/slot.go
+      owner: "Slot"
+      category: "*ast.MapType.Value"
+      line: 125
+      column: 34
+    description: "Extension slots carry JSON-like payloads keyed by plugin."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: pkg/domain/extension/slot.go
+      owner: "Slot"
+      category: "*ast.MapType.Value"
+      line: 147
+      column: 21
+    description: "Extension slots carry JSON-like payloads keyed by plugin."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: pkg/domain/extension/slot.go
+      owner: "Slot"
+      category: "*ast.MapType.Value"
+      line: 152
+      column: 25
+    description: "Extension slots carry JSON-like payloads keyed by plugin."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: pkg/domain/extension/slot.go
+      owner: "Slot"
+      category: "*ast.MapType.Value"
+      line: 158
+      column: 29
+    description: "Extension slots carry JSON-like payloads keyed by plugin."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: pkg/domain/extension_accessors.go
+      owner: "pluginPayloads"
+      category: "*ast.MapType.Value"
+      line: 12
+      column: 85
+    description: "Domain accessors expose extension attributes as JSON boundary maps."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+      - "docs/adr/0003-core-domain-schema.md"
+  - selector:
+      path: pkg/domain/extension_accessors.go
+      owner: "updateHookPayload"
+      category: "*ast.MapType.Value"
+      line: 30
+      column: 21
+    description: "Domain accessors expose extension attributes as JSON boundary maps."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+      - "docs/adr/0003-core-domain-schema.md"
+  - selector:
+      path: pkg/domain/extension_accessors.go
+      owner: "Organism"
+      category: "*ast.MapType.Value"
+      line: 102
+      column: 48
+    description: "Domain accessors expose extension attributes as JSON boundary maps."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+      - "docs/adr/0003-core-domain-schema.md"
+  - selector:
+      path: pkg/domain/extension_accessors.go
+      owner: "Organism"
+      category: "*ast.MapType.Value"
+      line: 120
+      column: 55
+    description: "Domain accessors expose extension attributes as JSON boundary maps."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+      - "docs/adr/0003-core-domain-schema.md"
+  - selector:
+      path: pkg/domain/extension_accessors.go
+      owner: "Facility"
+      category: "*ast.MapType.Value"
+      line: 155
+      column: 54
+    description: "Domain accessors expose extension attributes as JSON boundary maps."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+      - "docs/adr/0003-core-domain-schema.md"
+  - selector:
+      path: pkg/domain/extension_accessors.go
+      owner: "Facility"
+      category: "*ast.MapType.Value"
+      line: 173
+      column: 67
+    description: "Domain accessors expose extension attributes as JSON boundary maps."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+      - "docs/adr/0003-core-domain-schema.md"
+  - selector:
+      path: pkg/domain/extension_accessors.go
+      owner: "BreedingUnit"
+      category: "*ast.MapType.Value"
+      line: 208
+      column: 55
+    description: "Domain accessors expose extension attributes as JSON boundary maps."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+      - "docs/adr/0003-core-domain-schema.md"
+  - selector:
+      path: pkg/domain/extension_accessors.go
+      owner: "Line"
+      category: "*ast.MapType.Value"
+      line: 252
+      column: 47
+    description: "Domain accessors expose extension attributes as JSON boundary maps."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+      - "docs/adr/0003-core-domain-schema.md"
+  - selector:
+      path: pkg/domain/extension_accessors.go
+      owner: "Line"
+      category: "*ast.MapType.Value"
+      line: 262
+      column: 56
+    description: "Domain accessors expose extension attributes as JSON boundary maps."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+      - "docs/adr/0003-core-domain-schema.md"
+  - selector:
+      path: pkg/domain/extension_accessors.go
+      owner: "Line"
+      category: "*ast.MapType.Value"
+      line: 271
+      column: 48
+    description: "Domain accessors expose extension attributes as JSON boundary maps."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+      - "docs/adr/0003-core-domain-schema.md"
+  - selector:
+      path: pkg/domain/extension_accessors.go
+      owner: "Line"
+      category: "*ast.MapType.Value"
+      line: 281
+      column: 61
+    description: "Domain accessors expose extension attributes as JSON boundary maps."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+      - "docs/adr/0003-core-domain-schema.md"
+  - selector:
+      path: pkg/domain/extension_accessors.go
+      owner: "Strain"
+      category: "*ast.MapType.Value"
+      line: 290
+      column: 56
+    description: "Domain accessors expose extension attributes as JSON boundary maps."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+      - "docs/adr/0003-core-domain-schema.md"
+  - selector:
+      path: pkg/domain/extension_accessors.go
+      owner: "Strain"
+      category: "*ast.MapType.Value"
+      line: 306
+      column: 57
+    description: "Domain accessors expose extension attributes as JSON boundary maps."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+      - "docs/adr/0003-core-domain-schema.md"
+  - selector:
+      path: pkg/domain/extension_accessors.go
+      owner: "GenotypeMarker"
+      category: "*ast.MapType.Value"
+      line: 331
+      column: 72
+    description: "Domain accessors expose extension attributes as JSON boundary maps."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+      - "docs/adr/0003-core-domain-schema.md"
+  - selector:
+      path: pkg/domain/extension_accessors.go
+      owner: "GenotypeMarker"
+      category: "*ast.MapType.Value"
+      line: 336
+      column: 73
+    description: "Domain accessors expose extension attributes as JSON boundary maps."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+      - "docs/adr/0003-core-domain-schema.md"
+  - selector:
+      path: pkg/domain/extension_accessors.go
+      owner: "BreedingUnit"
+      category: "*ast.MapType.Value"
+      line: 351
+      column: 64
+    description: "Domain accessors expose extension attributes as JSON boundary maps."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+      - "docs/adr/0003-core-domain-schema.md"
+  - selector:
+      path: pkg/domain/extension_accessors.go
+      owner: "Observation"
+      category: "*ast.MapType.Value"
+      line: 386
+      column: 52
+    description: "Domain accessors expose extension attributes as JSON boundary maps."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+      - "docs/adr/0003-core-domain-schema.md"
+  - selector:
+      path: pkg/domain/extension_accessors.go
+      owner: "Observation"
+      category: "*ast.MapType.Value"
+      line: 403
+      column: 60
+    description: "Domain accessors expose extension attributes as JSON boundary maps."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+      - "docs/adr/0003-core-domain-schema.md"
+  - selector:
+      path: pkg/domain/extension_accessors.go
+      owner: "Sample"
+      category: "*ast.MapType.Value"
+      line: 437
+      column: 48
+    description: "Domain accessors expose extension attributes as JSON boundary maps."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+      - "docs/adr/0003-core-domain-schema.md"
+  - selector:
+      path: pkg/domain/extension_accessors.go
+      owner: "Sample"
+      category: "*ast.MapType.Value"
+      line: 454
+      column: 57
+    description: "Domain accessors expose extension attributes as JSON boundary maps."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+      - "docs/adr/0003-core-domain-schema.md"
+  - selector:
+      path: pkg/domain/extension_accessors.go
+      owner: "SupplyItem"
+      category: "*ast.MapType.Value"
+      line: 489
+      column: 52
+    description: "Domain accessors expose extension attributes as JSON boundary maps."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+      - "docs/adr/0003-core-domain-schema.md"
+  - selector:
+      path: pkg/domain/extension_accessors.go
+      owner: "SupplyItem"
+      category: "*ast.MapType.Value"
+      line: 506
+      column: 61
+    description: "Domain accessors expose extension attributes as JSON boundary maps."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+      - "docs/adr/0003-core-domain-schema.md"
+  - selector:
+      path: pkg/domain/extension_slots_helpers.go
+      owner: "panicOnExtension"
+      category: "*ast.Ellipsis.Elt"
+      line: 10
+      column: 57
+    description: "Helper forwards variadic arguments into fmt for consistent panic formatting."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: pkg/domain/extension_slots_helpers.go
+      owner: "slotFromPluginPayloads"
+      category: "*ast.MapType.Value"
+      line: 17
+      column: 70
+    description: "Extension slot helpers accept JSON-like payload maps from plugin hooks."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: pkg/pluginapi/extensions.go
+      owner: "ExtensionSet"
+      category: "*ast.MapType.Value"
+      line: 12
+      column: 41
+    description: "ExtensionSet carries JSON object payloads grouped by hook and plugin; Get/Core return ObjectPayload wrappers."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: pkg/pluginapi/extensions.go
+      owner: "NewExtensionSet"
+      category: "*ast.MapType.Value"
+      line: 19
+      column: 59
+    description: "ExtensionSet carries JSON object payloads grouped by hook and plugin; Get/Core return ObjectPayload wrappers."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: pkg/pluginapi/extensions.go
+      owner: "extensionSet"
+      category: "*ast.MapType.Value"
+      line: 25
+      column: 43
+    description: "ExtensionSet carries JSON object payloads grouped by hook and plugin; Get/Core return ObjectPayload wrappers."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: pkg/pluginapi/extensions.go
+      owner: "extensionSet"
+      category: "*ast.MapType.Value"
+      line: 101
+      column: 63
+    description: "ExtensionSet carries JSON object payloads grouped by hook and plugin; Get/Core return ObjectPayload wrappers."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: pkg/pluginapi/extensions.go
+      owner: "cloneRaw"
+      category: "*ast.MapType.Value"
+      line: 106
+      column: 52
+    description: "ExtensionSet carries JSON object payloads grouped by hook and plugin; Get/Core return ObjectPayload wrappers."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: pkg/pluginapi/extensions.go
+      owner: "cloneRaw"
+      category: "*ast.MapType.Value"
+      line: 106
+      column: 90
+    description: "ExtensionSet carries JSON object payloads grouped by hook and plugin; Get/Core return ObjectPayload wrappers."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: pkg/pluginapi/extensions.go
+      owner: "cloneRaw"
+      category: "*ast.MapType.Value"
+      line: 110
+      column: 47
+    description: "ExtensionSet carries JSON object payloads grouped by hook and plugin; Get/Core return ObjectPayload wrappers."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: pkg/pluginapi/extensions.go
+      owner: "cloneRaw"
+      category: "*ast.MapType.Value"
+      line: 116
+      column: 40
+    description: "ExtensionSet carries JSON object payloads grouped by hook and plugin; Get/Core return ObjectPayload wrappers."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: pkg/pluginapi/extensions.go
+      owner: "cloneRaw"
+      category: "*ast.MapType.Value"
+      line: 122
+      column: 50
+    description: "ExtensionSet carries JSON object payloads grouped by hook and plugin; Get/Core return ObjectPayload wrappers."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: pkg/pluginapi/extensions.go
+      owner: "cloneValue"
+      category: "*ast.Field.Type"
+      line: 133
+      column: 23
+    description: "ExtensionSet carries JSON object payloads grouped by hook and plugin; Get/Core return ObjectPayload wrappers."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: pkg/pluginapi/extensions.go
+      owner: "cloneValue"
+      category: "*ast.Field.Type"
+      line: 133
+      column: 28
+    description: "ExtensionSet carries JSON object payloads grouped by hook and plugin; Get/Core return ObjectPayload wrappers."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: pkg/pluginapi/extensions.go
+      owner: "cloneValue"
+      category: "*ast.MapType.Value"
+      line: 140
+      column: 22
+    description: "ExtensionSet carries JSON object payloads grouped by hook and plugin; Get/Core return ObjectPayload wrappers."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: pkg/pluginapi/extensions.go
+      owner: "cloneValue"
+      category: "*ast.MapType.Value"
+      line: 142
+      column: 29
+    description: "ExtensionSet carries JSON object payloads grouped by hook and plugin; Get/Core return ObjectPayload wrappers."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: pkg/pluginapi/extensions.go
+      owner: "cloneValue"
+      category: "*ast.ArrayType.Elt"
+      line: 149
+      column: 13
+    description: "ExtensionSet carries JSON object payloads grouped by hook and plugin; Get/Core return ObjectPayload wrappers."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: pkg/pluginapi/extensions.go
+      owner: "cloneValue"
+      category: "*ast.ArrayType.Elt"
+      line: 151
+      column: 20
+    description: "ExtensionSet carries JSON object payloads grouped by hook and plugin; Get/Core return ObjectPayload wrappers."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: pkg/pluginapi/extensions.go
+      owner: "cloneValue"
+      category: "*ast.MapType.Value"
+      line: 165
+      column: 24
+    description: "ExtensionSet carries JSON object payloads grouped by hook and plugin; Get/Core return ObjectPayload wrappers."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: pkg/pluginapi/extensions.go
+      owner: "cloneValue"
+      category: "*ast.MapType.Value"
+      line: 167
+      column: 31
+    description: "ExtensionSet carries JSON object payloads grouped by hook and plugin; Get/Core return ObjectPayload wrappers."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: pkg/pluginapi/extensions.go
+      owner: "cloneValue"
+      category: "*ast.MapType.Value"
+      line: 172
+      column: 53
+    description: "ExtensionSet carries JSON object payloads grouped by hook and plugin; Get/Core return ObjectPayload wrappers."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: pkg/pluginapi/payload.go
+      owner: "ObjectPayload"
+      category: "*ast.MapType.Value"
+      line: 8
+      column: 21
+    description: "ObjectPayload wraps JSON-like extension payloads."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: pkg/pluginapi/payload.go
+      owner: "NewObjectPayload"
+      category: "*ast.MapType.Value"
+      line: 14
+      column: 41
+    description: "ObjectPayload wraps JSON-like extension payloads."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: pkg/pluginapi/payload.go
+      owner: "ObjectPayload"
+      category: "*ast.MapType.Value"
+      line: 43
+      column: 41
+    description: "ObjectPayload wraps JSON-like extension payloads."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: pkg/pluginapi/payload.go
+      owner: "cloneMap"
+      category: "*ast.MapType.Value"
+      line: 50
+      column: 33
+    description: "ObjectPayload wraps JSON-like extension payloads."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: pkg/pluginapi/payload.go
+      owner: "cloneMap"
+      category: "*ast.MapType.Value"
+      line: 50
+      column: 49
+    description: "ObjectPayload wraps JSON-like extension payloads."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: pkg/pluginapi/payload.go
+      owner: "cloneMap"
+      category: "*ast.MapType.Value"
+      line: 54
+      column: 46
+    description: "ObjectPayload wraps JSON-like extension payloads."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: pkg/pluginapi/plugin.go
+      owner: "Registry"
+      category: "*ast.MapType.Value"
+      line: 17
+      column: 50
+    description: "RegisterSchema accepts JSON Schema payloads."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: pkg/pluginapi/views.go
+      owner: "OrganismView"
+      category: "*ast.MapType.Value"
+      line: 26
+      column: 26
+    description: "View attributes and custody payloads are JSON boundary data."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+      - "docs/adr/0009-plugin-interface-stability-and-versioning.md"
+  - selector:
+      path: pkg/pluginapi/views.go
+      owner: "OrganismView"
+      category: "*ast.MapType.Value"
+      line: 28
+      column: 30
+    description: "View attributes and custody payloads are JSON boundary data."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+      - "docs/adr/0009-plugin-interface-stability-and-versioning.md"
+  - selector:
+      path: pkg/pluginapi/views.go
+      owner: "FacilityView"
+      category: "*ast.MapType.Value"
+      line: 64
+      column: 36
+    description: "View attributes and custody payloads are JSON boundary data."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+      - "docs/adr/0009-plugin-interface-stability-and-versioning.md"
+  - selector:
+      path: pkg/pluginapi/views.go
+      owner: "FacilityView"
+      category: "*ast.MapType.Value"
+      line: 66
+      column: 40
+    description: "View attributes and custody payloads are JSON boundary data."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+      - "docs/adr/0009-plugin-interface-stability-and-versioning.md"
+  - selector:
+      path: pkg/pluginapi/views.go
+      owner: "ObservationView"
+      category: "*ast.MapType.Value"
+      line: 102
+      column: 20
+    description: "View attributes and custody payloads are JSON boundary data."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+      - "docs/adr/0009-plugin-interface-stability-and-versioning.md"
+  - selector:
+      path: pkg/pluginapi/views.go
+      owner: "ObservationView"
+      category: "*ast.MapType.Value"
+      line: 104
+      column: 24
+    description: "View attributes and custody payloads are JSON boundary data."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+      - "docs/adr/0009-plugin-interface-stability-and-versioning.md"
+  - selector:
+      path: pkg/pluginapi/views.go
+      owner: "SampleView"
+      category: "*ast.MapType.Value"
+      line: 126
+      column: 32
+    description: "View attributes and custody payloads are JSON boundary data."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+      - "docs/adr/0009-plugin-interface-stability-and-versioning.md"
+  - selector:
+      path: pkg/pluginapi/views.go
+      owner: "SampleView"
+      category: "*ast.MapType.Value"
+      line: 127
+      column: 26
+    description: "View attributes and custody payloads are JSON boundary data."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+      - "docs/adr/0009-plugin-interface-stability-and-versioning.md"
+  - selector:
+      path: pkg/pluginapi/views.go
+      owner: "SampleView"
+      category: "*ast.MapType.Value"
+      line: 129
+      column: 30
+    description: "View attributes and custody payloads are JSON boundary data."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+      - "docs/adr/0009-plugin-interface-stability-and-versioning.md"
+  - selector:
+      path: pkg/pluginapi/views.go
+      owner: "SupplyItemView"
+      category: "*ast.MapType.Value"
+      line: 193
+      column: 26
+    description: "View attributes and custody payloads are JSON boundary data."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+      - "docs/adr/0009-plugin-interface-stability-and-versioning.md"
+  - selector:
+      path: pkg/pluginapi/views.go
+      owner: "SupplyItemView"
+      category: "*ast.MapType.Value"
+      line: 195
+      column: 30
+    description: "View attributes and custody payloads are JSON boundary data."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+      - "docs/adr/0009-plugin-interface-stability-and-versioning.md"
+  - selector:
+      path: plugins/frog/plugin.go
+      owner: "Plugin"
+      category: "*ast.MapType.Value"
+      line: 37
+      column: 49
+    description: "Reference plugin registers JSON Schema extensions and dataset metadata payloads."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+      - "docs/adr/0009-plugin-interface-stability-and-versioning.md"
+  - selector:
+      path: plugins/frog/plugin.go
+      owner: "Plugin"
+      category: "*ast.MapType.Value"
+      line: 40
+      column: 28
+    description: "Reference plugin registers JSON Schema extensions and dataset metadata payloads."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+      - "docs/adr/0009-plugin-interface-stability-and-versioning.md"
+  - selector:
+      path: plugins/frog/plugin.go
+      owner: "Plugin"
+      category: "*ast.MapType.Value"
+      line: 41
+      column: 35
+    description: "Reference plugin registers JSON Schema extensions and dataset metadata payloads."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+      - "docs/adr/0009-plugin-interface-stability-and-versioning.md"
+  - selector:
+      path: plugins/frog/plugin.go
+      owner: "Plugin"
+      category: "*ast.MapType.Value"
+      line: 47
+      column: 36
+    description: "Reference plugin registers JSON Schema extensions and dataset metadata payloads."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+      - "docs/adr/0009-plugin-interface-stability-and-versioning.md"
+  - selector:
+      path: plugins/frog/plugin.go
+      owner: "Plugin"
+      category: "*ast.MapType.Value"
+      line: 51
+      column: 42
+    description: "Reference plugin registers JSON Schema extensions and dataset metadata payloads."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+      - "docs/adr/0009-plugin-interface-stability-and-versioning.md"
+  - selector:
+      path: plugins/frog/plugin.go
+      owner: "frogPopulationBinder"
+      category: "*ast.MapType.Value"
+      line: 240
+      column: 26
+    description: "Reference plugin registers JSON Schema extensions and dataset metadata payloads."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+      - "docs/adr/0009-plugin-interface-stability-and-versioning.md"
+  - selector:
+      path: plugins/frog/plugin.go
+      owner: "valueOrNil"
+      category: "*ast.Field.Type"
+      line: 276
+      column: 40
+    description: "Reference plugin registers JSON Schema extensions and dataset metadata payloads."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+      - "docs/adr/0009-plugin-interface-stability-and-versioning.md"
+  - selector:
+      path: plugins/testhelper/dataset.go
+      owner: "OrganismFixtureConfig"
+      category: "*ast.MapType.Value"
+      line: 60
+      column: 24
+    description: "Plugin fixture builders clone JSON-like attribute payloads for tests."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: plugins/testhelper/dataset.go
+      owner: "Organism"
+      category: "*ast.MapType.Value"
+      line: 106
+      column: 78
+    description: "Plugin fixture builders clone JSON-like attribute payloads for tests."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: plugins/testhelper/dataset.go
+      owner: "cloneAttributes"
+      category: "*ast.MapType.Value"
+      line: 183
+      column: 39
+    description: "Plugin fixture builders clone JSON-like attribute payloads for tests."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: plugins/testhelper/dataset.go
+      owner: "cloneAttributes"
+      category: "*ast.MapType.Value"
+      line: 183
+      column: 55
+    description: "Plugin fixture builders clone JSON-like attribute payloads for tests."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: plugins/testhelper/dataset.go
+      owner: "cloneAttributes"
+      category: "*ast.MapType.Value"
+      line: 187
+      column: 25
+    description: "Plugin fixture builders clone JSON-like attribute payloads for tests."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: plugins/testhelper/dataset.go
+      owner: "deepCloneAttr"
+      category: "*ast.Field.Type"
+      line: 196
+      column: 22
+    description: "Plugin fixture builders clone JSON-like attribute payloads for tests."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: plugins/testhelper/dataset.go
+      owner: "deepCloneAttr"
+      category: "*ast.Field.Type"
+      line: 196
+      column: 27
+    description: "Plugin fixture builders clone JSON-like attribute payloads for tests."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: plugins/testhelper/dataset.go
+      owner: "deepCloneAttr"
+      category: "*ast.MapType.Value"
+      line: 200
+      column: 22
+    description: "Plugin fixture builders clone JSON-like attribute payloads for tests."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: plugins/testhelper/dataset.go
+      owner: "deepCloneAttr"
+      category: "*ast.MapType.Value"
+      line: 202
+      column: 24
+    description: "Plugin fixture builders clone JSON-like attribute payloads for tests."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: plugins/testhelper/dataset.go
+      owner: "deepCloneAttr"
+      category: "*ast.ArrayType.Elt"
+      line: 209
+      column: 13
+    description: "Plugin fixture builders clone JSON-like attribute payloads for tests."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: plugins/testhelper/dataset.go
+      owner: "deepCloneAttr"
+      category: "*ast.ArrayType.Elt"
+      line: 211
+      column: 15
+    description: "Plugin fixture builders clone JSON-like attribute payloads for tests."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: plugins/testhelper/dataset.go
+      owner: "deepCloneAttr"
+      category: "*ast.MapType.Value"
+      line: 225
+      column: 24
+    description: "Plugin fixture builders clone JSON-like attribute payloads for tests."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+  - selector:
+      path: plugins/testhelper/dataset.go
+      owner: "deepCloneAttr"
+      category: "*ast.MapType.Value"
+      line: 227
+      column: 26
+    description: "Plugin fixture builders clone JSON-like attribute payloads for tests."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"

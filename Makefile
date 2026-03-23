@@ -23,6 +23,8 @@ MARKDOWNLINT_CONFIG ?= .markdownlint.yaml
 MARKDOWNLINT_BASELINE ?= internal/ci/markdownlint.baseline.json
 GOPATH_BIN := $(shell go env GOPATH)/bin
 GOLANGCI_BIN := $(GOPATH_BIN)/golangci-lint
+CUSTOM_GOLANGCI_BIN := $(BIN_DIR)/colonycore-gcl
+CUSTOM_GOLANGCI_HASH := $(CUSTOM_GOLANGCI_BIN).hash
 GOLANGCI_VERSION_PLAIN := $(patsubst v%,%,$(GOLANGCI_VERSION))
 MODULE := $(shell go list -m)
 IMPORT_BOSS_BIN := $(GOPATH_BIN)/import-boss
@@ -39,7 +41,7 @@ SCHEMASPY_PG_USER ?= postgres
 SCHEMASPY_PG_PASSWORD ?= postgres
 SCHEMASPY_PG_TIMEOUT ?= 60
 
-.PHONY: all build clean lint lint-docs lint-docs-update go-test test plugin-conformance registry-check fmt-check vet registry-lint golangci golangci-install python-lint r-lint r-lint-setup r-lint-reset go-lint import-boss import-boss-install entity-model-validate entity-model-generate entity-model-verify entity-model-erd entity-model-diff entity-model-diff-update api-snapshots list-docker-images validate-any-usage benchmarks-run benchmarks-aggregate benchmarks-compare benchmarks-ci
+.PHONY: all build clean lint lint-docs lint-docs-update go-test test plugin-conformance registry-check fmt-check vet registry-lint golangci golangci-install python-lint r-lint r-lint-setup r-lint-reset go-lint import-boss import-boss-install entity-model-validate entity-model-generate entity-model-verify entity-model-erd entity-model-diff entity-model-diff-update api-snapshots list-docker-images benchmarks-run benchmarks-aggregate benchmarks-compare benchmarks-ci
 
 all: build
 
@@ -62,7 +64,6 @@ lint:
 	@$(MAKE) --no-print-directory api-snapshots
 	@$(MAKE) --no-print-directory go-lint
 	@$(MAKE) --no-print-directory validate-plugin-patterns
-	@$(MAKE) --no-print-directory validate-any-usage
 	@$(MAKE) --no-print-directory python-lint
 	@$(MAKE) --no-print-directory r-lint
 	@echo "Lint suite finished successfully"
@@ -104,11 +105,6 @@ validate-plugin-patterns:
 		fi; \
 	done
 	@echo "validate-plugin-patterns: OK"
-
-validate-any-usage:
-	@echo "==> Validating any usage"
-	@GOCACHE=$(GOCACHE) go run ./scripts/validate_any_usage
-	@echo "validate-any-usage: OK"
 
 benchmarks-run:
 	@CONF=$(BENCH_CONF) COUNT=$(BENCH_COUNT) SWEET_VERSION=$(SWEET_VERSION) SWEET_COMMIT=$(SWEET_COMMIT) BENCHSTAT_VERSION=$(BENCHSTAT_VERSION) scripts/benchmarks/run_sweet.sh
@@ -176,9 +172,31 @@ golangci:
 		if [ $$need_install -eq 1 ]; then \
 			$(MAKE) golangci-install; \
 		fi; \
-		mkdir -p $(GOLANGCI_CACHE); \
+		mkdir -p $(BIN_DIR) $(GOLANGCI_CACHE); \
+		expected_custom_hash=$$({ printf '%s\n' "$(GOLANGCI_VERSION)"; cat .custom-gcl.yml; } | sha256sum | awk '{print $$1}'); \
+		need_custom_build=1; \
+		if [ -x "$(CUSTOM_GOLANGCI_BIN)" ] && [ -f "$(CUSTOM_GOLANGCI_HASH)" ]; then \
+			stored_custom_hash=$$(cat "$(CUSTOM_GOLANGCI_HASH)"); \
+			if [ "$$stored_custom_hash" = "$$expected_custom_hash" ]; then \
+				need_custom_build=0; \
+			fi; \
+		fi; \
+		if [ $$need_custom_build -eq 1 ]; then \
+			build_tmpfile=$$(mktemp); \
+			if ! GOCACHE="$(GOCACHE)" GOLANGCI_LINT_CACHE="$(GOLANGCI_CACHE)" $(GOLANGCI_BIN) custom --name $(notdir $(CUSTOM_GOLANGCI_BIN)) --destination $(dir $(CUSTOM_GOLANGCI_BIN)) --version $(GOLANGCI_VERSION) >$$build_tmpfile 2>&1; then \
+				cat $$build_tmpfile; \
+				rm -f $$build_tmpfile; \
+				exit 1; \
+			fi; \
+			rm -f $$build_tmpfile; \
+			printf '%s\n' "$$expected_custom_hash" > "$(CUSTOM_GOLANGCI_HASH)"; \
+		fi; \
+		if [ ! -x "$(CUSTOM_GOLANGCI_BIN)" ]; then \
+			echo "Custom golangci-lint binary was not created at $(CUSTOM_GOLANGCI_BIN)"; \
+			exit 1; \
+		fi; \
 		tmpfile=$$(mktemp); \
-		if ! GOCACHE="$(GOCACHE)" GOLANGCI_LINT_CACHE="$(GOLANGCI_CACHE)" $(GOLANGCI_BIN) run --timeout=30m --fix ./... >$$tmpfile 2>&1; then \
+		if ! GOCACHE="$(GOCACHE)" GOLANGCI_LINT_CACHE="$(GOLANGCI_CACHE)" $(CUSTOM_GOLANGCI_BIN) run --timeout=30m --fix ./... >$$tmpfile 2>&1; then \
 			cat $$tmpfile; \
 			rm -f $$tmpfile; \
 			exit 1; \

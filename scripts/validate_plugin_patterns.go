@@ -105,6 +105,10 @@ type contractEntityMetadata struct {
 var contractMetadataRegex = regexp.MustCompile(`(?s)CONTRACT-METADATA\s*(\{.*?\})\s*-->`)
 
 func validateContract(contractPath string) error {
+	return validateContractWithSchemaPath(contractPath, entityModelPath)
+}
+
+func validateContractWithSchemaPath(contractPath, schemaPath string) error {
 	// #nosec G304 -- contract path is provided by repo tooling during linting
 	content, err := os.ReadFile(contractPath)
 	if err != nil {
@@ -114,7 +118,7 @@ func validateContract(contractPath string) error {
 	if err != nil {
 		return err
 	}
-	schemaMeta, err := loadSchemaMetadata(entityModelPath)
+	schemaMeta, err := loadSchemaMetadata(schemaPath)
 	if err != nil {
 		return err
 	}

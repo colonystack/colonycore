@@ -15,6 +15,21 @@ const (
 	testPairingStrategy = "outcross"
 )
 
+func cloneHookMap(container *extension.Container, hook extension.Hook, plugin extension.PluginID) (map[string]any, bool) {
+	if container == nil {
+		return nil, false
+	}
+	payload, ok := container.Get(hook, plugin)
+	if !ok || payload == nil {
+		return nil, false
+	}
+	payloadMap, ok := payload.(map[string]any)
+	if !ok {
+		return nil, false
+	}
+	return extension.CloneMap(payloadMap), true
+}
+
 func TestCloneHookMapVariants(t *testing.T) {
 	if _, ok := cloneHookMap(nil, extension.HookOrganismAttributes, extension.PluginCore); ok {
 		t.Fatalf("expected no payload when container is nil")
