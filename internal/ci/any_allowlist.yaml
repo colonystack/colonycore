@@ -3210,9 +3210,19 @@ entries:
       - "docs/annex/0004-typing-guidelines.md"
   - selector:
       path: pkg/domain/extension_accessors.go
-      owner: "pluginPayloads"
+      owner: "cloneHookMap"
       category: "*ast.MapType.Value"
       line: 12
+      column: 111
+    description: "Domain accessors expose extension attributes as JSON boundary maps."
+    refs:
+      - "docs/annex/0004-typing-guidelines.md"
+      - "docs/adr/0003-core-domain-schema.md"
+  - selector:
+      path: pkg/domain/extension_accessors.go
+      owner: "pluginPayloads"
+      category: "*ast.MapType.Value"
+      line: 27
       column: 85
     description: "Domain accessors expose extension attributes as JSON boundary maps."
     refs:
@@ -3222,7 +3232,7 @@ entries:
       path: pkg/domain/extension_accessors.go
       owner: "updateHookPayload"
       category: "*ast.MapType.Value"
-      line: 30
+      line: 45
       column: 21
     description: "Domain accessors expose extension attributes as JSON boundary maps."
     refs:
@@ -3232,7 +3242,7 @@ entries:
       path: pkg/domain/extension_accessors.go
       owner: "Organism"
       category: "*ast.MapType.Value"
-      line: 102
+      line: 117
       column: 48
     description: "Domain accessors expose extension attributes as JSON boundary maps."
     refs:
@@ -3242,7 +3252,7 @@ entries:
       path: pkg/domain/extension_accessors.go
       owner: "Organism"
       category: "*ast.MapType.Value"
-      line: 120
+      line: 135
       column: 55
     description: "Domain accessors expose extension attributes as JSON boundary maps."
     refs:
@@ -3252,7 +3262,7 @@ entries:
       path: pkg/domain/extension_accessors.go
       owner: "Facility"
       category: "*ast.MapType.Value"
-      line: 155
+      line: 170
       column: 54
     description: "Domain accessors expose extension attributes as JSON boundary maps."
     refs:
@@ -3262,7 +3272,7 @@ entries:
       path: pkg/domain/extension_accessors.go
       owner: "Facility"
       category: "*ast.MapType.Value"
-      line: 173
+      line: 188
       column: 67
     description: "Domain accessors expose extension attributes as JSON boundary maps."
     refs:
@@ -3272,7 +3282,7 @@ entries:
       path: pkg/domain/extension_accessors.go
       owner: "BreedingUnit"
       category: "*ast.MapType.Value"
-      line: 208
+      line: 223
       column: 55
     description: "Domain accessors expose extension attributes as JSON boundary maps."
     refs:
@@ -3282,7 +3292,7 @@ entries:
       path: pkg/domain/extension_accessors.go
       owner: "Line"
       category: "*ast.MapType.Value"
-      line: 252
+      line: 267
       column: 47
     description: "Domain accessors expose extension attributes as JSON boundary maps."
     refs:
@@ -3292,7 +3302,7 @@ entries:
       path: pkg/domain/extension_accessors.go
       owner: "Line"
       category: "*ast.MapType.Value"
-      line: 262
+      line: 277
       column: 56
     description: "Domain accessors expose extension attributes as JSON boundary maps."
     refs:
@@ -3302,7 +3312,7 @@ entries:
       path: pkg/domain/extension_accessors.go
       owner: "Line"
       category: "*ast.MapType.Value"
-      line: 271
+      line: 286
       column: 48
     description: "Domain accessors expose extension attributes as JSON boundary maps."
     refs:
@@ -3312,7 +3322,7 @@ entries:
       path: pkg/domain/extension_accessors.go
       owner: "Line"
       category: "*ast.MapType.Value"
-      line: 281
+      line: 296
       column: 61
     description: "Domain accessors expose extension attributes as JSON boundary maps."
     refs:
@@ -3322,7 +3332,7 @@ entries:
       path: pkg/domain/extension_accessors.go
       owner: "Strain"
       category: "*ast.MapType.Value"
-      line: 290
+      line: 305
       column: 56
     description: "Domain accessors expose extension attributes as JSON boundary maps."
     refs:
@@ -3332,7 +3342,7 @@ entries:
       path: pkg/domain/extension_accessors.go
       owner: "Strain"
       category: "*ast.MapType.Value"
-      line: 306
+      line: 321
       column: 57
     description: "Domain accessors expose extension attributes as JSON boundary maps."
     refs:
@@ -3342,7 +3352,7 @@ entries:
       path: pkg/domain/extension_accessors.go
       owner: "GenotypeMarker"
       category: "*ast.MapType.Value"
-      line: 331
+      line: 346
       column: 72
     description: "Domain accessors expose extension attributes as JSON boundary maps."
     refs:
@@ -3352,7 +3362,7 @@ entries:
       path: pkg/domain/extension_accessors.go
       owner: "GenotypeMarker"
       category: "*ast.MapType.Value"
-      line: 336
+      line: 351
       column: 73
     description: "Domain accessors expose extension attributes as JSON boundary maps."
     refs:
@@ -3362,7 +3372,7 @@ entries:
       path: pkg/domain/extension_accessors.go
       owner: "BreedingUnit"
       category: "*ast.MapType.Value"
-      line: 351
+      line: 366
       column: 64
     description: "Domain accessors expose extension attributes as JSON boundary maps."
     refs:
@@ -3372,7 +3382,7 @@ entries:
       path: pkg/domain/extension_accessors.go
       owner: "Observation"
       category: "*ast.MapType.Value"
-      line: 386
+      line: 401
       column: 52
     description: "Domain accessors expose extension attributes as JSON boundary maps."
     refs:
@@ -3382,7 +3392,7 @@ entries:
       path: pkg/domain/extension_accessors.go
       owner: "Observation"
       category: "*ast.MapType.Value"
-      line: 403
+      line: 418
       column: 60
     description: "Domain accessors expose extension attributes as JSON boundary maps."
     refs:
@@ -3392,7 +3402,7 @@ entries:
       path: pkg/domain/extension_accessors.go
       owner: "Sample"
       category: "*ast.MapType.Value"
-      line: 437
+      line: 452
       column: 48
     description: "Domain accessors expose extension attributes as JSON boundary maps."
     refs:
@@ -3402,7 +3412,7 @@ entries:
       path: pkg/domain/extension_accessors.go
       owner: "Sample"
       category: "*ast.MapType.Value"
-      line: 454
+      line: 469
       column: 57
     description: "Domain accessors expose extension attributes as JSON boundary maps."
     refs:
@@ -3412,7 +3422,7 @@ entries:
       path: pkg/domain/extension_accessors.go
       owner: "SupplyItem"
       category: "*ast.MapType.Value"
-      line: 489
+      line: 504
       column: 52
     description: "Domain accessors expose extension attributes as JSON boundary maps."
     refs:
@@ -3422,7 +3432,7 @@ entries:
       path: pkg/domain/extension_accessors.go
       owner: "SupplyItem"
       category: "*ast.MapType.Value"
-      line: 506
+      line: 521
       column: 61
     description: "Domain accessors expose extension attributes as JSON boundary maps."
     refs:

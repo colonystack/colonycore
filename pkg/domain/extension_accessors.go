@@ -10,14 +10,15 @@ import (
 // hook and plugin combination. The second return value reports whether a
 // payload was present.
 func cloneHookMap(container *extension.Container, hook extension.Hook, plugin extension.PluginID) (map[string]any, bool) {
-	if container == nil {
+	payload, err := extension.ObjectFromContainer(container, hook, plugin)
+	if err != nil {
 		return nil, false
 	}
-	payload, ok := container.Get(hook, plugin)
-	if !ok || payload == nil {
+	values := payload.Map()
+	if values == nil {
 		return nil, false
 	}
-	return extension.CloneMap(payload.(map[string]any)), true
+	return values, true
 }
 
 // pluginPayloads returns a defensive copy of all plugin payloads bound to the
