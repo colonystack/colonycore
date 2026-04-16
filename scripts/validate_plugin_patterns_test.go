@@ -304,6 +304,9 @@ func TestExtractContractMetadataInvalidJSON(t *testing.T) {
 	if err == nil {
 		t.Fatalf("expected error for invalid metadata JSON")
 	}
+	if !strings.Contains(err.Error(), "parse contract metadata") {
+		t.Fatalf("expected parse contract metadata error, got %v", err)
+	}
 }
 
 func TestValidateContract(t *testing.T) {

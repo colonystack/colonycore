@@ -93,7 +93,7 @@ Guard behavior:
 
 ## Guard implementation
 
-The lint-time guard runs through `anyguard` v2.0.2 as a golangci-lint module
+The lint-time guard runs through `anyguard` v2.0.3 as a golangci-lint module
 plugin. `make golangci` builds the custom binary from `.custom-gcl.yml` and
 executes it with the repository's `.golangci.yml`. For local verification:
 

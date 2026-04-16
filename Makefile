@@ -173,7 +173,14 @@ golangci:
 			$(MAKE) golangci-install; \
 		fi; \
 		mkdir -p $(BIN_DIR) $(GOLANGCI_CACHE); \
-		expected_custom_hash=$$({ printf '%s\n' "$(GOLANGCI_VERSION)"; cat .custom-gcl.yml; } | sha256sum | awk '{print $$1}'); \
+		expected_custom_hash=$$({ printf '%s\n' "$(GOLANGCI_VERSION)"; cat .custom-gcl.yml; } | \
+			if command -v sha256sum >/dev/null 2>&1; then \
+				sha256sum | awk '{print $$1}'; \
+			elif command -v shasum >/dev/null 2>&1; then \
+				shasum -a 256 | awk '{print $$1}'; \
+			else \
+				openssl dgst -sha256 | awk '{print $$NF}'; \
+			fi); \
 		need_custom_build=1; \
 		if [ -x "$(CUSTOM_GOLANGCI_BIN)" ] && [ -f "$(CUSTOM_GOLANGCI_HASH)" ]; then \
 			stored_custom_hash=$$(cat "$(CUSTOM_GOLANGCI_HASH)"); \
