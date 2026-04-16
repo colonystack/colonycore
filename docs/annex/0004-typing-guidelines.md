@@ -3,7 +3,7 @@
 - Status: Accepted
 - Linked RFCs: 0001-colonycore-base-module
 - Owners: Core Maintainers
-- Last Updated: 2025-12-29
+- Last Updated: 2026-04-16
 
 ## Purpose
 

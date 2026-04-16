@@ -25,7 +25,7 @@ linters:
       anyguard:
         type: module
         description: Enforce allowlisted any usage
-        original-url: github.com/tobythehutt/anyguard
+        original-url: github.com/tobythehutt/anyguard/v2
         settings:
           allowlist: internal/ci/any_allowlist.yaml
           roots:
